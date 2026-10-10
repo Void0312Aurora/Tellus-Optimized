@@ -69,6 +69,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.concurrent.TimeUnit;
@@ -4146,14 +4147,38 @@ public final class EarthChunkGenerator extends EarthChunkGeneratorVersionCompat 
    ) {
       int sectionCount = sectionTopYs.length;
       long sectionScanStartNs = beginFullChunkProfiling();
+      int upperBound = Math.min(solidMaxIndex, sectionCount - 1);
+      boolean parallel = TellusWorldgenSources.parallelSolidSectionFillEnabled(upperBound + 1);
+      if (parallel) {
+         List<CompletableFuture<Void>> fills = new ArrayList<>();
+         for (int i = 0; i <= upperBound; i++) {
+            int topY = sectionTopYs[i];
+            int bottomY = topY - 15;
+            if (bottomY < 0 && topY >= 0) {
+               continue;
+            }
 
-      for (int i = 0; i <= solidMaxIndex && i < sectionCount; i++) {
-         int topY = sectionTopYs[i];
-         int bottomY = topY - 15;
-         if (bottomY >= 0 || topY < 0) {
+            int sectionIndex = i;
             BlockState fill = topY < deepslateStart ? deepslate : stone;
-            writer.fillSectionConstant(i, fill, profiler);
-            solidSections[i] = true;
+            fills.add(
+               TellusWorldgenSources.submitChunkComputeTask(
+                  () -> {
+                     writer.fillSectionConstant(sectionIndex, fill, profiler);
+                     solidSections[sectionIndex] = true;
+                  }
+               )
+            );
+         }
+         CompletableFuture.allOf(fills.toArray(CompletableFuture[]::new)).join();
+      } else {
+         for (int i = 0; i <= upperBound; i++) {
+            int topY = sectionTopYs[i];
+            int bottomY = topY - 15;
+            if (bottomY >= 0 || topY < 0) {
+               BlockState fill = topY < deepslateStart ? deepslate : stone;
+               writer.fillSectionConstant(i, fill, profiler);
+               solidSections[i] = true;
+            }
          }
       }
 
@@ -12845,7 +12870,7 @@ public final class EarthChunkGenerator extends EarthChunkGeneratorVersionCompat 
       private final boolean[] dirtySections;
       private final boolean[] acquiredSections;
       private final PalettedContainer<BlockState>[] stateContainers;
-      private int dirtySectionCount;
+      private final AtomicInteger dirtySectionCount = new AtomicInteger();
       private boolean closed;
 
       @SuppressWarnings("unchecked")
@@ -12869,7 +12894,10 @@ public final class EarthChunkGenerator extends EarthChunkGeneratorVersionCompat 
             }
          }
 
-         profiler.sectionWriteNs += elapsedFullChunkProfilingSince(sectionWriteStartNs);
+         long elapsedNs = elapsedFullChunkProfilingSince(sectionWriteStartNs);
+         synchronized (profiler) {
+            profiler.sectionWriteNs += elapsedNs;
+         }
          this.markDirty(sectionIndex);
       }
 
@@ -12990,7 +13018,7 @@ public final class EarthChunkGenerator extends EarthChunkGeneratorVersionCompat 
 
       FlushResult finish() {
          if (this.closed) {
-            return new FlushResult(0L, this.dirtySectionCount);
+            return new FlushResult(0L, this.dirtySectionCount.get());
          }
 
          this.releaseSections();
@@ -13002,7 +13030,7 @@ public final class EarthChunkGenerator extends EarthChunkGeneratorVersionCompat 
          }
 
          this.closed = true;
-         return new FlushResult(elapsedFullChunkProfilingSince(recalcStartNs), this.dirtySectionCount);
+         return new FlushResult(elapsedFullChunkProfilingSince(recalcStartNs), this.dirtySectionCount.get());
       }
 
       void close() {
@@ -13037,7 +13065,10 @@ public final class EarthChunkGenerator extends EarthChunkGeneratorVersionCompat 
             this.stateContainers[sectionIndex] = section.getStates();
             this.acquiredSections[sectionIndex] = true;
             if (profiler != null) {
-               profiler.sectionAccessNs += elapsedFullChunkProfilingSince(sectionAccessStartNs);
+               long elapsedNs = elapsedFullChunkProfilingSince(sectionAccessStartNs);
+               synchronized (profiler) {
+                  profiler.sectionAccessNs += elapsedNs;
+               }
             }
          }
 
@@ -13047,7 +13078,7 @@ public final class EarthChunkGenerator extends EarthChunkGeneratorVersionCompat 
       private void markDirty(int sectionIndex) {
          if (!this.dirtySections[sectionIndex]) {
             this.dirtySections[sectionIndex] = true;
-            this.dirtySectionCount++;
+            this.dirtySectionCount.incrementAndGet();
          }
       }
 

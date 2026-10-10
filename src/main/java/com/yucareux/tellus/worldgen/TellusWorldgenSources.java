@@ -65,6 +65,13 @@ public final class TellusWorldgenSources {
    private static final ExecutorService PREFETCH_EXECUTOR = createPrefetchExecutor();
    private static final ThreadPoolExecutor LOD_PREFETCH_EXECUTOR = createLodPrefetchExecutor();
    private static final ExecutorService TERRAIN_DETAIL_EXECUTOR = createTerrainDetailExecutor();
+   private static final boolean PARALLEL_SOLID_SECTION_FILL = Boolean.parseBoolean(
+      System.getProperty("tellus.chunkgen.parallelSolidSections", "false")
+   );
+   private static final int PARALLEL_SOLID_SECTION_MIN_SECTIONS = intProperty(
+      "tellus.chunkgen.parallelSolidSections.minSections", 8
+   );
+   private static final ThreadPoolExecutor CHUNK_COMPUTE_EXECUTOR = createChunkComputeExecutor();
    private static final ConcurrentMap<EarthGeneratorSettings, WaterSurfaceResolver> WATER_RESOLVERS = new ConcurrentHashMap<>();
 
    private TellusWorldgenSources() {
@@ -643,6 +650,39 @@ public final class TellusWorldgenSources {
       }
    }
 
+   static boolean parallelSolidSectionFillEnabled(int sectionCount) {
+      return PARALLEL_SOLID_SECTION_FILL
+         && CHUNK_COMPUTE_EXECUTOR != null
+         && sectionCount >= Math.max(1, PARALLEL_SOLID_SECTION_MIN_SECTIONS);
+   }
+
+   static CompletableFuture<Void> submitChunkComputeTask(Runnable task) {
+      Objects.requireNonNull(task, "task");
+      if (CHUNK_COMPUTE_EXECUTOR == null) {
+         try {
+            task.run();
+            return CompletableFuture.completedFuture(null);
+         } catch (RuntimeException | Error error) {
+            CompletableFuture<Void> failed = new CompletableFuture<>();
+            failed.completeExceptionally(error);
+            return failed;
+         }
+      }
+
+      try {
+         return CompletableFuture.runAsync(task, CHUNK_COMPUTE_EXECUTOR);
+      } catch (RejectedExecutionException error) {
+         try {
+            task.run();
+            return CompletableFuture.completedFuture(null);
+         } catch (RuntimeException | Error inlineError) {
+            CompletableFuture<Void> failed = new CompletableFuture<>();
+            failed.completeExceptionally(inlineError);
+            return failed;
+         }
+      }
+   }
+
    static CompletableFuture<Void> submitTerrainDetailTask(Runnable task) {
       if (TERRAIN_DETAIL_EXECUTOR != null) {
          try {
@@ -767,6 +807,27 @@ public final class TellusWorldgenSources {
       );
       int queueSize = intProperty("tellus.terraindetail.queue", 1024);
       return createAdaptiveExecutor("tellus-terrain-", bounds.min(), bounds.max(), queueSize);
+   }
+
+   private static ThreadPoolExecutor createChunkComputeExecutor() {
+      if (!PARALLEL_SOLID_SECTION_FILL) {
+         return null;
+      }
+
+      TellusWorldgenSources.ThreadBounds bounds = resolveThreadBounds(
+         "tellus.chunkgen.threads.min",
+         "tellus.chunkgen.threads.max",
+         "tellus.chunkgen.threads",
+         1,
+         defaultPhysicalCoreTarget()
+      );
+      int queueSize = intProperty("tellus.chunkgen.queue", 1024);
+      return createAdaptiveExecutor("tellus-chunkgen-", bounds.min(), bounds.max(), queueSize);
+   }
+
+   private static int defaultPhysicalCoreTarget() {
+      int logicalProcessors = Math.max(1, Runtime.getRuntime().availableProcessors());
+      return logicalProcessors >= 4 && (logicalProcessors & 1) == 0 ? Math.max(1, logicalProcessors / 2) : logicalProcessors;
    }
 
    private static TellusWorldgenSources.AdaptiveThreadPoolExecutor createAdaptiveExecutor(String threadPrefix, int minThreads, int maxThreads, int queueSize) {

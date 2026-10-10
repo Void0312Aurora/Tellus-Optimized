@@ -1,12 +1,14 @@
 pluginManagement {
 	repositories {
 		maven {
-			name = 'NeoForge'
-			url = 'https://maven.neoforged.net/releases/'
-		}
-		maven {
 			name = 'Fabric'
 			url = 'https://maven.fabricmc.net/'
+		}
+		gradlePluginPortal()
+		mavenCentral()
+		maven {
+			name = 'NeoForge'
+			url = 'https://maven.neoforged.net/releases/'
 		}
 		maven {
 			name = 'UniminedKappa'
@@ -20,8 +22,6 @@ pluginManagement {
 			name = 'Forge'
 			url = 'https://maven.minecraftforge.net/'
 		}
-		mavenCentral()
-		gradlePluginPortal()
 	}
 }
 
