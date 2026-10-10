@@ -36,6 +36,13 @@ python3 tools/run_headless_benchmark.py \
   --workers 44 --parallel --heap 8g --label parallel44-r1
 ```
 
+Use `--parallel-water` to exercise the opt-in water-region row pipeline, and
+`--jvm-property key=value` to pass an additional JVM property. The water path
+also accepts `tellus.water.parallelRegionBuild.tasks`; its default caps a single
+region at eight row ranges because the source/cache layer becomes slower when
+all physical cores contend on the same region. This is an experimental path,
+not a default setting.
+
 The script copies the world template, clears the previous Tellus cache by
 default, copies the supplied cache template, starts `:mc1201:runServer`, sends
 the command over standard input, captures the server log, and writes the Git revision and test settings into
@@ -53,11 +60,15 @@ coordinate, heap, and server settings:
 | serial-r1 | 9 chunks | off, max 1 | 8,853.9 ms |
 | parallel44-r1 | 9 chunks | on, max 44 | 9,254.0 ms |
 
-These are smoke measurements for the new path, not a claim that the parallel
-implementation is faster. They show why the next comparison should use larger
-regions and repeated runs while retaining identical cache snapshots. The first
-16.4-second versus 5.37-second experiment was discarded because the two runs did
-not use the same cache state.
+The initial measurements above are smoke checks and do not claim a speedup.
+The benchmark JSON also records whether the executor was configured, its largest
+observed pool size, and completed chunk-compute tasks. A 44-worker water run
+reached a largest pool size of 44 with the direct-handoff queue. On the local
+scale-1 sample, uncapped 44-way row fan-out made a target water region slower
+(about 4.62 s versus 1.95 s serial); the capped eight-range path measured about
+1.75 s for that region while the whole server run stayed roughly flat because
+startup and neighboring prefetch regions dominated. These numbers are evidence
+for scheduling behavior, not a universal speedup claim.
 
 Rendering remains a separate phase. After generation data has been selected, a
 client can open one finished world for screenshots under fixed Sodium/Iris,

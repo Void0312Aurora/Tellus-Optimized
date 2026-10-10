@@ -27,6 +27,7 @@ import com.yucareux.tellus.world.realtime.WeatherTemperaturePolicy;
 import com.yucareux.tellus.worldgen.EarthChunkGenerator;
 import com.yucareux.tellus.worldgen.EarthGeneratorSettings;
 import com.yucareux.tellus.worldgen.ExperimentalHeightSupport;
+import com.yucareux.tellus.worldgen.TellusWorldgenSources;
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -321,6 +322,15 @@ public class TellusCommon {
          Boolean.parseBoolean(System.getProperty("tellus.chunkgen.parallelSolidSections", "false"))
       );
       result.addProperty("chunkComputeThreads", System.getProperty("tellus.chunkgen.threads.max", "default"));
+      result.addProperty("parallelSolidSectionsConfigured", TellusWorldgenSources.parallelSolidSectionFillConfigured());
+      result.addProperty("chunkComputeExecutorConfigured", TellusWorldgenSources.chunkComputeExecutorConfigured());
+      result.addProperty("parallelSolidSectionsEnabledFor254", TellusWorldgenSources.parallelSolidSectionFillEnabledFor(254));
+      result.addProperty(
+         "parallelWaterRegionBuild",
+         Boolean.parseBoolean(System.getProperty("tellus.water.parallelRegionBuild", "false"))
+      );
+      result.addProperty("chunkComputePoolSizeAtStart", TellusWorldgenSources.chunkComputePoolSize());
+      result.addProperty("chunkComputeLargestPoolSizeAtStart", TellusWorldgenSources.chunkComputeLargestPoolSize());
 
       try {
          for (int dz = -radius; dz <= radius; dz++) {
@@ -345,6 +355,9 @@ public class TellusCommon {
          result.addProperty("sumChunkMillis", sumNs / 1_000_000.0);
          result.addProperty("minChunkMillis", minNs / 1_000_000.0);
          result.addProperty("maxChunkMillis", maxNs / 1_000_000.0);
+         result.addProperty("chunkComputePoolSizeAtEnd", TellusWorldgenSources.chunkComputePoolSize());
+         result.addProperty("chunkComputeLargestPoolSizeAtEnd", TellusWorldgenSources.chunkComputeLargestPoolSize());
+         result.addProperty("chunkComputeCompletedTaskCount", TellusWorldgenSources.chunkComputeCompletedTaskCount());
          Path output = writeBenchmarkResult(result);
          LOGGER.info(
             "Tellus benchmark completed: {} chunks in {} ms (min={} ms, max={} ms), result={}",

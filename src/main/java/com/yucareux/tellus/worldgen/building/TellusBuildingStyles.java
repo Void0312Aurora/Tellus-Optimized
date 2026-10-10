@@ -1,6 +1,7 @@
 package com.yucareux.tellus.worldgen.building;
 
 import com.yucareux.tellus.world.data.osm.OsmBuildingMetadata;
+import com.yucareux.tellus.worldgen.arnis.ArnisBuildingVariants;
 import java.util.Locale;
 
 public final class TellusBuildingStyles {
@@ -50,6 +51,9 @@ public final class TellusBuildingStyles {
       int facadePhase = positiveMod(mixedSeed, Math.max(2, profile.windowSpacing()));
       int accentPhase = positiveMod(Long.rotateLeft(mixedSeed, 17), Math.max(2, profile.windowSpacing() + 2));
       BuildingProfile.BuildingCategory category = profile.category();
+      ArnisBuildingVariants.HighRiseVariant highRiseVariant = ArnisBuildingVariants.resolve(
+         profile, metadata, areaSquareMeters, widthBlocks, depthBlocks, blueprintSeed
+      );
       String type = metadata == null ? "" : text(metadata.combinedTypeText());
       String wallText = metadata == null ? "" : text(metadata.wallMaterial()) + " " + text(metadata.wallColor());
       String roofText = metadata == null ? "" : text(metadata.roofMaterial()) + " " + text(metadata.roofColor());
@@ -73,7 +77,13 @@ public final class TellusBuildingStyles {
          case RELIGIOUS -> BuildingStyle.FacadeFamily.RELIGIOUS;
          case HISTORIC -> BuildingStyle.FacadeFamily.HISTORIC;
          case INDUSTRIAL, WAREHOUSE -> BuildingStyle.FacadeFamily.INDUSTRIAL;
-         case TOWER, TALL_BUILDING, MODERN_SKYSCRAPER -> BuildingStyle.FacadeFamily.MODERN_GRID;
+         case TOWER, MODERN_SKYSCRAPER -> BuildingStyle.FacadeFamily.MODERN_GRID;
+         case TALL_BUILDING -> highRiseVariant == ArnisBuildingVariants.HighRiseVariant.GLASS
+               || highRiseVariant == ArnisBuildingVariants.HighRiseVariant.GLASS_CORNER
+            ? BuildingStyle.FacadeFamily.CURTAIN_WALL
+            : highRiseVariant == ArnisBuildingVariants.HighRiseVariant.MASONRY
+               ? BuildingStyle.FacadeFamily.HISTORIC
+               : BuildingStyle.FacadeFamily.MODERN_GRID;
          case GLASSY_SKYSCRAPER -> BuildingStyle.FacadeFamily.CURTAIN_WALL;
          case GENERIC -> brick ? BuildingStyle.FacadeFamily.BRICK_ROW : BuildingStyle.FacadeFamily.MASONRY;
       };
@@ -87,9 +97,14 @@ public final class TellusBuildingStyles {
             : BuildingStyle.WindowPattern.RIBBON;
          case RELIGIOUS, HISTORIC -> BuildingStyle.WindowPattern.PUNCHED;
          case INDUSTRIAL, WAREHOUSE -> BuildingStyle.WindowPattern.INDUSTRIAL_STRIP;
-         case TOWER, TALL_BUILDING, MODERN_SKYSCRAPER -> facade == BuildingStyle.FacadeFamily.CURTAIN_WALL
+         case TOWER, MODERN_SKYSCRAPER -> facade == BuildingStyle.FacadeFamily.CURTAIN_WALL
             ? BuildingStyle.WindowPattern.CURTAIN
             : BuildingStyle.WindowPattern.GRID;
+         case TALL_BUILDING -> facade == BuildingStyle.FacadeFamily.CURTAIN_WALL
+            ? BuildingStyle.WindowPattern.CURTAIN
+            : highRiseVariant == ArnisBuildingVariants.HighRiseVariant.MASONRY
+               ? BuildingStyle.WindowPattern.PUNCHED
+               : BuildingStyle.WindowPattern.GRID;
          case GENERIC -> BuildingStyle.WindowPattern.PUNCHED;
       };
       BuildingStyle.GroundFloorTreatment ground = switch (category) {
@@ -127,7 +142,14 @@ public final class TellusBuildingStyles {
          case RELIGIOUS -> BuildingStyle.WallDepthStyle.RELIGIOUS_BUTTRESS;
          case HISTORIC -> BuildingStyle.WallDepthStyle.HISTORIC_ORNATE;
          case GREENHOUSE -> BuildingStyle.WallDepthStyle.GLASS_CURTAIN;
-         case TOWER, TALL_BUILDING, MODERN_SKYSCRAPER -> BuildingStyle.WallDepthStyle.SKYSCRAPER_FINS;
+         case TOWER, MODERN_SKYSCRAPER -> BuildingStyle.WallDepthStyle.SKYSCRAPER_FINS;
+         case TALL_BUILDING -> highRiseVariant == ArnisBuildingVariants.HighRiseVariant.GLASS
+               ? BuildingStyle.WallDepthStyle.GLASS_CURTAIN
+               : highRiseVariant == ArnisBuildingVariants.HighRiseVariant.GLASS_CORNER
+                  ? BuildingStyle.WallDepthStyle.MODERN_PILLARS
+                  : highRiseVariant == ArnisBuildingVariants.HighRiseVariant.MASONRY
+                     ? BuildingStyle.WallDepthStyle.HISTORIC_ORNATE
+                     : BuildingStyle.WallDepthStyle.SKYSCRAPER_FINS;
          case GLASSY_SKYSCRAPER -> BuildingStyle.WallDepthStyle.GLASS_CURTAIN;
          case SHED, GENERIC -> BuildingStyle.WallDepthStyle.NONE;
       };

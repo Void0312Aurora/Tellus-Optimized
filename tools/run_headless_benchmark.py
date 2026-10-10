@@ -36,6 +36,10 @@ def parse_args() -> argparse.Namespace:
                         help="tellus.chunkgen.threads.max value (default: 1).")
     parser.add_argument("--parallel", action="store_true",
                         help="Enable Tellus parallel solid-section filling.")
+    parser.add_argument("--parallel-water", action="store_true",
+                        help="Enable the opt-in parallel water-region build path.")
+    parser.add_argument("--jvm-property", action="append", default=[], metavar="KEY=VALUE",
+                        help="Additional JVM system property; may be repeated.")
     parser.add_argument("--module", default="mc1201", help="Gradle module (default: mc1201).")
     parser.add_argument("--project-root", type=Path, default=project_root)
     parser.add_argument("--output-dir", type=Path,
@@ -104,10 +108,15 @@ def env_with_benchmark_properties(run_dir: Path, args: argparse.Namespace) -> di
         "-Dtellus.benchmark.enabled=true",
         "-Dtellus.benchmark.exit=true",
         f"-Dtellus.chunkgen.parallelSolidSections={'true' if args.parallel else 'false'}",
+        f"-Dtellus.water.parallelRegionBuild={'true' if args.parallel_water else 'false'}",
         f"-Dtellus.chunkgen.threads.max={max(1, args.workers)}",
         f"-Dtellus.gameDir={run_dir.resolve()}",
         f"-Dtellus.configDir={(run_dir / 'config').resolve()}",
     ]
+    for property_value in args.jvm_property:
+        if "=" not in property_value:
+            raise SystemExit(f"--jvm-property requires KEY=VALUE: {property_value}")
+        properties.append("-D" + property_value)
     existing = env.get("JAVA_TOOL_OPTIONS", "").strip()
     env["JAVA_TOOL_OPTIONS"] = " ".join(filter(None, [existing, *properties]))
     return env
@@ -217,6 +226,8 @@ def main() -> int:
             "runnerRevision": git_revision(project_root),
             "runnerWorkers": args.workers,
             "runnerParallel": args.parallel,
+            "runnerParallelWater": args.parallel_water,
+            "runnerJvmProperties": args.jvm_property,
             "runnerCacheMode": ("reuse" if args.reuse_cache else ("template" if args.cache_template else "cold")),
             "runnerLog": str(log_path),
             "runnerCommand": command,

@@ -4166,26 +4166,47 @@ public final class EarthChunkGenerator extends EarthChunkGeneratorVersionCompat 
       long sectionScanStartNs = beginFullChunkProfiling();
       int upperBound = Math.min(solidMaxIndex, sectionCount - 1);
       if (parallel) {
-         List<CompletableFuture<Void>> fills = new ArrayList<>();
+         int[] eligibleSections = new int[upperBound + 1];
+         int eligibleCount = 0;
          for (int i = 0; i <= upperBound; i++) {
             int topY = sectionTopYs[i];
             int bottomY = topY - 15;
-            if (bottomY < 0 && topY >= 0) {
-               continue;
+            if (bottomY >= 0 || topY < 0) {
+               eligibleSections[eligibleCount++] = i;
             }
+         }
 
-            int sectionIndex = i;
-            BlockState fill = topY < deepslateStart ? deepslate : stone;
+         int taskCount = TellusWorldgenSources.parallelSolidSectionTaskCount(eligibleCount);
+         List<CompletableFuture<Void>> fills = new ArrayList<>(taskCount);
+         EarthChunkGenerator.SolidSectionFillProfiler[] taskProfilers =
+            new EarthChunkGenerator.SolidSectionFillProfiler[taskCount];
+         for (int taskIndex = 0; taskIndex < taskCount; taskIndex++) {
+            int from = taskIndex * eligibleCount / taskCount;
+            int to = (taskIndex + 1) * eligibleCount / taskCount;
+            EarthChunkGenerator.SolidSectionFillProfiler taskProfiler =
+               new EarthChunkGenerator.SolidSectionFillProfiler();
+            taskProfilers[taskIndex] = taskProfiler;
+            int rangeStart = from;
+            int rangeEnd = to;
             fills.add(
                TellusWorldgenSources.submitChunkComputeTask(
                   () -> {
-                     writer.fillSectionConstantIndependent(sectionIndex, fill, profiler);
-                     solidSections[sectionIndex] = true;
+                     for (int offset = rangeStart; offset < rangeEnd; offset++) {
+                        int sectionIndex = eligibleSections[offset];
+                        BlockState fill = sectionTopYs[sectionIndex] < deepslateStart ? deepslate : stone;
+                        writer.fillSectionConstantIndependent(sectionIndex, fill, taskProfiler);
+                        solidSections[sectionIndex] = true;
+                     }
                   }
                )
             );
          }
          CompletableFuture.allOf(fills.toArray(CompletableFuture[]::new)).join();
+         for (EarthChunkGenerator.SolidSectionFillProfiler taskProfiler : taskProfilers) {
+            profiler.sectionAccessNs += taskProfiler.sectionAccessNs;
+            profiler.sectionWriteNs += taskProfiler.sectionWriteNs;
+            profiler.recalcNs += taskProfiler.recalcNs;
+         }
       } else {
          for (int i = 0; i <= upperBound; i++) {
             int topY = sectionTopYs[i];

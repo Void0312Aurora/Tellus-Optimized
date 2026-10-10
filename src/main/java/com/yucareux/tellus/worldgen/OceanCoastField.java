@@ -6,6 +6,9 @@ import com.yucareux.tellus.world.data.osm.OsmQueryMode;
 import com.yucareux.tellus.world.data.osm.OsmWaterFeature;
 import com.yucareux.tellus.world.data.osm.TellusOsmWaterSource;
 import java.util.Arrays;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import net.minecraft.util.Mth;
 
 /**
@@ -36,6 +39,7 @@ public final class OceanCoastField {
    private final int transitionBlocks;
    private final RawDepthSampler rawDepthSampler;
    private final Cache<Long, MacroTile> cache = CacheBuilder.newBuilder().maximumSize(CACHE_TILES).build();
+   private final ConcurrentMap<Long, CompletableFuture<MacroTile>> inFlight = new ConcurrentHashMap<>();
 
    public OceanCoastField(
       TellusOsmWaterSource waterSource,
@@ -52,14 +56,7 @@ public final class OceanCoastField {
    public OceanCoastSample sample(int blockX, int blockZ) {
       int macroX = Math.floorDiv(blockX, CORE_SIZE);
       int macroZ = Math.floorDiv(blockZ, CORE_SIZE);
-      long key = pack(macroX, macroZ);
-      MacroTile tile = this.cache.getIfPresent(key);
-      if (tile == null) {
-         tile = this.build(macroX, macroZ);
-         if (tile.coverageStatus == TellusOsmWaterSource.CoverageStatus.COMPLETE) {
-            this.cache.put(key, tile);
-         }
-      }
+      MacroTile tile = this.getMacroTile(macroX, macroZ);
 
       int localX = Math.floorMod(blockX, CORE_SIZE);
       int localZ = Math.floorMod(blockZ, CORE_SIZE);
@@ -72,9 +69,52 @@ public final class OceanCoastField {
       );
    }
 
+
+   /** Ensures all macro tiles intersecting an area are built before a parallel scan. */
+   void warmArea(int minBlockX, int minBlockZ, int maxBlockX, int maxBlockZ) {
+      int minMacroX = Math.floorDiv(Math.min(minBlockX, maxBlockX), CORE_SIZE);
+      int maxMacroX = Math.floorDiv(Math.max(minBlockX, maxBlockX), CORE_SIZE);
+      int minMacroZ = Math.floorDiv(Math.min(minBlockZ, maxBlockZ), CORE_SIZE);
+      int maxMacroZ = Math.floorDiv(Math.max(minBlockZ, maxBlockZ), CORE_SIZE);
+      for (int macroZ = minMacroZ; macroZ <= maxMacroZ; macroZ++) {
+         for (int macroX = minMacroX; macroX <= maxMacroX; macroX++) {
+            this.getMacroTile(macroX, macroZ);
+         }
+      }
+   }
+
+   private MacroTile getMacroTile(int macroX, int macroZ) {
+      long key = pack(macroX, macroZ);
+      MacroTile cached = this.cache.getIfPresent(key);
+      if (cached != null) {
+         return cached;
+      }
+
+      CompletableFuture<MacroTile> created = new CompletableFuture<>();
+      CompletableFuture<MacroTile> existing = this.inFlight.putIfAbsent(key, created);
+      if (existing != null) {
+         return existing.join();
+      }
+
+      try {
+         MacroTile tile = this.build(macroX, macroZ);
+         if (tile.coverageStatus == TellusOsmWaterSource.CoverageStatus.COMPLETE) {
+            this.cache.put(key, tile);
+         }
+         created.complete(tile);
+         return tile;
+      } catch (Throwable error) {
+         created.completeExceptionally(error);
+         throw error;
+      } finally {
+         this.inFlight.remove(key, created);
+      }
+   }
+
    public void clear() {
       this.cache.invalidateAll();
       this.cache.cleanUp();
+      this.inFlight.clear();
    }
 
    private MacroTile build(int macroX, int macroZ) {

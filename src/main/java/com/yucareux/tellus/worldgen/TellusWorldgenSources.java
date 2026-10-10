@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -31,6 +32,7 @@ import java.util.concurrent.RejectedExecutionHandler;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.ThreadPoolExecutor.AbortPolicy;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -70,6 +72,18 @@ public final class TellusWorldgenSources {
    );
    private static final int PARALLEL_SOLID_SECTION_MIN_SECTIONS = intProperty(
       "tellus.chunkgen.parallelSolidSections.minSections", 8
+   );
+   private static final int PARALLEL_SOLID_SECTION_SECTIONS_PER_TASK = intProperty(
+      "tellus.chunkgen.parallelSolidSections.sectionsPerTask", 0
+   );
+   private static final boolean PARALLEL_WATER_REGION_BUILD = Boolean.parseBoolean(
+      System.getProperty("tellus.water.parallelRegionBuild", "false")
+   );
+   private static final int PARALLEL_WATER_REGION_MIN_CELLS = intProperty(
+      "tellus.water.parallelRegionBuild.minCells", 65536
+   );
+   private static final int PARALLEL_WATER_REGION_TASKS = intProperty(
+      "tellus.water.parallelRegionBuild.tasks", 0
    );
    private static final ThreadPoolExecutor CHUNK_COMPUTE_EXECUTOR = createChunkComputeExecutor();
    private static final ConcurrentMap<EarthGeneratorSettings, WaterSurfaceResolver> WATER_RESOLVERS = new ConcurrentHashMap<>();
@@ -656,6 +670,87 @@ public final class TellusWorldgenSources {
          && sectionCount >= Math.max(1, PARALLEL_SOLID_SECTION_MIN_SECTIONS);
    }
 
+   static int parallelSolidSectionTaskCount(int sectionCount) {
+      if (sectionCount <= 0) {
+         return 0;
+      }
+
+      int sectionsPerTask = PARALLEL_SOLID_SECTION_SECTIONS_PER_TASK;
+      if (sectionsPerTask > 0) {
+         return Math.max(1, (sectionCount + sectionsPerTask - 1) / sectionsPerTask);
+      }
+
+      return parallelTaskCount(sectionCount);
+   }
+
+   static boolean parallelWaterRegionBuildEnabled(int cellCount) {
+      return PARALLEL_WATER_REGION_BUILD
+         && CHUNK_COMPUTE_EXECUTOR != null
+         && cellCount >= Math.max(1, PARALLEL_WATER_REGION_MIN_CELLS)
+         && !isChunkComputeWorkerThread();
+   }
+
+   static int parallelWaterRegionTaskCount(int workItems) {
+      if (workItems <= 0) {
+         return 0;
+      }
+      if (PARALLEL_WATER_REGION_TASKS > 0) {
+         return Math.min(workItems, PARALLEL_WATER_REGION_TASKS);
+      }
+      int parallelism = CHUNK_COMPUTE_EXECUTOR == null
+         ? 1
+         : Math.max(1, CHUNK_COMPUTE_EXECUTOR.getMaximumPoolSize());
+      // Water sampling is source/cache bound. Keep a small fixed number of
+      // row ranges by default instead of multiplying cache contention by every
+      // physical core; callers can raise this experimentally.
+      return Math.min(workItems, Math.max(1, Math.min(parallelism, 8)));
+   }
+
+   static int parallelTaskCount(int workItems) {
+      if (workItems <= 0) {
+         return 0;
+      }
+
+      int parallelism = CHUNK_COMPUTE_EXECUTOR == null
+         ? 1
+         : Math.max(1, CHUNK_COMPUTE_EXECUTOR.getMaximumPoolSize());
+      // Keep at least two runnable ranges per worker so the adaptive executor
+      // can fill the pool without creating one future per row or section.
+      return Math.min(workItems, Math.max(1, parallelism * 2));
+   }
+
+   private static boolean isChunkComputeWorkerThread() {
+      return Thread.currentThread().getName().startsWith("tellus-chunkgen-");
+   }
+
+   public static boolean parallelSolidSectionFillConfigured() {
+      return PARALLEL_SOLID_SECTION_FILL;
+   }
+
+   public static boolean parallelWaterRegionBuildConfigured() {
+      return PARALLEL_WATER_REGION_BUILD;
+   }
+
+   public static boolean chunkComputeExecutorConfigured() {
+      return CHUNK_COMPUTE_EXECUTOR != null;
+   }
+
+   public static boolean parallelSolidSectionFillEnabledFor(int sectionCount) {
+      return parallelSolidSectionFillEnabled(sectionCount);
+   }
+
+   public static int chunkComputePoolSize() {
+      return CHUNK_COMPUTE_EXECUTOR == null ? 0 : CHUNK_COMPUTE_EXECUTOR.getPoolSize();
+   }
+
+   public static int chunkComputeLargestPoolSize() {
+      return CHUNK_COMPUTE_EXECUTOR == null ? 0 : CHUNK_COMPUTE_EXECUTOR.getLargestPoolSize();
+   }
+
+   public static long chunkComputeCompletedTaskCount() {
+      return CHUNK_COMPUTE_EXECUTOR == null ? 0L : CHUNK_COMPUTE_EXECUTOR.getCompletedTaskCount();
+   }
+
    static CompletableFuture<Void> submitChunkComputeTask(Runnable task) {
       Objects.requireNonNull(task, "task");
       if (CHUNK_COMPUTE_EXECUTOR == null) {
@@ -810,7 +905,7 @@ public final class TellusWorldgenSources {
    }
 
    private static ThreadPoolExecutor createChunkComputeExecutor() {
-      if (!PARALLEL_SOLID_SECTION_FILL) {
+      if (!PARALLEL_SOLID_SECTION_FILL && !PARALLEL_WATER_REGION_BUILD) {
          return null;
       }
 
@@ -821,8 +916,18 @@ public final class TellusWorldgenSources {
          1,
          defaultPhysicalCoreTarget()
       );
-      int queueSize = intProperty("tellus.chunkgen.queue", 1024);
-      return createAdaptiveExecutor("tellus-chunkgen-", bounds.min(), bounds.max(), queueSize);
+      int queueSize = intProperty("tellus.chunkgen.queue", 0);
+      // Chunk-compute tasks are coarse, independent ranges. A large work queue
+      // prevents ThreadPoolExecutor from growing past its core size, so the
+      // default uses direct handoff and lets the pool reach the configured
+      // physical-core target. Set queue > 0 only when queued dispatch is
+      // deliberately preferred for a constrained host.
+      if (queueSize <= 0) {
+         return createAdaptiveExecutor(
+            "tellus-chunkgen-", bounds.min(), bounds.max(), new SynchronousQueue<>()
+         );
+      }
+      return createAdaptiveExecutor("tellus-chunkgen-", bounds.min(), bounds.max(), new ArrayBlockingQueue<>(queueSize));
    }
 
    private static int defaultPhysicalCoreTarget() {
@@ -831,6 +936,12 @@ public final class TellusWorldgenSources {
    }
 
    private static TellusWorldgenSources.AdaptiveThreadPoolExecutor createAdaptiveExecutor(String threadPrefix, int minThreads, int maxThreads, int queueSize) {
+      return createAdaptiveExecutor(threadPrefix, minThreads, maxThreads, new ArrayBlockingQueue<>(Math.max(1, queueSize)));
+   }
+
+   private static TellusWorldgenSources.AdaptiveThreadPoolExecutor createAdaptiveExecutor(
+      String threadPrefix, int minThreads, int maxThreads, BlockingQueue<Runnable> queue
+   ) {
       ThreadFactory factory = new ThreadFactory() {
          private final AtomicInteger index = new AtomicInteger();
 
@@ -846,7 +957,7 @@ public final class TellusWorldgenSources {
          Math.max(1, maxThreads),
          30L,
          TimeUnit.SECONDS,
-         new ArrayBlockingQueue<>(Math.max(1, queueSize)),
+         queue,
          factory,
          new AbortPolicy()
       );
@@ -911,7 +1022,7 @@ public final class TellusWorldgenSources {
          int maxThreads,
          long keepAliveTime,
          TimeUnit unit,
-         ArrayBlockingQueue<Runnable> workQueue,
+         BlockingQueue<Runnable> workQueue,
          ThreadFactory threadFactory,
          RejectedExecutionHandler handler
       ) {
