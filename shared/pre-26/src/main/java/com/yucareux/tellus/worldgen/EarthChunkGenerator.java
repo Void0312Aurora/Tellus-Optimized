@@ -4145,10 +4145,26 @@ public final class EarthChunkGenerator extends EarthChunkGeneratorVersionCompat 
       int deepslateStart,
       EarthChunkGenerator.SolidSectionFillProfiler profiler
    ) {
+      fillSolidSections(
+         writer, solidSections, sectionTopYs, solidMaxIndex, stone, deepslate, deepslateStart, profiler,
+         TellusWorldgenSources.parallelSolidSectionFillEnabled(Math.min(solidMaxIndex + 1, sectionTopYs.length))
+      );
+   }
+
+   static void fillSolidSections(
+      EarthChunkGenerator.ChunkSectionWriter writer,
+      boolean[] solidSections,
+      int[] sectionTopYs,
+      int solidMaxIndex,
+      BlockState stone,
+      BlockState deepslate,
+      int deepslateStart,
+      EarthChunkGenerator.SolidSectionFillProfiler profiler,
+      boolean parallel
+   ) {
       int sectionCount = sectionTopYs.length;
       long sectionScanStartNs = beginFullChunkProfiling();
       int upperBound = Math.min(solidMaxIndex, sectionCount - 1);
-      boolean parallel = TellusWorldgenSources.parallelSolidSectionFillEnabled(upperBound + 1);
       if (parallel) {
          List<CompletableFuture<Void>> fills = new ArrayList<>();
          for (int i = 0; i <= upperBound; i++) {
@@ -4163,7 +4179,7 @@ public final class EarthChunkGenerator extends EarthChunkGeneratorVersionCompat 
             fills.add(
                TellusWorldgenSources.submitChunkComputeTask(
                   () -> {
-                     writer.fillSectionConstant(sectionIndex, fill, profiler);
+                     writer.fillSectionConstantIndependent(sectionIndex, fill, profiler);
                      solidSections[sectionIndex] = true;
                   }
                )
@@ -12901,6 +12917,37 @@ public final class EarthChunkGenerator extends EarthChunkGeneratorVersionCompat 
          this.markDirty(sectionIndex);
       }
 
+      // Only used for independent sections before any column writes. The task owns
+      // both acquisition and release; the calling thread joins before further edits.
+      void fillSectionConstantIndependent(int sectionIndex, BlockState state, EarthChunkGenerator.SolidSectionFillProfiler profiler) {
+         if (this.acquiredSections[sectionIndex]) {
+            throw new IllegalStateException("Section already acquired by chunk writer: " + sectionIndex);
+         }
+         long accessStartNs = beginFullChunkProfiling();
+         LevelChunkSection section = Objects.requireNonNull(this.sections[sectionIndex], "section");
+         section.acquire();
+         long accessNs = elapsedFullChunkProfilingSince(accessStartNs);
+         long writeStartNs = beginFullChunkProfiling();
+         try {
+            PalettedContainer<BlockState> states = section.getStates();
+            for (int y = 0; y < 16; y++) {
+               for (int z = 0; z < 16; z++) {
+                  for (int x = 0; x < 16; x++) {
+                     states.getAndSetUnchecked(x, y, z, state);
+                  }
+               }
+            }
+            this.markDirty(sectionIndex);
+         } finally {
+            section.release();
+            long writeNs = elapsedFullChunkProfilingSince(writeStartNs);
+            synchronized (profiler) {
+               profiler.sectionAccessNs += accessNs;
+               profiler.sectionWriteNs += writeNs;
+            }
+         }
+      }
+
       void fillStoneColumnSpan(int localX, int localZ, int startY, int endY, int deepslateStart, BlockState stone, BlockState deepslate) {
          if (endY < startY) {
             return;
@@ -14080,7 +14127,7 @@ public final class EarthChunkGenerator extends EarthChunkGeneratorVersionCompat 
       }
    }
 
-   private static final class SolidSectionFillProfiler {
+   static final class SolidSectionFillProfiler {
       private long maxIndexNs;
       private long scanNs;
       private long sectionAccessNs;

@@ -24,3 +24,27 @@ ext.tellus = [
 ]
 
 apply from: rootProject.file('gradle/tellus-fabric.gradle')
+
+// Test JVMs do not inherit Gradle's system properties. Exercise the opt-in path
+// in its own process so static executor configuration is reproducible.
+tasks.register('testParallelChunkgen', Test) {
+	group = 'verification'
+	description = 'Tests section output and task failures with parallel chunk filling enabled.'
+	testClassesDirs = sourceSets.test.output.classesDirs
+	classpath = sourceSets.test.runtimeClasspath
+	javaLauncher = tasks.named('test', Test).get().javaLauncher
+	useJUnitPlatform()
+	filter {
+		includeTestsMatching 'com.yucareux.tellus.worldgen.TellusWorldgenSourcesTest'
+		includeTestsMatching 'com.yucareux.tellus.worldgen.ParallelSolidSectionFillTest'
+	}
+	def testGameDir = layout.buildDirectory.dir('parallel-chunkgen-test-game').get().asFile
+	systemProperty 'tellus.gameDir', testGameDir.absolutePath
+	systemProperty 'tellus.configDir', new File(testGameDir, 'config').absolutePath
+	systemProperty 'tellus.chunkgen.parallelSolidSections', 'true'
+	systemProperty 'tellus.chunkgen.threads.max', '44'
+}
+
+tasks.named('check') {
+	dependsOn tasks.named('testParallelChunkgen')
+}
