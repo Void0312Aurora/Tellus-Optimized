@@ -25,6 +25,16 @@ ext.tellus = [
 
 apply from: rootProject.file('gradle/tellus-fabric.gradle')
 
+// The headless benchmark launches the development server as a child JVM. Keep
+// its heap arguments on that child task instead of JAVA_TOOL_OPTIONS, which
+// would also apply to Gradle's own daemon and can conflict with its Xmx.
+def benchmarkHeap = providers.gradleProperty('tellusBenchmarkHeap').orNull
+if (benchmarkHeap != null && !benchmarkHeap.isBlank()) {
+	tasks.named('runServer').configure {
+		jvmArgs "-Xms${benchmarkHeap}", "-Xmx${benchmarkHeap}"
+	}
+}
+
 // Test JVMs do not inherit Gradle's system properties. Exercise the opt-in path
 // in its own process so static executor configuration is reproducible.
 tasks.register('testParallelChunkgen', Test) {

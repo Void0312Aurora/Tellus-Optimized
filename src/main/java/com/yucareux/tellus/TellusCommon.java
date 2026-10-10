@@ -11,6 +11,7 @@ import com.mojang.serialization.JsonOps;
 import com.yucareux.tellus.integration.distant_horizons.DistantHorizonsIntegration;
 import com.yucareux.tellus.integration.distant_horizons.managed.ManagedTerrainDownloadManager;
 import com.yucareux.tellus.integration.voxy.TellusVoxyPregenManager;
+import com.yucareux.tellus.compat.ChunkBenchmarkVersionCompat;
 import com.yucareux.tellus.compat.MinecraftRelease;
 import com.yucareux.tellus.compat.MinecraftVersionCompat;
 import com.yucareux.tellus.compat.TellusMinecraftCompat;
@@ -57,6 +58,7 @@ import net.minecraft.world.level.DataPackConfig;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.WorldDataConfiguration;
 import net.minecraft.world.level.biome.Biome;
+import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.level.dimension.DimensionType;
 import net.minecraft.world.level.dimension.LevelStem;
@@ -82,6 +84,12 @@ public class TellusCommon {
    private static final TellusRealtimeManager REALTIME_MANAGER = new TellusRealtimeManager();
    private static final TellusVoxyPregenManager VOXY_PREGEN_MANAGER = new TellusVoxyPregenManager();
    private static final ManagedTerrainDownloadManager MANAGED_TERRAIN_DOWNLOAD_MANAGER = new ManagedTerrainDownloadManager();
+   private static final boolean BENCHMARK_ENABLED = Boolean.parseBoolean(
+      System.getProperty("tellus.benchmark.enabled", "false")
+   );
+   private static final boolean BENCHMARK_EXIT = Boolean.parseBoolean(
+      System.getProperty("tellus.benchmark.exit", "false")
+   );
    public static final Logger LOGGER = LoggerFactory.getLogger("tellus");
 
 
@@ -98,6 +106,27 @@ public class TellusCommon {
                                  .requires(TellusMinecraftCompat::hasGamemasterPermission))
                               .executes(context -> openGeoTpMap((CommandSourceStack)context.getSource()))
                         ))
+                     .then(
+                        Commands.literal("benchmark")
+                           .requires(source -> BENCHMARK_ENABLED && TellusMinecraftCompat.hasGamemasterPermission(source))
+                           .then(
+                              Commands.argument("chunkX", IntegerArgumentType.integer())
+                                 .then(
+                                    Commands.argument("chunkZ", IntegerArgumentType.integer())
+                                       .then(
+                                          Commands.argument("radius", IntegerArgumentType.integer(0, 32))
+                                             .executes(
+                                                context -> runChunkBenchmark(
+                                                   (CommandSourceStack)context.getSource(),
+                                                   IntegerArgumentType.getInteger(context, "chunkX"),
+                                                   IntegerArgumentType.getInteger(context, "chunkZ"),
+                                                   IntegerArgumentType.getInteger(context, "radius")
+                                                )
+                                             )
+                                       )
+                                 )
+                           )
+                     )
                      .then(
                         (Commands.literal("weather")
                               .executes(context -> showTellusWeather((CommandSourceStack)context.getSource())))
@@ -265,6 +294,103 @@ public class TellusCommon {
             source.sendFailure(Component.translatable("tellus.command.geotp.tellus_world_only"));
             return 0;
          }
+      }
+   }
+
+   private static int runChunkBenchmark(CommandSourceStack source, int centerChunkX, int centerChunkZ, int radius) {
+      MinecraftServer server = source.getServer();
+      ServerLevel level = server.getLevel(Level.OVERWORLD);
+      if (level == null) {
+         source.sendFailure(Component.literal("Tellus benchmark requires an overworld"));
+         return 0;
+      }
+
+      int side = radius * 2 + 1;
+      int chunkCount = side * side;
+      List<Long> chunkTimesNs = new ArrayList<>(chunkCount);
+      long startedNs = System.nanoTime();
+      JsonObject result = new JsonObject();
+      result.addProperty("schemaVersion", 1);
+      result.addProperty("centerChunkX", centerChunkX);
+      result.addProperty("centerChunkZ", centerChunkZ);
+      result.addProperty("radius", radius);
+      result.addProperty("requestedChunks", chunkCount);
+      result.addProperty("chunkStatus", "FULL");
+      result.addProperty(
+         "parallelSolidSections",
+         Boolean.parseBoolean(System.getProperty("tellus.chunkgen.parallelSolidSections", "false"))
+      );
+      result.addProperty("chunkComputeThreads", System.getProperty("tellus.chunkgen.threads.max", "default"));
+
+      try {
+         for (int dz = -radius; dz <= radius; dz++) {
+            for (int dx = -radius; dx <= radius; dx++) {
+               long chunkStartedNs = System.nanoTime();
+               ChunkAccess chunk = ChunkBenchmarkVersionCompat.requestFullChunk(
+                  level.getChunkSource(), centerChunkX + dx, centerChunkZ + dz
+               );
+               if (chunk == null) {
+                  throw new IllegalStateException("Chunk source returned null");
+               }
+               chunkTimesNs.add(System.nanoTime() - chunkStartedNs);
+            }
+         }
+
+         long elapsedNs = System.nanoTime() - startedNs;
+         long minNs = chunkTimesNs.stream().mapToLong(Long::longValue).min().orElse(0L);
+         long maxNs = chunkTimesNs.stream().mapToLong(Long::longValue).max().orElse(0L);
+         long sumNs = chunkTimesNs.stream().mapToLong(Long::longValue).sum();
+         result.addProperty("completedChunks", chunkTimesNs.size());
+         result.addProperty("elapsedMillis", elapsedNs / 1_000_000.0);
+         result.addProperty("sumChunkMillis", sumNs / 1_000_000.0);
+         result.addProperty("minChunkMillis", minNs / 1_000_000.0);
+         result.addProperty("maxChunkMillis", maxNs / 1_000_000.0);
+         Path output = writeBenchmarkResult(result);
+         LOGGER.info(
+            "Tellus benchmark completed: {} chunks in {} ms (min={} ms, max={} ms), result={}",
+            chunkTimesNs.size(),
+            String.format(Locale.ROOT, "%.3f", elapsedNs / 1_000_000.0),
+            String.format(Locale.ROOT, "%.3f", minNs / 1_000_000.0),
+            String.format(Locale.ROOT, "%.3f", maxNs / 1_000_000.0),
+            output
+         );
+         source.sendSuccess(
+            () -> Component.literal(
+               String.format(Locale.ROOT, "Tellus benchmark completed: %d chunks, %.3f ms",
+                  chunkTimesNs.size(), elapsedNs / 1_000_000.0)
+            ),
+            false
+         );
+         if (BENCHMARK_EXIT) {
+            server.execute(() -> server.halt(false));
+         }
+         return 1;
+      } catch (Throwable error) {
+         result.addProperty("completedChunks", chunkTimesNs.size());
+         result.addProperty("elapsedMillis", (System.nanoTime() - startedNs) / 1_000_000.0);
+         result.addProperty("error", error.toString());
+         Path output = writeBenchmarkResult(result);
+         LOGGER.error("Tellus benchmark failed after {} chunks, result={}", chunkTimesNs.size(), output, error);
+         source.sendFailure(Component.literal("Tellus benchmark failed after " + chunkTimesNs.size() + " chunks: " + error));
+         if (BENCHMARK_EXIT) {
+            server.execute(() -> server.halt(false));
+         }
+         return 0;
+      }
+   }
+
+   private static Path writeBenchmarkResult(JsonObject result) {
+      Path directory = TellusPlatform.gameDir().resolve("tellus").resolve("benchmarks");
+      try {
+         Files.createDirectories(directory);
+         Path output = directory.resolve("chunk-benchmark-" + System.currentTimeMillis() + ".json");
+         try (BufferedWriter writer = Files.newBufferedWriter(output, StandardCharsets.UTF_8)) {
+            GSON.toJson(result, writer);
+         }
+         return output;
+      } catch (IOException error) {
+         LOGGER.error("Failed to write Tellus benchmark result", error);
+         return directory.resolve("chunk-benchmark-write-failed.json");
       }
    }
 

@@ -44,6 +44,8 @@ mc*/usercache.json
 
 /output/
 /third_party/
+/tools/benchmark-results/
+tools/__pycache__/
 
 # java
 
