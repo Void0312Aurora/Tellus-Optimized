@@ -50,3 +50,20 @@ OSM-water terrain sampling now has a region path. It precomputes the projected X
 The path is controlled by `tellus.water.batchTerrainGrid`, which defaults to `true`. Set it to `false` to reproduce the scalar path for an A/B comparison. The fallback remains scalar when a preload package only partially covers the region, so a partially covered region does not silently change its source precedence.
 
 In the same warm cache and coordinate `(55400, -360900)`, the target water region measured about 291 ms on the scalar path and 106–157 ms on the batched path across repeated runs. The batch diagnostic reported 200,704 primary samples and zero per-cell fallback samples for that region. With `tellus.debugWaterChecksum=true`, the batch and scalar paths produced the same region checksum (`-809781633`) at the tested coordinate. On the final commit, a 25-chunk radius-2 run measured 3.105 s with the 44-worker configuration and 3.523 s with one chunk-compute worker; the executor reached 25 live workers in that run. This is an 11.9% end-to-end improvement for this sequential benchmark command, not evidence that all 44 physical cores are saturated.
+
+The benchmark now has an optional output check that hashes every block state in
+each completed chunk after the generation timer stops. In the fixed-cache
+25-chunk comparison at `(55400, -360900)`, the serial path (`workers=1`, no
+parallel flags) took `3520.584 ms`; the 44-worker path with solid-section and
+water-region experiments took `3234.779 ms`, an `8.12%` lower elapsed time in
+that sample. Both runs produced the same aggregate hash
+`5233117473582585816` and all 25 per-chunk hashes matched. The parallel run's
+largest observed Tellus pool was 32 and it completed 876 chunk-compute tasks.
+This validates output equality for the tested snapshot; it is one fixed-cache
+sample, not a claim of stable 44-core saturation or a general speedup.
+
+The concurrent-request probe on the same fixed snapshot completed in
+`3400.363 ms` versus `3234.779 ms` for the sequential request loop (about
+`5.12%` slower), while producing the same aggregate and per-chunk hashes. The
+shared chunk/source path therefore remains a contention point; submitting more
+requests at once does not by itself expose more useful CPU parallelism.

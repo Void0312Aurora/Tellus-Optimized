@@ -73,3 +73,26 @@ for scheduling behavior, not a universal speedup claim.
 Rendering remains a separate phase. After generation data has been selected, a
 client can open one finished world for screenshots under fixed Sodium/Iris,
 shader, view-distance, and resource-pack settings.
+
+For controlled scheduling probes, the runner also supports three diagnostic flags:
+
+```text
+--concurrent-requests   submit all FULL-chunk futures before joining them
+--area-prefetch         prefetch the complete benchmark rectangle before timing
+--state-hash             hash every generated block state after generation timing
+```
+
+`--concurrent-requests` measures request overlap, not a production scheduling
+policy; it can expose contention in the shared source/cache path and can be
+slower than the sequential command. `--area-prefetch` reports its preparation
+time separately as `areaPrefetchMillis`; the measured `elapsedMillis` starts
+after that preparation. `--state-hash` adds per-chunk `stateHashes` and a
+`stateHashAggregate` to the JSON. The block-state hash pass is excluded from
+`elapsedMillis`, so it can be used to compare output equality without folding
+its cost into the generation timing.
+
+On the fixed scale-1 snapshot used for the physical-core experiment,
+`--concurrent-requests` produced the same 25 chunk hashes as the ordinary
+request loop but took `3400.363 ms` versus `3234.779 ms` for the 44-worker
+parallel configuration. This is why the flag is retained as a measurement
+probe rather than enabled by default.

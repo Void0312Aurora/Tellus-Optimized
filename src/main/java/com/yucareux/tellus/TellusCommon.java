@@ -41,6 +41,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -55,6 +56,8 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Mth;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.DataPackConfig;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.WorldDataConfiguration;
@@ -309,6 +312,38 @@ public class TellusCommon {
       int side = radius * 2 + 1;
       int chunkCount = side * side;
       List<Long> chunkTimesNs = new ArrayList<>(chunkCount);
+      List<Long> chunkStateHashes = new ArrayList<>(chunkCount);
+      List<String> chunkStateHashKeys = new ArrayList<>(chunkCount);
+      List<ChunkAccess> chunksForHash = new ArrayList<>(chunkCount);
+      boolean stateHashEnabled = Boolean.parseBoolean(
+         System.getProperty("tellus.benchmark.stateHash", "false")
+      );
+      boolean areaPrefetch = Boolean.parseBoolean(
+         System.getProperty("tellus.benchmark.areaPrefetch", "false")
+      );
+      long areaPrefetchNs = 0L;
+      if (areaPrefetch) {
+         ChunkGenerator generator = level.getChunkSource().getGenerator();
+         if (generator instanceof EarthChunkGenerator earthGenerator) {
+            long prefetchStartedNs = System.nanoTime();
+            int minBlockX = Math.multiplyExact(centerChunkX - radius, 16);
+            int minBlockZ = Math.multiplyExact(centerChunkZ - radius, 16);
+            int maxBlockX = Math.multiplyExact(centerChunkX + radius + 1, 16) - 1;
+            int maxBlockZ = Math.multiplyExact(centerChunkZ + radius + 1, 16) - 1;
+            earthGenerator.prefetchForArea(
+               minBlockX,
+               minBlockZ,
+               maxBlockX,
+               maxBlockZ,
+               true,
+               true,
+               earthGenerator.settings().worldScale()
+            ).join();
+            areaPrefetchNs = System.nanoTime() - prefetchStartedNs;
+         } else {
+            throw new IllegalStateException("Tellus benchmark requires an EarthChunkGenerator for area prefetch");
+         }
+      }
       long startedNs = System.nanoTime();
       JsonObject result = new JsonObject();
       result.addProperty("schemaVersion", 1);
@@ -317,6 +352,13 @@ public class TellusCommon {
       result.addProperty("radius", radius);
       result.addProperty("requestedChunks", chunkCount);
       result.addProperty("chunkStatus", "FULL");
+      result.addProperty("stateHashEnabled", stateHashEnabled);
+      result.addProperty("areaPrefetch", areaPrefetch);
+      result.addProperty("areaPrefetchMillis", areaPrefetchNs / 1_000_000.0);
+      boolean concurrentRequests = Boolean.parseBoolean(
+         System.getProperty("tellus.benchmark.concurrentRequests", "false")
+      );
+      result.addProperty("concurrentRequests", concurrentRequests);
       result.addProperty(
          "parallelSolidSections",
          Boolean.parseBoolean(System.getProperty("tellus.chunkgen.parallelSolidSections", "false"))
@@ -333,25 +375,83 @@ public class TellusCommon {
       result.addProperty("chunkComputeLargestPoolSizeAtStart", TellusWorldgenSources.chunkComputeLargestPoolSize());
 
       try {
-         for (int dz = -radius; dz <= radius; dz++) {
-            for (int dx = -radius; dx <= radius; dx++) {
-               long chunkStartedNs = System.nanoTime();
-               ChunkAccess chunk = ChunkBenchmarkVersionCompat.requestFullChunk(
-                  level.getChunkSource(), centerChunkX + dx, centerChunkZ + dz
-               );
-               if (chunk == null) {
-                  throw new IllegalStateException("Chunk source returned null");
+         if (concurrentRequests) {
+            List<CompletableFuture<ChunkBenchmarkSample>> requests = new ArrayList<>(chunkCount);
+            for (int dz = -radius; dz <= radius; dz++) {
+               for (int dx = -radius; dx <= radius; dx++) {
+                  int chunkX = centerChunkX + dx;
+                  int chunkZ = centerChunkZ + dz;
+                  long chunkStartedNs = System.nanoTime();
+                  CompletableFuture<ChunkBenchmarkSample> request = ChunkBenchmarkVersionCompat.requestFullChunkAsync(
+                     level.getChunkSource(), chunkX, chunkZ
+                  ).thenApply(chunk -> {
+                     if (chunk == null) {
+                        throw new IllegalStateException("Chunk source returned null");
+                     }
+                     return new ChunkBenchmarkSample(System.nanoTime() - chunkStartedNs, chunk);
+                  });
+                  requests.add(request);
+                  if (stateHashEnabled) {
+                     chunkStateHashKeys.add(chunkX + "," + chunkZ);
+                  }
                }
-               chunkTimesNs.add(System.nanoTime() - chunkStartedNs);
+            }
+            CompletableFuture.allOf(requests.toArray(CompletableFuture[]::new)).join();
+            for (CompletableFuture<ChunkBenchmarkSample> request : requests) {
+               ChunkBenchmarkSample sample = request.join();
+               chunkTimesNs.add(sample.elapsedNanos());
+               if (stateHashEnabled) {
+                  chunksForHash.add(sample.chunk());
+               }
+            }
+         } else {
+            for (int dz = -radius; dz <= radius; dz++) {
+               for (int dx = -radius; dx <= radius; dx++) {
+                  int chunkX = centerChunkX + dx;
+                  int chunkZ = centerChunkZ + dz;
+                  long chunkStartedNs = System.nanoTime();
+                  ChunkAccess chunk = ChunkBenchmarkVersionCompat.requestFullChunk(
+                     level.getChunkSource(), chunkX, chunkZ
+                  );
+                  if (chunk == null) {
+                     throw new IllegalStateException("Chunk source returned null");
+                  }
+                  chunkTimesNs.add(System.nanoTime() - chunkStartedNs);
+                  if (stateHashEnabled) {
+                     chunkStateHashKeys.add(chunkX + "," + chunkZ);
+                     chunksForHash.add(chunk);
+                  }
+               }
             }
          }
 
          long elapsedNs = System.nanoTime() - startedNs;
+         long stateHashNs = 0L;
+         if (stateHashEnabled) {
+            long hashStartedNs = System.nanoTime();
+            for (ChunkAccess chunk : chunksForHash) {
+               chunkStateHashes.add(hashBlockStates(chunk));
+            }
+            stateHashNs = System.nanoTime() - hashStartedNs;
+         }
          long minNs = chunkTimesNs.stream().mapToLong(Long::longValue).min().orElse(0L);
          long maxNs = chunkTimesNs.stream().mapToLong(Long::longValue).max().orElse(0L);
          long sumNs = chunkTimesNs.stream().mapToLong(Long::longValue).sum();
          result.addProperty("completedChunks", chunkTimesNs.size());
          result.addProperty("elapsedMillis", elapsedNs / 1_000_000.0);
+         if (stateHashEnabled) {
+            JsonObject stateHashes = new JsonObject();
+            long aggregate = 0xcbf29ce484222325L;
+            for (int i = 0; i < chunkStateHashes.size(); i++) {
+               long hash = chunkStateHashes.get(i);
+               stateHashes.addProperty(chunkStateHashKeys.get(i), Long.toUnsignedString(hash));
+               aggregate ^= hash;
+               aggregate *= 0x100000001b3L;
+            }
+            result.add("stateHashes", stateHashes);
+            result.addProperty("stateHashAggregate", Long.toUnsignedString(aggregate));
+            result.addProperty("stateHashMillis", stateHashNs / 1_000_000.0);
+         }
          result.addProperty("sumChunkMillis", sumNs / 1_000_000.0);
          result.addProperty("minChunkMillis", minNs / 1_000_000.0);
          result.addProperty("maxChunkMillis", maxNs / 1_000_000.0);
@@ -390,6 +490,29 @@ public class TellusCommon {
          }
          return 0;
       }
+   }
+
+   private static long hashBlockStates(ChunkAccess chunk) {
+      BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
+      int minX = chunk.getPos().getMinBlockX();
+      int minZ = chunk.getPos().getMinBlockZ();
+      int minY = ChunkBenchmarkVersionCompat.chunkMinY(chunk);
+      int maxY = minY + chunk.getHeight();
+      long hash = 0xcbf29ce484222325L;
+      for (int y = minY; y < maxY; y++) {
+         for (int z = 0; z < 16; z++) {
+            for (int x = 0; x < 16; x++) {
+               cursor.set(minX + x, y, minZ + z);
+               BlockState state = chunk.getBlockState(cursor);
+               hash ^= Block.getId(state);
+               hash *= 0x100000001b3L;
+            }
+         }
+      }
+      return hash;
+   }
+
+   private record ChunkBenchmarkSample(long elapsedNanos, ChunkAccess chunk) {
    }
 
    private static Path writeBenchmarkResult(JsonObject result) {

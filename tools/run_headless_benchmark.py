@@ -38,6 +38,12 @@ def parse_args() -> argparse.Namespace:
                         help="Enable Tellus parallel solid-section filling.")
     parser.add_argument("--parallel-water", action="store_true",
                         help="Enable the opt-in parallel water-region build path.")
+    parser.add_argument("--concurrent-requests", action="store_true",
+                        help="Submit all benchmark chunk requests before waiting for completion.")
+    parser.add_argument("--area-prefetch", action="store_true",
+                        help="Prefetch source data for the whole benchmark area before requesting chunks.")
+    parser.add_argument("--state-hash", action="store_true",
+                        help="Hash every generated block state after timing completes.")
     parser.add_argument("--jvm-property", action="append", default=[], metavar="KEY=VALUE",
                         help="Additional JVM system property; may be repeated.")
     parser.add_argument("--module", default="mc1201", help="Gradle module (default: mc1201).")
@@ -109,6 +115,9 @@ def env_with_benchmark_properties(run_dir: Path, args: argparse.Namespace) -> di
         "-Dtellus.benchmark.exit=true",
         f"-Dtellus.chunkgen.parallelSolidSections={'true' if args.parallel else 'false'}",
         f"-Dtellus.water.parallelRegionBuild={'true' if args.parallel_water else 'false'}",
+        f"-Dtellus.benchmark.concurrentRequests={'true' if args.concurrent_requests else 'false'}",
+        f"-Dtellus.benchmark.areaPrefetch={'true' if args.area_prefetch else 'false'}",
+        f"-Dtellus.benchmark.stateHash={'true' if args.state_hash else 'false'}",
         f"-Dtellus.chunkgen.threads.max={max(1, args.workers)}",
         f"-Dtellus.gameDir={run_dir.resolve()}",
         f"-Dtellus.configDir={(run_dir / 'config').resolve()}",
@@ -227,6 +236,9 @@ def main() -> int:
             "runnerWorkers": args.workers,
             "runnerParallel": args.parallel,
             "runnerParallelWater": args.parallel_water,
+            "runnerConcurrentRequests": args.concurrent_requests,
+            "runnerAreaPrefetch": args.area_prefetch,
+            "runnerStateHash": args.state_hash,
             "runnerJvmProperties": args.jvm_property,
             "runnerCacheMode": ("reuse" if args.reuse_cache else ("template" if args.cache_template else "cold")),
             "runnerLog": str(log_path),
