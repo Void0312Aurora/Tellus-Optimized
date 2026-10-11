@@ -9,6 +9,7 @@ import com.yucareux.tellus.cache.TellusCacheHandle;
 import com.yucareux.tellus.cache.TellusCacheRegistry;
 import com.yucareux.tellus.Tellus;
 import com.yucareux.tellus.integration.distant_horizons.managed.ManagedTerrainNetworkPolicy;
+import com.yucareux.tellus.world.data.geo.WebMercatorTileMath;
 import com.yucareux.tellus.world.data.mask.TellusLandMaskSource;
 import com.yucareux.tellus.world.data.source.DownloadProgressReporter;
 import com.yucareux.tellus.world.data.source.ParallelDownloadRunner;
@@ -16,6 +17,7 @@ import com.yucareux.tellus.worldgen.EarthGeneratorSettings;
 import com.yucareux.tellus.worldgen.EarthProjection;
 import com.yucareux.tellus.worldgen.TerrainSlopePolicy;
 import com.yucareux.tellus.worldgen.TellusWorldgenSources;
+import com.yucareux.tellus.worldgen.global.SphereWorldModel;
 import com.twelvemonkeys.imageio.plugins.webp.WebPImageReaderSpi;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
@@ -104,6 +106,99 @@ public final class TellusElevationSource implements TellusCacheHandle {
 
    public double sampleElevationMeters(double blockX, double blockZ, double worldScale) {
       return this.sampleElevationMeters(blockX, blockZ, worldScale, false, EarthGeneratorSettings.DEFAULT.demSelection());
+   }
+
+   /**
+    * Samples terrain from a geodetic point without converting that point into
+    * a projected Minecraft block coordinate. {@code worldScale} remains the
+    * physical metres-per-block setting used to choose a DEM zoom level.
+    */
+   public double sampleElevationMeters(
+      SphereWorldModel.GeoPoint point,
+      double worldScale,
+      boolean highResOcean,
+      EarthGeneratorSettings.DemSelection demSelection
+   ) {
+      return this.samplePreviewElevationMeters(
+         point, worldScale, highResOcean, demSelection, worldScale
+      );
+   }
+
+   public double sampleElevationMeters(SphereWorldModel.GeoPoint point, double worldScale) {
+      return this.sampleElevationMeters(
+         point, worldScale, false, EarthGeneratorSettings.DEFAULT.demSelection()
+      );
+   }
+
+   public double samplePreviewElevationMeters(
+      SphereWorldModel.GeoPoint point,
+      double worldScale,
+      boolean highResOcean,
+      EarthGeneratorSettings.DemSelection demSelection,
+      double previewResolutionMeters
+   ) {
+      Objects.requireNonNull(point, "point");
+      if (!(worldScale > 0.0)) {
+         return Double.NaN;
+      }
+      return ManagedTerrainNetworkPolicy.isCacheOnly()
+         ? this.samplePreviewElevationMetersFromGeodeticLocalOnly(
+            point, worldScale, highResOcean, previewResolutionMeters
+         )
+         : this.samplePreviewElevationMetersFromGeodetic(
+            point, worldScale, highResOcean, demSelection, previewResolutionMeters
+         );
+   }
+
+   public double samplePreviewElevationMeters(
+      SphereWorldModel.GeoPoint point,
+      double worldScale,
+      boolean highResOcean,
+      double previewResolutionMeters
+   ) {
+      return this.samplePreviewElevationMeters(
+         point,
+         worldScale,
+         highResOcean,
+         EarthGeneratorSettings.DEFAULT.demSelection(),
+         previewResolutionMeters
+      );
+   }
+
+   public TellusElevationSource.ResolvedElevationSample sampleResolvedPreviewElevationMeters(
+      SphereWorldModel.GeoPoint point,
+      double worldScale,
+      boolean oceanMask,
+      EarthGeneratorSettings.DemSelection demSelection,
+      double previewResolutionMeters
+   ) {
+      Objects.requireNonNull(point, "point");
+      if (!(worldScale > 0.0)) {
+         return missingResolvedElevation(Double.NaN);
+      }
+      TellusElevationSource.ResolvedElevationSample sample = ManagedTerrainNetworkPolicy.isCacheOnly()
+         ? this.sampleResolvedElevationFromGeodeticLocalOnly(
+            point, worldScale, oceanMask, previewResolutionMeters
+         )
+         : this.sampleResolvedElevationFromGeodetic(
+            point, worldScale, oceanMask, demSelection, previewResolutionMeters
+         );
+      return isUsablePreviewElevation(sample) ? sample : missingResolvedElevation(Double.NaN);
+   }
+
+   public TellusElevationSource.ResolvedElevationSample sampleResolvedPreviewElevationMeters(
+      SphereWorldModel.GeoPoint point,
+      double worldScale,
+      boolean oceanMask,
+      double previewResolutionMeters
+   ) {
+      return this.sampleResolvedPreviewElevationMeters(
+         point,
+         worldScale,
+         oceanMask,
+         EarthGeneratorSettings.DEFAULT.demSelection(),
+         previewResolutionMeters
+      );
    }
 
    public double sampleElevationMeters(double blockX, double blockZ, double worldScale, boolean highResOcean) {
@@ -808,6 +903,194 @@ public final class TellusElevationSource implements TellusCacheHandle {
       }
 
       return mapterhorn;
+   }
+
+   /**
+    * Geodetic sampling path for the spherical world. The point is sent
+    * directly to the external tile index; no EarthProjection conversion is
+    * involved. The normalized cache is intentionally not used here because
+    * its key space is still the legacy projected block space.
+    */
+   private double samplePreviewElevationMetersFromGeodetic(
+      SphereWorldModel.GeoPoint point,
+      double worldScale,
+      boolean oceanMask,
+      EarthGeneratorSettings.DemSelection demSelection,
+      double previewResolutionMeters
+   ) {
+      double mapterhorn = this.sampleTerrainTilesMetersGeodetic(
+         point, worldScale, previewResolutionMeters
+      );
+      if (shouldUseBathymetry(oceanMask, mapterhorn)) {
+         double ocean = this.sampleOceanElevationGeodetic(
+            point, worldScale, lockedDemSelection(demSelection), previewResolutionMeters
+         ).elevation();
+         if (Double.isFinite(ocean)) {
+            return ocean;
+         }
+      }
+      return mapterhorn;
+   }
+
+   private TellusElevationSource.ResolvedElevationSample sampleResolvedElevationFromGeodetic(
+      SphereWorldModel.GeoPoint point,
+      double worldScale,
+      boolean oceanMask,
+      EarthGeneratorSettings.DemSelection demSelection,
+      double previewResolutionMeters
+   ) {
+      double mapterhorn = this.sampleTerrainTilesMetersGeodetic(
+         point, worldScale, previewResolutionMeters
+      );
+      return this.resolveElevationSample(
+         mapterhorn,
+         oceanMask,
+         TellusElevationSource.DemUsage.TERRAIN_TILES.nominalResolutionMeters(),
+         () -> this.sampleOceanElevationGeodetic(
+            point, worldScale, lockedDemSelection(demSelection), previewResolutionMeters
+         ),
+         0.0
+      );
+   }
+
+   private double samplePreviewElevationMetersFromGeodeticLocalOnly(
+      SphereWorldModel.GeoPoint point,
+      double worldScale,
+      boolean oceanMask,
+      double previewResolutionMeters
+   ) {
+      double mapterhorn = this.sampleTerrainTilesMetersGeodeticLocalOnly(
+         point, worldScale, previewResolutionMeters
+      );
+      if (shouldUseBathymetry(oceanMask, mapterhorn)) {
+         double ocean = this.sampleOceanElevationGeodeticLocalOnly(
+            point, worldScale, previewResolutionMeters
+         ).elevation();
+         if (Double.isFinite(ocean)) {
+            return ocean;
+         }
+      }
+      return mapterhorn;
+   }
+
+   private TellusElevationSource.ResolvedElevationSample sampleResolvedElevationFromGeodeticLocalOnly(
+      SphereWorldModel.GeoPoint point,
+      double worldScale,
+      boolean oceanMask,
+      double previewResolutionMeters
+   ) {
+      double mapterhorn = this.sampleTerrainTilesMetersGeodeticLocalOnly(
+         point, worldScale, previewResolutionMeters
+      );
+      return this.resolveElevationSample(
+         mapterhorn,
+         oceanMask,
+         TellusElevationSource.DemUsage.TERRAIN_TILES.nominalResolutionMeters(),
+         () -> this.sampleOceanElevationGeodeticLocalOnly(
+            point, worldScale, previewResolutionMeters
+         ),
+         0.0
+      );
+   }
+
+   private double sampleTerrainTilesMetersGeodetic(
+      SphereWorldModel.GeoPoint point, double worldScale, double previewResolutionMeters
+   ) {
+      int zoom = selectPreviewZoom(worldScale, previewResolutionMeters, LAND_MAX_ZOOM);
+      return this.sampleAtBestAvailableZoomLonLat(point.longitude(), point.latitude(), zoom);
+   }
+
+   private double sampleTerrainTilesMetersGeodeticLocalOnly(
+      SphereWorldModel.GeoPoint point, double worldScale, double previewResolutionMeters
+   ) {
+      int zoom = selectPreviewZoom(worldScale, previewResolutionMeters, LAND_MAX_ZOOM);
+      return this.sampleAtBestAvailableZoomLonLatLocalOnly(point.longitude(), point.latitude(), zoom);
+   }
+
+   private TellusElevationSource.OceanElevationSample sampleOceanElevationGeodetic(
+      SphereWorldModel.GeoPoint point,
+      double worldScale,
+      EarthGeneratorSettings.DemSelection demSelection,
+      double previewResolutionMeters
+   ) {
+      double openWaters = this.sampleOpenWatersBathymetryGeodetic(
+         point, worldScale, previewResolutionMeters
+      );
+      if (Double.isFinite(openWaters)) {
+         return new TellusElevationSource.OceanElevationSample(
+            openWaters, TellusElevationSource.DemUsage.OPENWATERS
+         );
+      }
+      double terrainTiles = this.sampleTerrainTilesOceanFallbackGeodetic(
+         point, worldScale, previewResolutionMeters
+      );
+      return Double.isFinite(terrainTiles)
+         ? new TellusElevationSource.OceanElevationSample(
+            terrainTiles, TellusElevationSource.DemUsage.TERRAIN_TILES
+         )
+         : TellusElevationSource.OceanElevationSample.none();
+   }
+
+   private TellusElevationSource.OceanElevationSample sampleOceanElevationGeodeticLocalOnly(
+      SphereWorldModel.GeoPoint point, double worldScale, double previewResolutionMeters
+   ) {
+      double openWaters = this.sampleOpenWatersBathymetryGeodeticLocalOnly(
+         point, worldScale, previewResolutionMeters
+      );
+      if (Double.isFinite(openWaters)) {
+         return new TellusElevationSource.OceanElevationSample(
+            openWaters, TellusElevationSource.DemUsage.OPENWATERS
+         );
+      }
+      double terrainTiles = this.sampleTerrainTilesOceanFallbackGeodetic(
+         point, worldScale, previewResolutionMeters, true
+      );
+      return Double.isFinite(terrainTiles)
+         ? new TellusElevationSource.OceanElevationSample(
+            terrainTiles, TellusElevationSource.DemUsage.TERRAIN_TILES
+         )
+         : TellusElevationSource.OceanElevationSample.none();
+   }
+
+   private double sampleOpenWatersBathymetryGeodetic(
+      SphereWorldModel.GeoPoint point, double worldScale, double previewResolutionMeters
+   ) {
+      int zoom = selectPreviewZoom(worldScale, previewResolutionMeters, OCEAN_MAX_ZOOM);
+      return this.sampleOpenWatersAtBestAvailableZoomLonLat(point.longitude(), point.latitude(), zoom);
+   }
+
+   private double sampleOpenWatersBathymetryGeodeticLocalOnly(
+      SphereWorldModel.GeoPoint point, double worldScale, double previewResolutionMeters
+   ) {
+      int zoom = selectPreviewZoom(worldScale, previewResolutionMeters, OCEAN_MAX_ZOOM);
+      return this.sampleOpenWatersAtBestAvailableZoomLonLatLocalOnly(
+         point.longitude(), point.latitude(), zoom
+      );
+   }
+
+   private double sampleTerrainTilesOceanFallbackGeodetic(
+      SphereWorldModel.GeoPoint point,
+      double worldScale,
+      double previewResolutionMeters
+   ) {
+      return this.sampleTerrainTilesOceanFallbackGeodetic(
+         point, worldScale, previewResolutionMeters, false
+      );
+   }
+
+   private double sampleTerrainTilesOceanFallbackGeodetic(
+      SphereWorldModel.GeoPoint point,
+      double worldScale,
+      double previewResolutionMeters,
+      boolean localOnly
+   ) {
+      int zoom = Math.min(
+         MAPTERHORN_OCEAN_FALLBACK_ZOOM,
+         selectPreviewZoom(worldScale, previewResolutionMeters, LAND_MAX_ZOOM)
+      );
+      return localOnly
+         ? this.sampleAtBestAvailableZoomLonLatLocalOnly(point.longitude(), point.latitude(), zoom)
+         : this.sampleAtBestAvailableZoomLonLat(point.longitude(), point.latitude(), zoom);
    }
 
    public TellusElevationSource.ElevationDiagnostic sampleDiagnostic(
@@ -1938,6 +2221,138 @@ public final class TellusElevationSource implements TellusCacheHandle {
       }
 
       return Double.NaN;
+   }
+
+   private double sampleAtBestAvailableZoomLonLat(double longitude, double latitude, int zoom) {
+      int minFallbackZoom = mapterhornMinimumFallbackZoom(zoom);
+      for (int currentZoom = zoom; currentZoom >= minFallbackZoom; currentZoom--) {
+         double sample = this.sampleAtZoomLonLat(longitude, latitude, currentZoom);
+         if (!Double.isNaN(sample)) {
+            return sample;
+         }
+      }
+      return Double.NaN;
+   }
+
+   private double sampleAtBestAvailableZoomLonLatLocalOnly(double longitude, double latitude, int zoom) {
+      int minFallbackZoom = mapterhornMinimumFallbackZoom(zoom);
+      for (int currentZoom = zoom; currentZoom >= minFallbackZoom; currentZoom--) {
+         double sample = this.sampleAtZoomLonLatLocalOnly(longitude, latitude, currentZoom);
+         if (!Double.isNaN(sample)) {
+            return sample;
+         }
+      }
+      return Double.NaN;
+   }
+
+   private double sampleOpenWatersAtBestAvailableZoomLonLat(double longitude, double latitude, int zoom) {
+      int minFallbackZoom = zoom > OPENWATERS_GLOBAL_FALLBACK_ZOOM ? OPENWATERS_GLOBAL_FALLBACK_ZOOM : MIN_ZOOM;
+      for (int currentZoom = zoom; currentZoom >= minFallbackZoom; currentZoom--) {
+         double sample = this.sampleOpenWatersAtZoomLonLat(longitude, latitude, currentZoom);
+         if (!Double.isNaN(sample)) {
+            return sample;
+         }
+      }
+      return Double.NaN;
+   }
+
+   private double sampleOpenWatersAtBestAvailableZoomLonLatLocalOnly(double longitude, double latitude, int zoom) {
+      int minFallbackZoom = zoom > OPENWATERS_GLOBAL_FALLBACK_ZOOM ? OPENWATERS_GLOBAL_FALLBACK_ZOOM : MIN_ZOOM;
+      for (int currentZoom = zoom; currentZoom >= minFallbackZoom; currentZoom--) {
+         double sample = this.sampleOpenWatersAtZoomLonLatLocalOnly(longitude, latitude, currentZoom);
+         if (!Double.isNaN(sample)) {
+            return sample;
+         }
+      }
+      return Double.NaN;
+   }
+
+   private double sampleAtZoomLonLat(double longitude, double latitude, int zoom) {
+      WebMercatorTileMath.TileCoordinate coordinate = WebMercatorTileMath.project(
+         longitude, latitude, zoom, TILE_SIZE
+      );
+      if (coordinate == null) {
+         return Double.NaN;
+      }
+      ShortRaster raster = this.getTile(
+         new TellusElevationSource.TileKey(zoom, coordinate.tileX(), coordinate.tileY())
+      );
+      return raster == null
+         ? Double.NaN
+         : this.sampleBilinearAcrossTiles(
+            zoom,
+            coordinate.globalPixelX(),
+            coordinate.globalPixelY(),
+            coordinate.tileX(),
+            coordinate.tileY(),
+            raster
+         );
+   }
+
+   private double sampleAtZoomLonLatLocalOnly(double longitude, double latitude, int zoom) {
+      WebMercatorTileMath.TileCoordinate coordinate = WebMercatorTileMath.project(
+         longitude, latitude, zoom, TILE_SIZE
+      );
+      if (coordinate == null) {
+         return Double.NaN;
+      }
+      ShortRaster raster = this.getTileLocalOnly(
+         new TellusElevationSource.TileKey(zoom, coordinate.tileX(), coordinate.tileY())
+      );
+      return raster == null
+         ? Double.NaN
+         : this.sampleBilinearAcrossTilesLocalOnly(
+            zoom,
+            coordinate.globalPixelX(),
+            coordinate.globalPixelY(),
+            coordinate.tileX(),
+            coordinate.tileY(),
+            raster
+         );
+   }
+
+   private double sampleOpenWatersAtZoomLonLat(double longitude, double latitude, int zoom) {
+      WebMercatorTileMath.TileCoordinate coordinate = WebMercatorTileMath.project(
+         longitude, latitude, zoom, TILE_SIZE
+      );
+      if (coordinate == null) {
+         return Double.NaN;
+      }
+      ShortRaster raster = this.getOpenWatersTile(
+         new TellusElevationSource.TileKey(zoom, coordinate.tileX(), coordinate.tileY())
+      );
+      return raster == null
+         ? Double.NaN
+         : this.sampleOpenWatersBilinearAcrossTiles(
+            zoom,
+            coordinate.globalPixelX(),
+            coordinate.globalPixelY(),
+            coordinate.tileX(),
+            coordinate.tileY(),
+            raster
+         );
+   }
+
+   private double sampleOpenWatersAtZoomLonLatLocalOnly(double longitude, double latitude, int zoom) {
+      WebMercatorTileMath.TileCoordinate coordinate = WebMercatorTileMath.project(
+         longitude, latitude, zoom, TILE_SIZE
+      );
+      if (coordinate == null) {
+         return Double.NaN;
+      }
+      ShortRaster raster = this.getOpenWatersTileLocalOnly(
+         new TellusElevationSource.TileKey(zoom, coordinate.tileX(), coordinate.tileY())
+      );
+      return raster == null
+         ? Double.NaN
+         : this.sampleOpenWatersBilinearAcrossTilesLocalOnly(
+            zoom,
+            coordinate.globalPixelX(),
+            coordinate.globalPixelY(),
+            coordinate.tileX(),
+            coordinate.tileY(),
+            raster
+         );
    }
 
    private double sampleAtBestAvailableZoomLocalOnly(double blockX, double blockZ, double worldScale, int zoom) {

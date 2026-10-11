@@ -24,13 +24,13 @@ when a caller requests its address. `chartHalfDiagonalMeters` and
 `recommendedExpansionOrder` provide the local footprint and the truncation
 order needed to meet the configured error tolerance.
 
-This first integration adds the geometry kernel and mathematical tests without
-switching the live generator. The existing generator still depends on
-projected block coordinates for roads, buildings, and terrain sources. The next
-integration step is to give the terrain sampler a `SphereChunkAddress` entry
-point, then convert its requested geodetic samples to the existing DEM/OSM
-readers. The old projection path must remain available until those consumers
-have been migrated and seam tests pass.
+The first integration added the geometry kernel and mathematical tests without
+switching the live generator. The terrain and land-cover readers now also have
+geodetic entry points, so a spherical chunk materializer can request external
+data without converting its point back into a projected Minecraft block
+coordinate. The existing generator still depends on projected block coordinates
+for roads and buildings; those consumers remain on the compatibility path until
+their geodetic feature queries and seam tests are complete.
 
 The Minecraft engine still stores a flat `ChunkPos`. A complete walkable
 spherical world therefore needs a small address/neighbor adapter for chunk
