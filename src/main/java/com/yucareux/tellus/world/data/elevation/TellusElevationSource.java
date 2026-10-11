@@ -26,6 +26,7 @@ import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
@@ -193,6 +194,225 @@ public final class TellusElevationSource implements TellusCacheHandle {
          blockX, blockZ, worldScale, oceanMask, demSelection, previewResolutionMeters
       );
       return isUsablePreviewElevation(sample) ? sample : missingResolvedElevation(Double.NaN);
+   }
+
+   /**
+    * Samples a rectangular Mapterhorn terrain grid while reusing projected tile
+    * coordinates and the small set of rasters touched by the rectangle. The
+    * scalar path performs the same bilinear interpolation, but repeats the
+    * Mercator transform and cache lookup for every cell.
+    *
+    * <p>This method intentionally resolves only terrain tiles. The OSM water
+    * resolver calls it with {@code oceanMask=false}, which is equivalent to the
+    * scalar resolved-elevation path unless the optional normalized cache is
+    * enabled; that mode falls back to the scalar implementation below.</p>
+    */
+   public void sampleTerrainGridMeters(
+      int minBlockX,
+      int minBlockZ,
+      int gridSize,
+      double worldScale,
+      EarthGeneratorSettings.DemSelection demSelection,
+      double previewResolutionMeters,
+      double[] elevationMeters,
+      boolean[] mapterhornLandOverride
+   ) {
+      if (gridSize < 0) {
+         throw new IllegalArgumentException("gridSize must be non-negative");
+      }
+      int area = Math.multiplyExact(gridSize, gridSize);
+      if (elevationMeters == null || elevationMeters.length < area
+         || mapterhornLandOverride == null || mapterhornLandOverride.length < area) {
+         throw new IllegalArgumentException("output arrays are smaller than grid area");
+      }
+      Arrays.fill(elevationMeters, 0, area, 0.0);
+      Arrays.fill(mapterhornLandOverride, 0, area, false);
+      if (area == 0 || !(worldScale > 0.0)) {
+         return;
+      }
+
+      if (NORMALIZED_ENABLED) {
+         for (int z = 0; z < gridSize; z++) {
+            int worldZ = minBlockZ + z;
+            int row = z * gridSize;
+            for (int x = 0; x < gridSize; x++) {
+               TellusElevationSource.ResolvedElevationSample sample = this.sampleResolvedPreviewElevationMeters(
+                  minBlockX + x, worldZ, worldScale, false, demSelection, previewResolutionMeters
+               );
+               elevationMeters[row + x] = finiteOrZero(sample.elevationMeters());
+               mapterhornLandOverride[row + x] = sample.mapterhornLandOverride();
+            }
+         }
+         return;
+      }
+
+      int step = downsampleStep(worldScale, RESOLUTION_METERS, previewResolutionMeters);
+      int zoom = selectPreviewZoom(worldScale, previewResolutionMeters, LAND_MAX_ZOOM);
+      double tilesPerAxis = Math.scalb(1.0, zoom);
+      double blocksPerDegree = EarthProjection.blocksPerDegree(worldScale);
+      double[] projectedX = new double[gridSize];
+      double[] projectedZ = new double[gridSize];
+      double[] sampledBlockX = new double[gridSize];
+      double[] sampledBlockZ = new double[gridSize];
+      for (int x = 0; x < gridSize; x++) {
+         double blockX = minBlockX + x;
+         double sampleX = step > 1 ? downsampleBlock(blockX, step) : blockX;
+         sampledBlockX[x] = sampleX;
+         projectedX[x] = (sampleX / blocksPerDegree + 180.0) / 360.0 * tilesPerAxis;
+      }
+      for (int z = 0; z < gridSize; z++) {
+         double blockZ = minBlockZ + z;
+         double sampleZ = step > 1 ? downsampleBlock(blockZ, step) : blockZ;
+         sampledBlockZ[z] = sampleZ;
+         double latitude = EarthProjection.blockZToLat(sampleZ, worldScale);
+         double latitudeRadians = Math.toRadians(latitude);
+         projectedZ[z] = (1.0 - Math.log(Math.tan(latitudeRadians) + 1.0 / Math.cos(latitudeRadians)) / Math.PI)
+            / 2.0 * tilesPerAxis;
+      }
+
+      int[] tileXByColumn = new int[gridSize];
+      int[] tileYByRow = new int[gridSize];
+      int minTileX = Integer.MAX_VALUE;
+      int maxTileX = Integer.MIN_VALUE;
+      int minTileY = Integer.MAX_VALUE;
+      int maxTileY = Integer.MIN_VALUE;
+      for (int x = 0; x < gridSize; x++) {
+         if (Double.isFinite(projectedX[x]) && projectedX[x] >= 0.0 && projectedX[x] < tilesPerAxis) {
+            tileXByColumn[x] = Mth.floor(projectedX[x]);
+            minTileX = Math.min(minTileX, tileXByColumn[x]);
+            maxTileX = Math.max(maxTileX, tileXByColumn[x]);
+         } else {
+            tileXByColumn[x] = Integer.MIN_VALUE;
+         }
+      }
+      for (int z = 0; z < gridSize; z++) {
+         if (Double.isFinite(projectedZ[z]) && projectedZ[z] >= 0.0 && projectedZ[z] < tilesPerAxis) {
+            tileYByRow[z] = Mth.floor(projectedZ[z]);
+            minTileY = Math.min(minTileY, tileYByRow[z]);
+            maxTileY = Math.max(maxTileY, tileYByRow[z]);
+         } else {
+            tileYByRow[z] = Integer.MIN_VALUE;
+         }
+      }
+      // Bilinear interpolation can touch the next tile at the east/south edge.
+      // Load that one-cell halo up front so the batch path matches the scalar
+      // cross-tile interpolation instead of falling back to a local sample.
+      if (maxTileX >= minTileX) {
+         maxTileX = Math.min((int)tilesPerAxis - 1, maxTileX + 1);
+      }
+      if (maxTileY >= minTileY) {
+         maxTileY = Math.min((int)tilesPerAxis - 1, maxTileY + 1);
+      }
+      int tileWidth = maxTileX >= minTileX ? maxTileX - minTileX + 1 : 0;
+      int tileHeight = maxTileY >= minTileY ? maxTileY - minTileY + 1 : 0;
+      ShortRaster[] tileRasters = new ShortRaster[Math.multiplyExact(tileWidth, tileHeight)];
+      for (int tileY = minTileY; tileY <= maxTileY; tileY++) {
+         for (int tileX = minTileX; tileX <= maxTileX; tileX++) {
+            int tileIndex = (tileY - minTileY) * tileWidth + tileX - minTileX;
+            tileRasters[tileIndex] = this.getTile(new TellusElevationSource.TileKey(zoom, tileX, tileY));
+         }
+      }
+
+      int primarySamples = 0;
+      int fallbackSamples = 0;
+      for (int z = 0; z < gridSize; z++) {
+         int row = z * gridSize;
+         double y = projectedZ[z];
+         int tileY = tileYByRow[z];
+         for (int x = 0; x < gridSize; x++) {
+            double projected = projectedX[x];
+            double sample = Double.NaN;
+            int tileX = tileXByColumn[x];
+            if (tileX != Integer.MIN_VALUE && tileY != Integer.MIN_VALUE) {
+               ShortRaster raster = tileRasters[(tileY - minTileY) * tileWidth + tileX - minTileX];
+               if (raster != null) {
+                  primarySamples++;
+                  sample = this.sampleBilinearAcrossTilesCached(
+                     zoom, projected * TILE_SIZE, y * TILE_SIZE, tileX, tileY, raster,
+                     tileRasters, minTileX, minTileY, tileWidth, tileHeight
+                  );
+               }
+            }
+            if (!Double.isFinite(sample)) {
+               fallbackSamples++;
+               sample = this.sampleAtBestAvailableZoom(sampledBlockX[x], sampledBlockZ[z], worldScale, zoom);
+            }
+            double resolved = finiteOrZero(sample);
+            elevationMeters[row + x] = resolved;
+            mapterhornLandOverride[row + x] = resolved > MAPTERHORN_SEA_LEVEL_THRESHOLD_METERS;
+         }
+      }
+      if (Boolean.getBoolean("tellus.debugTerrainGrid")) {
+         Tellus.LOGGER.info(
+            "Terrain grid samples={} primary={} fallback={} grid={} zoom={}",
+            gridSize * gridSize, primarySamples, fallbackSamples, gridSize, zoom
+         );
+      }
+   }
+
+   private double sampleBilinearAcrossTilesCached(
+      int zoom,
+      double globalX,
+      double globalY,
+      int baseTileX,
+      int baseTileY,
+      ShortRaster baseRaster,
+      ShortRaster[] tileRasters,
+      int minTileX,
+      int minTileY,
+      int tileWidth,
+      int tileHeight
+   ) {
+      int tilesPerAxis = 1 << zoom;
+      int maxPixel = tilesPerAxis * TILE_SIZE - 1;
+      double clampedX = Mth.clamp(globalX, 0.0, maxPixel);
+      double clampedY = Mth.clamp(globalY, 0.0, maxPixel);
+      int x0 = Mth.floor(clampedX);
+      int y0 = Mth.floor(clampedY);
+      int x1 = Math.min(x0 + 1, maxPixel);
+      int y1 = Math.min(y0 + 1, maxPixel);
+      double dx = clampedX - x0;
+      double dy = clampedY - y0;
+      double v00 = this.samplePixelCached(x0, y0, baseTileX, baseTileY, baseRaster, tileRasters, minTileX, minTileY, tileWidth, tileHeight);
+      double v10 = this.samplePixelCached(x1, y0, baseTileX, baseTileY, baseRaster, tileRasters, minTileX, minTileY, tileWidth, tileHeight);
+      double v01 = this.samplePixelCached(x0, y1, baseTileX, baseTileY, baseRaster, tileRasters, minTileX, minTileY, tileWidth, tileHeight);
+      double v11 = this.samplePixelCached(x1, y1, baseTileX, baseTileY, baseRaster, tileRasters, minTileX, minTileY, tileWidth, tileHeight);
+      if (Double.isFinite(v00) && Double.isFinite(v10) && Double.isFinite(v01) && Double.isFinite(v11)) {
+         return Mth.lerp(dy, Mth.lerp(dx, v00, v10), Mth.lerp(dx, v01, v11));
+      }
+      return sampleBilinearLocal(baseRaster, clampedX - baseTileX * TILE_SIZE, clampedY - baseTileY * TILE_SIZE);
+   }
+
+   private double samplePixelCached(
+      int pixelX,
+      int pixelY,
+      int baseTileX,
+      int baseTileY,
+      ShortRaster baseRaster,
+      ShortRaster[] tileRasters,
+      int minTileX,
+      int minTileY,
+      int tileWidth,
+      int tileHeight
+   ) {
+      int tileX = Math.floorDiv(pixelX, TILE_SIZE);
+      int tileY = Math.floorDiv(pixelY, TILE_SIZE);
+      ShortRaster raster;
+      if (tileX == baseTileX && tileY == baseTileY) {
+         raster = baseRaster;
+      } else if (tileX < minTileX || tileY < minTileY || tileX >= minTileX + tileWidth || tileY >= minTileY + tileHeight) {
+         raster = null;
+      } else {
+         raster = tileRasters[(tileY - minTileY) * tileWidth + tileX - minTileX];
+      }
+      if (raster == null) {
+         return Double.NaN;
+      }
+      return raster.get(pixelX - tileX * TILE_SIZE, pixelY - tileY * TILE_SIZE);
+   }
+
+   private static double finiteOrZero(double value) {
+      return Double.isFinite(value) ? value : 0.0;
    }
 
    public double samplePreviewElevationMetersLocalOnly(

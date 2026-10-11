@@ -341,6 +341,58 @@ public final class TerrainPreloadPackage {
       );
    }
 
+   boolean sampleTerrainGrid(
+      int minBlockX,
+      int minBlockZ,
+      int gridSize,
+      int[] terrainHeightsOut,
+      boolean[] mapterhornLandOverrideOut
+   ) {
+      int area = Math.multiplyExact(gridSize, gridSize);
+      if (terrainHeightsOut == null || terrainHeightsOut.length < area
+         || mapterhornLandOverrideOut == null || mapterhornLandOverrideOut.length < area) {
+         throw new IllegalArgumentException("output arrays are smaller than grid area");
+      }
+      int maxBlockX = minBlockX + gridSize - 1;
+      int maxBlockZ = minBlockZ + gridSize - 1;
+      if (gridSize < 0 || !this.containsBlock(minBlockX, minBlockZ) || !this.containsBlock(maxBlockX, maxBlockZ)) {
+         return false;
+      }
+
+      for (int z = 0; z < gridSize; z++) {
+         double gridZ = (minBlockZ + z - this.area.minBlockZ()) / (double)this.gridStep;
+         int z0 = clamp((int)Math.floor(gridZ), 0, this.gridDepth - 1);
+         int z1 = Math.min(this.gridDepth - 1, z0 + 1);
+         double tz = clamp(gridZ - z0, 0.0, 1.0);
+         int row = z * gridSize;
+         for (int x = 0; x < gridSize; x++) {
+            double gridX = (minBlockX + x - this.area.minBlockX()) / (double)this.gridStep;
+            int x0 = clamp((int)Math.floor(gridX), 0, this.gridWidth - 1);
+            int x1 = Math.min(this.gridWidth - 1, x0 + 1);
+            double tx = clamp(gridX - x0, 0.0, 1.0);
+            int index00 = this.index(x0, z0);
+            int index10 = this.index(x1, z0);
+            int index01 = this.index(x0, z1);
+            int index11 = this.index(x1, z1);
+            int nearestX = clamp((int)Math.round(gridX), 0, this.gridWidth - 1);
+            int nearestZ = clamp((int)Math.round(gridZ), 0, this.gridDepth - 1);
+            int nearest = this.index(nearestX, nearestZ);
+            terrainHeightsOut[row + x] = categoriesAgree(index00, index10, index01, index11, this.landMaskClasses, this.elevationFlags)
+               ? interpolateHeight(
+                  this.terrainHeights[index00],
+                  this.terrainHeights[index10],
+                  this.terrainHeights[index01],
+                  this.terrainHeights[index11],
+                  tx,
+                  tz
+               )
+               : this.terrainHeights[nearest];
+            mapterhornLandOverrideOut[row + x] = (Byte.toUnsignedInt(this.elevationFlags[nearest]) & FLAG_MAPTERHORN_LAND_OVERRIDE) != 0;
+         }
+      }
+      return true;
+   }
+
    public boolean containsBlock(int blockX, int blockZ) {
       return blockX >= this.area.minBlockX()
          && blockX <= this.area.maxBlockX()
