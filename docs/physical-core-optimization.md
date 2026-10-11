@@ -67,3 +67,12 @@ The concurrent-request probe on the same fixed snapshot completed in
 `5.12%` slower), while producing the same aggregate and per-chunk hashes. The
 shared chunk/source path therefore remains a contention point; submitting more
 requests at once does not by itself expose more useful CPU parallelism.
+
+A separate whole-chunk pipeline experiment submitted each `fillFromNoise` task
+for a 25-chunk request set to a dedicated 44-worker executor. The executor did
+reach 44 active workers, and the generated block-state hashes still matched the
+ordinary 44-worker path exactly, but elapsed time was `3687.633 ms` versus
+`3234.779 ms` for the existing path, about `14.0%` slower. The experiment was
+removed after measurement. This rules out whole-chunk request fan-out as a
+standalone speedup; shared terrain/source access and the block-writing phases
+need algorithmic changes before more CPU parallelism can help.
