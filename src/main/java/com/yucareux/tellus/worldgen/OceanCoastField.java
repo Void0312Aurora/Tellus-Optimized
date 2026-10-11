@@ -9,6 +9,7 @@ import java.util.Arrays;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicLong;
 import net.minecraft.util.Mth;
 
 /**
@@ -39,7 +40,8 @@ public final class OceanCoastField {
    private final int transitionBlocks;
    private final RawDepthSampler rawDepthSampler;
    private final Cache<Long, MacroTile> cache = CacheBuilder.newBuilder().maximumSize(CACHE_TILES).build();
-   private final ConcurrentMap<Long, CompletableFuture<MacroTile>> inFlight = new ConcurrentHashMap<>();
+   private final ConcurrentMap<BuildKey, CompletableFuture<MacroTile>> inFlight = new ConcurrentHashMap<>();
+   private final AtomicLong cacheGeneration = new AtomicLong();
 
    public OceanCoastField(
       TellusOsmWaterSource waterSource,
@@ -85,20 +87,23 @@ public final class OceanCoastField {
 
    private MacroTile getMacroTile(int macroX, int macroZ) {
       long key = pack(macroX, macroZ);
+      long generation = this.cacheGeneration.get();
       MacroTile cached = this.cache.getIfPresent(key);
       if (cached != null) {
          return cached;
       }
 
+      BuildKey buildKey = new BuildKey(key, generation);
       CompletableFuture<MacroTile> created = new CompletableFuture<>();
-      CompletableFuture<MacroTile> existing = this.inFlight.putIfAbsent(key, created);
+      CompletableFuture<MacroTile> existing = this.inFlight.putIfAbsent(buildKey, created);
       if (existing != null) {
          return existing.join();
       }
 
       try {
          MacroTile tile = this.build(macroX, macroZ);
-         if (tile.coverageStatus == TellusOsmWaterSource.CoverageStatus.COMPLETE) {
+         if (generation == this.cacheGeneration.get()
+            && tile.coverageStatus == TellusOsmWaterSource.CoverageStatus.COMPLETE) {
             this.cache.put(key, tile);
          }
          created.complete(tile);
@@ -107,14 +112,14 @@ public final class OceanCoastField {
          created.completeExceptionally(error);
          throw error;
       } finally {
-         this.inFlight.remove(key, created);
+         this.inFlight.remove(buildKey, created);
       }
    }
 
    public void clear() {
+      this.cacheGeneration.incrementAndGet();
       this.cache.invalidateAll();
       this.cache.cleanUp();
-      this.inFlight.clear();
    }
 
    private MacroTile build(int macroX, int macroZ) {
@@ -380,6 +385,9 @@ public final class OceanCoastField {
    }
 
    public record BathymetrySample(boolean valid, int depth) {
+   }
+
+   private record BuildKey(long tileKey, long generation) {
    }
 
    private record MacroTile(

@@ -30,6 +30,7 @@ import com.yucareux.tellus.world.data.osm.TellusOsmSandSource;
 import com.yucareux.tellus.world.data.resolve.ResolveEcoregion;
 import com.yucareux.tellus.world.data.resolve.TellusResolveSource;
 import com.yucareux.tellus.world.realtime.TellusRealtimeState;
+import com.yucareux.tellus.worldgen.global.GlobalMapModel;
 import com.yucareux.tellus.worldgen.arnis.ArnisBuildingRules;
 import com.yucareux.tellus.worldgen.road.StreetLightPlanner;
 import com.yucareux.tellus.worldgen.road.StreetLightModel;
@@ -375,6 +376,7 @@ public final class EarthChunkGenerator extends ChunkGenerator {
    private static final Map<EarthChunkGenerator.BiomeSettingsKey, BiomeGenerationSettings> FILTERED_SETTINGS = new ConcurrentHashMap<>();
    private static final Map<EarthChunkGenerator.TreeFeatureSettingsKey, List<ConfiguredFeature<?, ?>>> TREE_FEATURES = new ConcurrentHashMap<>();
    private final EarthGeneratorSettings settings;
+   private final GlobalMapModel globalMapModel;
    private final int seaLevel;
    private final int minY;
    private final int height;
@@ -410,6 +412,7 @@ public final class EarthChunkGenerator extends ChunkGenerator {
    public EarthChunkGenerator(BiomeSource biomeSource, EarthGeneratorSettings settings) {
       super(biomeSource, biome -> generationSettingsForBiome(biome, settings));
       this.settings = settings;
+      this.globalMapModel = GlobalMapModel.forWorldScale(settings.worldScale());
       this.seaLevel = settings.effectiveHeightOffset();
       EarthGeneratorSettings.HeightLimits limits = EarthGeneratorSettings.resolveHeightLimits(settings);
       ExperimentalHeightSupport.validateOrThrow(settings, limits);
@@ -418,9 +421,11 @@ public final class EarthChunkGenerator extends ChunkGenerator {
       this.waterResolver = TellusWorldgenSources.waterResolver(settings);
       this.antarcticSnowPolicy = AntarcticSnowPolicy.forWorldScale(settings.worldScale());
       this.preloadedTerrain = TerrainPreloadPackageRegistry.instance().viewFor(settings);
-      double blocksPerDegree = blocksPerDegree(settings.worldScale());
-      int spawnBlockX = Mth.floor(settings.spawnLongitude() * blocksPerDegree);
-      int spawnBlockZ = Mth.floor(EarthProjection.latToBlockZ(settings.spawnLatitude(), settings.worldScale()));
+      GlobalMapModel.BlockPoint spawnPoint = this.globalMapModel.project(
+         new GlobalMapModel.GeoPoint(settings.spawnLatitude(), settings.spawnLongitude(), 0.0)
+      );
+      int spawnBlockX = Mth.floor(spawnPoint.x());
+      int spawnBlockZ = Mth.floor(spawnPoint.z());
       this.configuredSpawnChunkX = Math.floorDiv(spawnBlockX, 16);
       this.configuredSpawnChunkZ = Math.floorDiv(spawnBlockZ, 16);
       if (biomeSource instanceof EarthBiomeSource earthBiomeSource) {
@@ -451,6 +456,11 @@ public final class EarthChunkGenerator extends ChunkGenerator {
 
    public EarthGeneratorSettings settings() {
       return this.settings;
+   }
+
+   /** Shared progressive chart and geodetic projection model for this generator. */
+   public GlobalMapModel globalMapModel() {
+      return this.globalMapModel;
    }
 
    public boolean shouldSuppressWaterSourceConversion(int blockX, int blockZ) {
@@ -524,9 +534,11 @@ public final class EarthChunkGenerator extends ChunkGenerator {
    }
 
    private BlockPos getSurfacePosition(LevelHeightAccessor heightAccessor, double latitude, double longitude, boolean useDetailedWaterResolver) {
-      double blocksPerDegree = blocksPerDegree(this.settings.worldScale());
-      int spawnX = Mth.floor(longitude * blocksPerDegree);
-      int spawnZ = Mth.floor(EarthProjection.latToBlockZ(latitude, this.settings.worldScale()));
+      GlobalMapModel.BlockPoint projected = this.globalMapModel.project(
+         new GlobalMapModel.GeoPoint(latitude, longitude, 0.0)
+      );
+      int spawnX = Mth.floor(projected.x());
+      int spawnZ = Mth.floor(projected.z());
       ExperimentalHeightSupport.validateHorizontalPositionOrThrow(
          this.settings, spawnX, spawnZ, "surface target lat=" + latitude + ", lon=" + longitude
       );
@@ -554,11 +566,11 @@ public final class EarthChunkGenerator extends ChunkGenerator {
    }
 
    public double longitudeFromBlock(double blockX) {
-      return blockX / blocksPerDegree(this.settings.worldScale());
+      return this.globalMapModel.unproject(blockX, 0.0).longitude();
    }
 
    public double latitudeFromBlock(double blockZ) {
-      return EarthProjection.blockZToLat(blockZ, this.settings.worldScale());
+      return this.globalMapModel.unproject(0.0, blockZ).latitude();
    }
 
    private static double blocksPerDegree(double worldScale) {

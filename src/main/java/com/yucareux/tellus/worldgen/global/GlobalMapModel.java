@@ -152,6 +152,36 @@ public final class GlobalMapModel {
       return low;
    }
 
+   /** Returns the smallest configured expansion order that meets the chart tolerance. */
+   public int recommendedExpansionOrder(double footprintMeters) {
+      if (!(footprintMeters >= 0.0) || !Double.isFinite(footprintMeters)) {
+         throw new IllegalArgumentException("footprintMeters must be finite and non-negative");
+      }
+      for (int order = 1; order <= MAX_EXPANSION_ORDER; order++) {
+         if (this.truncationErrorBoundMeters(footprintMeters, order) <= this.config.truncationToleranceMeters()) {
+            return order;
+         }
+      }
+      return MAX_EXPANSION_ORDER;
+   }
+
+   /** Approximate half-diagonal of a chart in ground metres at its centre latitude. */
+   public double chartHalfDiagonalMeters(ChartKey key) {
+      if (key == null) {
+         throw new IllegalArgumentException("key");
+      }
+      double half = this.config.chartSizeBlocks() * 0.5;
+      double centerBlockX = key.originBlockX(this.config.chartSizeBlocks()) + half;
+      double centerBlockZ = key.originBlockZ(this.config.chartSizeBlocks()) + half;
+      LocalMetric metric = this.metricAt(centerBlockX, centerBlockZ);
+      return Math.hypot(half * metric.eastMetersPerBlock(), half * metric.northMetersPerBlock());
+   }
+
+   /** Returns the order selected for the chart's conservative half-diagonal. */
+   public int recommendedExpansionOrder(ChartKey key) {
+      return this.recommendedExpansionOrder(this.chartHalfDiagonalMeters(key));
+   }
+
    public static GeoPoint expandFrom(GeoPoint anchor, LocalOffset offset, int expansionOrder) {
       if (anchor == null || offset == null) {
          throw new IllegalArgumentException("anchor and offset are required");

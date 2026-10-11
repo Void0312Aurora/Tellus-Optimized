@@ -50,6 +50,16 @@ class GlobalMapModelTest {
       assertTrue(MODEL.maxFootprintMeters(0.25, 3) > MODEL.maxFootprintMeters(0.25, 1));
    }
 
+   @Test
+   void chartSelectsAnOrderFromItsGroundFootprint() {
+      GlobalMapModel.ChartKey key = new GlobalMapModel.ChartKey(0, 0);
+      assertTrue(MODEL.chartHalfDiagonalMeters(key) > 0.0);
+      int order = MODEL.recommendedExpansionOrder(key);
+      assertTrue(order >= 1 && order <= 12);
+      assertTrue(MODEL.truncationErrorBoundMeters(MODEL.chartHalfDiagonalMeters(key), order)
+         <= MODEL.config().truncationToleranceMeters() || order == 12);
+   }
+
    private static double distance(GlobalMapModel.GeoPoint first, GlobalMapModel.GeoPoint second) {
       double dLat = Math.toRadians(first.latitude() - second.latitude());
       double dLon = Math.toRadians(GlobalMapModel.shortestLongitudeDelta(first.longitude(), second.longitude()));
