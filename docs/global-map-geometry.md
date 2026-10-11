@@ -30,3 +30,16 @@ third-order expansion. `GlobalMapModelTest` checks negative-coordinate chart
 boundaries, projection round trips, error reduction with order, safe footprint
 calculation, and chart-based order selection. These tests are geometry checks;
 they do not claim that Minecraft has spherical collision or a wrapped world.
+
+A headless integration probe now runs the chart model inside a real Tellus world
+benchmark. At scale 1, a radius-1 generation centered on chunk X `55424`
+crossed the chart boundary from X `865` to `866`; neighboring chunk centers
+were assigned local X coordinates `1016` and `8`, respectively. Both charts
+selected expansion order 1 and the computed truncation bound was approximately
+`0.01986 m`. All nine chunks generated successfully and their block-state
+hashes were recorded.
+
+This validates coordinate assignment and chart-boundary handling in the active
+world projection. The generator still does not use chart requests to load
+progressive terrain data, and the expansion order does not yet select a terrain
+LOD or alter `fillFromNoise`; those remain future integration work.

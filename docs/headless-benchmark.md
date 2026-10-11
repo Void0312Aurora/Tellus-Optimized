@@ -96,3 +96,15 @@ On the fixed scale-1 snapshot used for the physical-core experiment,
 request loop but took `3400.363 ms` versus `3234.779 ms` for the 44-worker
 parallel configuration. This is why the flag is retained as a measurement
 probe rather than enabled by default.
+
+The optional `--chart-probe` flag records the `GlobalMapModel` chart assigned to
+each benchmark chunk, the local chart coordinates, the recommended expansion
+order, and the truncation error bound. It runs inside the real Tellus benchmark
+server, so it verifies chart mapping against the active world projection. It
+does not make terrain generation progressive or change the generated blocks.
+
+At the tested scale-1 boundary around chunk X `55424`, a radius-1 run generated
+nine chunks across chart X `865` and `866`. The local coordinate changed from
+`1016` in chart `865` to `8` in chart `866`; both sides selected expansion order
+`1` with a calculated chart error bound of about `0.01986 m`. This is a chart
+coordinate seam test, not a progressive terrain provider test.

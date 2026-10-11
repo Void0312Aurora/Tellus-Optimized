@@ -2,6 +2,7 @@ package com.yucareux.tellus;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.mojang.brigadier.arguments.BoolArgumentType;
@@ -26,6 +27,7 @@ import com.yucareux.tellus.world.realtime.TellusRealtimeState;
 import com.yucareux.tellus.world.realtime.WeatherTemperaturePolicy;
 import com.yucareux.tellus.worldgen.EarthChunkGenerator;
 import com.yucareux.tellus.worldgen.EarthGeneratorSettings;
+import com.yucareux.tellus.worldgen.global.GlobalMapModel;
 import com.yucareux.tellus.worldgen.ExperimentalHeightSupport;
 import com.yucareux.tellus.worldgen.TellusWorldgenSources;
 import java.io.BufferedWriter;
@@ -37,7 +39,9 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
@@ -321,6 +325,9 @@ public class TellusCommon {
       boolean areaPrefetch = Boolean.parseBoolean(
          System.getProperty("tellus.benchmark.areaPrefetch", "false")
       );
+      boolean chartProbe = Boolean.parseBoolean(
+         System.getProperty("tellus.benchmark.chartProbe", "false")
+      );
       long areaPrefetchNs = 0L;
       if (areaPrefetch) {
          ChunkGenerator generator = level.getChunkSource().getGenerator();
@@ -353,6 +360,7 @@ public class TellusCommon {
       result.addProperty("requestedChunks", chunkCount);
       result.addProperty("chunkStatus", "FULL");
       result.addProperty("stateHashEnabled", stateHashEnabled);
+      result.addProperty("chartProbeEnabled", chartProbe);
       result.addProperty("areaPrefetch", areaPrefetch);
       result.addProperty("areaPrefetchMillis", areaPrefetchNs / 1_000_000.0);
       boolean concurrentRequests = Boolean.parseBoolean(
@@ -373,6 +381,56 @@ public class TellusCommon {
       );
       result.addProperty("chunkComputePoolSizeAtStart", TellusWorldgenSources.chunkComputePoolSize());
       result.addProperty("chunkComputeLargestPoolSizeAtStart", TellusWorldgenSources.chunkComputeLargestPoolSize());
+      if (chartProbe) {
+         ChunkGenerator generator = level.getChunkSource().getGenerator();
+         if (!(generator instanceof EarthChunkGenerator earthGenerator)) {
+            throw new IllegalStateException("Tellus chart probe requires an EarthChunkGenerator");
+         }
+         GlobalMapModel model = earthGenerator.globalMapModel();
+         result.addProperty("chartSizeBlocks", model.config().chartSizeBlocks());
+         result.addProperty("chartExpansionOrder", model.config().expansionOrder());
+         result.addProperty("chartTruncationToleranceMeters", model.config().truncationToleranceMeters());
+         JsonArray chartSamples = new JsonArray();
+         JsonArray chartRequestOrder = new JsonArray();
+         Set<GlobalMapModel.ChartKey> requestedCharts = new LinkedHashSet<>();
+         double maxErrorBoundMeters = 0.0;
+         for (int dz = -radius; dz <= radius; dz++) {
+            for (int dx = -radius; dx <= radius; dx++) {
+               int chunkX = centerChunkX + dx;
+               int chunkZ = centerChunkZ + dz;
+               double blockX = chunkX * 16.0 + 8.0;
+               double blockZ = chunkZ * 16.0 + 8.0;
+               GlobalMapModel.ChartCoordinate coordinate = model.toChartCoordinates(blockX, blockZ);
+               GlobalMapModel.ChartKey chart = coordinate.chart();
+               int order = model.recommendedExpansionOrder(chart);
+               double footprint = model.chartHalfDiagonalMeters(chart);
+               double errorBound = model.truncationErrorBoundMeters(footprint, order);
+               maxErrorBoundMeters = Math.max(maxErrorBoundMeters, errorBound);
+               requestedCharts.add(chart);
+               JsonObject sample = new JsonObject();
+               sample.addProperty("chunkX", chunkX);
+               sample.addProperty("chunkZ", chunkZ);
+               sample.addProperty("chartX", chart.x());
+               sample.addProperty("chartZ", chart.z());
+               sample.addProperty("localX", coordinate.localX());
+               sample.addProperty("localZ", coordinate.localZ());
+               sample.addProperty("recommendedExpansionOrder", order);
+               sample.addProperty("chartHalfDiagonalMeters", footprint);
+               sample.addProperty("truncationErrorBoundMeters", errorBound);
+               chartSamples.add(sample);
+            }
+         }
+         for (GlobalMapModel.ChartKey chart : requestedCharts) {
+            JsonObject chartEntry = new JsonObject();
+            chartEntry.addProperty("x", chart.x());
+            chartEntry.addProperty("z", chart.z());
+            chartRequestOrder.add(chartEntry);
+         }
+         result.add("chartSamples", chartSamples);
+         result.add("chartRequestOrder", chartRequestOrder);
+         result.addProperty("requestedChartCount", requestedCharts.size());
+         result.addProperty("maxChartTruncationErrorBoundMeters", maxErrorBoundMeters);
+      }
 
       try {
          if (concurrentRequests) {

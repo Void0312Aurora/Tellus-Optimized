@@ -44,6 +44,8 @@ def parse_args() -> argparse.Namespace:
                         help="Prefetch source data for the whole benchmark area before requesting chunks.")
     parser.add_argument("--state-hash", action="store_true",
                         help="Hash every generated block state after timing completes.")
+    parser.add_argument("--chart-probe", action="store_true",
+                        help="Record chart assignment and truncation-order metadata for benchmark chunks.")
     parser.add_argument("--jvm-property", action="append", default=[], metavar="KEY=VALUE",
                         help="Additional JVM system property; may be repeated.")
     parser.add_argument("--module", default="mc1201", help="Gradle module (default: mc1201).")
@@ -118,6 +120,7 @@ def env_with_benchmark_properties(run_dir: Path, args: argparse.Namespace) -> di
         f"-Dtellus.benchmark.concurrentRequests={'true' if args.concurrent_requests else 'false'}",
         f"-Dtellus.benchmark.areaPrefetch={'true' if args.area_prefetch else 'false'}",
         f"-Dtellus.benchmark.stateHash={'true' if args.state_hash else 'false'}",
+        f"-Dtellus.benchmark.chartProbe={'true' if args.chart_probe else 'false'}",
         f"-Dtellus.chunkgen.threads.max={max(1, args.workers)}",
         f"-Dtellus.gameDir={run_dir.resolve()}",
         f"-Dtellus.configDir={(run_dir / 'config').resolve()}",
@@ -239,6 +242,7 @@ def main() -> int:
             "runnerConcurrentRequests": args.concurrent_requests,
             "runnerAreaPrefetch": args.area_prefetch,
             "runnerStateHash": args.state_hash,
+            "runnerChartProbe": args.chart_probe,
             "runnerJvmProperties": args.jvm_property,
             "runnerCacheMode": ("reuse" if args.reuse_cache else ("template" if args.cache_template else "cold")),
             "runnerLog": str(log_path),
