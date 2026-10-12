@@ -120,8 +120,9 @@ prototype's identity and persistence contract. It is not yet an Anvil region
 layout, a crash-safe commit protocol, or a Minecraft chunk migration.
 
 The existing `tellus:sphere_face` generator remains unchanged while these
-experiments run. Phase 3 still has to define sparse demand materialization,
-extraordinary-vertex runtime behavior, and a real Fabric integration test.
+experiments run. Phase 3 still requires extraordinary-vertex runtime behavior
+and a real Fabric integration test; the sparse identity-layer entry check is
+recorded below.
 
 ## Phase 3 entry check: global index plus sparse materialization
 
