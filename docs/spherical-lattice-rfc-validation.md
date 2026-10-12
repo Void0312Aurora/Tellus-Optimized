@@ -122,3 +122,17 @@ layout, a crash-safe commit protocol, or a Minecraft chunk migration.
 The existing `tellus:sphere_face` generator remains unchanged while these
 experiments run. Phase 3 still has to define sparse demand materialization,
 extraordinary-vertex runtime behavior, and a real Fabric integration test.
+
+## Phase 3 entry check: global index plus sparse materialization
+
+`SparseLatticeMaterializer` keeps the complete Atlas as an identity and
+neighbor index but stores only requested `BlockID`s. A two-patch fixture has 32
+possible cells while the test materializes two point requests, and a seam
+neighbor request materializes only the requested destination. Reversing request
+order produces the same sorted IDs and deterministic cell state. A seam request
+preserves the vertical `k` coordinate and the reciprocal neighbor relation.
+
+This establishes that a global index and demand-driven materialization are
+compatible at the identity layer. It does not establish chunk ticketing,
+eviction, thread scheduling, disk-backed sparse storage, or a player-visible
+Fabric world. Those remain the next integration boundary.
