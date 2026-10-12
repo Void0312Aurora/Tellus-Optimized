@@ -60,7 +60,7 @@ while their scale varies across the patch.
   --offline --no-daemon
 ```
 
-The six tests currently cover:
+The six prototype tests currently cover:
 
 * deterministic metric reports for both local chart candidates;
 * agreement with the closed-form stereographic scale estimate;
@@ -70,16 +70,40 @@ The six tests currently cover:
 * explicit evidence that the current cubed-sphere metric is bounded but not
   locally orthogonal and unit-scale everywhere.
 
+The closed-topology experiment is covered separately by:
+
+```sh
+./gradlew -PtellusTargets=mc1201 :mc1201:test \
+  --tests 'com.yucareux.tellus.worldgen.ClosedQuadSphereTopologyTest' \
+  --offline --no-daemon
+```
+
+`ClosedQuadSphereTopology` builds a deterministic quadrilateral subdivision of
+the six faces of a cube.  Its audit for subdivision `n` is:
+
+```text
+faces = 6 n², vertices = 6 n² + 2, edges = 12 n²
+sum(4 - degree(v)) = 8, Euler characteristic = 2
+```
+
+The executable checks pass for `n = 1`, `4`, `5`, and `7` generation-order
+probes.  They verify eight degree-three extraordinary vertices, degree four
+elsewhere, two incidences per edge, exactly one reciprocal neighbor direction,
+stable canonical signatures under reversed insertion, and identical exact
+spherical positions for all face-local uses of a shared cube vertex.  This is a
+topology and indexing result; the class intentionally does not claim that the
+cube embedding has low metric distortion.
+
 ## What this does not establish
 
-This is not yet a closed spherical lattice. It has no distributed extraordinary
-vertices, no complete coverage proof, no rotated multi-patch loop, no
-persistent Anvil-backed store, and no Minecraft seam collision or client test.
-In particular, a small isolated-chart error cannot be promoted to a global
-lattice claim.
+The closed-topology result still has no full low-distortion embedding proof, no
+adaptive sparse coverage policy, no persistent Anvil-backed store, and no
+Minecraft seam collision or client test. In particular, the small isolated
+chart error and the cube topology audit cannot be promoted to a global metric
+claim. The eight extraordinary vertices need an explicit runtime policy before
+they can be used by a player-facing lattice.
 
-The next Phase 1 experiment is a closed small-sphere quadrilateral mesh with
-explicit extraordinary vertices, arbitrary generation order, and a coverage
-audit. Only after that passes should Phase 2 test save/reload ownership and
-edits across a seam. The existing `tellus:sphere_face` generator remains
-unchanged while these experiments run.
+The next step is Phase 2: persist the canonical IDs and owner decisions,
+reload them, and exercise edits across a seam. Only after that should the
+prototype be connected to real Fabric chunk materialization. The existing
+`tellus:sphere_face` generator remains unchanged while these experiments run.
