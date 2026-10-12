@@ -29,12 +29,24 @@ switching the live generator. The terrain and land-cover readers now also have
 geodetic entry points, and building/road/water readers accept geodetic query
 bounds split at the antimeridian. `SphereChunkSampler` requests one chunk's
 terrain and vector data without converting points back into projected Minecraft
-block coordinates. Source-cache tests verify date-line interpolation and vector
-query behavior; they use synthetic data rather than real-world scene comparisons.
-The existing live generator still uses projected block coordinates. Minecraft
-block materialization and engine address routing have not yet been switched.
+block coordinates. Its prepared chart selects at least the configured expansion
+order and raises it when the chart footprint needs more terms to satisfy the
+error tolerance. This is exercised at world scales 1, 30, and 1000.
+
+Fabric 1.20.1 now registers `SphereFaceChunkGenerator` as `tellus:sphere_face`.
+It fills real Minecraft chunks with radial terrain columns and primes their
+heightmaps. `SphereFaceTopology` maps centered engine coordinates to canonical
+face addresses and resolves cardinal neighbors across six faces. Edge tests
+include corners and check that every transition has exactly one return
+direction. The prototype and its limits are described in
+[`sphere-face-generator.md`](sphere-face-generator.md).
+
+The existing `tellus:earth` generator still uses projected block coordinates.
+The face prototype is selected explicitly by a dimension configuration; it does
+not change existing Earth saves. Source-cache tests use synthetic fixtures, and
+a separate headless scale-1 run has now checked real DEM generation and saving.
 
 The Minecraft engine still stores a flat `ChunkPos`. A complete walkable
-spherical world therefore needs a small address/neighbor adapter for chunk
-loading, entity movement, collision, and rendering. This class does not claim
-to have implemented spherical physics or a globe renderer.
+spherical world still needs the multi-face chunk loader, entity movement hook,
+collision frame changes, and globe rendering. The address adapter alone does
+not make the face edges walkable or render curvature.

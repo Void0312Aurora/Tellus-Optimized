@@ -93,7 +93,7 @@ public final class SphereWorldModel {
     * through {@link #exactSurfacePoint(SphereChunkAddress)} for validation.
     */
    public GeoPoint surfacePoint(SphereChunkAddress address) {
-      return this.surfacePoint(address, this.config.expansionOrder());
+      return this.surfacePoint(address, this.prepareChart(this.chartForChunk(address)).expansionOrder());
    }
 
    public GeoPoint surfacePoint(SphereChunkAddress address, int expansionOrder) {
@@ -109,9 +109,28 @@ public final class SphereWorldModel {
    public GeoPoint surfacePoint(SphereBlockAddress address) {
       Objects.requireNonNull(address, "address");
       ChartKey chart = this.chartForBlock(address.face(), address.blockX(), address.blockZ());
-      GeoPoint anchor = this.chartCenter(chart);
+      return this.surfacePoint(this.prepareChart(chart), address);
+   }
+
+   /** Select the expansion once per chart request, without a global chart cache. */
+   public PreparedChart prepareChart(ChartKey chart) {
+      double footprint = this.chartHalfDiagonalMeters(chart);
+      int order = Math.max(this.config.expansionOrder(), this.recommendedExpansionOrder(chart));
+      double error = this.truncationErrorBoundMeters(footprint, order);
+      if (error > this.config.truncationToleranceMeters()) {
+         throw new IllegalArgumentException("chart is too large for the configured truncation tolerance");
+      }
+      return new PreparedChart(chart, this.chartCenter(chart), order, error);
+   }
+
+   public GeoPoint surfacePoint(PreparedChart chart, SphereBlockAddress address) {
+      Objects.requireNonNull(chart, "chart");
+      Objects.requireNonNull(address, "address");
+      if (!this.chartForBlock(address.face(), address.blockX(), address.blockZ()).equals(chart.key())) {
+         throw new IllegalArgumentException("block does not belong to the prepared chart");
+      }
       GeoPoint exact = this.exactSurfacePoint(address.face(), address.blockX() + 0.5, address.blockZ() + 0.5);
-      return expandFrom(anchor, localOffset(anchor, exact), this.config.expansionOrder());
+      return expandFrom(chart.anchor(), localOffset(chart.anchor(), exact), chart.expansionOrder());
    }
 
    /** Exact cubed-sphere mapping for a chunk center. */
@@ -206,7 +225,13 @@ public final class SphereWorldModel {
    /** Expands a chart-local offset with the configured truncation order. */
    public GeoPoint expand(ChartKey chart, LocalOffset offset) {
       Objects.requireNonNull(chart, "chart");
-      return expandFrom(this.chartCenter(chart), offset, this.config.expansionOrder());
+      Objects.requireNonNull(offset, "offset");
+      double footprint = Math.max(this.chartHalfDiagonalMeters(chart), Math.hypot(offset.eastMeters(), offset.northMeters()));
+      int order = Math.max(this.config.expansionOrder(), this.recommendedExpansionOrderFor(footprint));
+      if (this.truncationErrorBoundMeters(footprint, order) > this.config.truncationToleranceMeters()) {
+         throw new IllegalArgumentException("offset is too large for the configured truncation tolerance");
+      }
+      return expandFrom(this.chartCenter(chart), offset, order);
    }
 
    /** Conservative Taylor remainder bound for a local chart footprint. */
@@ -244,7 +269,10 @@ public final class SphereWorldModel {
 
    /** Selects the smallest order that satisfies the configured tolerance. */
    public int recommendedExpansionOrder(ChartKey chart) {
-      double footprint = this.chartHalfDiagonalMeters(chart);
+      return this.recommendedExpansionOrderFor(this.chartHalfDiagonalMeters(chart));
+   }
+
+   private int recommendedExpansionOrderFor(double footprint) {
       for (int order = 1; order <= MAX_EXPANSION_ORDER; order++) {
          if (this.truncationErrorBoundMeters(footprint, order) <= this.config.truncationToleranceMeters()) {
             return order;
@@ -468,6 +496,17 @@ public final class SphereWorldModel {
 
       public long originBlockZ(int chartSizeBlocks) {
          return Math.multiplyExact(this.z, (long)chartSizeBlocks);
+      }
+   }
+
+   public record PreparedChart(ChartKey key, GeoPoint anchor, int expansionOrder, double errorBoundMeters) {
+      public PreparedChart {
+         Objects.requireNonNull(key, "key");
+         Objects.requireNonNull(anchor, "anchor");
+         if (expansionOrder < 1 || expansionOrder > MAX_EXPANSION_ORDER
+            || !(errorBoundMeters >= 0.0) || !Double.isFinite(errorBoundMeters)) {
+            throw new IllegalArgumentException("invalid prepared chart");
+         }
       }
    }
 

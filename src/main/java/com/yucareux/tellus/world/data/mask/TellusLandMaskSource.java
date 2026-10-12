@@ -13,6 +13,8 @@ import com.yucareux.tellus.platform.TellusPlatform;
 import com.yucareux.tellus.world.data.source.ParallelDownloadRunner;
 import com.yucareux.tellus.world.data.source.MapTileImageValidator;
 import com.yucareux.tellus.worldgen.EarthProjection;
+import com.yucareux.tellus.worldgen.global.SphereWorldModel;
+import com.yucareux.tellus.world.data.geo.WebMercatorTileMath;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -90,6 +92,22 @@ public final class TellusLandMaskSource implements TellusCacheHandle {
 
    public TellusLandMaskSource.LandMaskSample sampleLandMaskLocalOnly(double blockX, double blockZ, double worldScale) {
       return this.sampleLandMask(blockX, blockZ, worldScale, true);
+   }
+
+   /** Direct spherical data lookup; unknown coverage never becomes ocean. */
+   public LandMaskSample sampleLandMask(SphereWorldModel.GeoPoint point, double worldScale) {
+      Objects.requireNonNull(point, "point");
+      if (!this.available || !(worldScale > 0.0) || !Double.isFinite(worldScale)) return LandMaskSample.unknown();
+      int zoom = this.selectZoom(worldScale);
+      var coordinate = WebMercatorTileMath.project(point.longitude(), point.latitude(), zoom, TILE_SIZE);
+      if (coordinate == null) return LandMaskSample.unknown();
+      var key = new TileKey(zoom, coordinate.tileX(), coordinate.tileY());
+      LandMaskTile tile = ManagedTerrainNetworkPolicy.isCacheOnly() ? this.getTileLocalOnly(key) : this.getTile(key);
+      if (tile == null) return LandMaskSample.unknown();
+      if (tile.isEmpty()) return LandMaskSample.known(false);
+      int px = Math.min((int)(coordinate.globalPixelX() - coordinate.tileX() * TILE_SIZE), tile.width() - 1);
+      int py = Math.min((int)(coordinate.globalPixelY() - coordinate.tileY() * TILE_SIZE), tile.height() - 1);
+      return LandMaskSample.known(tile.isLand(px, py));
    }
 
    public TellusLandMaskSource.LandMaskSampler newSampler() {

@@ -95,7 +95,7 @@ public final class TellusWorldgenSources {
 
    /** Creates the spherical data sampler over the same caches as the live generator. */
    public static SphereChunkSampler sphericalSampler(SphereWorldModel model) {
-      return SphereChunkSampler.fromSources(model, ELEVATION, LAND_COVER);
+      return SphereChunkSampler.fromSources(model, ELEVATION, LAND_COVER, LAND_MASK);
    }
 
    static TellusLandCoverSource landCover() {

@@ -36,9 +36,16 @@ pre-generation is required.
 The previous block-coordinate overloads remain the compatibility path for the
 current generator. They still use `EarthProjection`, so this change does not
 silently switch existing worlds to spherical coordinates. The spherical
-generator will call the new sampler once its chunk materializer and engine
-addressing are ready. The sampler does not yet fill Minecraft blocks or route
-chunk loading, player movement, collision, or rendering across sphere faces.
+Fabric 1.20.1 face prototype now calls the sampler through
+`SphereFaceChunkGenerator` and `SphereTerrainMaterializer`. This entry point
+fills Minecraft terrain blocks and heightmaps. Buildings and roads remain
+geodetic feature queries, and chunk loading, player movement, collision, and
+rendering across faces still require engine integration.
+
+`TellusLandMaskSource` also accepts geodetic points. Sea-level water requires
+known ocean membership rather than inferring it from cover class 80 or a
+bathymetry sample. Unknown masks and unresolved inland water levels do not
+invent an ocean surface.
 
 The normalized elevation cache is not used by geodetic overloads. Its key space
 is currently projected block coordinates; enabling it for spherical points
@@ -62,9 +69,10 @@ that target avoids configuring the unrelated Forge plugin:
 ./gradlew -PtellusTargets=mc1201 :mc1201:check --offline --no-daemon
 ```
 
-The full check completed with 612 passing tests and three skipped tests across
-the default and parallel-fill JVMs. Two skips select the opposite executor
-configuration; the third is the opt-in official WorldCover HTTP-range test.
+The full Fabric 1.20.1 build completed with 619 passing tests in the default
+test JVM and five in the parallel-fill JVM, with three skips and zero failures.
+Two skips select the opposite executor configuration; the third is the opt-in
+official WorldCover HTTP-range test.
 
 The focused tests cover five geographical coordinates, scale=1 agreement with
 the legacy interior DEM interpolation, date-line interpolation and vector
@@ -72,5 +80,6 @@ queries, bathymetry/fallback selection, polar missing-data status, chunk query
 envelopes at face edges, sub-metre chart round trips, and continuous cover noise.
 Raster and vector fixtures are synthetic cached data, and the chunk field is
 analytic. These tests verify coordinate/data behavior, not real scenery quality
-or gameplay. Other Minecraft targets and an in-game spherical world have not
-been validated by these checks.
+or gameplay. The face generator adds tests against real Minecraft `ProtoChunk`
+blocks and a separate real DEM server smoke test. Other Minecraft targets,
+cross-face movement, and global curvature rendering have not been validated.

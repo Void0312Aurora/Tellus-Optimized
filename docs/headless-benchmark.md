@@ -16,6 +16,12 @@ parallel settings as JSON under `run/tellus/benchmarks/`. With
 The command is not available to normal users unless the benchmark property is
 explicitly enabled.
 
+For isolated generator tests on Fabric 1.20.1, the runner accepts `--run-dir`,
+`--dimension namespace:path`, and `--world-type minecraft:flat`. It executes the
+benchmark in that dimension and records the generator class, dimension, Git
+revision, and whether the worktree contained uncommitted changes. The explicit
+run directory keeps these tests separate from the regular save and cache.
+
 The batch runner is:
 
 ```text

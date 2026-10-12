@@ -3,6 +3,7 @@ package com.yucareux.tellus.world.data.elevation;
 import com.google.common.cache.Cache;
 import com.yucareux.tellus.integration.distant_horizons.managed.ManagedTerrainNetworkPolicy;
 import com.yucareux.tellus.world.data.geo.WebMercatorTileMath;
+import com.yucareux.tellus.world.data.mask.TellusLandMaskSource;
 import com.yucareux.tellus.worldgen.EarthProjection;
 import com.yucareux.tellus.worldgen.global.SphereWorldModel;
 import java.lang.reflect.Constructor;
@@ -105,6 +106,37 @@ class TellusGeodeticElevationTest {
          var sample = source.sampleResolvedPreviewElevationMetersMemoryOnly(point, 1.0, false, 1.0);
          assertTrue(Double.isNaN(sample.elevationMeters()));
          assertFalse(sample.mapterhornAvailable());
+      }
+   }
+
+   @Test
+   void geodeticLandMaskWrapsTheDateLineAndPreservesUnknownPolarCoverage() throws Exception {
+      var source = new TellusLandMaskSource();
+      for (var entry : java.util.Map.of("available", true, "minZoom", 2, "maxZoom", 2).entrySet()) {
+         var field = TellusLandMaskSource.class.getDeclaredField(entry.getKey());
+         field.setAccessible(true);
+         field.set(source, entry.getValue());
+      }
+      Class<?> key = Class.forName(TellusLandMaskSource.class.getName() + "$TileKey");
+      Constructor<?> keyConstructor = key.getDeclaredConstructor(int.class, int.class, int.class);
+      keyConstructor.setAccessible(true);
+      Class<?> tile = Class.forName(TellusLandMaskSource.class.getName() + "$LandMaskTile");
+      Constructor<?> tileConstructor = tile.getDeclaredConstructor(int.class, int.class, byte[].class, boolean.class);
+      tileConstructor.setAccessible(true);
+      byte[] land = new byte[256 * 256];
+      java.util.Arrays.fill(land, (byte)1);
+      var field = TellusLandMaskSource.class.getDeclaredField("cache");
+      field.setAccessible(true);
+      @SuppressWarnings("unchecked")
+      Cache<Object, Object> cache = (Cache<Object, Object>)field.get(source);
+      cache.put(keyConstructor.newInstance(2, 3, 1), tileConstructor.newInstance(256, 256, land, false));
+      cache.put(keyConstructor.newInstance(2, 0, 1), tileConstructor.newInstance(256, 256, new byte[land.length], false));
+      try (var ignored = ManagedTerrainNetworkPolicy.cacheOnly()) {
+         assertEquals(TellusLandMaskSource.LandMaskSample.known(true),
+            source.sampleLandMask(new SphereWorldModel.GeoPoint(20.0, 179.99, 0.0), 1.0));
+         assertEquals(TellusLandMaskSource.LandMaskSample.known(false),
+            source.sampleLandMask(new SphereWorldModel.GeoPoint(20.0, 180.0, 0.0), 1.0));
+         assertFalse(source.sampleLandMask(new SphereWorldModel.GeoPoint(90.0, 0.0, 0.0), 1.0).known());
       }
    }
 

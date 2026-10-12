@@ -4,6 +4,8 @@ import com.yucareux.tellus.worldgen.global.SphereWorldModel;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class SphereWorldModelTest {
@@ -95,6 +97,58 @@ class SphereWorldModelTest {
          assertEquals(offset.eastMeters(), recovered.eastMeters(), 1.0E-7);
          assertEquals(offset.northMeters(), recovered.northMeters(), 1.0E-7);
       }
+   }
+
+   @Test
+   void preparedChartsRaiseTheOrderWhenLargeScaleNeedsIt() {
+      for (double scale : new double[]{1.0, 30.0, 1000.0}) {
+         var model = SphereWorldModel.forWorldScale(scale);
+         for (int face = 0; face < 6; face++) {
+            long last = model.config().faceBlocks() - 1L;
+            for (long x : new long[]{0, last / 2, last}) {
+               var block = new SphereWorldModel.SphereBlockAddress(face, x, last);
+               var chart = model.prepareChart(model.chartForBlock(face, x, last));
+               assertTrue(chart.errorBoundMeters() <= model.config().truncationToleranceMeters());
+               if (scale == 1000.0) assertTrue(chart.expansionOrder() > 3);
+               assertTrue(SphereWorldModel.greatCircleDistanceMeters(model.surfacePoint(chart, block),
+                  model.exactSurfacePoint(face, x + 0.5, last + 0.5)) <= model.config().truncationToleranceMeters());
+               var exact = model.exactSurfacePoint(face, x + 0.5, last + 0.5);
+               assertTrue(SphereWorldModel.greatCircleDistanceMeters(model.expand(chart.key(),
+                  model.localOffset(chart.key(), exact)), exact) <= model.config().truncationToleranceMeters());
+            }
+         }
+      }
+   }
+
+   @Test
+   void faceTopologyMapsEngineCoordinatesAndEveryFaceEdge() {
+      var topology = new com.yucareux.tellus.worldgen.global.SphereFaceTopology(MODEL);
+      long last = MODEL.chunksPerFace() - 1L;
+      long half = MODEL.chunksPerFace() / 2L;
+      for (int face = 0; face < SphereWorldModel.FACE_COUNT; face++) {
+         var center = topology.address(face, 0, 0);
+         assertEquals(face, topology.engineCoordinate(center).face());
+         assertEquals(0, topology.engineCoordinate(center).chunkX());
+         assertEquals(0, topology.engineCoordinate(center).chunkZ());
+         assertEquals(new SphereWorldModel.SphereChunkAddress(face, half + 1, half), topology.neighbor(center, 1, 0));
+         assertEquals(new SphereWorldModel.SphereChunkAddress(face, half - 1, half), topology.neighbor(center, -1, 0));
+         assertEquals(new SphereWorldModel.SphereChunkAddress(face, half, half + 1), topology.neighbor(center, 0, 1));
+         assertEquals(new SphereWorldModel.SphereChunkAddress(face, half, half - 1), topology.neighbor(center, 0, -1));
+         for (var edge : new SphereWorldModel.SphereChunkAddress[]{
+            new SphereWorldModel.SphereChunkAddress(face, 0, half),
+            new SphereWorldModel.SphereChunkAddress(face, last, half),
+            new SphereWorldModel.SphereChunkAddress(face, half, 0),
+            new SphereWorldModel.SphereChunkAddress(face, half, last)
+         }) {
+            int dx = edge.chunkX() == 0 ? -1 : edge.chunkX() == last ? 1 : 0;
+            int dz = edge.chunkZ() == 0 ? -1 : edge.chunkZ() == last ? 1 : 0;
+            var neighbor = topology.neighbor(edge, dx, dz);
+            assertNotEquals(face, neighbor.face(), "edge must transition to another face");
+            assertTrue(neighbor.chunkX() >= 0 && neighbor.chunkX() <= last);
+            assertTrue(neighbor.chunkZ() >= 0 && neighbor.chunkZ() <= last);
+         }
+      }
+      assertThrows(IllegalArgumentException.class, () -> topology.address(0, half, 0));
    }
 
    private static double longitudeDelta(double first, double second) {
