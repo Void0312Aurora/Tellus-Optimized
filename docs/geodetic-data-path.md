@@ -69,8 +69,9 @@ that target avoids configuring the unrelated Forge plugin:
 ./gradlew -PtellusTargets=mc1201 :mc1201:check --offline --no-daemon
 ```
 
-The full Fabric 1.20.1 build completed with 619 passing tests in the default
-test JVM and five in the parallel-fill JVM, with three skips and zero failures.
+The full Fabric 1.20.1 build completed with 621 passing tests in the default
+test JVM and six in the parallel-fill JVM, for 627 passing tests total, with
+three skips and zero failures.
 Two skips select the opposite executor configuration; the third is the opt-in
 official WorldCover HTTP-range test.
 

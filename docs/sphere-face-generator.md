@@ -69,7 +69,7 @@ or automatic save conversion at this stage.
 ./gradlew -PtellusTargets=mc1201 :mc1201:build --offline --no-daemon
 ```
 
-The final build completed with 624 passing tests, three skips, and no failures
+The final build completed with 627 passing tests, three skips, and no failures
 across the ordinary and parallel-fill test JVMs. The installable Fabric jar is
 produced under `mc1201/build/libs/`.
 
