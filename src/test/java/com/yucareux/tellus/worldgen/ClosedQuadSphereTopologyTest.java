@@ -33,6 +33,8 @@ class ClosedQuadSphereTopologyTest {
       assertEquals(0, audit.otherDegreeVertices());
       assertEquals(8, audit.defectSum());
       assertEquals(2, audit.eulerCharacteristic());
+      assertEquals(audit.edges(), topology.edges().size());
+      for (var edge : topology.edges()) assertTrue(edge.first().compareTo(edge.second()) < 0);
       for (var cell : topology.cells()) {
          for (var direction : ClosedQuadSphereTopology.EdgeDirection.values()) {
             var destination = topology.neighbor(cell, direction);

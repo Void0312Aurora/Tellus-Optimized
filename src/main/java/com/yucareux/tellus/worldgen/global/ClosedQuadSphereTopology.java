@@ -122,6 +122,16 @@ public final class ClosedQuadSphereTopology {
    }
    public List<FaceVertex> uses(VertexKey vertex) { return this.vertexUses.getOrDefault(vertex, List.of()); }
    public Set<VertexKey> vertices() { return this.vertexNeighbors.keySet(); }
+   public List<EdgeKey> edges() {
+      Set<EdgeKey> result = new HashSet<>();
+      for (CellId cell : this.cells) {
+         List<VertexKey> vertices = this.vertices(cell);
+         for (int index = 0; index < 4; index++) {
+            result.add(new EdgeKey(vertices.get(index), vertices.get((index + 1) % 4)));
+         }
+      }
+      return result.stream().sorted().toList();
+   }
 
    public CellId neighbor(CellId cell, EdgeDirection direction) {
       CellId result = this.neighbors.get(new DirectedEdge(Objects.requireNonNull(cell, "cell"), direction));
@@ -215,13 +225,18 @@ public final class ClosedQuadSphereTopology {
 
    private record EdgeUse(CellId cell, EdgeDirection direction) { }
    private record DirectedEdge(CellId cell, EdgeDirection direction) { }
-   private record EdgeKey(VertexKey first, VertexKey second) {
-      EdgeKey {
+   public record EdgeKey(VertexKey first, VertexKey second) implements Comparable<EdgeKey> {
+      public EdgeKey {
          if (first.compareTo(second) > 0) {
             VertexKey swap = first;
             first = second;
             second = swap;
          }
+      }
+
+      @Override public int compareTo(EdgeKey other) {
+         int result = this.first.compareTo(other.first);
+         return result == 0 ? this.second.compareTo(other.second) : result;
       }
    }
 }
