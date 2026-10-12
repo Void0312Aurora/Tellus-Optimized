@@ -103,7 +103,22 @@ chart error and the cube topology audit cannot be promoted to a global metric
 claim. The eight extraordinary vertices need an explicit runtime policy before
 they can be used by a player-facing lattice.
 
-The next step is Phase 2: persist the canonical IDs and owner decisions,
-reload them, and exercise edits across a seam. Only after that should the
-prototype be connected to real Fabric chunk materialization. The existing
-`tellus:sphere_face` generator remains unchanged while these experiments run.
+## Phase 2 persistence check
+
+`SphericalLatticePersistence` adds a versioned, deterministic research
+snapshot. It stores the grid version, sorted patch descriptors, reciprocal
+boundary links, sampled owner decisions, and edited `BlockID`s. Encoding sorts
+all records by their canonical keys, so patch/link/edit insertion order cannot
+change the bytes. Decoding reconstructs the atlas and recomputes every stored
+owner decision before returning the snapshot; unknown patch IDs, duplicate
+edits, bad counts, trailing bytes, and a bad magic value are rejected.
+
+The executable check uses two adjacent stereographic patches and edits cells on
+both sides of their shared edge. A round trip preserves the IDs, owner results,
+vertical `k` values, and reciprocal cross-seam neighbor. This proves only the
+prototype's identity and persistence contract. It is not yet an Anvil region
+layout, a crash-safe commit protocol, or a Minecraft chunk migration.
+
+The existing `tellus:sphere_face` generator remains unchanged while these
+experiments run. Phase 3 still has to define sparse demand materialization,
+extraordinary-vertex runtime behavior, and a real Fabric integration test.

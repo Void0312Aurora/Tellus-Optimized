@@ -325,6 +325,13 @@ public final class SphericalLatticePrototype {
          return this.patches.values().stream().sorted(Comparator.comparing(PatchDescriptor::key)).toList();
       }
 
+      public List<BoundaryLink> boundaryLinks() {
+         return this.links.values().stream()
+            .sorted(Comparator.comparing(BoundaryLink::source).thenComparing(BoundaryLink::sourceEdge)
+               .thenComparing(BoundaryLink::target).thenComparing(BoundaryLink::targetEdge))
+            .toList();
+      }
+
       public PatchDescriptor patch(PatchKey key) {
          return Objects.requireNonNull(this.patches.get(key), "unknown patch");
       }
