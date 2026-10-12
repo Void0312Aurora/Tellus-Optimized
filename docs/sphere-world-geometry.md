@@ -46,7 +46,16 @@ The face prototype is selected explicitly by a dimension configuration; it does
 not change existing Earth saves. Source-cache tests use synthetic fixtures, and
 a separate headless scale-1 run has now checked real DEM generation and saving.
 
-The Minecraft engine still stores a flat `ChunkPos`. A complete walkable
-spherical world still needs the multi-face chunk loader, entity movement hook,
-collision frame changes, and globe rendering. The address adapter alone does
-not make the face edges walkable or render curvature.
+Fabric 1.20.1 now also connects six explicitly grouped face dimensions with
+`SphereFaceRuntime`. Continuous chart transitions preserve fractional spherical
+position and transport the coordinate velocity/yaw using an analytic Jacobian.
+Destination chunks load asynchronously before an unmounted player changes
+dimension. A headless real-data server check has exercised the engine player
+transfer in both directions, without a connected client.
+
+The Minecraft engine still stores a flat `ChunkPos`. Local collision and input
+physics still use Minecraft's flat metric, and the renderer does not display an
+adjacent face before a dimension change. Full spherical gameplay needs
+cross-edge collision/frame work, client movement validation, globe rendering,
+and vertical storage covering the complete scale-1 elevation range. The current
+runtime can pause at an edge while a cold destination loads.

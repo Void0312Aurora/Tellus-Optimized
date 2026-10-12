@@ -162,7 +162,7 @@ class SphereFaceChunkGeneratorTest {
 
    @Test
    void codecPreservesFaceScaleAndVerticalConfigurationAndRejectsUnknownGeometry() {
-      var generator = new SphereFaceChunkGenerator(new FixedBiomeSource(plains), 5, 1.0, 100, -128, 512);
+      var generator = new SphereFaceChunkGenerator(new FixedBiomeSource(plains), 5, 1.0, 100, -128, 512, "tellus:test_earth");
       var ops = RegistryOps.create(JsonOps.INSTANCE, HolderLookup.Provider.create(java.util.stream.Stream.of(registry.asLookup())));
       JsonObject encoded = SphereFaceChunkGenerator.CODEC.encodeStart(ops, generator).getOrThrow(false, fail -> fail(fail)).getAsJsonObject();
       var restored = SphereFaceChunkGenerator.CODEC.parse(ops, encoded).getOrThrow(false, fail -> fail(fail));
@@ -171,11 +171,32 @@ class SphereFaceChunkGeneratorTest {
       assertEquals(-128, restored.getMinY());
       assertEquals(512, restored.getGenDepth());
       assertEquals(100, restored.getSeaLevel());
+      assertEquals("tellus:test_earth", restored.planet());
+      encoded.remove("planet");
+      assertEquals("", SphereFaceChunkGenerator.CODEC.parse(ops, encoded).getOrThrow(false, fail -> fail(fail)).planet());
       assertEquals(generator.address(new ChunkPos(-1, 4)), restored.address(new ChunkPos(-1, 4)));
       encoded.addProperty("geometry_version", 2);
       assertTrue(SphereFaceChunkGenerator.CODEC.parse(ops, encoded).error().isPresent());
       assertThrows(IllegalArgumentException.class,
          () -> new SphereFaceChunkGenerator(new FixedBiomeSource(plains), 0, 1.0, 64, -63, 384));
+      assertThrows(IllegalArgumentException.class,
+         () -> new SphereFaceChunkGenerator(new FixedBiomeSource(plains), 0, 1.0, 64, -64, 384, "bad planet"));
+      assertThrows(IllegalArgumentException.class,
+         () -> new SphereFaceChunkGenerator(new FixedBiomeSource(plains), 0, 1.0, 64, -64, 384, "unnamespaced"));
+   }
+
+   @Test
+   void groupedFacesMustShareScaleAndRadialHeightConfiguration() {
+      var first = new SphereFaceChunkGenerator(new FixedBiomeSource(plains), 0, 1, 64, -64, 384, "tellus:a");
+      assertTrue(SphereFaceRuntime.sameGeometry(first,
+         new SphereFaceChunkGenerator(new FixedBiomeSource(plains), 1, 1, 64, -64, 384, "tellus:a")));
+      for (var other : new SphereFaceChunkGenerator[]{
+         new SphereFaceChunkGenerator(new FixedBiomeSource(plains), 1, 30, 64, -64, 384, "tellus:a"),
+         new SphereFaceChunkGenerator(new FixedBiomeSource(plains), 1, 1, 65, -64, 384, "tellus:a"),
+         new SphereFaceChunkGenerator(new FixedBiomeSource(plains), 1, 1, 64, -128, 384, "tellus:a"),
+         new SphereFaceChunkGenerator(new FixedBiomeSource(plains), 1, 1, 64, -64, 512, "tellus:a")}) {
+         assertFalse(SphereFaceRuntime.sameGeometry(first, other));
+      }
    }
 
    @Test

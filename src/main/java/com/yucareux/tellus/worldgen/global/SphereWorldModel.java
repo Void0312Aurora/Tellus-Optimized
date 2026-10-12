@@ -152,6 +152,88 @@ public final class SphereWorldModel {
       return fromVector(faceVector(face, u, v), 0.0);
    }
 
+   /**
+    * Continue a face chart beyond an edge on its front hemisphere. This is a
+    * continuous entity coordinate, not a block-cell lookup. The open bounds
+    * exclude the tangent singularities at +/- pi/2.
+    */
+   public GeoPoint continuedSurfacePoint(int face, double blockX, double blockZ) {
+      validateFace(face);
+      double size = this.config.faceBlocks();
+      if (!Double.isFinite(blockX) || !Double.isFinite(blockZ)
+         || blockX <= -size * 0.5 || blockX >= size * 1.5
+         || blockZ <= -size * 0.5 || blockZ >= size * 1.5) {
+         throw new IllegalArgumentException("coordinate is outside the face's front hemisphere");
+      }
+      return fromVector(faceVector(face, blockToFaceCoordinate(blockX, this.config.faceBlocks()),
+         blockToFaceCoordinate(blockZ, this.config.faceBlocks())), 0.0);
+   }
+
+   /** Own a spherical point without rounding its fractional block coordinate. */
+   public ContinuousFaceCoordinate continuousForGeo(GeoPoint point) {
+      Objects.requireNonNull(point, "point");
+      return continuousCoordinate(faceUv(toVector(point)));
+   }
+
+   /**
+    * Re-own a continued face coordinate and transport horizontal coordinate
+    * vectors with the analytic differential of the chart change. This preserves
+    * the ECEF tangent vector; it need not preserve its flat x/z Euclidean norm.
+    */
+   public FaceTransition transition(int face, double blockX, double blockZ) {
+      // Validate before evaluating tangent functions.
+      this.continuedSurfacePoint(face, blockX, blockZ);
+      double u = blockToFaceCoordinate(blockX, this.config.faceBlocks());
+      double v = blockToFaceCoordinate(blockZ, this.config.faceBlocks());
+      FaceUv destinationUv = faceUv(faceVector(face, u, v));
+      ContinuousFaceCoordinate destination = continuousCoordinate(destinationUv);
+      TangentBasis sourceBasis = faceBasis(face, u, v);
+      TangentBasis targetBasis = faceBasis(destination.face(), destinationUv.u(), destinationUv.v());
+      double xx = targetBasis.x().dot(targetBasis.x());
+      double xz = targetBasis.x().dot(targetBasis.z());
+      double zz = targetBasis.z().dot(targetBasis.z());
+      double determinant = xx * zz - xz * xz;
+      double sxX = targetBasis.x().dot(sourceBasis.x());
+      double szX = targetBasis.z().dot(sourceBasis.x());
+      double sxZ = targetBasis.x().dot(sourceBasis.z());
+      double szZ = targetBasis.z().dot(sourceBasis.z());
+      return new FaceTransition(destination,
+         (zz * sxX - xz * szX) / determinant,
+         (zz * sxZ - xz * szZ) / determinant,
+         (xx * szX - xz * sxX) / determinant,
+         (xx * szZ - xz * sxZ) / determinant);
+   }
+
+   private ContinuousFaceCoordinate continuousCoordinate(FaceUv coordinate) {
+      double size = this.config.faceBlocks();
+      return new ContinuousFaceCoordinate(coordinate.face(),
+         clamp((coordinate.u() + 1.0) * 0.5 * size, 0.0, size),
+         clamp((coordinate.v() + 1.0) * 0.5 * size, 0.0, size));
+   }
+
+   private TangentBasis faceBasis(int face, double u, double v) {
+      double a = Math.tan(u * HALF_FACE_ANGLE), b = Math.tan(v * HALF_FACE_ANGLE);
+      Vector3 ray;
+      Vector3 da;
+      Vector3 db;
+      switch (face) {
+         case 0 -> { ray = new Vector3(1, b, -a); da = new Vector3(0, 0, -1); db = new Vector3(0, 1, 0); }
+         case 1 -> { ray = new Vector3(-1, b, a); da = new Vector3(0, 0, 1); db = new Vector3(0, 1, 0); }
+         case 2 -> { ray = new Vector3(a, 1, -b); da = new Vector3(1, 0, 0); db = new Vector3(0, 0, -1); }
+         case 3 -> { ray = new Vector3(a, -1, b); da = new Vector3(1, 0, 0); db = new Vector3(0, 0, 1); }
+         case 4 -> { ray = new Vector3(a, b, 1); da = new Vector3(1, 0, 0); db = new Vector3(0, 1, 0); }
+         case 5 -> { ray = new Vector3(-a, b, -1); da = new Vector3(-1, 0, 0); db = new Vector3(0, 1, 0); }
+         default -> throw new IllegalArgumentException("face");
+      }
+      Vector3 normal = ray.normalized();
+      double anglePerBlock = Math.PI * 0.5 / this.config.faceBlocks();
+      Vector3 dx = da.scale((1 + a * a) * anglePerBlock);
+      Vector3 dz = db.scale((1 + b * b) * anglePerBlock);
+      return new TangentBasis(
+         dx.subtract(normal.scale(normal.dot(dx))).scale(1.0 / ray.length()),
+         dz.subtract(normal.scale(normal.dot(dz))).scale(1.0 / ray.length()));
+   }
+
    /** Maps a geodetic point to its owning face and block cell. */
    public SphereBlockAddress blockForGeo(GeoPoint point) {
       FaceCoordinate coordinate = this.faceCoordinate(point);
@@ -522,6 +604,25 @@ public final class SphereWorldModel {
 
    public record SphereBlockAddress(int face, long blockX, long blockZ) {
    }
+
+   public record ContinuousFaceCoordinate(int face, double blockX, double blockZ) { }
+
+   public record HorizontalVector(double x, double z) { }
+
+   public record FaceTransition(ContinuousFaceCoordinate destination, double xx, double xz, double zx, double zz) {
+      public HorizontalVector transport(double x, double z) {
+         return new HorizontalVector(this.xx * x + this.xz * z, this.zx * x + this.zz * z);
+      }
+
+      /** Minecraft yaw: zero faces +Z, positive yaw turns toward -X. */
+      public float transportYaw(float yawDegrees) {
+         double yaw = Math.toRadians(yawDegrees);
+         HorizontalVector direction = this.transport(-Math.sin(yaw), Math.cos(yaw));
+         return (float)Math.toDegrees(Math.atan2(-direction.x(), direction.z()));
+      }
+   }
+
+   private record TangentBasis(Vector3 x, Vector3 z) { }
 
    public record GeoPoint(double latitude, double longitude, double elevationMeters) {
       public GeoPoint {

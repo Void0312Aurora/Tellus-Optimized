@@ -7,6 +7,7 @@ import com.yucareux.tellus.platform.FabricTellusRuntimePlatform;
 import com.yucareux.tellus.worldgen.EarthBiomeSource;
 import com.yucareux.tellus.worldgen.EarthChunkGenerator;
 import com.yucareux.tellus.worldgen.SphereFaceChunkGenerator;
+import com.yucareux.tellus.worldgen.SphereFaceRuntime;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.core.Registry;
@@ -34,5 +35,6 @@ public final class Tellus extends TellusCommon implements ModInitializer {
          (payload, player, responseSender) -> TellusCommon.handleManagedTerrainView(payload, player)
       );
       TellusCommon.initializeRuntime(new FabricTellusRuntimePlatform());
+      SphereFaceRuntime.register();
    }
 }
