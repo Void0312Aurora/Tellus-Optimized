@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class SparseLatticeMaterializerTest {
@@ -59,6 +60,15 @@ class SparseLatticeMaterializerTest {
       assertEquals(2, materializer.size());
    }
 
+   @Test
+   void directRequestsRejectGhostCellsInAnOverlappingPatch() {
+      var materializer = new SparseLatticeMaterializer(overlappingAtlas(), SparseLatticeMaterializerTest::generate);
+      var ghost = materializer.atlas().patch(new SphericalLatticePrototype.PatchKey(0, 1, 0)).cell(1, 1, 0);
+
+      assertFalse(materializer.atlas().isCanonical(ghost));
+      assertThrows(IllegalArgumentException.class, () -> materializer.request(ghost));
+   }
+
    private static SparseLatticeMaterializer.CellData generate(SphericalLatticePrototype.BlockId id) {
       int state = Math.floorMod((int)(id.patch().x() * 31 + id.patch().y() * 17
          + id.i() * 7 + id.j() * 3 + id.k()), 256);
@@ -73,6 +83,12 @@ class SparseLatticeMaterializerTest {
             east.key(), SphericalLatticePrototype.Edge.WEST, false),
          new SphericalLatticePrototype.BoundaryLink(east.key(), SphericalLatticePrototype.Edge.WEST,
             west.key(), SphericalLatticePrototype.Edge.EAST, false)));
+   }
+
+   private static SphericalLatticePrototype.Atlas overlappingAtlas() {
+      var first = patch(0, 0);
+      var second = patch(1, 0);
+      return new SphericalLatticePrototype.Atlas(List.of(first, second), List.of());
    }
 
    private static SphericalLatticePrototype.PatchDescriptor patch(long x, double east) {

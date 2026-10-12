@@ -3,9 +3,11 @@ package com.yucareux.tellus.worldgen.global;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 /**
  * Standalone RFC Phase 0/1 prototype. It defines persistent patch/cell
@@ -287,6 +289,8 @@ public final class SphericalLatticePrototype {
       private final GridVersion grid;
       private final Map<PatchKey, PatchDescriptor> patches;
       private final Map<BoundaryKey, BoundaryLink> links;
+      private final Map<LocatorBucket, List<PatchKey>> locator;
+      private final List<PatchKey> broadPatches;
 
       public Atlas(List<PatchDescriptor> descriptors, List<BoundaryLink> boundaryLinks) {
          if (descriptors == null || descriptors.isEmpty()) throw new IllegalArgumentException("patches");
@@ -317,6 +321,9 @@ public final class SphericalLatticePrototype {
                throw new IllegalArgumentException("boundary links must be reciprocal: " + link);
             }
          }
+         this.locator = new HashMap<>();
+         this.broadPatches = new ArrayList<>();
+         this.buildLocator();
       }
 
       public GridVersion grid() { return this.grid; }
@@ -336,9 +343,29 @@ public final class SphericalLatticePrototype {
          return Objects.requireNonNull(this.patches.get(key), "unknown patch");
       }
 
+      /**
+       * Returns the canonical owner of a direct cell identity under the
+       * prototype's center-ownership rule. Overlapping non-owner cells are
+       * therefore explicit ghosts and cannot be treated as mutable cells.
+       */
+      public BlockId canonical(BlockId cell) {
+         Objects.requireNonNull(cell, "cell");
+         if (!this.grid.equals(cell.grid())) throw new IllegalArgumentException("mixed grid versions");
+         PatchDescriptor patch = this.patch(cell.patch());
+         patch.cell(cell.i(), cell.j(), cell.k());
+         BlockId owner = this.owner(patch.cellCenter(cell.i(), cell.j()));
+         return new BlockId(this.grid, owner.patch(), owner.i(), owner.j(), cell.k());
+      }
+
+      public boolean isCanonical(BlockId cell) {
+         return Objects.requireNonNull(cell, "cell").equals(this.canonical(cell));
+      }
+
       public BlockId owner(SphereWorldModel.GeoPoint point) {
-         return this.patches.values().stream()
-            .filter(patch -> contains(patch, point))
+         Objects.requireNonNull(point, "point");
+         return this.candidatePatches(point).stream()
+            .map(this.patches::get)
+            .filter(patch -> withinCap(patch, point) && contains(patch, point))
             .min(Comparator.comparing(PatchDescriptor::key))
             .map(patch -> {
                ChartCoordinate offset = patch.localCoordinates(point);
@@ -351,8 +378,14 @@ public final class SphericalLatticePrototype {
             }).orElseThrow(() -> new IllegalArgumentException("point is outside finite atlas"));
       }
 
+      /** Number of coarse-index candidates before exact chart containment. */
+      public int candidatePatchCount(SphereWorldModel.GeoPoint point) {
+         return this.candidatePatches(Objects.requireNonNull(point, "point")).size();
+      }
+
       public BlockId neighbor(BlockId cell, int dx, int dz) {
          if (Math.abs(dx) + Math.abs(dz) != 1) throw new IllegalArgumentException("cardinal neighbor only");
+         if (!this.isCanonical(cell)) throw new IllegalArgumentException("noncanonical cell has no mutable neighbor");
          PatchDescriptor patch = this.patch(cell.patch());
          long i = cell.i() + dx, j = cell.j() + dz;
          if (i >= 0 && j >= 0 && i < patch.cellsPerSide() && j < patch.cellsPerSide()) {
@@ -371,9 +404,88 @@ public final class SphericalLatticePrototype {
       }
 
       private static boolean contains(PatchDescriptor patch, SphereWorldModel.GeoPoint point) {
-         ChartCoordinate offset = patch.localCoordinates(point);
+         ChartCoordinate offset;
+         try {
+            offset = patch.localCoordinates(point);
+         } catch (IllegalArgumentException outsideChart) {
+            return false;
+         }
          return Math.abs(offset.eastMeters()) <= patch.halfSideMeters() + EPSILON_METERS
             && Math.abs(offset.northMeters()) <= patch.halfSideMeters() + EPSILON_METERS;
+      }
+
+      private void buildLocator() {
+         for (PatchDescriptor patch : this.patches.values()) {
+            double radiusDegrees = Math.toDegrees(
+               (patch.sideMeters() / Math.sqrt(2.0) + EPSILON_METERS) / SphereWorldModel.EARTH_RADIUS_METERS);
+            if (radiusDegrees >= 90.0) {
+               this.broadPatches.add(patch.key());
+               continue;
+            }
+            double minLatitude = Math.max(-90.0, patch.anchor().latitude() - radiusDegrees);
+            double maxLatitude = Math.min(90.0, patch.anchor().latitude() + radiusDegrees);
+            int minLatBucket = latitudeBucket(minLatitude);
+            int maxLatBucket = latitudeBucket(maxLatitude);
+            for (int lat = minLatBucket; lat <= maxLatBucket; lat++) {
+               addLongitudeRange(patch.key(), lat, patch.anchor().longitude() - radiusDegrees,
+                  patch.anchor().longitude() + radiusDegrees);
+            }
+         }
+      }
+
+      private void addLongitudeRange(PatchKey key, int latitude, double minimum, double maximum) {
+         double width = maximum - minimum;
+         if (width >= 360.0) {
+            for (int longitude = 0; longitude < LONGITUDE_BUCKETS; longitude++) {
+               this.locator.computeIfAbsent(new LocatorBucket(latitude, longitude), ignored -> new ArrayList<>()).add(key);
+            }
+            return;
+         }
+         while (minimum < -180.0) {
+            minimum += 360.0;
+            maximum += 360.0;
+         }
+         while (minimum >= 180.0) {
+            minimum -= 360.0;
+            maximum -= 360.0;
+         }
+         if (maximum <= 180.0) {
+            addLongitudeSegment(key, latitude, minimum, maximum);
+         } else {
+            addLongitudeSegment(key, latitude, minimum, 180.0);
+            addLongitudeSegment(key, latitude, -180.0, maximum - 360.0);
+         }
+      }
+
+      private void addLongitudeSegment(PatchKey key, int latitude, double minimum, double maximum) {
+         int minBucket = longitudeBucket(Math.max(-180.0, minimum));
+         int maxBucket = longitudeBucket(Math.min(180.0, maximum));
+         for (int longitude = minBucket; longitude <= maxBucket; longitude++) {
+            this.locator.computeIfAbsent(new LocatorBucket(latitude, longitude), ignored -> new ArrayList<>()).add(key);
+         }
+      }
+
+      private List<PatchKey> candidatePatches(SphereWorldModel.GeoPoint point) {
+         Set<PatchKey> candidates = new HashSet<>(this.broadPatches);
+         LocatorBucket bucket = new LocatorBucket(latitudeBucket(point.latitude()), longitudeBucket(point.longitude()));
+         candidates.addAll(this.locator.getOrDefault(bucket, List.of()));
+         return candidates.stream().sorted().toList();
+      }
+
+      private static boolean withinCap(PatchDescriptor patch, SphereWorldModel.GeoPoint point) {
+         double radius = patch.sideMeters() / Math.sqrt(2.0) + EPSILON_METERS;
+         return SphereWorldModel.greatCircleDistanceMeters(patch.anchor(), point) <= radius;
+      }
+
+      private static int latitudeBucket(double latitude) {
+         return Math.max(0, Math.min(LATITUDE_BUCKETS - 1,
+            (int)Math.floor((latitude + 90.0) / LOCATOR_BUCKET_DEGREES)));
+      }
+
+      private static int longitudeBucket(double longitude) {
+         double normalized = longitude == 180.0 ? Math.nextDown(180.0) : longitude;
+         return Math.max(0, Math.min(LONGITUDE_BUCKETS - 1,
+            (int)Math.floor((normalized + 180.0) / LOCATOR_BUCKET_DEGREES)));
       }
    }
 
@@ -391,6 +503,11 @@ public final class SphericalLatticePrototype {
    }
 
    private record BoundaryKey(PatchKey patch, Edge edge) { }
+
+   private static final double LOCATOR_BUCKET_DEGREES = 2.0;
+   private static final int LATITUDE_BUCKETS = (int)(180.0 / LOCATOR_BUCKET_DEGREES);
+   private static final int LONGITUDE_BUCKETS = (int)(360.0 / LOCATOR_BUCKET_DEGREES);
+   private record LocatorBucket(int latitude, int longitude) { }
 
    private record Vector3(double x, double y, double z) {
       static Vector3 from(SphereWorldModel.GeoPoint point) {

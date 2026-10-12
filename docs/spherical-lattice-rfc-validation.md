@@ -137,3 +137,40 @@ This establishes that a global index and demand-driven materialization are
 compatible at the identity layer. It does not establish chunk ticketing,
 eviction, thread scheduling, disk-backed sparse storage, or a player-visible
 Fabric world. Those remain the next integration boundary.
+
+## Review follow-up: seam geometry and direct-ID ownership
+
+The first persistence/materialization fixtures exposed two concrete gaps raised
+in the review. Reciprocal integer boundary links alone do not imply a shared
+physical edge. For the same adjacent 50 km stereographic patches used above,
+sampling the two independently mapped edges gives a maximum endpoint mismatch
+of approximately `0.1925 m`; the local chart's `7.7e-6` scale error does not
+bound this seam error.
+
+`ClosedQuadSphereEmbedding` now audits a connected closed-cube embedding using
+one exact spherical position for every shared vertex and both incident cells'
+continuous edge curves. At 65 samples per edge, the subdivision-5 fixture
+reports vertex and interior-edge mismatch below `1e-7 m`. This is a hard shared
+geometry result for the existing cubed-sphere embedding, not a low-distortion
+result: its measured stretch and angle errors remain the baseline in the Phase 1
+table.
+
+The prototype also now defines direct-ID validity as a center-ownership rule:
+`Atlas.canonical(BlockID)` maps a cell through its patch cell center and rejects
+overlapping non-owner cells as ghosts. Sparse materialization, neighbor lookup,
+and persistence edit capture/restore enforce this rule. It prevents duplicate
+mutable state under the current model, but it is not yet a complete physical
+footprint rule for clipped or transition cells. That rule, a scalable coarse
+atlas locator, and 1 m/16x16 chunk persistence remain open before Fabric seam
+integration.
+
+## Review follow-up: coarse atlas lookup
+
+`Atlas.owner` now uses a 2-degree latitude/longitude coarse locator, a
+conservative spherical-cap filter, and a safe chart-domain check before exact
+inverse coordinates. The regression fixture indexes 182 small patches plus a
+dateline-crossing patch: a point lookup examines fewer than one tenth of the
+registered patches, keeps the same lowest-key owner, resolves the antimeridian,
+and rejects an uncovered point without propagating a stereographic antipode
+exception. This is a correctness and candidate-reduction check, not yet a
+200,000-patch latency benchmark or a distributed hierarchical index.

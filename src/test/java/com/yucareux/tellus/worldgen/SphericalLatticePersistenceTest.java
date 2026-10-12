@@ -65,6 +65,17 @@ class SphericalLatticePersistenceTest {
       assertThrows(IOException.class, () -> SphericalLatticePersistence.decode(corrupted));
    }
 
+   @Test
+   void persistenceRejectsAnEditForAnOverlappingGhostCell() {
+      var first = patch(0, 0);
+      var second = patch(1, 0);
+      var atlas = new SphericalLatticePrototype.Atlas(List.of(first, second), List.of());
+      var ghost = second.cell(1, 1, 0);
+
+      assertThrows(IllegalArgumentException.class, () -> SphericalLatticePersistence.capture(atlas,
+         List.of(point(0)), List.of(new SphericalLatticePersistence.CellEdit(ghost, 1))));
+   }
+
    private static SphericalLatticePrototype.Atlas atlas() {
       var west = patch(0, -25_000);
       var east = patch(1, 25_000);

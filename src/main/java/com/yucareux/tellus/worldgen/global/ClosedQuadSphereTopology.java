@@ -113,6 +113,13 @@ public final class ClosedQuadSphereTopology {
    public int subdivision() { return this.subdivision; }
    public List<CellId> cells() { return this.cells; }
    public List<VertexKey> vertices(CellId cell) { return this.cellVertices.get(Objects.requireNonNull(cell, "cell")); }
+   public List<FaceVertex> faceVertices(CellId cell) {
+      Objects.requireNonNull(cell, "cell");
+      return List.of(new FaceVertex(cell.face(), cell.i(), cell.j()),
+         new FaceVertex(cell.face(), cell.i() + 1, cell.j()),
+         new FaceVertex(cell.face(), cell.i() + 1, cell.j() + 1),
+         new FaceVertex(cell.face(), cell.i(), cell.j() + 1));
+   }
    public List<FaceVertex> uses(VertexKey vertex) { return this.vertexUses.getOrDefault(vertex, List.of()); }
    public Set<VertexKey> vertices() { return this.vertexNeighbors.keySet(); }
 

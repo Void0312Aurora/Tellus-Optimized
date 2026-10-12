@@ -41,6 +41,7 @@ public final class SphericalLatticePersistence {
       Objects.requireNonNull(atlas, "atlas");
       Objects.requireNonNull(ownerPoints, "ownerPoints");
       Objects.requireNonNull(edits, "edits");
+      validateEdits(atlas, edits);
       List<OwnerDecision> owners = ownerPoints.stream()
          .map(point -> new OwnerDecision(point, atlas.owner(point)))
          .sorted(OWNER_ORDER)
@@ -53,6 +54,7 @@ public final class SphericalLatticePersistence {
       Objects.requireNonNull(snapshot, "snapshot");
       Atlas atlas = restoreAtlas(snapshot);
       validateOwners(atlas, snapshot.owners());
+      validateEdits(atlas, snapshot.edits());
       try {
          ByteArrayOutputStream bytes = new ByteArrayOutputStream();
          try (DataOutputStream output = new DataOutputStream(bytes)) {
@@ -100,7 +102,9 @@ public final class SphericalLatticePersistence {
          for (int i = 0; i < editCount; i++) edits.add(new CellEdit(readBlock(input, grid), input.readInt()));
          if (input.read() != -1) throw new IOException("trailing spherical lattice data");
          Snapshot snapshot = new Snapshot(grid, patches, links, owners, edits);
-         validateOwners(restoreAtlas(snapshot), snapshot.owners());
+         Atlas atlas = restoreAtlas(snapshot);
+         validateOwners(atlas, snapshot.owners());
+         validateEdits(atlas, snapshot.edits());
          return snapshot;
       } catch (EOFException | IllegalArgumentException exception) {
          throw new IOException("invalid spherical lattice snapshot", exception);
@@ -116,6 +120,14 @@ public final class SphericalLatticePersistence {
       for (OwnerDecision decision : owners) {
          if (!atlas.owner(decision.point()).equals(decision.owner())) {
             throw new IllegalArgumentException("owner decision does not match canonical atlas: " + decision);
+         }
+      }
+   }
+
+   private static void validateEdits(Atlas atlas, List<CellEdit> edits) {
+      for (CellEdit edit : edits) {
+         if (!atlas.isCanonical(edit.id())) {
+            throw new IllegalArgumentException("edit targets a noncanonical overlap cell: " + edit.id());
          }
       }
    }

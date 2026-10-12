@@ -2,6 +2,7 @@ package com.yucareux.tellus.worldgen;
 
 import com.yucareux.tellus.worldgen.global.SphericalLatticePrototype;
 import com.yucareux.tellus.worldgen.global.SphereWorldModel;
+import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -89,12 +90,36 @@ class SphericalLatticePrototypeTest {
          List.of(west, east), links()).neighbor(patch(0, -25_000, 0).cell(10, 1023, 0), 0, 1));
    }
 
+   @Test
+   void coarseLocatorFiltersDistantPatchesAndHandlesTheDateline() {
+      List<SphericalLatticePrototype.PatchDescriptor> descriptors = new ArrayList<>();
+      for (int index = 0; index <= 180; index++) {
+         double longitude = -180.0 + index * 2.0;
+         descriptors.add(patchAt(index, longitude, 0.0, 10_000));
+      }
+      var dateline = patchAt(1000, 179.9, 0.0, 50_000);
+      descriptors.add(dateline);
+      var atlas = new SphericalLatticePrototype.Atlas(descriptors, List.of());
+
+      var center = new SphereWorldModel.GeoPoint(0.0, 0.0, 0.0);
+      assertTrue(atlas.candidatePatchCount(center) < descriptors.size() / 10);
+      assertEquals(new SphericalLatticePrototype.PatchKey(0, 90, 0), atlas.owner(center).patch());
+      assertEquals(dateline.key(), atlas.owner(new SphereWorldModel.GeoPoint(0.0, -179.9, 0.0)).patch());
+      assertThrows(IllegalArgumentException.class,
+         () -> atlas.owner(new SphereWorldModel.GeoPoint(0.0, 90.5, 0.0)));
+   }
+
    private static SphericalLatticePrototype.PatchDescriptor patch(long x, double east, double north) {
+      return patchAt(x, Math.toDegrees(2.0 * Math.atan(east / (2.0 * EARTH_R))),
+         Math.toDegrees(2.0 * Math.atan(north / (2.0 * EARTH_R))), 50_000);
+   }
+
+   private static SphericalLatticePrototype.PatchDescriptor patchAt(long x, double longitude,
+      double latitude, double sideMeters) {
       return new SphericalLatticePrototype.PatchDescriptor(GRID,
          new SphericalLatticePrototype.PatchKey(0, x, 0),
-         new SphereWorldModel.GeoPoint(Math.toDegrees(2.0 * Math.atan(north / (2.0 * EARTH_R))),
-            Math.toDegrees(2.0 * Math.atan(east / (2.0 * EARTH_R))), 0),
-         50_000, 1024, SphericalLatticePrototype.ChartKind.STEREOGRAPHIC);
+         new SphereWorldModel.GeoPoint(latitude, longitude, 0), sideMeters, 1024,
+         SphericalLatticePrototype.ChartKind.STEREOGRAPHIC);
    }
 
    private static List<SphericalLatticePrototype.BoundaryLink> links() {

@@ -76,6 +76,7 @@ public final class SparseLatticeMaterializer {
       if (!this.atlas.grid().equals(id.grid())) throw new IllegalArgumentException("block belongs to another grid");
       PatchDescriptor patch = this.atlas.patch(id.patch());
       patch.cell(id.i(), id.j(), id.k());
+      if (!this.atlas.isCanonical(id)) throw new IllegalArgumentException("block is a noncanonical overlap cell");
    }
 
    public record CellData(BlockId id, int state) {
