@@ -1,5 +1,7 @@
 package com.yucareux.tellus.world.data.cover;
 
+import com.yucareux.tellus.worldgen.global.SphereWorldModel;
+
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
@@ -160,6 +162,19 @@ final class WorldCoverCogSource {
       double worldScale,
       LookupMode lookupMode
    ) {
+      return this.sampleVisual(lon, lat, effectiveResolutionMeters, blockX, blockZ, worldScale, lookupMode, null);
+   }
+
+   Sample sampleVisual(
+      SphereWorldModel.GeoPoint point, double resolutionMeters, double worldScale, LookupMode mode
+   ) {
+      return this.sampleVisual(point.longitude(), point.latitude(), resolutionMeters, 0.0, 0.0, worldScale, mode, point);
+   }
+
+   private Sample sampleVisual(
+      double lon, double lat, double effectiveResolutionMeters, double blockX, double blockZ,
+      double worldScale, LookupMode lookupMode, SphereWorldModel.GeoPoint sphericalPoint
+   ) {
       SamplePosition center = this.position(lon, lat, effectiveResolutionMeters, lookupMode);
       if (center == null) {
          return Sample.unavailable();
@@ -202,7 +217,7 @@ final class WorldCoverCogSource {
       int value11 = this.sampleVisualOffset(
          center, x1 - center.pixelX(), y1 - center.pixelY(), centerSample.coverClass(), lookupMode
       );
-      int selected = LandCoverTransition.selectVisualClass(
+      int selected = LandCoverTransition.selectVisualClassAtThreshold(
          centerSample.coverClass(),
          value00,
          value10,
@@ -211,9 +226,9 @@ final class WorldCoverCogSource {
          blendX - x0,
          blendY - y0,
          transitionStrength,
-         blockX,
-         blockZ,
-         sourceResolutionMeters / Math.max(worldScale, Double.MIN_NORMAL)
+         sphericalPoint == null
+            ? LandCoverTransition.transitionThreshold(blockX, blockZ, sourceResolutionMeters / Math.max(worldScale, Double.MIN_NORMAL))
+            : LandCoverTransition.sphericalTransitionThreshold(sphericalPoint, worldScale, sourceResolutionMeters)
       );
       return new Sample(selected, true);
    }

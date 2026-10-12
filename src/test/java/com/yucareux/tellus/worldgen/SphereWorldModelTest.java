@@ -78,6 +78,25 @@ class SphereWorldModelTest {
       assertEquals(0.0, SphereWorldModel.greatCircleDistanceMeters(anchor, expanded), 1.0E-9);
    }
 
+   @Test
+   void chunkCenterIsEightBlocksFromItsOrigin() {
+      var chunk = new SphereWorldModel.SphereChunkAddress(0, 100, 100);
+      var expected = MODEL.exactSurfacePoint(0, 1608.0, 1608.0);
+      assertEquals(0.0, SphereWorldModel.greatCircleDistanceMeters(expected, MODEL.exactSurfacePoint(chunk)), 1.0E-9);
+   }
+
+   @Test
+   void logarithmicMapPreservesSubMeterOffsets() {
+      for (double latitude : new double[]{0.0, 45.0, 85.0}) {
+         var anchor = new SphereWorldModel.GeoPoint(latitude, 179.99, 0.0);
+         var offset = new SphereWorldModel.LocalOffset(0.1, 0.2);
+         var point = SphereWorldModel.expandFrom(anchor, offset, 12);
+         var recovered = SphereWorldModel.localOffset(anchor, point);
+         assertEquals(offset.eastMeters(), recovered.eastMeters(), 1.0E-7);
+         assertEquals(offset.northMeters(), recovered.northMeters(), 1.0E-7);
+      }
+   }
+
    private static double longitudeDelta(double first, double second) {
       double delta = (first - second) % 360.0;
       if (delta > 180.0) delta -= 360.0;

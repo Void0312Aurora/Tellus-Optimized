@@ -16,6 +16,8 @@ import com.yucareux.tellus.world.data.osm.TellusOsmInfrastructureSource;
 import com.yucareux.tellus.world.data.osm.TellusOsmRoadSource;
 import com.yucareux.tellus.world.data.osm.TellusOsmSandSource;
 import com.yucareux.tellus.world.data.osm.TellusOsmWaterSource;
+import com.yucareux.tellus.worldgen.global.SphereChunkSampler;
+import com.yucareux.tellus.worldgen.global.SphereWorldModel;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -89,6 +91,11 @@ public final class TellusWorldgenSources {
    private static final ConcurrentMap<EarthGeneratorSettings, WaterSurfaceResolver> WATER_RESOLVERS = new ConcurrentHashMap<>();
 
    private TellusWorldgenSources() {
+   }
+
+   /** Creates the spherical data sampler over the same caches as the live generator. */
+   public static SphereChunkSampler sphericalSampler(SphereWorldModel model) {
+      return SphereChunkSampler.fromSources(model, ELEVATION, LAND_COVER);
    }
 
    static TellusLandCoverSource landCover() {

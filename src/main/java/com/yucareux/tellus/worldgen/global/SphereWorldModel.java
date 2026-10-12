@@ -105,10 +105,19 @@ public final class SphereWorldModel {
       return expandFrom(anchor, offset, expansionOrder);
    }
 
-   /** Exact cubed-sphere mapping for a block cell center. */
+   /** Maps one block-cell center through its owning chart's truncated map. */
+   public GeoPoint surfacePoint(SphereBlockAddress address) {
+      Objects.requireNonNull(address, "address");
+      ChartKey chart = this.chartForBlock(address.face(), address.blockX(), address.blockZ());
+      GeoPoint anchor = this.chartCenter(chart);
+      GeoPoint exact = this.exactSurfacePoint(address.face(), address.blockX() + 0.5, address.blockZ() + 0.5);
+      return expandFrom(anchor, localOffset(anchor, exact), this.config.expansionOrder());
+   }
+
+   /** Exact cubed-sphere mapping for a chunk center. */
    public GeoPoint exactSurfacePoint(SphereChunkAddress address) {
       Objects.requireNonNull(address, "address");
-      return this.exactSurfacePoint(address.face(), address.blockX() + 0.5, address.blockZ() + 0.5);
+      return this.exactSurfacePoint(address.face(), address.blockX() + 8.0, address.blockZ() + 8.0);
    }
 
    /** Exact cubed-sphere mapping for continuous face coordinates. */
@@ -182,7 +191,7 @@ public final class SphereWorldModel {
       Vector3 anchorVector = toVector(anchor);
       Vector3 pointVector = toVector(point);
       double cosine = clamp(anchorVector.dot(pointVector), -1.0, 1.0);
-      double angularDistance = Math.acos(cosine);
+      double angularDistance = Math.atan2(anchorVector.cross(pointVector).length(), cosine);
       if (angularDistance <= EPSILON) {
          return new LocalOffset(0.0, 0.0);
       }

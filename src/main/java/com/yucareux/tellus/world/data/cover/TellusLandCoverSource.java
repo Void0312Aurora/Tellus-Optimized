@@ -273,22 +273,8 @@ public final class TellusLandCoverSource implements TellusCacheHandle {
       double lat = point.latitude();
       double resolutionMeters = effectiveSampleResolutionMeters(worldScale, previewResolutionMeters);
       LookupMode lookupMode = managedLookupMode();
-      // Use a continuous Earth-centred horizontal basis for deterministic
-      // transition noise. Unlike longitude itself, this does not jump at the
-      // antimeridian when two neighboring spherical charts meet there.
-      double latitudeRadians = Math.toRadians(lat);
-      double longitudeRadians = Math.toRadians(lon);
-      double horizontalRadius = SphereWorldModel.EARTH_RADIUS_METERS * Math.cos(latitudeRadians);
-      double localX = horizontalRadius * Math.cos(longitudeRadians) / worldScale;
-      double localZ = horizontalRadius * Math.sin(longitudeRadians) / worldScale;
       WorldCoverCogSource.Sample worldCover = this.worldCoverSource.sampleVisual(
-         lon,
-         lat,
-         resolutionMeters,
-         localX,
-         localZ,
-         worldScale,
-         worldCoverLookupMode(lookupMode)
+         point, resolutionMeters, worldScale, worldCoverLookupMode(lookupMode)
       );
       if (worldCover.available()) {
          return worldCover.coverClass();
@@ -296,7 +282,7 @@ public final class TellusLandCoverSource implements TellusCacheHandle {
 
       int zoom = this.queryZoom(resolutionMeters, lookupMode);
       return this.sampleVisualAtLonLat(
-         lon, lat, zoom, resolutionMeters, localX, localZ, worldScale, lookupMode
+         lon, lat, zoom, resolutionMeters, 0.0, 0.0, worldScale, lookupMode, point
       );
    }
 
@@ -814,6 +800,15 @@ public final class TellusLandCoverSource implements TellusCacheHandle {
       double worldScale,
       LookupMode lookupMode
    ) {
+      return this.sampleVisualAtLonLat(
+         lon, lat, zoom, effectiveResolutionMeters, blockX, blockZ, worldScale, lookupMode, null
+      );
+   }
+
+   private int sampleVisualAtLonLat(
+      double lon, double lat, int zoom, double effectiveResolutionMeters, double blockX, double blockZ,
+      double worldScale, LookupMode lookupMode, SphereWorldModel.GeoPoint sphericalPoint
+   ) {
       TilePosition center = tilePosition(lon, lat, zoom);
       if (center == null) {
          return NO_DATA_CLASS;
@@ -840,7 +835,7 @@ public final class TellusLandCoverSource implements TellusCacheHandle {
       int value10 = visualSampleOrCenter(zoom, x1, y0, lookupMode, centerClass);
       int value01 = visualSampleOrCenter(zoom, x0, y1, lookupMode, centerClass);
       int value11 = visualSampleOrCenter(zoom, x1, y1, lookupMode, centerClass);
-      return LandCoverTransition.selectVisualClass(
+      return LandCoverTransition.selectVisualClassAtThreshold(
          centerClass,
          value00,
          value10,
@@ -849,9 +844,9 @@ public final class TellusLandCoverSource implements TellusCacheHandle {
          blendX - x0,
          blendY - y0,
          transitionStrength,
-         blockX,
-         blockZ,
-         sourceResolutionMeters / Math.max(worldScale, Double.MIN_NORMAL)
+         sphericalPoint == null
+            ? LandCoverTransition.transitionThreshold(blockX, blockZ, sourceResolutionMeters / Math.max(worldScale, Double.MIN_NORMAL))
+            : LandCoverTransition.sphericalTransitionThreshold(sphericalPoint, worldScale, sourceResolutionMeters)
       );
    }
 

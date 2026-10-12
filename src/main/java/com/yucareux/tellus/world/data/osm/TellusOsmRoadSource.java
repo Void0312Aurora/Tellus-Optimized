@@ -16,6 +16,7 @@ import com.yucareux.tellus.integration.distant_horizons.managed.ManagedTerrainNe
 import com.yucareux.tellus.world.data.pmtiles.PmTilesSafety;
 import com.yucareux.tellus.world.data.source.ParallelDownloadRunner;
 import com.yucareux.tellus.worldgen.EarthProjection;
+import com.yucareux.tellus.world.data.geo.GeodeticBounds;
 import io.github.sebasbaumh.mapbox.vectortile.VectorTile.Tile;
 import io.github.sebasbaumh.mapbox.vectortile.VectorTile.Tile.Feature;
 import io.github.sebasbaumh.mapbox.vectortile.VectorTile.Tile.GeomType;
@@ -112,31 +113,54 @@ public final class TellusOsmRoadSource implements TellusCacheHandle {
       this.ensureInitialized();
       if (this.available && !(worldScale <= 0.0)) {
          TellusOsmRoadSource.GeoBounds bounds = geoBoundsForBlockArea(minBlockX, minBlockZ, maxBlockX, maxBlockZ, marginBlocks, worldScale);
-         if (bounds == null) {
-            return new TellusOsmRoadSource.RoadQueryResult(List.of(), false);
-         } else {
-            List<TellusOsmRoadSource.TileKey> keys = tileKeysForBounds(bounds, this.queryZoom);
-            if (keys.isEmpty()) {
-               return new TellusOsmRoadSource.RoadQueryResult(List.of(), false);
-            } else {
-               List<RoadFeature> roads = new ArrayList<>();
-               boolean hadCacheMiss = false;
-
-               for (TellusOsmRoadSource.TileKey key : keys) {
-                  TellusOsmRoadSource.TileLookup lookup = this.getTileLookup(key, mode);
-                  hadCacheMiss |= lookup.cacheMiss();
-                  OverpassRoadTile tile = lookup.tile();
-                  if (!tile.isEmpty()) {
-                     List<RoadFeature> tileFeatures = tile.featuresInBounds(bounds.south(), bounds.west(), bounds.north(), bounds.east());
-                     roads.addAll(tileFeatures);
-                  }
-               }
-
-               return new TellusOsmRoadSource.RoadQueryResult(roads, hadCacheMiss);
-            }
-         }
+         return this.roadsForBoundsWithStatus(bounds, mode);
       } else {
          return new TellusOsmRoadSource.RoadQueryResult(List.of(), false);
+      }
+   }
+
+   /** Queries source geometry directly in latitude/longitude, including date-line crossings. */
+   public RoadQueryResult roadsForGeoAreaWithStatus(GeodeticBounds bounds, OsmQueryMode mode) {
+      java.util.Objects.requireNonNull(bounds, "bounds");
+      this.ensureInitialized();
+      if (!this.available || bounds.mercatorWindows().isEmpty()) {
+         return new RoadQueryResult(List.of(), true);
+      }
+      List<RoadFeature> features = new ArrayList<>();
+      boolean hadCacheMiss = bounds.south() < MIN_LAT || bounds.north() > MAX_LAT;
+      for (GeodeticBounds window : bounds.mercatorWindows()) {
+         RoadQueryResult result = this.roadsForBoundsWithStatus(
+            new GeoBounds(window.south(), window.west(), window.north(), window.east()), mode
+         );
+         features.addAll(result.features());
+         hadCacheMiss |= result.hadCacheMiss();
+      }
+      return new RoadQueryResult(new ArrayList<>(new java.util.LinkedHashSet<>(features)), hadCacheMiss);
+   }
+
+   private RoadQueryResult roadsForBoundsWithStatus(GeoBounds bounds, OsmQueryMode mode) {
+      if (bounds == null) {
+         return new TellusOsmRoadSource.RoadQueryResult(List.of(), false);
+      } else {
+         List<TellusOsmRoadSource.TileKey> keys = tileKeysForBounds(bounds, this.queryZoom);
+         if (keys.isEmpty()) {
+            return new TellusOsmRoadSource.RoadQueryResult(List.of(), false);
+         } else {
+            List<RoadFeature> roads = new ArrayList<>();
+            boolean hadCacheMiss = false;
+
+            for (TellusOsmRoadSource.TileKey key : keys) {
+               TellusOsmRoadSource.TileLookup lookup = this.getTileLookup(key, mode);
+               hadCacheMiss |= lookup.cacheMiss();
+               OverpassRoadTile tile = lookup.tile();
+               if (!tile.isEmpty()) {
+                  List<RoadFeature> tileFeatures = tile.featuresInBounds(bounds.south(), bounds.west(), bounds.north(), bounds.east());
+                  roads.addAll(tileFeatures);
+               }
+            }
+
+            return new TellusOsmRoadSource.RoadQueryResult(roads, hadCacheMiss);
+         }
       }
    }
 

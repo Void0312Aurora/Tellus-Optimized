@@ -12,6 +12,7 @@ import com.yucareux.tellus.cache.TellusCacheRegistry;
 import com.yucareux.tellus.world.data.pmtiles.PmTilesSafety;
 import com.yucareux.tellus.world.data.source.ParallelDownloadRunner;
 import com.yucareux.tellus.worldgen.EarthProjection;
+import com.yucareux.tellus.world.data.geo.GeodeticBounds;
 import io.github.sebasbaumh.mapbox.vectortile.VectorTile.Tile;
 import io.github.sebasbaumh.mapbox.vectortile.VectorTile.Tile.Feature;
 import io.github.sebasbaumh.mapbox.vectortile.VectorTile.Tile.GeomType;
@@ -99,30 +100,53 @@ public final class TellusOsmBuildingSource implements TellusCacheHandle {
       this.ensureInitialized();
       if (this.available && !(worldScale <= 0.0)) {
          GeoBounds bounds = geoBoundsForBlockArea(minBlockX, minBlockZ, maxBlockX, maxBlockZ, marginBlocks, worldScale);
-         if (bounds == null) {
-            return new BuildingQueryResult(List.of(), false);
-         } else {
-            List<TileKey> keys = tileKeysForBounds(bounds, this.queryZoom);
-            if (keys.isEmpty()) {
-               return new BuildingQueryResult(List.of(), false);
-            } else {
-               List<OsmBuildingFeature> features = new ArrayList<>();
-               boolean hadCacheMiss = false;
-
-               for (TileKey key : keys) {
-                  TileLookup lookup = this.getTileLookup(key, mode);
-                  hadCacheMiss |= lookup.cacheMiss();
-                  OsmBuildingTile tile = lookup.tile();
-                  if (!tile.isEmpty()) {
-                     features.addAll(tile.featuresInBounds(bounds.south(), bounds.west(), bounds.north(), bounds.east()));
-                  }
-               }
-
-               return new BuildingQueryResult(features, hadCacheMiss);
-            }
-         }
+         return this.buildingsForBoundsWithStatus(bounds, mode);
       } else {
          return new BuildingQueryResult(List.of(), false);
+      }
+   }
+
+   /** Queries source geometry directly in latitude/longitude, including date-line crossings. */
+   public BuildingQueryResult buildingsForGeoAreaWithStatus(GeodeticBounds bounds, OsmQueryMode mode) {
+      java.util.Objects.requireNonNull(bounds, "bounds");
+      this.ensureInitialized();
+      if (!this.available || bounds.mercatorWindows().isEmpty()) {
+         return new BuildingQueryResult(List.of(), true);
+      }
+      List<OsmBuildingFeature> features = new ArrayList<>();
+      boolean hadCacheMiss = bounds.south() < MIN_LAT || bounds.north() > MAX_LAT;
+      for (GeodeticBounds window : bounds.mercatorWindows()) {
+         BuildingQueryResult result = this.buildingsForBoundsWithStatus(
+            new GeoBounds(window.south(), window.west(), window.north(), window.east()), mode
+         );
+         features.addAll(result.features());
+         hadCacheMiss |= result.hadCacheMiss();
+      }
+      return new BuildingQueryResult(new ArrayList<>(new java.util.LinkedHashSet<>(features)), hadCacheMiss);
+   }
+
+   private BuildingQueryResult buildingsForBoundsWithStatus(GeoBounds bounds, OsmQueryMode mode) {
+      if (bounds == null) {
+         return new BuildingQueryResult(List.of(), false);
+      } else {
+         List<TileKey> keys = tileKeysForBounds(bounds, this.queryZoom);
+         if (keys.isEmpty()) {
+            return new BuildingQueryResult(List.of(), false);
+         } else {
+            List<OsmBuildingFeature> features = new ArrayList<>();
+            boolean hadCacheMiss = false;
+
+            for (TileKey key : keys) {
+               TileLookup lookup = this.getTileLookup(key, mode);
+               hadCacheMiss |= lookup.cacheMiss();
+               OsmBuildingTile tile = lookup.tile();
+               if (!tile.isEmpty()) {
+                  features.addAll(tile.featuresInBounds(bounds.south(), bounds.west(), bounds.north(), bounds.east()));
+               }
+            }
+
+            return new BuildingQueryResult(features, hadCacheMiss);
+         }
       }
    }
 

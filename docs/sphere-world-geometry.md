@@ -26,11 +26,13 @@ order needed to meet the configured error tolerance.
 
 The first integration added the geometry kernel and mathematical tests without
 switching the live generator. The terrain and land-cover readers now also have
-geodetic entry points, so a spherical chunk materializer can request external
-data without converting its point back into a projected Minecraft block
-coordinate. The existing generator still depends on projected block coordinates
-for roads and buildings; those consumers remain on the compatibility path until
-their geodetic feature queries and seam tests are complete.
+geodetic entry points, and building/road/water readers accept geodetic query
+bounds split at the antimeridian. `SphereChunkSampler` requests one chunk's
+terrain and vector data without converting points back into projected Minecraft
+block coordinates. Source-cache tests verify date-line interpolation and vector
+query behavior; they use synthetic data rather than real-world scene comparisons.
+The existing live generator still uses projected block coordinates. Minecraft
+block materialization and engine address routing have not yet been switched.
 
 The Minecraft engine still stores a flat `ChunkPos`. A complete walkable
 spherical world therefore needs a small address/neighbor adapter for chunk

@@ -40,8 +40,8 @@ public final class WebMercatorTileMath {
       // The upper latitude limit can round to exactly the pyramid edge.
       // Keep the point addressable by selecting the last pixel in that case.
       double maxPixel = Math.nextDown(n * tileSize);
-      double globalX = Math.min(x * tileSize, maxPixel);
-      double globalY = Math.min(y * tileSize, maxPixel);
+      double globalX = Math.max(0.0, Math.min(x * tileSize, maxPixel));
+      double globalY = Math.max(0.0, Math.min(y * tileSize, maxPixel));
       if (!(globalX >= 0.0) || !(globalY >= 0.0) || !(globalX <= maxPixel) || !(globalY <= maxPixel)) {
          return null;
       }
