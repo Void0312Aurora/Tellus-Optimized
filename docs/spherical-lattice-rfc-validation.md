@@ -21,7 +21,15 @@ geodetic points. `Atlas.owner(point)` uses the chart inverse and a lowest
 on the order in which descriptors are supplied. `Atlas.neighbor` uses explicit
 reciprocal boundary links; it refuses a one-way link before any cell can be
 materialized. Vertical `k` is carried through an edge transition unchanged in
-this surface-only prototype.
+this surface-only prototype. `Atlas.footprint(BlockID)` now exposes the four
+mapped surface corners and a fixed prototype radial interval of
+`[k * 1 m, (k + 1) * 1 m)`. A cell is admitted as ordinary mutable state only
+when the centers of all nine interior 3x3 probes resolve to that same surface
+cell (`FULL`). A center-owned cell with another or uncovered probe is
+`PARTIAL`; a center-non-owner cell is `GHOST`. Both exceptional states remain
+addressable for diagnostics but are rejected by ordinary materialization,
+neighbor traversal, and edit persistence until a transition representation is
+defined.
 
 These are storage contracts only. No block state, block entity, scheduled tick,
 or Minecraft `ChunkPos` is duplicated by the prototype.
@@ -77,8 +85,8 @@ The prototype tests currently cover:
 In the current Windows checkout, the machine runtime is Microsoft OpenJDK
 21.0.12.1. `:mc1201:compileJava` completes successfully with Gradle 9.4.0 and
 Fabric Loom 1.14.10. The focused RFC sources and tests were also compiled with
-`javac --release 21` and executed with JUnit Platform Console 1.10.2: 26 tests
-started and 26 passed. A complete Gradle `:mc1201:test` run remains
+`javac --release 21` and executed with JUnit Platform Console 1.10.2: 30 tests
+started and 30 passed. A complete Gradle `:mc1201:test` run remains
 environment-blocked because Gradle's Java HTTPS client cannot complete the
 Maven Central TLS handshake while a direct PowerShell request succeeds; no
 full Gradle test pass is claimed here.
@@ -186,14 +194,16 @@ make the present baseline explicit: the embedding is watertight at shared
 edges, but its global metric distortion and extraordinary-vertex behavior are
 still far from the RFC's intended weak-distortion target.
 
-The prototype also now defines direct-ID validity as a center-ownership rule:
-`Atlas.canonical(BlockID)` maps a cell through its patch cell center and rejects
-overlapping non-owner cells as ghosts. Sparse materialization, neighbor lookup,
-and persistence edit capture/restore enforce this rule. It prevents duplicate
-mutable state under the current model, but it is not yet a complete physical
-footprint rule for clipped or transition cells. That rule, a scalable coarse
-atlas locator, and 1 m/16x16 chunk persistence remain open before Fabric seam
-integration.
+The prototype now defines direct-ID validity with a conservative footprint
+admission rule. `Atlas.canonical(BlockID)` still reports the center-owner
+canonicalization for diagnostics, while `Atlas.isCanonical(BlockID)` requires a
+`FULL` footprint certificate. Sparse materialization, neighbor lookup, and
+persistence edit capture/restore all enforce that admission rule. The tests
+cover ordinary cells, center ghosts, and partially clipped overlap cells,
+including radial `k` values. This prevents duplicate mutable state under the
+current prototype contract, while the continuous clipped-region boundary and
+transition-cell geometry remain open. A scalable coarse atlas locator and
+1 m/16x16 chunk persistence also remain open before Fabric seam integration.
 
 ## Review follow-up: coarse atlas lookup
 

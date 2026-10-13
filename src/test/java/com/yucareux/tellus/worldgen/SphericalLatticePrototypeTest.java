@@ -128,8 +128,38 @@ class SphericalLatticePrototypeTest {
    }
 
    @Test
-   void neighborRejectsAGhostDestinationInAnOverlappingPatch() {
+   void cellFootprintDefinesFourSurfaceCornersAndOneMetreRadialInterval() {
+      var patch = patchAt(0, 0.0, 0.0, 50_000.0, 4);
+      var atlas = new SphericalLatticePrototype.Atlas(List.of(patch), List.of());
+      var id = patch.cell(1, 2, -3);
+      var footprint = atlas.footprint(id);
+
+      assertEquals(id, footprint.id());
+      assertEquals(4, footprint.surfaceCorners().size());
+      assertEquals(-3.0, footprint.bottomElevationMeters());
+      assertEquals(-2.0, footprint.topElevationMeters());
+      assertEquals(SphericalLatticePrototype.FootprintOwnership.FULL, footprint.ownership());
+      assertEquals(id, footprint.centerOwner());
+      assertTrue(footprint.isOrdinaryMutableCell());
+      assertEquals(SphereWorldModel.EARTH_RADIUS_METERS - 3.0, footprint.bottomRadiusMeters());
+   }
+
+   @Test
+   void partiallyOverlappingFootprintIsRejectedAsOrdinaryMutableState() {
       var lowerKey = patchAt(0, Math.toDegrees(2.0 * Math.atan(20_000.0 / (2.0 * EARTH_R))), 0.0, 50_000, 4);
+      var higherKey = patchAt(1, 0.0, 0.0, 50_000, 4);
+      var atlas = new SphericalLatticePrototype.Atlas(List.of(lowerKey, higherKey), List.of());
+      var source = higherKey.cell(1, 1, 0);
+
+      assertEquals(SphericalLatticePrototype.FootprintOwnership.PARTIAL,
+         atlas.footprint(source).ownership());
+      assertTrue(!atlas.isCanonical(source));
+      assertThrows(IllegalArgumentException.class, () -> atlas.neighbor(source, 1, 0));
+   }
+
+   @Test
+   void neighborRejectsAGhostDestinationInAnOverlappingPatch() {
+      var lowerKey = patchAt(0, Math.toDegrees(2.0 * Math.atan(25_000.0 / (2.0 * EARTH_R))), 0.0, 50_000, 4);
       var higherKey = patchAt(1, 0.0, 0.0, 50_000, 4);
       var atlas = new SphericalLatticePrototype.Atlas(List.of(lowerKey, higherKey), List.of());
       var source = higherKey.cell(1, 1, 0);
