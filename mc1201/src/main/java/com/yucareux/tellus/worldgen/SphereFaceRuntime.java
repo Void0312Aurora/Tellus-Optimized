@@ -174,7 +174,13 @@ public final class SphereFaceRuntime {
       try {
          var seam = topology.transfer(source.face(), player.getX(), player.getZ(), player.getYRot(),
             player.getDeltaMovement().x, player.getDeltaMovement().z);
-         if (seam.destination().face() == source.face()) return; // Exact edge tie; ownership changes after it is crossed.
+         if (seam.destination().face() == source.face()) {
+            // The inverse face rule assigns an exact edge tie to the source
+            // face. Keep the entity in the valid half-open engine domain until
+            // motion crosses the edge by a representable amount.
+            this.holdAtEdge(player, topology);
+            return;
+         }
          this.begin(player, faces[seam.destination().face()], seam.destination(), seam.frame(), false);
       } catch (IllegalArgumentException error) {
          this.holdAtEdge(player, topology);

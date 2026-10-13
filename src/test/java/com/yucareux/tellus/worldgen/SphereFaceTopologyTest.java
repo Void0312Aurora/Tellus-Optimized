@@ -86,6 +86,17 @@ class SphereFaceTopologyTest {
    }
 
    @Test
+   void exactFaceBoundaryHasNoCrossFaceDestinationAndMustBeHeldInSourceDomain() {
+      var model = SphereWorldModel.forWorldScale(1.0);
+      var topology = new SphereFaceTopology(model);
+      var transfer = topology.transfer(0, 0.0, topology.maxEngineBlock(), 0.0F, 0.0, 1.0);
+
+      assertFalse(topology.containsEnginePoint(0.0, topology.maxEngineBlock()));
+      assertEquals(0, transfer.destination().face());
+      assertEquals(model.config().faceBlocks(), transfer.frame().destination().blockZ(), 0.0);
+   }
+
+   @Test
    void continuousAdapterHandlesOddFaceSizesAndRejectsTangentSingularities() {
       var model = new SphereWorldModel(new SphereWorldModel.Config(1, 48, 16, 12, 100));
       var topology = new SphereFaceTopology(model);

@@ -351,6 +351,11 @@ focused topology test use that same result. This is the first shared seam state
 contract for a future client/collision adapter; it remains a routing transport,
 not evidence of continuous client rendering or collision.
 
+Exact edge ties are now treated as a source-domain boundary hold instead of
+being silently accepted as an outside coordinate. This closes the half-open
+engine-domain gap at an exact face edge; corner collision and client rendering
+remain open.
+
 ### R5 — Global-content and scale-1 gate
 
 Run sampled locations from equatorial, mid-latitude, polar, antimeridian, deep
