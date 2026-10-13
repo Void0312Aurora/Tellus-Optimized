@@ -177,6 +177,22 @@ embeddings plus the candidate-vertex audit. This distinction matters because a
 conformal map's interior angle property cannot be inferred from the existing
 spherified metrics.
 
+The first exception-boundary gate is now prototyped in
+`SphericalIncisionPolicy`. It classifies every cell against the eight
+degree-three vertices and rejects ordinary admission/traversal inside a
+conservative cap-plus-transition bound. Classification keeps the existing
+topology IDs. A conformal candidate can reuse this policy after providing a
+valid whole-cell enclosure, but the policy does not implement overset identity,
+transition collision, client rendering, or a Fabric materializer integration.
+
+[The first baseline sweep](research/spherical-incision-baseline.md) measures
+both existing embeddings at subdivisions 64 and 128, with 0/100/300/360 km
+caps and a 50 km transition band. At subdivision 128 and a 300 km cap, ordinary
+corner-polygon coverage is about 99.2%, but maximum ordinary angle error is
+still 27.51 degrees (equiangular) or 23.98 degrees (spherified). This supports
+keeping the conformal map as a separate priority: cutting out the corners of
+the current maps does not by itself make the remaining lattice orthogonal.
+
 The first cap-radius sweep should measure, for each candidate radius:
 
 * minimum and percentile horizontal cell scale outside the cap;

@@ -35,10 +35,13 @@ public final class ClosedQuadSphereTopology {
    ) {
       this.subdivision = subdivision;
       this.cells = List.copyOf(cells);
-      this.cellVertices = Map.copyOf(cellVertices);
-      this.neighbors = Map.copyOf(neighbors);
-      this.vertexNeighbors = Map.copyOf(vertexNeighbors);
-      this.vertexUses = Map.copyOf(vertexUses);
+      // Coordinate-record hashes occupy a narrow range. Map.copyOf uses an
+      // open-addressed MapN and can spend minutes probing at modest n=128.
+      // Keep HashMap collision handling behind an immutable public wrapper.
+      this.cellVertices = Collections.unmodifiableMap(new HashMap<>(cellVertices));
+      this.neighbors = Collections.unmodifiableMap(new HashMap<>(neighbors));
+      this.vertexNeighbors = Collections.unmodifiableMap(new HashMap<>(vertexNeighbors));
+      this.vertexUses = Collections.unmodifiableMap(new HashMap<>(vertexUses));
    }
 
    /** Build the same topology in either insertion order. */
