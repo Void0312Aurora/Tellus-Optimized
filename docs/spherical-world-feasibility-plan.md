@@ -321,6 +321,15 @@ requests, concurrent generation, eviction, restart, and failed writes. Then map
 ordinary cells to chunk sections and prove that an edited physical block has one
 stable authority after reload.
 
+The first storage-layer subgate is now implemented in
+`SparseLatticeMaterializer`: explicit edits are a durable overlay over the
+demand-driven cache, eviction does not discard an edit, restored edits are
+validated as a batch, and `chunkOf`/`sectionOf` provide deterministic storage
+coordinates using floor division for negative radial indices. The focused tests
+cover concurrent first requests, edit eviction/reload, cross-seam neighbors,
+and chunk-section identity. This is still a standalone RFC layer; it is not yet
+the Fabric chunk or Anvil persistence path.
+
 ### R4 — Seam gameplay spike
 
 Build a small real Fabric test world with two ordinary patches and one transition
@@ -386,8 +395,10 @@ The current RFC should proceed in this order:
    constraints, keeping the spherified cube as the baseline.
 6. Add singular-cap placement and geographic coverage scoring before any new
    player-facing runtime claim.
-7. Extend the identity tests to chunk-section persistence and concurrent request
-   order.
+7. Completed the standalone identity subgate: chunk/section mapping, explicit
+   edit overlay across eviction/reload, and concurrent request order are now
+   tested. The remaining part is wiring the same contract into real Fabric
+   chunk-section and restart persistence.
 8. Implement the smallest client-visible seam/collision spike, then repeat the
    geometry and performance measurements at scale 1.
 

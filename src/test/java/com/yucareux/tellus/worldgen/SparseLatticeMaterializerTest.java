@@ -3,7 +3,14 @@ package com.yucareux.tellus.worldgen;
 import com.yucareux.tellus.worldgen.global.SphereWorldModel;
 import com.yucareux.tellus.worldgen.global.SparseLatticeMaterializer;
 import com.yucareux.tellus.worldgen.global.SphericalLatticePrototype;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -82,6 +89,83 @@ class SparseLatticeMaterializerTest {
       assertThrows(IllegalArgumentException.class, () -> materializer.request(partial));
    }
 
+   @Test
+   void editedStateSurvivesEvictionAndFreshMaterializerRestore() {
+      var first = new SparseLatticeMaterializer(atlas(), SparseLatticeMaterializerTest::generate);
+      var id = first.atlas().patch(new SphericalLatticePrototype.PatchKey(0, 1, 0)).cell(1, 2, -17);
+
+      assertEquals(42, first.setState(id, 42).state());
+      assertTrue(first.evict(id));
+      assertEquals(42, first.request(id).state());
+
+      var restored = new SparseLatticeMaterializer(atlas(), SparseLatticeMaterializerTest::generate);
+      restored.restoreEdits(first.edits());
+      restored.evictAll();
+      assertEquals(42, restored.request(id).state());
+      assertEquals(first.edits(), restored.edits());
+   }
+
+   @Test
+   void chunkAndSectionIdentityUsesStableFloorDivisionForNegativeRadialCells() {
+      var materializer = new SparseLatticeMaterializer(
+         new SphericalLatticePrototype.Atlas(List.of(patch(1, 25_000, 64)), List.of()),
+         SparseLatticeMaterializerTest::generate);
+      var id = materializer.atlas().patch(new SphericalLatticePrototype.PatchKey(0, 1, 0)).cell(33, 31, -17);
+
+      var chunk = materializer.chunkOf(id, 16);
+      assertEquals(2, chunk.x());
+      assertEquals(1, chunk.z());
+      var section = materializer.sectionOf(id, 16, 16);
+      assertEquals(-2, section.sectionY());
+      assertEquals(chunk, section.chunk());
+   }
+
+   @Test
+   void concurrentFirstRequestsPublishOneCanonicalResult() throws Exception {
+      AtomicInteger generated = new AtomicInteger();
+      var materializer = new SparseLatticeMaterializer(atlas(), id -> {
+         generated.incrementAndGet();
+         Thread.yield();
+         return new SparseLatticeMaterializer.CellData(id, 7);
+      });
+      var id = materializer.atlas().patch(new SphericalLatticePrototype.PatchKey(0, 1, 0)).cell(1, 2, 3);
+      int workers = 8;
+      ExecutorService executor = Executors.newFixedThreadPool(workers);
+      CountDownLatch start = new CountDownLatch(1);
+      try {
+         List<Callable<SparseLatticeMaterializer.CellData>> calls = new ArrayList<>();
+         for (int i = 0; i < workers; i++) {
+            calls.add(() -> {
+               start.await();
+               return materializer.request(id);
+            });
+         }
+         List<Future<SparseLatticeMaterializer.CellData>> futures = new ArrayList<>();
+         for (Callable<SparseLatticeMaterializer.CellData> call : calls) futures.add(executor.submit(call));
+         start.countDown();
+         for (Future<SparseLatticeMaterializer.CellData> future : futures) {
+            assertEquals(new SparseLatticeMaterializer.CellData(id, 7), future.get());
+         }
+         assertEquals(1, generated.get());
+         assertEquals(1, materializer.size());
+      } finally {
+         executor.shutdownNow();
+      }
+   }
+
+   @Test
+   void restoreEditsValidatesTheWholeBatchBeforeMutation() {
+      var materializer = new SparseLatticeMaterializer(overlappingAtlas(), SparseLatticeMaterializerTest::generate);
+      var valid = materializer.atlas().patch(new SphericalLatticePrototype.PatchKey(0, 0, 0)).cell(1, 1, 0);
+      var ghost = materializer.atlas().patch(new SphericalLatticePrototype.PatchKey(0, 1, 0)).cell(1, 1, 0);
+
+      assertThrows(IllegalArgumentException.class, () -> materializer.restoreEdits(List.of(
+         new com.yucareux.tellus.worldgen.global.SphericalLatticePersistence.CellEdit(valid, 11),
+         new com.yucareux.tellus.worldgen.global.SphericalLatticePersistence.CellEdit(ghost, 12))));
+      assertTrue(materializer.edits().isEmpty());
+      assertEquals(generate(valid).state(), materializer.request(valid).state());
+   }
+
    private static SparseLatticeMaterializer.CellData generate(SphericalLatticePrototype.BlockId id) {
       int state = Math.floorMod((int)(id.patch().x() * 31 + id.patch().y() * 17
          + id.i() * 7 + id.j() * 3 + id.k()), 256);
@@ -105,10 +189,14 @@ class SparseLatticeMaterializerTest {
    }
 
    private static SphericalLatticePrototype.PatchDescriptor patch(long x, double east) {
+      return patch(x, east, 4);
+   }
+
+   private static SphericalLatticePrototype.PatchDescriptor patch(long x, double east, int cellsPerSide) {
       return new SphericalLatticePrototype.PatchDescriptor(GRID,
          new SphericalLatticePrototype.PatchKey(0, x, 0),
          new SphereWorldModel.GeoPoint(0, Math.toDegrees(2.0 * Math.atan(east / (2.0 * EARTH_R))), 0),
-         50_000, 4, SphericalLatticePrototype.ChartKind.STEREOGRAPHIC);
+         50_000, cellsPerSide, SphericalLatticePrototype.ChartKind.STEREOGRAPHIC);
    }
 
    private static SphereWorldModel.GeoPoint point(double eastMeters) {
