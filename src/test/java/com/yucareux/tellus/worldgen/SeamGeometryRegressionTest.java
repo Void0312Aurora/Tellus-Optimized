@@ -6,6 +6,7 @@ import com.yucareux.tellus.worldgen.global.SphereWorldModel;
 import com.yucareux.tellus.worldgen.global.SphericalLatticePrototype;
 import org.junit.jupiter.api.Test;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class SeamGeometryRegressionTest {
@@ -54,8 +55,15 @@ class SeamGeometryRegressionTest {
       assertTrue(metrics.maxAngleErrorRadians() > 0.0);
       assertTrue(metrics.minAreaScale() > 0.0);
       assertTrue(metrics.maxAreaScale() > metrics.minAreaScale());
+      assertEquals(0.7100217862, metrics.minEdgeScale(), 1.0E-9);
+      assertEquals(0.9961768416, metrics.maxEdgeScale(), 1.0E-9);
+      assertEquals(0.5235987756, metrics.maxAngleErrorRadians(), 1.0E-9);
+      assertEquals(0.7860693612, metrics.minAreaScale(), 1.0E-9);
+      assertEquals(0.9919013596, metrics.maxAreaScale(), 1.0E-9);
       assertTrue(metrics.extraordinaryCells() == 24,
          () -> "unexpected extraordinary cell count=" + metrics.extraordinaryCells());
+      assertEquals(0.8583811673, metrics.extraordinaryMinEdgeScale(), 1.0E-9);
+      assertEquals(0.7860693612, metrics.extraordinaryMinAreaScale(), 1.0E-9);
       assertTrue(metrics.extraordinaryMaxEdgeScale() >= metrics.extraordinaryMinEdgeScale());
       assertTrue(metrics.extraordinaryMaxAngleErrorRadians() >= 0.0);
       assertTrue(metrics.extraordinaryMaxAreaScale() >= metrics.extraordinaryMinAreaScale());
