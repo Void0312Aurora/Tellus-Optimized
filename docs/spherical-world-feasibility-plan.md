@@ -91,6 +91,7 @@ results and their limits.
 | Candidate | Strength | Failure against the requirements | Role |
 |---|---|---|---|
 | Seam-constrained cubed sphere, capped corners | Rectangular ordinary patches, one closed topology, easy chunk mapping | Exceptional caps and bounded metric distortion remain | **Recommended baseline** |
+| Conformal expanded cube, capped corners | Interior coordinate lines are orthogonal and the eight singular locations are explicit | The corners are still singular; scale is nonuniform and clusters near the corners; deleting only the mathematical points is insufficient | **Priority research candidate** |
 | Optimized quasi-orthogonal cubed sphere | Can reduce angle and length error together | Requires numerical mesh generation and a stable versioned embedding | Main geometry experiment |
 | HEALPix-like hierarchical quads | Equal-area indexing and strong hierarchy | Polar topology and cell shape do not directly provide ordinary Minecraft cubes | Index/data-layout comparator |
 | Yin-Yang or overlapping charts | Each chart can avoid a local pole singularity | Overlap creates duplicate authority unless a canonical ownership layer is added | Runtime/chart comparator |
@@ -100,6 +101,82 @@ results and their limits.
 The experiment must compare candidates at the same physical block scale and
 the same requested region. A visually attractive low-resolution mesh is not
 evidence for scale-1 playability.
+
+## Candidate eight-vertex placement
+
+The attached proposal supplies these approximate locations:
+
+| id | latitude | longitude | nearest land reported in the proposal |
+|---:|---:|---:|---:|
+| 1 | 2.6°N | 21.7°W | 1,117 km |
+| 2 | 35.9°S | 41.9°E | 1,185 km |
+| 3 | 70.6°N | 6.8°E | 360 km |
+| 4 | 18.2°N | 89.8°E | 386 km |
+| 5 | 18.2°S | 90.2°W | 1,553 km |
+| 6 | 70.6°S | 173.2°W | 580 km |
+| 7 | 35.9°N | 138.1°W | 1,293 km |
+| 8 | 2.6°S | 158.3°E | 488 km |
+
+Using the rounded coordinates, the antipodal pairs are approximately
+`(1,8)`, `(2,7)`, `(3,6)`, and `(4,5)`. The absolute error of the other
+pairwise dot products from `1/3` in magnitude is about `0.0011` at worst. This
+is strong evidence that the table is a rotated cube orientation, but it is not
+yet a geospatial coverage result: the reported nearest-land distances need to
+be recomputed against the same coastline, bathymetry, transport, population,
+road, and building datasets used by the generator.
+
+The orientation must therefore be stored as a grid-versioned rotation matrix,
+not as rounded latitude/longitude text. The coverage study must search rotations
+and cap radii, then score the excluded regions by reachable land, shipping and
+air routes, population, roads, buildings, and terrain value. Nearest land alone
+does not prove that a cap is unreachable in play.
+
+## What “remove the eight vertices” means
+
+For a conformal expanded cube, the interior coordinate lines are orthogonal, but
+the eight cube corners remain coordinate singularities. The published MITgcm
+implementation explicitly reports nonorthogonality at those corners and handles
+the surrounding finite-volume stencil specially:
+
+* [Adcroft et al., *Implementation of an Atmosphere–Ocean General Circulation Model on the Expanded Spherical Cube*](https://journals.ametsoc.org/view/journals/mwre/132/12/mwr2823.1.pdf)
+* [MITgcm expanded spherical cube overview](https://mitgcm.org/projects/cubedsphere)
+
+The Minecraft design cannot copy the finite-volume workaround because the
+player needs a discrete block ownership and collision contract. A valid removal
+policy must be one of:
+
+1. **Excluded cap:** no ordinary blocks are generated inside a spherical cap;
+   reaching its boundary is an explicit out-of-world or barrier event.
+2. **Transition ring:** a finite ring of special cells surrounds the cap and
+   owns movement, collision, and persistence explicitly.
+3. **Special-cell cap:** the cap remains traversable but abandons the ordinary
+   six-neighbor cube contract and is handled by a separate cell topology.
+
+Deleting only the eight zero-area mathematical points is not enough. Conformal
+maps preserve angles in the interior, but their scale factor is not constant;
+published expanded-cube results report resolution clustering near the corners.
+The cap radius must be selected by a measured minimum-cell-scale and collision
+condition, not by a visual distance from the vertex.
+
+The first cap-radius sweep should measure, for each candidate radius:
+
+* minimum and percentile horizontal cell scale outside the cap;
+* maximum angle and aspect-ratio error outside the cap;
+* cap and transition-ring area;
+* coastline, land, road, building, transport-route, and population loss;
+* player path reachability and boundary behavior;
+* canonical-ID and persistence behavior at the cap boundary.
+
+The result should be a Pareto table of `(cap radius, geometry quality, excluded
+value)`. A radius is acceptable only if it passes both the geometry threshold and
+the coverage budget.
+
+As a scale check only, eight equal spherical caps of radius 360 km would cover
+about 3.26 million km², or 0.64% of a spherical Earth. This is not an acceptance
+result: it assumes non-overlapping circular caps, ignores ocean travel and air
+routes, and uses the proposal's rounded nearest-land number rather than a live
+coastline calculation. It is useful for sizing the coverage experiment, not for
+declaring the locations safe.
 
 ## Proposed runtime architecture
 
@@ -246,13 +323,18 @@ The current RFC should proceed in this order:
 
 1. Add the acceptance-threshold table and grid-version metadata to the standalone
    metric harness.
-2. Add an optimized quasi-orthogonal candidate with hard shared-boundary
+2. Reproduce the conformal expanded-cube map from the Rancic/McGregor family in
+   a standalone evaluator, with a hard shared-boundary map and a separate
+   singular-corner report.
+3. Sweep finite exclusion/transition cap radii around the eight-point rotation
+   and compare them with the current equiangular and spherified candidates.
+4. Add an optimized quasi-orthogonal candidate with hard shared-boundary
    constraints, keeping the spherified cube as the baseline.
-3. Add singular-cap placement and geographic coverage scoring before any new
+5. Add singular-cap placement and geographic coverage scoring before any new
    player-facing runtime claim.
-4. Extend the identity tests to chunk-section persistence and concurrent request
+6. Extend the identity tests to chunk-section persistence and concurrent request
    order.
-5. Implement the smallest client-visible seam/collision spike, then repeat the
+7. Implement the smallest client-visible seam/collision spike, then repeat the
    geometry and performance measurements at scale 1.
 
 Until those gates pass, the correct status is **research prototype with a
