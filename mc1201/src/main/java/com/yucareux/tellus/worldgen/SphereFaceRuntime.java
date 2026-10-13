@@ -208,6 +208,10 @@ public final class SphereFaceRuntime {
          }
       }
       double holdX = player.getX(), holdZ = player.getZ();
+      double sourceX = player.getX(), sourceY = player.getY(), sourceZ = player.getZ();
+      float sourceYaw = player.getYRot(), sourcePitch = player.getXRot();
+      Vec3 sourceVelocity = player.getDeltaMovement();
+      float sourceFallDistance = player.fallDistance;
       if (frame != null) {
          var sourceTopology = generator(player.serverLevel()).topology();
          holdX = clampInside(holdX, sourceTopology);
@@ -215,6 +219,7 @@ public final class SphereFaceRuntime {
       }
       var transfer = new Transfer(player.serverLevel(), target, destination, chunk, frame,
          player.getY(), holdX, holdZ, player.getDeltaMovement(), player.fallDistance, ground,
+         sourceX, sourceY, sourceZ, sourceYaw, sourcePitch, sourceVelocity, sourceFallDistance,
          player.server.getTickCount(), CompletableFuture.allOf(loads.toArray(CompletableFuture[]::new)));
       this.pending.put(id, transfer);
       this.hold(player, holdX, transfer.y(), holdZ);
@@ -234,10 +239,22 @@ public final class SphereFaceRuntime {
    }
 
    private void fail(ServerPlayer player, String message, RuntimeException error) {
+      Transfer transfer = this.pending.get(player.getUUID());
+      if (transfer != null) this.rollback(player, transfer);
       this.cancel(player);
       this.retryAfter.put(player.getUUID(), player.server.getTickCount() + 200);
       player.sendSystemMessage(Component.literal(message));
       if (error != null) TellusCommon.LOGGER.error(message, error);
+   }
+
+   /** Restore the complete source state after a failed destination load. */
+   private void rollback(ServerPlayer player, Transfer transfer) {
+      if (player.isRemoved() || player.serverLevel() != transfer.source()) return;
+      player.teleportTo(transfer.source(), transfer.sourceX(), transfer.sourceY(), transfer.sourceZ(),
+         transfer.sourceYaw(), transfer.sourcePitch());
+      player.setDeltaMovement(transfer.sourceVelocity());
+      player.hurtMarked = true;
+      player.fallDistance = transfer.sourceFallDistance();
    }
 
    private void cancel(ServerPlayer player) {
@@ -256,5 +273,6 @@ public final class SphereFaceRuntime {
 
    private record Transfer(ServerLevel source, ServerLevel target, SphereFaceTopology.EnginePoint point, ChunkPos chunk,
       SphereWorldModel.FaceTransition frame, double y, double holdX, double holdZ, Vec3 velocity, float fallDistance,
-      boolean ground, int startedTick, CompletableFuture<Void> ready) { }
+      boolean ground, double sourceX, double sourceY, double sourceZ, float sourceYaw, float sourcePitch,
+      Vec3 sourceVelocity, float sourceFallDistance, int startedTick, CompletableFuture<Void> ready) { }
 }

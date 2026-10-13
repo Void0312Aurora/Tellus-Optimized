@@ -338,6 +338,13 @@ breaking, entity collision, chunk unload/reload, disconnect/reconnect, and
 server restart while crossing the boundary. Capture both server traces and a
 client video or frame dump. Headless transfer alone is insufficient.
 
+The Fabric 1.20.1 routing prototype now records the complete source state before
+holding a player at an edge. If destination chunk loading fails or times out, it
+restores source position, yaw/pitch, velocity, and fall distance before applying
+the retry cooldown. This closes the failure rollback subgate; it does not yet
+prove client-visible seamless collision or walking because the implementation
+still routes between face dimensions.
+
 ### R5 — Global-content and scale-1 gate
 
 Run sampled locations from equatorial, mid-latitude, polar, antimeridian, deep
