@@ -95,3 +95,19 @@ polygon plus Antarctic ice contours, level-1 polygons at least 10 km² plus
 Antarctic ice contours, and the level-1 GSHHG continent records. The 10 km²
 cutoff is a sensitivity probe for coarse source maps; it is not a proposed
 gameplay rule.
+
+The optional orientation search uses a local 1,000 km shoreline window around
+the fitted vertices. It samples rigid perturbations and then full-scans the
+seven selected candidates:
+
+```powershell
+build/geography/venv/Scripts/python.exe tools/geography/search_orientations.py `
+  --cache build/geography/gshhg-2.3.7 `
+  --orientation build/geography/final/candidate-cube-orientation.json `
+  --output build/geography/orientation-search.csv `
+  --verification-output build/geography/orientation-search-verification.csv
+```
+
+The local segment pool is a search accelerator; the verification CSV is the
+authoritative result for the selected candidates. This search is exploratory
+and does not alter the world runtime or select a production orientation.
