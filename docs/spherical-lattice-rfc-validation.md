@@ -172,5 +172,16 @@ inverse coordinates. The regression fixture indexes 182 small patches plus a
 dateline-crossing patch: a point lookup examines fewer than one tenth of the
 registered patches, keeps the same lowest-key owner, resolves the antimeridian,
 and rejects an uncovered point without propagating a stereographic antipode
-exception. This is a correctness and candidate-reduction check, not yet a
+exception. Longitude coverage is derived from the spherical-cap bound
+`asin(sin(alpha) / cos(latitude))`; charts that reach a pole conservatively
+register every longitude bucket. Regression cases cover the reported 80°N and
+80°S false-negative geometry and a near-polar chart.
+
+`Atlas.neighbor` now validates the destination as well as the source. If a
+within-patch or cross-patch step resolves to a center-non-owner overlap cell,
+the operation fails instead of returning a mutable ghost identity. This keeps
+the prototype's chosen neighbor contract explicit; it does not yet define
+transition cells or complete physical footprint ownership.
+
+This remains a correctness and candidate-reduction check, not yet a
 200,000-patch latency benchmark or a distributed hierarchical index.

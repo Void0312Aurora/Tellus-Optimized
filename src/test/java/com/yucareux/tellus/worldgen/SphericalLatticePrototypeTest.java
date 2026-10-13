@@ -109,6 +109,35 @@ class SphericalLatticePrototypeTest {
          () -> atlas.owner(new SphereWorldModel.GeoPoint(0.0, 90.5, 0.0)));
    }
 
+   @Test
+   void coarseLocatorDoesNotDropValidHighLatitudePoints() {
+      var north = patchAt(2000, 1.0, 80.0, 50_000);
+      var south = patchAt(2001, -179.0, -80.0, 50_000);
+      var atlas = new SphericalLatticePrototype.Atlas(List.of(north, south), List.of());
+
+      assertEquals(north.key(), atlas.owner(north.pointAt(20_000.0, 0.0)).patch());
+      assertEquals(south.key(), atlas.owner(south.pointAt(-20_000.0, 0.0)).patch());
+   }
+
+   @Test
+   void coarseLocatorIncludesAllLongitudesWhenAChartReachesThePole() {
+      var polar = patchAt(3000, 179.5, 89.8, 300_000);
+      var atlas = new SphericalLatticePrototype.Atlas(List.of(polar), List.of());
+
+      assertEquals(polar.key(), atlas.owner(polar.pointAt(100_000.0, 0.0)).patch());
+   }
+
+   @Test
+   void neighborRejectsAGhostDestinationInAnOverlappingPatch() {
+      var lowerKey = patchAt(0, Math.toDegrees(2.0 * Math.atan(20_000.0 / (2.0 * EARTH_R))), 0.0, 50_000, 4);
+      var higherKey = patchAt(1, 0.0, 0.0, 50_000, 4);
+      var atlas = new SphericalLatticePrototype.Atlas(List.of(lowerKey, higherKey), List.of());
+      var source = higherKey.cell(1, 1, 0);
+
+      assertTrue(atlas.isCanonical(source));
+      assertThrows(IllegalStateException.class, () -> atlas.neighbor(source, 1, 0));
+   }
+
    private static SphericalLatticePrototype.PatchDescriptor patch(long x, double east, double north) {
       return patchAt(x, Math.toDegrees(2.0 * Math.atan(east / (2.0 * EARTH_R))),
          Math.toDegrees(2.0 * Math.atan(north / (2.0 * EARTH_R))), 50_000);
@@ -116,9 +145,14 @@ class SphericalLatticePrototypeTest {
 
    private static SphericalLatticePrototype.PatchDescriptor patchAt(long x, double longitude,
       double latitude, double sideMeters) {
+      return patchAt(x, longitude, latitude, sideMeters, 1024);
+   }
+
+   private static SphericalLatticePrototype.PatchDescriptor patchAt(long x, double longitude,
+      double latitude, double sideMeters, int cellsPerSide) {
       return new SphericalLatticePrototype.PatchDescriptor(GRID,
          new SphericalLatticePrototype.PatchKey(0, x, 0),
-         new SphereWorldModel.GeoPoint(latitude, longitude, 0), sideMeters, 1024,
+         new SphereWorldModel.GeoPoint(latitude, longitude, 0), sideMeters, cellsPerSide,
          SphericalLatticePrototype.ChartKind.STEREOGRAPHIC);
    }
 

@@ -389,7 +389,7 @@ public final class SphericalLatticePrototype {
          PatchDescriptor patch = this.patch(cell.patch());
          long i = cell.i() + dx, j = cell.j() + dz;
          if (i >= 0 && j >= 0 && i < patch.cellsPerSide() && j < patch.cellsPerSide()) {
-            return patch.cell(i, j, cell.k());
+            return canonicalNeighbor(patch.cell(i, j, cell.k()));
          }
          Edge edge = i < 0 ? Edge.WEST : i >= patch.cellsPerSide() ? Edge.EAST
             : j < 0 ? Edge.SOUTH : Edge.NORTH;
@@ -400,7 +400,15 @@ public final class SphericalLatticePrototype {
          PatchDescriptor target = this.patch(link.target());
          long targetI = link.targetEdge() == Edge.WEST ? 0 : link.targetEdge() == Edge.EAST ? target.cellsPerSide() - 1 : mapped;
          long targetJ = link.targetEdge() == Edge.SOUTH ? 0 : link.targetEdge() == Edge.NORTH ? target.cellsPerSide() - 1 : mapped;
-         return target.cell(targetI, targetJ, cell.k());
+         BlockId destination = target.cell(targetI, targetJ, cell.k());
+         return canonicalNeighbor(destination);
+      }
+
+      private BlockId canonicalNeighbor(BlockId destination) {
+         if (!this.isCanonical(destination)) {
+            throw new IllegalStateException("neighbor resolves to a noncanonical overlap cell: " + destination);
+         }
+         return destination;
       }
 
       private static boolean contains(PatchDescriptor patch, SphereWorldModel.GeoPoint point) {
@@ -416,21 +424,38 @@ public final class SphericalLatticePrototype {
 
       private void buildLocator() {
          for (PatchDescriptor patch : this.patches.values()) {
-            double radiusDegrees = Math.toDegrees(
-               (patch.sideMeters() / Math.sqrt(2.0) + EPSILON_METERS) / SphereWorldModel.EARTH_RADIUS_METERS);
+            double radiusRadians = (patch.sideMeters() / Math.sqrt(2.0) + EPSILON_METERS)
+               / SphereWorldModel.EARTH_RADIUS_METERS;
+            double radiusDegrees = Math.toDegrees(radiusRadians);
             if (radiusDegrees >= 90.0) {
                this.broadPatches.add(patch.key());
                continue;
             }
             double minLatitude = Math.max(-90.0, patch.anchor().latitude() - radiusDegrees);
             double maxLatitude = Math.min(90.0, patch.anchor().latitude() + radiusDegrees);
+            double longitudeHalfWidth = longitudeHalfWidthDegrees(patch.anchor().latitude(), radiusRadians);
             int minLatBucket = latitudeBucket(minLatitude);
             int maxLatBucket = latitudeBucket(maxLatitude);
             for (int lat = minLatBucket; lat <= maxLatBucket; lat++) {
-               addLongitudeRange(patch.key(), lat, patch.anchor().longitude() - radiusDegrees,
-                  patch.anchor().longitude() + radiusDegrees);
+               addLongitudeRange(patch.key(), lat, patch.anchor().longitude() - longitudeHalfWidth,
+                  patch.anchor().longitude() + longitudeHalfWidth);
             }
          }
+      }
+
+      /**
+       * Returns a conservative longitude half-width for a spherical cap.
+       * Treating angular distance as a longitude delta is unsound near the
+       * poles; the cap may cover every longitude once it reaches a pole.
+       */
+      private static double longitudeHalfWidthDegrees(double latitude, double radiusRadians) {
+         double absoluteLatitude = Math.abs(Math.toRadians(latitude));
+         double poleDistance = Math.PI * 0.5 - absoluteLatitude;
+         if (radiusRadians >= poleDistance) return 180.0;
+         double denominator = Math.cos(absoluteLatitude);
+         double ratio = Math.sin(radiusRadians) / Math.max(1.0E-15, denominator);
+         if (ratio >= 1.0) return 180.0;
+         return Math.toDegrees(Math.asin(Math.max(-1.0, Math.min(1.0, ratio))));
       }
 
       private void addLongitudeRange(PatchKey key, int latitude, double minimum, double maximum) {
