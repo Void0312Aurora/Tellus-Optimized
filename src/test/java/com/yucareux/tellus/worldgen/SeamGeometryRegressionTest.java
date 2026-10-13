@@ -41,6 +41,26 @@ class SeamGeometryRegressionTest {
          () -> "edge mismatch=" + report.maxInteriorMismatchMeters());
    }
 
+   @Test
+   void connectedEmbeddingReportsGlobalMetricsAndExtraordinaryRegions() {
+      var topology = ClosedQuadSphereTopology.create(5);
+      var embedding = new ClosedQuadSphereEmbedding(topology, SphereWorldModel.forWorldScale(1.0));
+      var metrics = embedding.measureMetrics();
+
+      assertTrue(metrics.cells() == topology.cells().size());
+      assertTrue(metrics.edges() == topology.edges().size());
+      assertTrue(metrics.minEdgeScale() > 0.0);
+      assertTrue(metrics.maxEdgeScale() > metrics.minEdgeScale());
+      assertTrue(metrics.maxAngleErrorRadians() > 0.0);
+      assertTrue(metrics.minAreaScale() > 0.0);
+      assertTrue(metrics.maxAreaScale() > metrics.minAreaScale());
+      assertTrue(metrics.extraordinaryCells() == 24,
+         () -> "unexpected extraordinary cell count=" + metrics.extraordinaryCells());
+      assertTrue(metrics.extraordinaryMaxEdgeScale() >= metrics.extraordinaryMinEdgeScale());
+      assertTrue(metrics.extraordinaryMaxAngleErrorRadians() >= 0.0);
+      assertTrue(metrics.extraordinaryMaxAreaScale() >= metrics.extraordinaryMinAreaScale());
+   }
+
    private static SphericalLatticePrototype.PatchDescriptor patch(long x, double east) {
       return new SphericalLatticePrototype.PatchDescriptor(GRID,
          new SphericalLatticePrototype.PatchKey(0, x, 0),

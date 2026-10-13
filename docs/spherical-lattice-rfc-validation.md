@@ -60,7 +60,7 @@ while their scale varies across the patch.
   --offline --no-daemon
 ```
 
-The six prototype tests currently cover:
+The prototype tests currently cover:
 
 * deterministic metric reports for both local chart candidates;
 * agreement with the closed-form stereographic scale estimate;
@@ -68,7 +68,20 @@ The six prototype tests currently cover:
 * shared-edge neighbor reciprocity and vertical identity;
 * rejection of missing or nonreciprocal boundaries;
 * explicit evidence that the current cubed-sphere metric is bounded but not
-  locally orthogonal and unit-scale everywhere.
+  locally orthogonal and unit-scale everywhere;
+* conservative high-latitude and antimeridian coarse-locator coverage;
+* rejection of noncanonical overlap neighbors and direct edits; and
+* connected-mesh seam and global metric reports, including extraordinary
+  cells.
+
+In the current Windows checkout, the machine runtime is Microsoft OpenJDK
+21.0.12.1. `:mc1201:compileJava` completes successfully with Gradle 9.4.0 and
+Fabric Loom 1.14.10. The focused RFC sources and tests were also compiled with
+`javac --release 21` and executed with JUnit Platform Console 1.10.2: 26 tests
+started and 26 passed. A complete Gradle `:mc1201:test` run remains
+environment-blocked because Gradle's Java HTTPS client cannot complete the
+Maven Central TLS handshake while a direct PowerShell request succeeds; no
+full Gradle test pass is claimed here.
 
 The closed-topology experiment is covered separately by:
 
@@ -154,6 +167,24 @@ reports vertex and interior-edge mismatch below `1e-7 m`. This is a hard shared
 geometry result for the existing cubed-sphere embedding, not a low-distortion
 result: its measured stretch and angle errors remain the baseline in the Phase 1
 table.
+
+The same connected mesh now has an executable metric report. For the
+subdivision-5, `worldScale=1.0` fixture (150 cells, 300 shared edges), the
+nominal face-centre edge is `2,001,511.444 m`; measuring the actual spherical
+arcs and spherical cell areas gives:
+
+| connected mesh metric | all cells | cells incident to degree-3 vertices |
+|---|---:|---:|
+| edge-length scale range | 0.710022–0.996177 | 0.858381–0.858381 |
+| maximum right-angle error | 0.523599 rad | 0.523599 rad |
+| area scale range | 0.786069–0.991901 | 0.786069–0.786069 |
+
+The extraordinary-cell group contains 24 cells in this resolution. These
+values are measured from the seam-constrained embedding itself and therefore
+replace neither the isolated-chart estimate nor a production tolerance. They
+make the present baseline explicit: the embedding is watertight at shared
+edges, but its global metric distortion and extraordinary-vertex behavior are
+still far from the RFC's intended weak-distortion target.
 
 The prototype also now defines direct-ID validity as a center-ownership rule:
 `Atlas.canonical(BlockID)` maps a cell through its patch cell center and rejects
