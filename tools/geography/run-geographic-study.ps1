@@ -30,6 +30,8 @@ try {
    if($LASTEXITCODE -ne 0){throw 'Quarantine boundary export failed'}
    & $Python tools/geography/run_coverage.py --cache $DatasetCache --output $OutputDirectory
    if($LASTEXITCODE -ne 0){throw 'Coastline coverage study failed'}
+   & $Python tools/geography/shoreline_feature_thresholds.py --cache $DatasetCache --orientation "$OutputDirectory/candidate-cube-orientation.json" --output "$OutputDirectory/shoreline-feature-thresholds.csv"
+   if($LASTEXITCODE -ne 0){throw 'Shoreline feature threshold study failed'}
    & $Python tools/geography/score_osm_probe.py --output $OutputDirectory
    if($LASTEXITCODE -ne 0){throw 'Frozen OSM probe scoring failed'}
    & $Python tools/geography/plot_coverage.py --output $OutputDirectory

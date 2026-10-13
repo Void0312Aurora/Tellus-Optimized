@@ -46,7 +46,8 @@ and license. The main experiment makes no network requests:
 The runner runs 12 Python checks, fits all 40,320 point correspondences, freshly
 compiles the Java research sources, runs 48 Java checks, exports actual
 quarantine perimeters, evaluates full/high coastlines and both Antarctic
-definitions, scores the frozen OSM probe, and renders PNG/SVG figures. It aborts
+definitions, compares shoreline feature-area policies, scores the frozen OSM
+probe, and renders PNG/SVG figures. It aborts
 on a failed stage. Defaults write to `build/geography/results`; use a different
 `-OutputDirectory` for reproduction. Local data processing can take several
 minutes. Geometry checks do not download data.
@@ -88,3 +89,9 @@ links the compact CSV/JSON outputs. The complete approximately 13 MB fine
 perimeter export and overlap geometry can be regenerated locally. Population
 and global road/building losses stay explicitly unknown; missing observations
 are never converted to zero.
+
+`shoreline-feature-thresholds.csv` records three policies: every level-1 land
+polygon plus Antarctic ice contours, level-1 polygons at least 10 km² plus
+Antarctic ice contours, and the level-1 GSHHG continent records. The 10 km²
+cutoff is a sensitivity probe for coarse source maps; it is not a proposed
+gameplay rule.
