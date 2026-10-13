@@ -152,11 +152,30 @@ policy must be one of:
 3. **Special-cell cap:** the cap remains traversable but abandons the ordinary
    six-neighbor cube contract and is handled by a separate cell topology.
 
+There is a fourth research option that is closer to the spherical-grid
+literature: **incision plus overset transition patches**. Purser and Rančić's
+NOAA grid note describes cuts that transect each polyhedral vertex and local
+overlapping patches that remove the remaining corner discontinuity from the
+numerical operator region. This is not the same as deleting a point from a
+closed mesh. For Tellus, an overset cell may have multiple chart views but must
+still resolve to one canonical `BlockID`; aliases can be read-only views and
+cannot own independent edits. The proposal is therefore compatible with the
+global-index requirement only if the ownership layer is authoritative before
+the overset layer.
+
+Reference: [Purser and Rančić, NOAA Office Note 467](https://repository.library.noaa.gov/view/noaa/6967/noaa_6967_DS1.pdf).
+
 Deleting only the eight zero-area mathematical points is not enough. Conformal
 maps preserve angles in the interior, but their scale factor is not constant;
 published expanded-cube results report resolution clustering near the corners.
 The cap radius must be selected by a measured minimum-cell-scale and collision
 condition, not by a visual distance from the vertex.
+
+The current repository does not yet implement the Rancic/McGregor conformal
+map. It only contains the seam-constrained equiangular and spherified
+embeddings plus the candidate-vertex audit. This distinction matters because a
+conformal map's interior angle property cannot be inferred from the existing
+spherified metrics.
 
 The first cap-radius sweep should measure, for each candidate radius:
 
@@ -326,15 +345,17 @@ The current RFC should proceed in this order:
 2. Reproduce the conformal expanded-cube map from the Rancic/McGregor family in
    a standalone evaluator, with a hard shared-boundary map and a separate
    singular-corner report.
-3. Sweep finite exclusion/transition cap radii around the eight-point rotation
+3. Reproduce the incision/overset construction as a second candidate, including
+   canonical-owner and read-only-alias tests.
+4. Sweep finite exclusion/transition cap radii around the eight-point rotation
    and compare them with the current equiangular and spherified candidates.
-4. Add an optimized quasi-orthogonal candidate with hard shared-boundary
+5. Add an optimized quasi-orthogonal candidate with hard shared-boundary
    constraints, keeping the spherified cube as the baseline.
-5. Add singular-cap placement and geographic coverage scoring before any new
+6. Add singular-cap placement and geographic coverage scoring before any new
    player-facing runtime claim.
-6. Extend the identity tests to chunk-section persistence and concurrent request
+7. Extend the identity tests to chunk-section persistence and concurrent request
    order.
-7. Implement the smallest client-visible seam/collision spike, then repeat the
+8. Implement the smallest client-visible seam/collision spike, then repeat the
    geometry and performance measurements at scale 1.
 
 Until those gates pass, the correct status is **research prototype with a
