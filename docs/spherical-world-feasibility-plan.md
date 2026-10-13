@@ -345,6 +345,12 @@ the retry cooldown. This closes the failure rollback subgate; it does not yet
 prove client-visible seamless collision or walking because the implementation
 still routes between face dimensions.
 
+The shared `SphereFaceTopology.transfer` contract now bundles destination
+position, destination face, yaw, and tangent velocity. The server route and the
+focused topology test use that same result. This is the first shared seam state
+contract for a future client/collision adapter; it remains a routing transport,
+not evidence of continuous client rendering or collision.
+
 ### R5 — Global-content and scale-1 gate
 
 Run sampled locations from equatorial, mid-latitude, polar, antimeridian, deep

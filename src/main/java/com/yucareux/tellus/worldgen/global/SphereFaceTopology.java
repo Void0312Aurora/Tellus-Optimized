@@ -43,6 +43,19 @@ public final class SphereFaceTopology {
       return this.model.transition(face, x - this.minEngineBlock(), z - this.minEngineBlock());
    }
 
+   /**
+    * Computes the complete horizontal seam handoff from one engine frame.
+    * Server routing, collision probes, and a future client frame adapter must
+    * use this same operation so position, yaw, and tangent velocity cannot
+    * drift through separate implementations.
+    */
+   public SeamTransfer transfer(int face, double x, double z, float yaw, double velocityX, double velocityZ) {
+      SphereWorldModel.FaceTransition frame = this.transition(face, x, z);
+      EnginePoint destination = this.enginePoint(frame.destination());
+      SphereWorldModel.HorizontalVector velocity = frame.transport(velocityX, velocityZ);
+      return new SeamTransfer(destination, frame, frame.transportYaw(yaw), velocity);
+   }
+
    /** Converts an engine-local coordinate in one face to its canonical address. */
    public SphereWorldModel.SphereChunkAddress address(int face, long engineChunkX, long engineChunkZ) {
       validateEngineCoordinate(engineChunkX, engineChunkZ);
@@ -120,4 +133,17 @@ public final class SphereFaceTopology {
    public record EngineChunkCoordinate(int face, long chunkX, long chunkZ) { }
 
    public record EnginePoint(int face, double x, double z) { }
+
+   public record SeamTransfer(
+      EnginePoint destination,
+      SphereWorldModel.FaceTransition frame,
+      float yaw,
+      SphereWorldModel.HorizontalVector velocity
+   ) {
+      public SeamTransfer {
+         Objects.requireNonNull(destination, "destination");
+         Objects.requireNonNull(frame, "frame");
+         Objects.requireNonNull(velocity, "velocity");
+      }
+   }
 }

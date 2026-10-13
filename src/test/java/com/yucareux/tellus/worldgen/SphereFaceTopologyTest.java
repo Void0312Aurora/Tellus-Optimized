@@ -64,6 +64,28 @@ class SphereFaceTopologyTest {
    }
 
    @Test
+   void seamTransferBundlesPositionYawAndVelocityForOneSharedHandoffContract() {
+      var model = SphereWorldModel.forWorldScale(1.0);
+      var topology = new SphereFaceTopology(model);
+      double x = 0.0;
+      double z = topology.maxEngineBlock() + 0.375;
+      float yaw = 27.0F;
+      double velocityX = 0.07;
+      double velocityZ = 0.2;
+
+      var transfer = topology.transfer(0, x, z, yaw, velocityX, velocityZ);
+      var frame = topology.transition(0, x, z);
+      var expectedPoint = topology.enginePoint(frame.destination());
+      var expectedVelocity = frame.transport(velocityX, velocityZ);
+
+      assertEquals(expectedPoint, transfer.destination());
+      assertEquals(frame, transfer.frame());
+      assertEquals(frame.transportYaw(yaw), transfer.yaw(), 1.0E-6F);
+      assertEquals(expectedVelocity, transfer.velocity());
+      assertEquals(2, transfer.destination().face());
+   }
+
+   @Test
    void continuousAdapterHandlesOddFaceSizesAndRejectsTangentSingularities() {
       var model = new SphereWorldModel(new SphereWorldModel.Config(1, 48, 16, 12, 100));
       var topology = new SphereFaceTopology(model);

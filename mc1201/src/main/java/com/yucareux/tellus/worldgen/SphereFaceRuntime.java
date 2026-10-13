@@ -172,10 +172,10 @@ public final class SphereFaceRuntime {
          return;
       }
       try {
-         var frame = topology.transition(source.face(), player.getX(), player.getZ());
-         if (frame.destination().face() == source.face()) return; // Exact edge tie; ownership changes after it is crossed.
-         var target = topology.enginePoint(frame.destination());
-         this.begin(player, faces[target.face()], target, frame, false);
+         var seam = topology.transfer(source.face(), player.getX(), player.getZ(), player.getYRot(),
+            player.getDeltaMovement().x, player.getDeltaMovement().z);
+         if (seam.destination().face() == source.face()) return; // Exact edge tie; ownership changes after it is crossed.
+         this.begin(player, faces[seam.destination().face()], seam.destination(), seam.frame(), false);
       } catch (IllegalArgumentException error) {
          this.holdAtEdge(player, topology);
          this.fail(player, "Position exceeds the continued face chart", error);
