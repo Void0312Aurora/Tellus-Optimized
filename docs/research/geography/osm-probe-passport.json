@@ -1,0 +1,24 @@
+{
+  "source_url": "https://api.openstreetmap.org/api/0.6/map?bbox=159.1,-4.7,159.8,-4.4",
+  "bbox_lon_lat": [
+    159.1,
+    -4.7,
+    159.8,
+    -4.4
+  ],
+  "observed_at_utc": "2026-10-13T11:47:37.598045+00:00",
+  "source_xml_sha256": "b582dd834a170d3e8bc0304cec93374df6f038acc91468b768bbfca991bae05f",
+  "attribution": "OpenStreetMap contributors",
+  "license": "ODbL 1.0",
+  "license_url": "https://www.openstreetmap.org/copyright",
+  "scope": "bounded Nukumanu-area probe; tagged building/highway ways and place nodes only; no completeness claim",
+  "population_status": "population tags retained when present; no missing population is converted to zero",
+  "snapshot_sha256": "f327f2a499ed11e64b2f49b5a1208c355c6e9a2f4a0f6cd471f94248ef00803b",
+  "snapshot_hash_convention": "UTF-8 text with LF newlines and no BOM",
+  "selected_elements": 81,
+  "used_settlement_nodes": 8,
+  "used_building_ways": 66,
+  "used_highway_ways": 1,
+  "metric": "spherical LAEA feature intersections in the bounded probe; lengths in projected metres",
+  "unmeasured": "global feature totals, relation buildings, completeness, population, shipping and air routes"
+}

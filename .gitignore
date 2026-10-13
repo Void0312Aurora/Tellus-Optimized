@@ -46,6 +46,7 @@ mc*/usercache.json
 /third_party/
 /tools/benchmark-results/
 tools/__pycache__/
+tools/geography/__pycache__/
 
 # java
 
