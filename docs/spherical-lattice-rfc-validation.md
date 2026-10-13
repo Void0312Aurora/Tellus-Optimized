@@ -85,8 +85,8 @@ The prototype tests currently cover:
 In the current Windows checkout, the machine runtime is Microsoft OpenJDK
 21.0.12.1. `:mc1201:compileJava` completes successfully with Gradle 9.4.0 and
 Fabric Loom 1.14.10. The focused RFC sources and tests were also compiled with
-`javac --release 21` and executed with JUnit Platform Console 1.10.2: 30 tests
-started and 30 passed. A complete Gradle `:mc1201:test` run remains
+`javac --release 21` and executed with JUnit Platform Console 1.10.2: 31 tests
+started and 31 passed. A complete Gradle `:mc1201:test` run remains
 environment-blocked because Gradle's Java HTTPS client cannot complete the
 Maven Central TLS handshake while a direct PowerShell request succeeds; no
 full Gradle test pass is claimed here.
@@ -193,6 +193,22 @@ replace neither the isolated-chart estimate nor a production tolerance. They
 make the present baseline explicit: the embedding is watertight at shared
 edges, but its global metric distortion and extraordinary-vertex behavior are
 still far from the RFC's intended weak-distortion target.
+
+The same topology now also has a `SPHERIFIED_CUBE` candidate. It uses a single
+shared cube-boundary vertex map and the standard spherified-cube surface
+formula, so adjacent faces still receive exactly the same boundary data. Its
+subdivision-5 report is:
+
+| connected mesh metric | equiangular baseline | spherified candidate |
+|---|---:|---:|
+| edge-length scale range | 0.710022–0.996177 | 0.736749–1.094868 |
+| area scale range | 0.786069–0.991901 | 0.815917–0.879204 |
+| maximum right-angle error | 0.523599 rad | 0.523599 rad |
+
+The candidate reduces the worst absolute edge-scale error from approximately
+0.289978 to 0.094868 and keeps sampled seam mismatch below `1e-7 m`. It is a
+measured global candidate, not an optimized or accepted production embedding;
+its angle error and extraordinary-vertex behavior still require further work.
 
 The prototype now defines direct-ID validity with a conservative footprint
 admission rule. `Atlas.canonical(BlockID)` still reports the center-owner

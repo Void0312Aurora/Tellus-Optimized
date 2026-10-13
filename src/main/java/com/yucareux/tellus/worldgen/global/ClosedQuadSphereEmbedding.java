@@ -13,16 +13,26 @@ import java.util.Set;
  * Minecraft collision are intentionally outside this class.
  */
 public final class ClosedQuadSphereEmbedding {
+   public enum Mapping { EQUANGULAR_CUBE, SPHERIFIED_CUBE }
+
    private final ClosedQuadSphereTopology topology;
    private final SphereWorldModel model;
+   private final Mapping mapping;
 
    public ClosedQuadSphereEmbedding(ClosedQuadSphereTopology topology, SphereWorldModel model) {
+      this(topology, model, Mapping.EQUANGULAR_CUBE);
+   }
+
+   public ClosedQuadSphereEmbedding(ClosedQuadSphereTopology topology, SphereWorldModel model,
+      Mapping mapping) {
       this.topology = Objects.requireNonNull(topology, "topology");
       this.model = Objects.requireNonNull(model, "model");
+      this.mapping = Objects.requireNonNull(mapping, "mapping");
    }
 
    public ClosedQuadSphereTopology topology() { return this.topology; }
    public SphereWorldModel model() { return this.model; }
+   public Mapping mapping() { return this.mapping; }
 
    public SphereWorldModel.GeoPoint vertex(ClosedQuadSphereTopology.VertexKey key) {
       List<ClosedQuadSphereTopology.FaceVertex> uses = this.topology.uses(Objects.requireNonNull(key, "key"));
@@ -167,12 +177,40 @@ public final class ClosedQuadSphereEmbedding {
       double i = start.i() + (end.i() - start.i()) * t;
       double j = start.j() + (end.j() - start.j()) * t;
       double scale = this.model.config().faceBlocks() / (double)this.topology.subdivision();
-      return this.model.exactSurfacePoint(start.face(), i * scale, j * scale);
+      return surfacePoint(start.face(), i * scale, j * scale);
    }
 
    private SphereWorldModel.GeoPoint point(ClosedQuadSphereTopology.FaceVertex vertex) {
       double scale = this.model.config().faceBlocks() / (double)this.topology.subdivision();
-      return this.model.exactSurfacePoint(vertex.face(), vertex.i() * scale, vertex.j() * scale);
+      return surfacePoint(vertex.face(), vertex.i() * scale, vertex.j() * scale);
+   }
+
+   private SphereWorldModel.GeoPoint surfacePoint(int face, double blockX, double blockZ) {
+      if (this.mapping == Mapping.EQUANGULAR_CUBE) {
+         return this.model.exactSurfacePoint(face, blockX, blockZ);
+      }
+      double size = this.model.config().faceBlocks();
+      double u = blockX / size * 2.0 - 1.0;
+      double v = blockZ / size * 2.0 - 1.0;
+      Vec3 cube = switch (face) {
+         case 0 -> new Vec3(1.0, v, -u);
+         case 1 -> new Vec3(-1.0, v, u);
+         case 2 -> new Vec3(u, 1.0, -v);
+         case 3 -> new Vec3(u, -1.0, v);
+         case 4 -> new Vec3(u, v, 1.0);
+         case 5 -> new Vec3(-u, v, -1.0);
+         default -> throw new IllegalArgumentException("face");
+      };
+      double x2 = cube.x * cube.x;
+      double y2 = cube.y * cube.y;
+      double z2 = cube.z * cube.z;
+      Vec3 sphere = new Vec3(
+         cube.x * Math.sqrt(Math.max(0.0, 1.0 - y2 * 0.5 - z2 * 0.5 + y2 * z2 / 3.0)),
+         cube.y * Math.sqrt(Math.max(0.0, 1.0 - z2 * 0.5 - x2 * 0.5 + z2 * x2 / 3.0)),
+         cube.z * Math.sqrt(Math.max(0.0, 1.0 - x2 * 0.5 - y2 * 0.5 + x2 * y2 / 3.0))
+      ).normalized();
+      return new SphereWorldModel.GeoPoint(Math.toDegrees(Math.asin(clamp(sphere.y, -1.0, 1.0))),
+         Math.toDegrees(Math.atan2(sphere.z, sphere.x)), 0.0);
    }
 
    private ClosedQuadSphereTopology.EdgeDirection reciprocalDirection(

@@ -69,6 +69,32 @@ class SeamGeometryRegressionTest {
       assertTrue(metrics.extraordinaryMaxAreaScale() >= metrics.extraordinaryMinAreaScale());
    }
 
+   @Test
+   void spherifiedCubeCandidateKeepsHardSeamsAndImprovesWorstEdgeScale() {
+      var topology = ClosedQuadSphereTopology.create(5);
+      var model = SphereWorldModel.forWorldScale(1.0);
+      var baseline = new ClosedQuadSphereEmbedding(topology, model,
+         ClosedQuadSphereEmbedding.Mapping.EQUANGULAR_CUBE).measureMetrics();
+      var candidateEmbedding = new ClosedQuadSphereEmbedding(topology, model,
+         ClosedQuadSphereEmbedding.Mapping.SPHERIFIED_CUBE);
+      var seams = candidateEmbedding.auditSeams(65);
+      var candidate = candidateEmbedding.measureMetrics();
+
+      assertTrue(seams.maxVertexMismatchMeters() < 1.0E-7,
+         () -> "candidate vertex mismatch=" + seams.maxVertexMismatchMeters());
+      assertTrue(seams.maxInteriorMismatchMeters() < 1.0E-7,
+         () -> "candidate edge mismatch=" + seams.maxInteriorMismatchMeters());
+      assertEquals(0.7367486409, candidate.minEdgeScale(), 1.0E-9);
+      assertEquals(1.0948677952, candidate.maxEdgeScale(), 1.0E-9);
+      assertEquals(0.8159166574, candidate.minAreaScale(), 1.0E-9);
+      assertEquals(0.8792043838, candidate.maxAreaScale(), 1.0E-9);
+      double baselineWorstEdgeScale = Math.max(1.0 - baseline.minEdgeScale(), baseline.maxEdgeScale() - 1.0);
+      double candidateWorstEdgeScale = Math.max(1.0 - candidate.minEdgeScale(), candidate.maxEdgeScale() - 1.0);
+      assertTrue(candidateWorstEdgeScale < baselineWorstEdgeScale,
+         () -> "candidate worst edge scale=" + candidateWorstEdgeScale
+            + ", baseline=" + baselineWorstEdgeScale);
+   }
+
    private static SphericalLatticePrototype.PatchDescriptor patch(long x, double east) {
       return new SphericalLatticePrototype.PatchDescriptor(GRID,
          new SphericalLatticePrototype.PatchKey(0, x, 0),
