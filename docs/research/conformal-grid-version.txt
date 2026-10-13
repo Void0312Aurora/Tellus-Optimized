@@ -1,0 +1,15 @@
+map_id=rancic-ccam30-double-v1
+source_commit=02295ffb6decf764b7bf2ce518c412975ae68565
+source_sha256=99cdf7d5caf75ad1712c31e6de9f99e89643ba523e03b56c5e191b7ffaf8862b
+coefficient_count=30
+arithmetic=IEEE754-binary64
+earth_radius_m=6371008.8
+reference_m_per_uv=5003778.610508981
+orientation=unrotated-six-face-v1
+enclosure=octant-derivative-bound-v1-plus-0.1mm
+transition_width_km=50
+subdivisions=64,128
+local_grid=65x65-per-face-plus-181-rays-per-face-at-cap-plus-band-plus-1m
+finite_difference_steps_m=1,0.5
+inverse_sample_stride=64
+jvm=21.0.12.1

@@ -11,15 +11,23 @@ import java.util.function.Predicate;
  * Canonical shared-geometry audit for the closed quadrilateral prototype.
  * Every cube vertex is assigned one spherical position, and edge interiors
  * are compared using the exact same cubed-sphere map on both incident cells.
- * This provides a watertight surface embedding; radial block volumes and
- * Minecraft collision are intentionally outside this class.
+ * The resulting reports measure shared-boundary consistency. Radial block
+ * volumes and Minecraft collision are outside this class.
  */
 public final class ClosedQuadSphereEmbedding {
    public enum Mapping { EQUANGULAR_CUBE, SPHERIFIED_CUBE }
 
+   /** Research maps must provide a conservative bound for their entire cell footprint. */
+   public interface SurfaceMapping {
+      String id();
+      SphereWorldModel.GeoPoint point(int face, double u, double v);
+      CellEnclosure enclosure(int face, double uLow, double uHigh, double vLow, double vHigh);
+   }
+
    private final ClosedQuadSphereTopology topology;
    private final SphereWorldModel model;
    private final Mapping mapping;
+   private final SurfaceMapping externalMapping;
 
    public ClosedQuadSphereEmbedding(ClosedQuadSphereTopology topology, SphereWorldModel model) {
       this(topology, model, Mapping.EQUANGULAR_CUBE);
@@ -30,11 +38,26 @@ public final class ClosedQuadSphereEmbedding {
       this.topology = Objects.requireNonNull(topology, "topology");
       this.model = Objects.requireNonNull(model, "model");
       this.mapping = Objects.requireNonNull(mapping, "mapping");
+      this.externalMapping = null;
+   }
+
+   public ClosedQuadSphereEmbedding(ClosedQuadSphereTopology topology, SphereWorldModel model,
+      SurfaceMapping mapping) {
+      this.topology = Objects.requireNonNull(topology, "topology");
+      this.model = Objects.requireNonNull(model, "model");
+      this.externalMapping = Objects.requireNonNull(mapping, "mapping");
+      if (mapping.id() == null || mapping.id().isBlank()) throw new IllegalArgumentException("mapping ID");
+      this.mapping = null;
    }
 
    public ClosedQuadSphereTopology topology() { return this.topology; }
    public SphereWorldModel model() { return this.model; }
-   public Mapping mapping() { return this.mapping; }
+   /** Built-in mapping only; external experiments identify themselves with mappingId(). */
+   public Mapping mapping() {
+      if (this.externalMapping != null) throw new IllegalStateException("external mapping has no built-in enum");
+      return this.mapping;
+   }
+   public String mappingId() { return externalMapping == null ? mapping.name() : externalMapping.id(); }
 
    public SphereWorldModel.GeoPoint vertex(ClosedQuadSphereTopology.VertexKey key) {
       List<ClosedQuadSphereTopology.FaceVertex> uses = this.topology.uses(Objects.requireNonNull(key, "key"));
@@ -74,6 +97,13 @@ public final class ClosedQuadSphereEmbedding {
     * The bound is specific to these maps; a new map needs its own enclosure.
     */
    public CellEnclosure cellEnclosure(ClosedQuadSphereTopology.CellId cell) {
+      requireCell(cell);
+      if (externalMapping != null) {
+         double n = topology.subdivision();
+         return Objects.requireNonNull(externalMapping.enclosure(cell.face(),
+            2.0 * cell.i() / n - 1.0, 2.0 * (cell.i() + 1) / n - 1.0,
+            2.0 * cell.j() / n - 1.0, 2.0 * (cell.j() + 1) / n - 1.0), "external enclosure");
+      }
       SphereWorldModel.GeoPoint center = cellPoint(cell, 0.5, 0.5);
       double radius;
       if (this.mapping == Mapping.EQUANGULAR_CUBE) {
@@ -290,6 +320,11 @@ public final class ClosedQuadSphereEmbedding {
    }
 
    private SphereWorldModel.GeoPoint surfacePoint(int face, double blockX, double blockZ) {
+      if (externalMapping != null) {
+         double size = this.model.config().faceBlocks();
+         return Objects.requireNonNull(externalMapping.point(face,
+            blockX / size * 2.0 - 1.0, blockZ / size * 2.0 - 1.0), "external point");
+      }
       if (this.mapping == Mapping.EQUANGULAR_CUBE) {
          return this.model.exactSurfacePoint(face, blockX, blockZ);
       }
@@ -373,7 +408,15 @@ public final class ClosedQuadSphereEmbedding {
    public record SeamReport(int samplesPerEdge, int edges, double maxVertexMismatchMeters,
       double maxInteriorMismatchMeters) { }
 
-   public record CellEnclosure(SphereWorldModel.GeoPoint center, double radiusMeters) { }
+   public record CellEnclosure(SphereWorldModel.GeoPoint center, double radiusMeters) {
+      public CellEnclosure {
+         Objects.requireNonNull(center, "center");
+         if (radiusMeters < 0 || !Double.isFinite(radiusMeters)
+            || radiusMeters > Math.PI * SphereWorldModel.EARTH_RADIUS_METERS) {
+            throw new IllegalArgumentException("enclosure radius");
+         }
+      }
+   }
 
    private record Interval(double low, double high) {
       private Interval negated() { return new Interval(-high, -low); }

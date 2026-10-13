@@ -266,6 +266,19 @@ regressions. See [the study record](research/spherical-incision-baseline.md) and
 These checks do not establish real land coverage, a conformal map, transition
 collision, or client rendering.
 
+### Conformal reference follow-up
+
+A separate source-traceable CCAM-series candidate now implements forward and
+inverse surface lookup, local scale, and curved-cell enclosures under
+`tools/conformal`. The generic `ClosedQuadSphereEmbedding.SurfaceMapping`
+interface lets it use the same seam, metric, and incision-policy harness without
+adding the GPL reference implementation to Fabric source sets. See
+[the conformal experiment](research/conformal-cube-validation.md) for 42 focused
+checks, cap sweeps, metre derivative results, license/source metadata, and the
+remaining geographic, persistence, elevation, and collision gates. The earlier
+baseline record remains a nonconformal baseline; the new candidate is research
+code, not a runtime mapping selection.
+
 ## Review follow-up: coarse atlas lookup
 
 `Atlas.owner` now uses a 2-degree latitude/longitude coarse locator, a

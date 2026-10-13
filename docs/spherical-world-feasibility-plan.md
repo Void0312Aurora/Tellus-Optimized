@@ -354,11 +354,19 @@ available.
 
 ## Immediate next work
 
+The standalone conformal candidate and its capped-mesh/local-derivative
+experiments are now available. See
+[the conformal validation record](research/conformal-cube-validation.md).
+This completes the numerical reference stage below; the eight-point geographic
+rotation, loss budget, versioned persistence, and Fabric collision gates remain
+open. The recorded thresholds are provisional numerical checks, not agreed
+gameplay acceptance thresholds.
+
 The current RFC should proceed in this order:
 
 1. Add the acceptance-threshold table and grid-version metadata to the standalone
    metric harness.
-2. Reproduce the conformal expanded-cube map from the Rancic/McGregor family in
+2. Completed as a standalone reference: reproduce the conformal expanded-cube map from the Rancic/McGregor family in
    a standalone evaluator, with a hard shared-boundary map and a separate
    singular-corner report.
 3. Reproduce the incision/overset construction as a second candidate, including
