@@ -2,6 +2,7 @@ package com.yucareux.tellus;
 
 import com.yucareux.tellus.client.screen.EarthTeleportScreen;
 import com.yucareux.tellus.client.hud.ManagedTerrainDownloadOverlay;
+import com.yucareux.tellus.client.SphereClientState;
 import com.yucareux.tellus.integration.distant_horizons.managed.ManagedTerrainClientState;
 import com.yucareux.tellus.integration.distant_horizons.managed.ManagedTerrainViewDistance;
 import com.yucareux.tellus.network.GeoTpOpenMapPayload;
@@ -9,6 +10,7 @@ import com.yucareux.tellus.network.GeoTpTeleportPayload;
 import com.yucareux.tellus.network.ManagedTerrainStatusPayload;
 import com.yucareux.tellus.network.ManagedTerrainViewPayload;
 import com.yucareux.tellus.network.TellusWeatherPayload;
+import com.yucareux.tellus.network.SphereFramePayload;
 import com.yucareux.tellus.platform.TellusClientPlatform;
 import com.yucareux.tellus.world.realtime.SnowGrid;
 import com.yucareux.tellus.world.realtime.TemperatureGrid;
@@ -77,7 +79,23 @@ public class TellusClient implements ClientModInitializer {
          Objects.requireNonNull(ManagedTerrainStatusPayload.TYPE, "ManagedTerrainStatusPayload.TYPE"),
          (payload, player, responseSender) -> Minecraft.getInstance().execute(() -> ManagedTerrainClientState.update(payload.status()))
       );
+      ClientPlayNetworking.registerGlobalReceiver(
+         Objects.requireNonNull(SphereFramePayload.TYPE, "SphereFramePayload.TYPE"),
+         (payload, player, responseSender) -> Minecraft.getInstance().execute(() -> {
+            if (!payload.spherical()) {
+               SphereClientState.update(SphereClientState.Snapshot.empty(payload.revision()));
+               return;
+            }
+            SphereClientState.update(new SphereClientState.Snapshot(
+               true, payload.planet(), payload.mappingId(), payload.face(), payload.x(), payload.y(), payload.z(),
+               payload.worldScale(), payload.yaw(), payload.revision()
+            ));
+         })
+      );
       ClientTickEvents.END_CLIENT_TICK.register(client -> {
+         if (client.player != null) {
+            SphereClientState.updateLocalPose(client.player.getX(), client.player.getY(), client.player.getZ(), client.player.getYRot());
+         }
          while (OPEN_MAP_KEY.consumeClick()) {
             if (client.screen == null && client.player != null && client.getConnection() != null) {
                client.getConnection().sendCommand("tellus map");
@@ -94,6 +112,7 @@ public class TellusClient implements ClientModInitializer {
       ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
          TellusRealtimeState.reset();
          ManagedTerrainClientState.reset();
+         SphereClientState.reset();
          this.managedTerrainViewUpdateTicks = 0;
       });
    }

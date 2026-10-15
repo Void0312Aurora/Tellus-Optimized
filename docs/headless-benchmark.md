@@ -27,8 +27,17 @@ For the six-face runtime smoke check, use a new template with a datapack made by
 instead of `--chunk-x`/`--chunk-z`. The runner sends `tellus sphere verify` and
 collects `sphere-runtime-check-*.json`. This exercises a real engine
 `ServerPlayer` with a packet sink and real chunk loading, without a client. It
-does not test walking, collision, rendering or speedup. Controller timeouts also
-apply while the server produces no log lines.
+does not test walking, client rendering or speedup. The normal real-data run
+also leaves the target collision probe disabled; an explicit synthetic fixture
+run can exercise the target FULL-chunk AABB query and source rollback with:
+
+```text
+--jvm-property tellus.sphere.syntheticSampler=true
+```
+
+That property is test-only analytic terrain and makes no geographic-data claim.
+On Windows the runner selects `gradlew.bat` automatically. Controller timeouts
+also apply while the server produces no log lines.
 
 The batch runner is:
 

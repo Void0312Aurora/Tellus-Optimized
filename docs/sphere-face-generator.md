@@ -6,6 +6,11 @@ to spherical addresses, samples DEM and cover using geodetic points, and writes
 real block palettes, section counts, and heightmaps. The ordinary `tellus:earth`
 generator retains its existing generation behavior.
 
+The current Fabric entry point uses the **conformal** cubed-sphere mapping
+`rancic-ccam30-double-v1`. The generator codec records this mapping and rejects
+the previous equiangular geometry version instead of silently interpreting an
+old save with different coordinates.
+
 This is a terrain-only prototype. Buildings, roads, inland water levels,
 vegetation, real biome classification, collision frame changes, and curvature
 rendering are not wired into this entry point. The
@@ -41,6 +46,26 @@ changes across every face edge, including corners. `SphereFaceRuntime` connects
 six explicitly grouped dimensions and moves players between them after the
 destination chunks are ready. Outside-face storage chunks remain empty; ordinary
 Minecraft rendering does not draw the neighboring face through the seam.
+The shared `SphereSurfaceMotion` adapter now combines a collision probe with the
+same conformal seam transform. In the 1.20.1 Fabric target, a server-side entity
+move hook uses the face chart guard before vanilla commits a move outside the
+face. Vanilla collision remains authoritative within a face; the adapter is not
+yet a complete replacement for body collision or client movement prediction.
+The server sends a `sphere_frame` payload on join and after a successful face
+transfer. Its mapping ID, face, local position, scale, yaw, and revision form
+the client-side authority shared by the movement and rendering work that
+follows; receiving and caching that payload is implemented, while those client
+systems still use vanilla behavior.
+The client updates only the local pose each tick and uses the shared
+`SphereClientMotion` preview for the same-face or cross-face result. It does not
+perform a client-side dimension change, so server transfer remains the single
+authority while prediction and collision adapters are added. The client mixin
+cancels only a preview classified as blocked by the quarantine/collision probe;
+ordinary collision is reported separately and remains with Minecraft's vanilla
+sliding solver, while cross-face candidates reach the server route.
+After the destination chunks are ready, the server also checks the translated
+player bounding box against the target level before teleporting; a blocked
+landing follows the existing transfer rollback path.
 
 ## Dimension configuration
 
@@ -50,7 +75,10 @@ part of a dimension JSON can be:
 ```json
 {
   "type": "tellus:sphere_face",
-  "geometry_version": 1,
+  "geometry_version": 2,
+  "mapping": "rancic-ccam30-double-v1",
+  "excluded_radius_meters": 300000.0,
+  "transition_width_meters": 50000.0,
   "biome_source": {"biome": "minecraft:plains"},
   "face": 2,
   "planet": "tellus:earth",
@@ -63,7 +91,15 @@ part of a dimension JSON can be:
 
 The enclosing dimension type must have the same `min_y` and `height`. This
 configuration is for an explicit new dimension; there is no world-preset button
-or automatic save conversion at this stage.
+or automatic save conversion at this stage. The two radius fields define the
+eight-corner quarantine. Chunks whose conservative footprint intersects either
+the excluded cap or its transition band fail closed until an exceptional-region
+terrain and collision handler is added. All six faces in one planet must use
+the same two values. With the default values, the ideal eight-cap fractions are
+0.4434% for the excluded caps and 0.6034% for the cap plus transition band.
+The conservative n=128 conformal mesh study measured about 0.7559% for the
+whole-cell quarantined area; the latter is the current planning figure until a
+production cell-bound proof replaces the study enclosure.
 
 ## Six-face runtime
 
@@ -109,10 +145,10 @@ transported by this prototype.
 
 This is a routing prototype, not seamless spherical gameplay. A cold destination
 can still take seconds and the player pauses while it loads. Local collision,
-input physics, renderer and the flat coordinate metric remain Minecraft's
-existing implementations. Cross-edge body collision, seamless adjacent-face
-visibility, horizon curvature and the full scale-1 vertical range remain work
-for later stages.
+input physics, renderer and the flat coordinate metric within a face remain
+Minecraft's existing implementations. Cross-edge body collision, seamless
+adjacent-face visibility, horizon curvature and the full scale-1 vertical range
+remain work for later stages.
 
 ## Validation
 
@@ -120,7 +156,7 @@ for later stages.
 ./gradlew -PtellusTargets=mc1201 :mc1201:build --offline --no-daemon
 ```
 
-The runtime build completed with 628 passing tests, three skips, and no failures
+The current runtime build completed with 698 tests, two skips, and no failures
 across the ordinary and parallel-fill test JVMs. The installable Fabric jar is
 produced under `mc1201/build/libs/`.
 
@@ -144,7 +180,23 @@ server ticks while tick processing continued. Those times are a single smoke
 sample and make no speedup claim. Reading `level.dat` confirmed all six persisted
 face/planet/scale configurations; both saved destination chunks were
 `minecraft:full` with bedrock, stone, dirt and grass palettes. Client movement
-acknowledgements, walking, collision and visuals were not tested by this run.
+acknowledgements, walking, target collision and visuals were not tested by this
+historical real-data run.
+
+A later isolated synthetic-fixture run used the same six-face datapack and the
+production Fabric runtime with `tellus.sphere.syntheticSampler=true`. It passed
+the face-0 to face-2 transfer, then placed a solid block at Y=2000 on the
+reverse destination. The target FULL-chunk AABB probe rejected that landing and
+restored the source face, Y, velocity and fall distance
+(`collisionRollbackPassed=true`). The fixture is evidence for routing and rollback wiring only; it is
+not a DEM, land-cover or visual-quality validation.
+
+The follow-up `conformal-client-frame-r5` run also passed after the frame
+payload integration (`passed=true`, `collisionRollbackPassed=true`). It still
+uses the packet-sink fixture without a connected client, so it verifies that
+the server transfer and rollback path remains healthy, not client rendering or
+prediction. Payload encoding, malformed-frame rejection, and stale-revision
+handling are covered by the module tests.
 
 Local artifacts are `tools/benchmark-results/sphere-runtime-scale1-checked.json`,
 its `.server.log`, and `sphere-runtime-scale1-saved-check.json`. The checked run

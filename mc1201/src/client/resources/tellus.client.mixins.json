@@ -6,7 +6,8 @@
 		"AbstractWidgetAccessor",
 		"LevelLoadingScreenMixin",
 		"MinecraftScreenMixin",
-		"PresetEditorMixin"
+		"PresetEditorMixin",
+		"SphericalClientEntityMoveMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

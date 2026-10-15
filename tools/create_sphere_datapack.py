@@ -41,7 +41,9 @@ def create_pack(output: Path, planet: str, scale: float, sea: int, min_y: int, h
         documents[f"data/{namespace}/dimension/{name}_face_{face}.json"] = {
             "type": f"{planet}_surface",
             "generator": {
-                "type": "tellus:sphere_face", "geometry_version": 1,
+                "type": "tellus:sphere_face", "geometry_version": 2,
+                "mapping": "rancic-ccam30-double-v1",
+                "excluded_radius_meters": 300000.0, "transition_width_meters": 50000.0,
                 "biome_source": {"biome": "minecraft:plains"}, "planet": planet,
                 "face": face, "world_scale": scale, "sea_level": sea, "min_y": min_y, "height": height,
             },

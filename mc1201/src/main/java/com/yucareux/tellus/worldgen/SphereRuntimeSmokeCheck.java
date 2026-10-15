@@ -18,21 +18,25 @@ import net.minecraft.network.Connection;
 import net.minecraft.network.PacketSendListener;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.PacketFlow;
+import net.minecraft.core.BlockPos;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.network.ServerGamePacketListenerImpl;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.GameType;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
 
 /**
  * Opt-in engine smoke check. Uses an actual ServerPlayer with a packet sink,
- * real face dimensions and real FULL chunk loading. This is not a client,
- * walking/collision, visual, dataset-quality or performance benchmark.
+ * real face dimensions and real FULL chunk loading. The optional collision
+ * stage probes only the target landing AABB and rollback path; this is not a
+ * client, walking physics, visual, dataset-quality or performance benchmark.
  */
 final class SphereRuntimeSmokeCheck {
    private final MinecraftServer server;
+   private final ServerLevel faceZero;
    private final ServerPlayer player;
    private final JsonObject result = new JsonObject();
    private final JsonArray crossings = new JsonArray();
@@ -41,9 +45,11 @@ final class SphereRuntimeSmokeCheck {
    private SphereWorldModel.FaceTransition frame;
    private SphereFaceTopology.EnginePoint expected;
    private SphereWorldModel.GeoPoint originalPoint;
+   private int sourceFace;
    private int stage;
    private int startedTick;
    private boolean requested;
+   private boolean expectCollisionRollback;
    private boolean finished;
    private double requestMillis;
    private final float yaw = 27.0F;
@@ -52,6 +58,7 @@ final class SphereRuntimeSmokeCheck {
 
    SphereRuntimeSmokeCheck(MinecraftServer server, ServerLevel faceZero) {
       this.server = server;
+      this.faceZero = faceZero;
       var generator = (SphereFaceChunkGenerator)faceZero.getChunkSource().getGenerator();
       this.model = generator.model();
       this.topology = generator.topology();
@@ -77,15 +84,31 @@ final class SphereRuntimeSmokeCheck {
    boolean finished() { return this.finished; }
 
    private void prepare(int face, double x, double z) {
-      this.player.moveTo(x, ((SphereFaceChunkGenerator)this.player.serverLevel().getChunkSource().getGenerator()).getSeaLevel() + 512.0,
-         z, this.yaw, this.pitch);
+      this.prepare(face, x, z,
+         ((SphereFaceChunkGenerator)this.player.serverLevel().getChunkSource().getGenerator()).getSeaLevel() + 512.0);
+   }
+
+   private void prepare(int face, double x, double z, double y) {
+      this.player.moveTo(x, y, z, this.yaw, this.pitch);
       this.player.setDeltaMovement(this.velocity);
       this.player.fallDistance = 7.5F;
+      this.sourceFace = face;
       this.frame = this.topology.transition(face, x, z);
       this.expected = this.topology.enginePoint(this.frame.destination());
       this.originalPoint = this.model.continuedSurfacePoint(face, x - this.topology.minEngineBlock(), z - this.topology.minEngineBlock());
       this.startedTick = this.server.getTickCount();
       this.requested = false;
+   }
+
+   private void installCollisionObstacle() {
+      var reverse = this.topology.transition(2, this.topology.maxEngineBlock() + 0.375, 0.0);
+      var target = this.topology.enginePoint(reverse.destination());
+      BlockPos obstacle = BlockPos.containing(target.x(), 2000.0, target.z());
+      this.faceZero.setBlock(obstacle, Blocks.STONE.defaultBlockState(), 3);
+      this.result.addProperty("collisionObstacleFace", 0);
+      this.result.addProperty("collisionObstacleX", obstacle.getX());
+      this.result.addProperty("collisionObstacleY", obstacle.getY());
+      this.result.addProperty("collisionObstacleZ", obstacle.getZ());
    }
 
    void tick(Consumer<ServerPlayer> route, Predicate<UUID> pending) {
@@ -98,6 +121,18 @@ final class SphereRuntimeSmokeCheck {
          }
          if (pending.test(this.player.getUUID())) return;
          var targetGenerator = (SphereFaceChunkGenerator)this.player.serverLevel().getChunkSource().getGenerator();
+         if (this.expectCollisionRollback) {
+            require(targetGenerator.face() == this.sourceFace, "blocked transfer did not roll back to the source face");
+            require(Math.abs(this.player.getY() - 2000.0) < 1.0E-6, "collision rollback changed radial height");
+            require(this.player.getDeltaMovement().distanceTo(this.velocity) < 1.0E-10,
+               "collision rollback changed velocity");
+            require(this.player.fallDistance == 7.5F, "collision rollback changed fall distance");
+            this.result.addProperty("collisionRollbackPassed", true);
+            this.result.addProperty("collisionProbe", "target FULL chunk AABB occupied by a solid block");
+            this.result.addProperty("passed", true);
+            this.finished = true;
+            return;
+         }
          require(targetGenerator.face() == this.expected.face(), "player did not arrive on the destination face");
          require(Math.abs(this.player.getX() - this.expected.x()) < 1.0E-6
             && Math.abs(this.player.getZ() - this.expected.z()) < 1.0E-6, "fractional position changed");
@@ -130,8 +165,12 @@ final class SphereRuntimeSmokeCheck {
          this.crossings.add(crossing);
          if (this.stage++ == 0) {
             require(targetGenerator.face() == 2, "unexpected north-edge neighbor");
-            // Step across the reverse seam, through the same runtime path.
-            this.prepare(2, this.topology.maxEngineBlock() + 0.375, 0.0);
+            // Step across the reverse seam at a high radial level. Install a
+            // solid target block first so the live AABB probe must reject the
+            // transfer and restore the complete source state.
+            this.installCollisionObstacle();
+            this.expectCollisionRollback = true;
+            this.prepare(2, this.topology.maxEngineBlock() + 0.375, 0.0, 2000.0);
          } else {
             this.result.addProperty("passed", true);
             this.finished = true;

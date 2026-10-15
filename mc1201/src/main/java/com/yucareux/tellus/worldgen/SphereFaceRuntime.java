@@ -2,6 +2,7 @@ package com.yucareux.tellus.worldgen;
 
 import com.mojang.brigadier.arguments.DoubleArgumentType;
 import com.yucareux.tellus.TellusCommon;
+import com.yucareux.tellus.network.SphereFramePayload;
 import com.yucareux.tellus.worldgen.global.SphereFaceTopology;
 import com.yucareux.tellus.worldgen.global.SphereWorldModel;
 import java.util.ArrayList;
@@ -15,6 +16,7 @@ import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.Util;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.ResourceLocationArgument;
@@ -26,23 +28,31 @@ import net.minecraft.server.level.TicketType;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.chunk.ChunkStatus;
 import net.minecraft.world.level.levelgen.Heightmap;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
 /** Fabric 1.20.1 player routing between explicitly grouped spherical faces. */
 public final class SphereFaceRuntime {
+   private static volatile SphereFaceRuntime ACTIVE;
    private static final TicketType<UUID> FACE_TRANSFER = TicketType.create("tellus_sphere_transfer", Comparator.<UUID>naturalOrder());
    private static final int LOAD_TIMEOUT_TICKS = 1200;
    private final Map<String, ServerLevel[]> planets = new HashMap<>();
    private final Map<UUID, Transfer> pending = new HashMap<>();
    private final Map<UUID, Integer> retryAfter = new HashMap<>();
+   private long frameRevision;
    private SphereRuntimeSmokeCheck smoke;
 
    public static void register() {
       var runtime = new SphereFaceRuntime();
+      ACTIVE = runtime;
       ServerLifecycleEvents.SERVER_STARTED.register(runtime::discover);
-      ServerLifecycleEvents.SERVER_STOPPING.register(server -> runtime.clear());
+      ServerLifecycleEvents.SERVER_STOPPING.register(server -> {
+         runtime.clear();
+         if (ACTIVE == runtime) ACTIVE = null;
+      });
       ServerTickEvents.END_SERVER_TICK.register(runtime::tick);
       ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> runtime.cancel(handler.getPlayer()));
+      ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> runtime.syncFrame(handler.getPlayer()));
       CommandRegistrationCallback.EVENT.register((dispatcher, registry, environment) -> {
          var root = Commands.literal("sphere").requires(source -> source.hasPermission(2))
             .then(Commands.literal("status").executes(context -> {
@@ -64,6 +74,11 @@ public final class SphereFaceRuntime {
                      var geo = new SphereWorldModel.GeoPoint(DoubleArgumentType.getDouble(context, "latitude"),
                         DoubleArgumentType.getDouble(context, "longitude"), 0);
                      var target = generator.topology().enginePoint(generator.model().continuousForGeo(geo));
+                     if (!generator.singularityPolicy().admitsOrdinaryEnginePoint(target.face(),
+                        target.x(), target.z())) {
+                        context.getSource().sendFailure(Component.literal("Target lies in the spherical singularity quarantine"));
+                        return 0;
+                     }
                      runtime.begin(player, faces[target.face()], target, null, true);
                      return 1;
                   })))));
@@ -80,6 +95,28 @@ public final class SphereFaceRuntime {
          }
          dispatcher.register(Commands.literal("tellus").then(root));
       });
+   }
+
+   /**
+    * Server movement hook used by the Fabric 1.20.1 mixin. The ordinary
+    * Minecraft collision solver remains authoritative inside a face; this
+    * hook only takes ownership when a proposed horizontal move leaves the
+    * continued face chart.
+    */
+   public static boolean interceptBoundaryMove(ServerPlayer player, Vec3 movement) {
+      SphereFaceRuntime runtime = ACTIVE;
+      return runtime != null && runtime.interceptBoundaryMove0(player, movement);
+   }
+
+   private boolean interceptBoundaryMove0(ServerPlayer player, Vec3 movement) {
+      if (this.pending.containsKey(player.getUUID())) return true;
+      if (movement.x == 0.0 && movement.z == 0.0
+         || !(player.serverLevel().getChunkSource().getGenerator() instanceof SphereFaceChunkGenerator source)) return false;
+      SphereFaceTopology topology = source.topology();
+      double candidateX = player.getX() + movement.x;
+      double candidateZ = player.getZ() + movement.z;
+      if (topology.containsEnginePoint(candidateX, candidateZ)) return false;
+      return this.routeBoundary(player, source, topology, candidateX, candidateZ);
    }
 
    private void discover(MinecraftServer server) {
@@ -109,11 +146,29 @@ public final class SphereFaceRuntime {
 
    static boolean sameGeometry(SphereFaceChunkGenerator a, SphereFaceChunkGenerator b) {
       return a.model().config().equals(b.model().config()) && a.getMinY() == b.getMinY()
-         && a.getGenDepth() == b.getGenDepth() && a.getSeaLevel() == b.getSeaLevel();
+         && a.getGenDepth() == b.getGenDepth() && a.getSeaLevel() == b.getSeaLevel()
+         && a.model().mappingId().equals(b.model().mappingId())
+         && a.singularityPolicy().config().equals(b.singularityPolicy().config());
    }
 
    private static SphereFaceChunkGenerator generator(ServerLevel level) {
       return (SphereFaceChunkGenerator)level.getChunkSource().getGenerator();
+   }
+
+   /** Sends the server-authoritative frame consumed by client movement and rendering hooks. */
+   private void syncFrame(ServerPlayer player) {
+      if (!ServerPlayNetworking.canSend(player, SphereFramePayload.TYPE)) return;
+      if (player.serverLevel().getChunkSource().getGenerator() instanceof SphereFaceChunkGenerator generator
+         && !generator.planet().isEmpty()) {
+         ServerPlayNetworking.send(player, new SphereFramePayload(
+            true, generator.planet(), generator.model().mappingId(), generator.face(),
+            player.getX(), player.getY(), player.getZ(), generator.worldScale(), player.getYRot(), ++this.frameRevision
+         ));
+      } else {
+         ServerPlayNetworking.send(player, new SphereFramePayload(
+            false, "", "", -1, Double.NaN, Double.NaN, Double.NaN, 0.0, 0.0F, ++this.frameRevision
+         ));
+      }
    }
 
    private void tick(MinecraftServer server) {
@@ -139,6 +194,10 @@ public final class SphereFaceRuntime {
                double y = transfer.y();
                if (transfer.ground()) y = transfer.target().getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
                   (int)Math.floor(transfer.point().x()), (int)Math.floor(transfer.point().z())) + 1.0;
+               if (destinationBlocked(player, transfer.target(), transfer.point(), y)) {
+                  this.fail(player, "Spherical destination collision blocked", null);
+                  return;
+               }
                var horizontal = transfer.frame() == null ? null
                   : transfer.frame().transport(transfer.velocity().x, transfer.velocity().z);
                Vec3 velocity = horizontal == null ? Vec3.ZERO
@@ -149,6 +208,7 @@ public final class SphereFaceRuntime {
                player.setDeltaMovement(velocity);
                player.hurtMarked = true; // Send the transported velocity to the client.
                player.fallDistance = transfer.ground() ? 0 : transfer.fallDistance();
+               this.syncFrame(player);
                this.cancel(player);
             } catch (RuntimeException error) {
                this.fail(player, "Spherical destination could not be loaded", error);
@@ -161,31 +221,55 @@ public final class SphereFaceRuntime {
       if (!(player.serverLevel().getChunkSource().getGenerator() instanceof SphereFaceChunkGenerator source)) return;
       SphereFaceTopology topology = source.topology();
       if (topology.containsEnginePoint(player.getX(), player.getZ())) return;
+      this.routeBoundary(player, source, topology, player.getX(), player.getZ());
+   }
+
+   private boolean routeBoundary(ServerPlayer player, SphereFaceChunkGenerator source,
+      SphereFaceTopology topology, double candidateX, double candidateZ) {
       if (this.retryAfter.getOrDefault(player.getUUID(), 0) > player.server.getTickCount()) {
          this.holdAtEdge(player, topology);
-         return;
+         return true;
       }
       var faces = this.planets.get(source.planet());
       if (faces == null || player.isPassenger() || player.isVehicle()) {
          this.holdAtEdge(player, topology);
          this.fail(player, faces == null ? "This spherical planet has no complete matching face set" : "Dismount before crossing a spherical face", null);
-         return;
+         return true;
       }
       try {
-         var seam = topology.transfer(source.face(), player.getX(), player.getZ(), player.getYRot(),
-            player.getDeltaMovement().x, player.getDeltaMovement().z);
-         if (seam.destination().face() == source.face()) {
+         // Use the shared conformal surface-motion adapter for the seam
+         // decision and Jacobian. The target AABB probe still runs after the
+         // destination FULL chunks are ready in route().
+         // A pending transfer deliberately holds the player just outside the
+         // half-open face domain. Rebase that held point to the last valid
+         // interior coordinate while preserving the exact outside candidate.
+         double originX = topology.containsEnginePoint(player.getX(), player.getZ())
+            ? player.getX() : clampInside(player.getX(), topology);
+         double originZ = topology.containsEnginePoint(player.getX(), player.getZ())
+            ? player.getZ() : clampInside(player.getZ(), topology);
+         var step = source.surfaceMotion().step(source.face(), originX, originZ,
+            candidateX - originX, candidateZ - originZ, 1.0,
+            (face, x, z) -> false);
+         if (step.blocked()) {
+            this.holdAtEdge(player, topology);
+            this.fail(player, "Spherical singularity quarantine blocks this crossing", null);
+            return true;
+         }
+         var destination = step.destination();
+         if (destination.face() == source.face()) {
             // The inverse face rule assigns an exact edge tie to the source
             // face. Keep the entity in the valid half-open engine domain until
             // motion crosses the edge by a representable amount.
             this.holdAtEdge(player, topology);
-            return;
+            return true;
          }
-         this.begin(player, faces[seam.destination().face()], seam.destination(), seam.frame(), false);
+         if (step.frame() == null) throw new IllegalStateException("cross-face step has no transition frame");
+         this.begin(player, faces[destination.face()], destination, step.frame(), false);
       } catch (IllegalArgumentException error) {
          this.holdAtEdge(player, topology);
          this.fail(player, "Position exceeds the continued face chart", error);
       }
+      return true;
    }
 
    private void begin(ServerPlayer player, ServerLevel target, SphereFaceTopology.EnginePoint point,
@@ -233,6 +317,30 @@ public final class SphereFaceRuntime {
 
    private static double clampInside(double coordinate, SphereFaceTopology topology) {
       return Math.max(topology.minEngineBlock() + 0.5, Math.min(topology.maxEngineBlock() - 0.5, coordinate));
+   }
+
+   /**
+    * Probes the destination face after its chunks are ready. The player's
+    * vanilla bounding-box shape is preserved while its center is placed at
+    * the transformed destination coordinate and target Y level.
+    */
+   private static boolean destinationBlocked(ServerPlayer player, ServerLevel target,
+      SphereFaceTopology.EnginePoint destination, double y) {
+      AABB source = player.getBoundingBox();
+      AABB targetBox = destinationBox(source, player.getX(), player.getY(), player.getZ(),
+         destination.x(), y, destination.z());
+      return !target.noCollision(player, targetBox);
+   }
+
+   static AABB destinationBox(AABB source, double sourceX, double sourceY, double sourceZ,
+      double destinationX, double destinationY, double destinationZ) {
+      return new AABB(
+         destinationX + source.minX - sourceX,
+         destinationY + source.minY - sourceY,
+         destinationZ + source.minZ - sourceZ,
+         destinationX + source.maxX - sourceX,
+         destinationY + source.maxY - sourceY,
+         destinationZ + source.maxZ - sourceZ);
    }
 
    private void holdAtEdge(ServerPlayer player, SphereFaceTopology topology) {
