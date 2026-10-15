@@ -48,8 +48,11 @@ class SphereFaceTopologyTest {
                   var mapped = frame.transport(velocity[0], velocity[1]);
                   var sourceStep = model.continuedSurfacePoint(face, p[0] - min + step * velocity[0], p[1] - min + step * velocity[1]);
                   var targetStep = model.continuedSurfacePoint(target.face(), target.x() - min + step * mapped.x(), target.z() - min + step * mapped.z());
-                  assertTrue(SphereWorldModel.greatCircleDistanceMeters(sourceStep, targetStep) < 1.0E-7,
-                     "analytic Jacobian must agree with spherical displacement to second order");
+                  double error = SphereWorldModel.greatCircleDistanceMeters(sourceStep, targetStep);
+                  assertTrue(error < 1.0E-7,
+                     () -> "analytic Jacobian must agree with spherical displacement to second order: "
+                        + error + " frame=" + frame + " source=" + java.util.Arrays.toString(p)
+                        + " velocity=" + java.util.Arrays.toString(velocity));
                }
                for (float yaw : new float[]{0, 90, -90, 179, 37}) {
                   var vector = frame.transport(-Math.sin(Math.toRadians(yaw)), Math.cos(Math.toRadians(yaw)));

@@ -326,7 +326,9 @@ public final class ClosedQuadSphereEmbedding {
             blockX / size * 2.0 - 1.0, blockZ / size * 2.0 - 1.0), "external point");
       }
       if (this.mapping == Mapping.EQUANGULAR_CUBE) {
-         return this.model.exactSurfacePoint(face, blockX, blockZ);
+         double size = this.model.config().faceBlocks();
+         return new EquiangularCubedSphere().point(face, blockX / size * 2.0 - 1.0,
+            blockZ / size * 2.0 - 1.0);
       }
       double size = this.model.config().faceBlocks();
       double u = blockX / size * 2.0 - 1.0;

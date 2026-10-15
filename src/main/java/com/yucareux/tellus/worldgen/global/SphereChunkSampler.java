@@ -76,8 +76,8 @@ public final class SphereChunkSampler {
 
    /**
     * Conservative spherical cap covering this chunk and its feature margin.
-    * On each equiangular face |d(unit ray)/d(angle)| <= 2 per axis;
-    * Manhattan distance from the center to a corner is 16 block units.
+    * The active face mapping has a bounded local derivative; Manhattan
+    * distance from the center to a corner is 16 block units.
     */
    public GeodeticBounds featureBounds(SphereWorldModel.SphereChunkAddress address, double marginMeters) {
       this.model.chartForChunk(address);

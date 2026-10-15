@@ -95,7 +95,32 @@ public final class TellusWorldgenSources {
 
    /** Creates the spherical data sampler over the same caches as the live generator. */
    public static SphereChunkSampler sphericalSampler(SphereWorldModel model) {
+      // The synthetic path is deliberately opt-in. It exists only for a real
+      // six-dimension engine smoke run when the DEM/land-mask cache is not
+      // available; it must never silently replace geographic source data.
+      if (Boolean.getBoolean("tellus.sphere.syntheticSampler")) {
+         return syntheticSphericalSampler(model);
+      }
       return SphereChunkSampler.fromSources(model, ELEVATION, LAND_COVER, LAND_MASK);
+   }
+
+   /**
+    * Deterministic analytic terrain for topology, chunk loading and routing
+    * integration tests. This is not a geographic fallback and is guarded by
+    * {@code tellus.sphere.syntheticSampler} at the only production entry point.
+    */
+   static SphereChunkSampler syntheticSphericalSampler(SphereWorldModel model) {
+      Objects.requireNonNull(model, "model");
+      return new SphereChunkSampler(model, (point, resolutionMeters) -> {
+         double latitude = Math.toRadians(point.latitude());
+         double longitude = Math.toRadians(point.longitude());
+         double elevation = 32.0 * Math.sin(latitude)
+            + 12.0 * Math.cos(3.0 * longitude) * Math.cos(latitude)
+            - 4.0 * Math.sin(5.0 * longitude + latitude);
+         int coverClass = elevation < -2.0 ? 80 : 30;
+         double waterSurface = elevation < 0.0 ? 0.0 : Double.NaN;
+         return new SphereChunkSampler.SurfaceData(elevation, coverClass, waterSurface);
+      });
    }
 
    static TellusLandCoverSource landCover() {

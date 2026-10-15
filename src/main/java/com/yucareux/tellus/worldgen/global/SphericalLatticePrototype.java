@@ -297,7 +297,7 @@ public final class SphericalLatticePrototype {
       if (samplesPerAxis < 2) throw new IllegalArgumentException("samplesPerAxis");
       int faceBlocks = 4096;
       SphereWorldModel model = new SphereWorldModel(new SphereWorldModel.Config(
-         1.0, faceBlocks, 16, 3, 0.25));
+         1.0, faceBlocks, 16, 3, 0.25), new EquiangularCubedSphere());
       double nominal = Math.PI * SphereWorldModel.EARTH_RADIUS_METERS * 0.5 / faceBlocks;
       double minScale = Double.POSITIVE_INFINITY, maxScale = 0.0, maxCondition = 0.0;
       double minArea = Double.POSITIVE_INFINITY, maxArea = 0.0, maxAngle = 0.0;

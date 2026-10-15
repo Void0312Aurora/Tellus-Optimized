@@ -6,7 +6,7 @@ import java.util.Objects;
  * Canonical spherical coordinate model for the progressive global world.
  *
  * <p>This model deliberately does not use a world-wide map projection. The
- * reference surface is a cubed sphere with six equiangular faces. A face is
+ * reference surface is a cubed sphere with six conformal faces. A face is
  * divided into block-sized cells and then into charts. Minecraft chunks can
  * be materialized from {@link SphereChunkAddress} values without making a
  * Mercator plane the authoritative geometry.</p>
@@ -18,14 +18,23 @@ public final class SphereWorldModel {
    public static final double EARTH_RADIUS_METERS = 6_371_008.8;
    public static final int FACE_COUNT = 6;
    public static final int CHUNK_SIZE_BLOCKS = 16;
+   public static final String MAPPING_ID = ConformalCubedSphere.MAP_ID;
    private static final int MAX_EXPANSION_ORDER = 12;
    private static final double HALF_FACE_ANGLE = Math.PI * 0.25;
    private static final double EPSILON = 1.0E-12;
+   private static final double MAPPING_DIFF_H = 1.0E-8;
+   private static final SphereSurfaceMapping DEFAULT_MAPPING = new ConformalCubedSphere();
 
    private final Config config;
+   private final SphereSurfaceMapping mapping;
 
    public SphereWorldModel(Config config) {
+      this(config, DEFAULT_MAPPING);
+   }
+
+   public SphereWorldModel(Config config, SphereSurfaceMapping mapping) {
       this.config = Objects.requireNonNull(config, "config");
+      this.mapping = Objects.requireNonNull(mapping, "mapping");
    }
 
    public static SphereWorldModel forWorldScale(double worldScale) {
@@ -34,6 +43,11 @@ public final class SphereWorldModel {
 
    public Config config() {
       return this.config;
+   }
+
+   /** Stable mapping identifier persisted with the spherical world contract. */
+   public String mappingId() {
+      return this.mapping.id();
    }
 
    public long chunksPerFace() {
@@ -149,7 +163,7 @@ public final class SphereWorldModel {
       }
       double u = blockToFaceCoordinate(blockX, this.config.faceBlocks());
       double v = blockToFaceCoordinate(blockZ, this.config.faceBlocks());
-      return fromVector(faceVector(face, u, v), 0.0);
+      return Objects.requireNonNull(this.mapping.point(face, u, v), "mapping point");
    }
 
    /**
@@ -165,14 +179,15 @@ public final class SphereWorldModel {
          || blockZ <= -size * 0.5 || blockZ >= size * 1.5) {
          throw new IllegalArgumentException("coordinate is outside the face's front hemisphere");
       }
-      return fromVector(faceVector(face, blockToFaceCoordinate(blockX, this.config.faceBlocks()),
-         blockToFaceCoordinate(blockZ, this.config.faceBlocks())), 0.0);
+      return continuedNormalized(face,
+         blockToFaceCoordinate(blockX, this.config.faceBlocks()),
+         blockToFaceCoordinate(blockZ, this.config.faceBlocks()));
    }
 
    /** Own a spherical point without rounding its fractional block coordinate. */
    public ContinuousFaceCoordinate continuousForGeo(GeoPoint point) {
       Objects.requireNonNull(point, "point");
-      return continuousCoordinate(faceUv(toVector(point)));
+      return continuousCoordinate(this.mapping.inverse(point));
    }
 
    /**
@@ -185,10 +200,10 @@ public final class SphereWorldModel {
       this.continuedSurfacePoint(face, blockX, blockZ);
       double u = blockToFaceCoordinate(blockX, this.config.faceBlocks());
       double v = blockToFaceCoordinate(blockZ, this.config.faceBlocks());
-      FaceUv destinationUv = faceUv(faceVector(face, u, v));
+      SphereSurfaceMapping.FaceCoordinate destinationUv = continuedCoordinate(face, u, v);
       ContinuousFaceCoordinate destination = continuousCoordinate(destinationUv);
-      TangentBasis sourceBasis = faceBasis(face, u, v);
-      TangentBasis targetBasis = faceBasis(destination.face(), destinationUv.u(), destinationUv.v());
+      TangentBasis sourceBasis = continuedBasis(face, u, v);
+      TangentBasis targetBasis = mappingBasis(destination.face(), destinationUv.u(), destinationUv.v());
       double xx = targetBasis.x().dot(targetBasis.x());
       double xz = targetBasis.x().dot(targetBasis.z());
       double zz = targetBasis.z().dot(targetBasis.z());
@@ -204,11 +219,81 @@ public final class SphereWorldModel {
          (xx * szZ - xz * sxZ) / determinant);
    }
 
-   private ContinuousFaceCoordinate continuousCoordinate(FaceUv coordinate) {
+   private ContinuousFaceCoordinate continuousCoordinate(SphereSurfaceMapping.FaceCoordinate coordinate) {
       double size = this.config.faceBlocks();
       return new ContinuousFaceCoordinate(coordinate.face(),
          clamp((coordinate.u() + 1.0) * 0.5 * size, 0.0, size),
          clamp((coordinate.v() + 1.0) * 0.5 * size, 0.0, size));
+   }
+
+   /** Maps a normalized face coordinate, extending only the small seam band. */
+   private GeoPoint continuedNormalized(int face, double u, double v) {
+      SphereSurfaceMapping.FaceCoordinate coordinate = continuedCoordinate(face, u, v);
+      return this.mapping.point(coordinate.face(), coordinate.u(), coordinate.v());
+   }
+
+   private SphereSurfaceMapping.FaceCoordinate continuedCoordinate(int face, double u, double v) {
+      double cu = clamp(u, -1.0, 1.0), cv = clamp(v, -1.0, 1.0);
+      if (u == cu && v == cv) return new SphereSurfaceMapping.FaceCoordinate(face, u, v);
+      SphereSurfaceMapping.FaceCoordinate target = boundaryCoordinate(face, u, v, cu, cv);
+      TangentBasis sourceBasis = mappingBasis(face, cu, cv);
+      TangentBasis targetBasis = mappingBasis(target.face(), target.u(), target.v());
+      Vector3 displacement = sourceBasis.x().scale(u - cu).add(sourceBasis.z().scale(v - cv));
+      double xx = targetBasis.x().dot(targetBasis.x());
+      double xz = targetBasis.x().dot(targetBasis.z());
+      double zz = targetBasis.z().dot(targetBasis.z());
+      double determinant = xx * zz - xz * xz;
+      double tx = targetBasis.x().dot(displacement);
+      double tz = targetBasis.z().dot(displacement);
+      double du = (zz * tx - xz * tz) / determinant;
+      double dv = (xx * tz - xz * tx) / determinant;
+      double targetU = target.u() + du, targetV = target.v() + dv;
+      if (targetU < -1.0 || targetU > 1.0 || targetV < -1.0 || targetV > 1.0) {
+         if (Math.abs(targetU - target.u()) + Math.abs(targetV - target.v()) < 1.0E-12) {
+            throw new IllegalArgumentException("continued face chart exceeded seam depth");
+         }
+         return continuedCoordinate(target.face(), targetU, targetV);
+      }
+      return new SphereSurfaceMapping.FaceCoordinate(target.face(), targetU, targetV);
+   }
+
+   private SphereSurfaceMapping.FaceCoordinate boundaryCoordinate(int face, double u, double v,
+      double cu, double cv) {
+      FaceUv owner = faceUv(faceVector(face, u, v));
+      if ((cu == -1.0 || cu == 1.0) && (cv == -1.0 || cv == 1.0)) {
+         return new SphereSurfaceMapping.FaceCoordinate(owner.face(),
+            Math.copySign(1.0, owner.u()), Math.copySign(1.0, owner.v()));
+      }
+      GeoPoint boundary = this.mapping.point(face, cu, cv);
+      return this.mapping.inverseOnFace(owner.face(), boundary);
+   }
+
+   /** Numerical tangent basis of the active mapping in normalized face units. */
+   private TangentBasis mappingBasis(int face, double u, double v) {
+      double h = MAPPING_DIFF_H;
+      double ul = clamp(u - h, -1.0, 1.0), uh = clamp(u + h, -1.0, 1.0);
+      double vl = clamp(v - h, -1.0, 1.0), vh = clamp(v + h, -1.0, 1.0);
+      Vector3 center = toVector(this.mapping.point(face, u, v));
+      Vector3 du = toVector(this.mapping.point(face, uh, v)).subtract(toVector(this.mapping.point(face, ul, v)))
+         .scale(1.0 / Math.max(EPSILON, uh - ul));
+      Vector3 dv = toVector(this.mapping.point(face, u, vh)).subtract(toVector(this.mapping.point(face, u, vl)))
+         .scale(1.0 / Math.max(EPSILON, vh - vl));
+      return new TangentBasis(projectTangent(center, du), projectTangent(center, dv));
+   }
+
+   /** Numerical tangent basis that remains defined just outside a face edge. */
+   private TangentBasis continuedBasis(int face, double u, double v) {
+      double h = MAPPING_DIFF_H;
+      Vector3 center = toVector(continuedNormalized(face, u, v));
+      Vector3 du = toVector(continuedNormalized(face, u + h, v))
+         .subtract(toVector(continuedNormalized(face, u - h, v))).scale(1.0 / (2.0 * h));
+      Vector3 dv = toVector(continuedNormalized(face, u, v + h))
+         .subtract(toVector(continuedNormalized(face, u, v - h))).scale(1.0 / (2.0 * h));
+      return new TangentBasis(projectTangent(center, du), projectTangent(center, dv));
+   }
+
+   private static Vector3 projectTangent(Vector3 center, Vector3 derivative) {
+      return derivative.subtract(center.scale(center.dot(derivative)));
    }
 
    private TangentBasis faceBasis(int face, double u, double v) {
@@ -267,11 +352,9 @@ public final class SphereWorldModel {
       validateFaceBlock(address.blockX(), address.blockZ());
       double centerX = address.blockX() + 0.5 + deltaX;
       double centerZ = address.blockZ() + 0.5 + deltaZ;
-      FaceUv destination = faceUv(faceVector(
-         address.face(),
+      SphereSurfaceMapping.FaceCoordinate destination = continuedCoordinate(address.face(),
          blockToFaceCoordinate(centerX, this.config.faceBlocks()),
-         blockToFaceCoordinate(centerZ, this.config.faceBlocks())
-      ));
+         blockToFaceCoordinate(centerZ, this.config.faceBlocks()));
       return new SphereBlockAddress(
          destination.face(),
          faceCoordinateToBlock(destination.u(), this.config.faceBlocks()),
@@ -302,6 +385,23 @@ public final class SphereWorldModel {
       Vector3 north = east.cross(anchorVector).normalized();
       double distance = EARTH_RADIUS_METERS * angularDistance;
       return new LocalOffset(tangent.dot(east) * distance, tangent.dot(north) * distance);
+   }
+
+   /**
+    * Returns the right-handed local frame used by a future client/collision
+    * adapter. East and north lie in the reference-sphere tangent plane and up
+    * is the outward radial direction. The frame is a conversion contract only;
+    * it does not change the engine's flat ChunkPos or collision implementation.
+    */
+   public TangentFrame tangentFrame(GeoPoint point) {
+      Objects.requireNonNull(point, "point");
+      Vector3 up = toVector(point);
+      Vector3 east = eastBasis(up);
+      Vector3 north = east.cross(up).normalized();
+      return new TangentFrame(point,
+         new EcefVector(east.x(), east.y(), east.z()),
+         new EcefVector(north.x(), north.y(), north.z()),
+         new EcefVector(up.x(), up.y(), up.z()));
    }
 
    /** Expands a chart-local offset with the configured truncation order. */
@@ -398,11 +498,10 @@ public final class SphereWorldModel {
 
    private FaceCoordinate faceCoordinate(GeoPoint point) {
       Objects.requireNonNull(point, "point");
-      Vector3 vector = toVector(point);
-      FaceUv faceUv = faceUv(vector);
-      long blockX = faceCoordinateToBlock(faceUv.u(), this.config.faceBlocks());
-      long blockZ = faceCoordinateToBlock(faceUv.v(), this.config.faceBlocks());
-      return new FaceCoordinate(faceUv.face(), blockX, blockZ);
+      SphereSurfaceMapping.FaceCoordinate coordinate = this.mapping.inverse(point);
+      long blockX = faceCoordinateToBlock(coordinate.u(), this.config.faceBlocks());
+      long blockZ = faceCoordinateToBlock(coordinate.v(), this.config.faceBlocks());
+      return new FaceCoordinate(coordinate.face(), blockX, blockZ);
    }
 
    private void validateFaceBlock(long blockX, long blockZ) {
@@ -645,6 +744,75 @@ public final class SphereWorldModel {
       public LocalOffset {
          if (!Double.isFinite(eastMeters) || !Double.isFinite(northMeters)) {
             throw new IllegalArgumentException("local offset must be finite");
+         }
+      }
+   }
+
+   /** A right-handed east/north/up frame anchored at a geodetic point. */
+   public record TangentFrame(GeoPoint origin, EcefVector east, EcefVector north, EcefVector up) {
+      public TangentFrame {
+         Objects.requireNonNull(origin, "origin");
+         Objects.requireNonNull(east, "east");
+         Objects.requireNonNull(north, "north");
+         Objects.requireNonNull(up, "up");
+         if (Math.abs(east.length() - 1.0) > 1.0E-12
+            || Math.abs(north.length() - 1.0) > 1.0E-12
+            || Math.abs(up.length() - 1.0) > 1.0E-12
+            || Math.abs(east.dot(north)) > 1.0E-12
+            || Math.abs(east.dot(up)) > 1.0E-12
+            || Math.abs(north.dot(up)) > 1.0E-12) {
+            throw new IllegalArgumentException("frame basis must be orthonormal");
+         }
+      }
+
+      /** Converts local metres into an ECEF displacement in metres. */
+      public EcefVector toEcef(LocalVector local) {
+         Objects.requireNonNull(local, "local");
+         return east.scale(local.eastMeters())
+            .add(north.scale(local.northMeters()))
+            .add(up.scale(local.upMeters()));
+      }
+
+      /** Projects an ECEF displacement in metres into east/north/up metres. */
+      public LocalVector fromEcef(EcefVector displacement) {
+         Objects.requireNonNull(displacement, "displacement");
+         return new LocalVector(east.dot(displacement), north.dot(displacement), up.dot(displacement));
+      }
+   }
+
+   /** Cartesian displacement or unit direction in the Earth-centered frame. */
+   public record EcefVector(double x, double y, double z) {
+      public EcefVector {
+         if (!Double.isFinite(x) || !Double.isFinite(y) || !Double.isFinite(z)) {
+            throw new IllegalArgumentException("ECEF vector must be finite");
+         }
+      }
+
+      public double dot(EcefVector other) {
+         Objects.requireNonNull(other, "other");
+         return this.x * other.x + this.y * other.y + this.z * other.z;
+      }
+
+      public EcefVector add(EcefVector other) {
+         Objects.requireNonNull(other, "other");
+         return new EcefVector(this.x + other.x, this.y + other.y, this.z + other.z);
+      }
+
+      public EcefVector scale(double factor) {
+         if (!Double.isFinite(factor)) throw new IllegalArgumentException("factor must be finite");
+         return new EcefVector(this.x * factor, this.y * factor, this.z * factor);
+      }
+
+      public double length() {
+         return Math.sqrt(this.dot(this));
+      }
+   }
+
+   /** Local tangent-frame displacement in metres. */
+   public record LocalVector(double eastMeters, double northMeters, double upMeters) {
+      public LocalVector {
+         if (!Double.isFinite(eastMeters) || !Double.isFinite(northMeters) || !Double.isFinite(upMeters)) {
+            throw new IllegalArgumentException("local vector must be finite");
          }
       }
    }

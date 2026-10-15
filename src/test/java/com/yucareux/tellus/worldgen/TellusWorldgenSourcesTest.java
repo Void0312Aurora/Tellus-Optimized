@@ -1,5 +1,7 @@
 package com.yucareux.tellus.worldgen;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
@@ -14,6 +16,27 @@ import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
 
 class TellusWorldgenSourcesTest {
+   @Test
+   void syntheticSphericalSamplerIsExplicitAndDeterministic() {
+      String previous = System.getProperty("tellus.sphere.syntheticSampler");
+      try {
+         System.setProperty("tellus.sphere.syntheticSampler", "true");
+         var sampler = TellusWorldgenSources.sphericalSampler(
+            com.yucareux.tellus.worldgen.global.SphereWorldModel.forWorldScale(1.0));
+         var dry = sampler.samplePoint(new com.yucareux.tellus.worldgen.global.SphereWorldModel.GeoPoint(0.0, 0.0, 0.0));
+         var wet = sampler.samplePoint(new com.yucareux.tellus.worldgen.global.SphereWorldModel.GeoPoint(-60.0, 0.0, 0.0));
+         assertEquals(dry, sampler.samplePoint(new com.yucareux.tellus.worldgen.global.SphereWorldModel.GeoPoint(0.0, 0.0, 0.0)));
+         assertEquals(30, dry.coverClass());
+         assertFalse(dry.waterAvailable());
+         assertEquals(80, wet.coverClass());
+         assertTrue(wet.waterAvailable());
+         assertEquals(0.0, wet.waterSurfaceMeters());
+      } finally {
+         if (previous == null) System.clearProperty("tellus.sphere.syntheticSampler");
+         else System.setProperty("tellus.sphere.syntheticSampler", previous);
+      }
+   }
+
    @Test
    void chunkComputeSubmissionCompletesWhenParallelFillIsDisabled() {
       assumeTrue(!Boolean.parseBoolean(System.getProperty("tellus.chunkgen.parallelSolidSections", "false")));

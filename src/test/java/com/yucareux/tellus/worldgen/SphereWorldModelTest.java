@@ -15,6 +15,12 @@ class SphereWorldModelTest {
    );
 
    @Test
+   void runtimeDefaultsToTheVersionedConformalMapping() {
+      assertEquals("rancic-ccam30-double-v1", MODEL.mappingId());
+      assertEquals(SphereWorldModel.MAPPING_ID, MODEL.mappingId());
+   }
+
+   @Test
    void cubedSphereCoversAllSixFacesWithoutMercatorPoleClamp() {
       double[][] points = {
          {0.0, 0.0}, {0.0, 90.0}, {0.0, 179.9}, {0.0, -179.9},
@@ -96,6 +102,29 @@ class SphereWorldModelTest {
          var recovered = SphereWorldModel.localOffset(anchor, point);
          assertEquals(offset.eastMeters(), recovered.eastMeters(), 1.0E-7);
          assertEquals(offset.northMeters(), recovered.northMeters(), 1.0E-7);
+      }
+   }
+
+   @Test
+   void tangentFrameIsOrthonormalAndRoundTripsLocalDisplacements() {
+      for (var point : new SphereWorldModel.GeoPoint[]{
+         new SphereWorldModel.GeoPoint(0.0, 0.0, 0.0),
+         new SphereWorldModel.GeoPoint(45.0, 179.99, 0.0),
+         new SphereWorldModel.GeoPoint(-85.0, -179.99, 0.0)
+      }) {
+         var frame = MODEL.tangentFrame(point);
+         assertEquals(1.0, frame.east().length(), 1.0E-12);
+         assertEquals(1.0, frame.north().length(), 1.0E-12);
+         assertEquals(1.0, frame.up().length(), 1.0E-12);
+         assertEquals(0.0, frame.east().dot(frame.north()), 1.0E-12);
+         assertEquals(0.0, frame.east().dot(frame.up()), 1.0E-12);
+         assertEquals(0.0, frame.north().dot(frame.up()), 1.0E-12);
+
+         var local = new SphereWorldModel.LocalVector(3.25, -7.5, 1.125);
+         var recovered = frame.fromEcef(frame.toEcef(local));
+         assertEquals(local.eastMeters(), recovered.eastMeters(), 1.0E-12);
+         assertEquals(local.northMeters(), recovered.northMeters(), 1.0E-12);
+         assertEquals(local.upMeters(), recovered.upMeters(), 1.0E-12);
       }
    }
 
