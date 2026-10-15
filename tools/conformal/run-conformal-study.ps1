@@ -10,7 +10,8 @@ try {
    $conformalClasses = Join-Path 'build/rfc-conformal' ([Guid]::NewGuid().ToString('N'))
    New-Item -ItemType Directory -Force -Path $conformalClasses | Out-Null
    $conformalSources = @('SphereWorldModel','ClosedQuadSphereTopology','ClosedQuadSphereEmbedding',
-      'SphericalLatticePrototype','SphericalIncisionPolicy') |
+      'SphericalLatticePrototype','SphericalIncisionPolicy','SphereSurfaceMapping',
+      'ConformalCubedSphere','EquiangularCubedSphere') |
       ForEach-Object { "src/main/java/com/yucareux/tellus/worldgen/global/$_.java" }
    $conformalTests = @('ClosedQuadSphereTopologyTest','SeamGeometryRegressionTest',
       'SphericalLatticePrototypeTest','SphericalIncisionPolicyTest') |

@@ -156,9 +156,12 @@ remain work for later stages.
 ./gradlew -PtellusTargets=mc1201 :mc1201:build --offline --no-daemon
 ```
 
-The current runtime build completed with 698 tests, two skips, and no failures
-across the ordinary and parallel-fill test JVMs. The installable Fabric jar is
-produced under `mc1201/build/libs/`.
+The earlier runtime build recorded 698 tests, two skips, and no failures.
+The 2026-10-15 follow-up `:mc1201:check --offline --no-daemon --max-workers=2`
+completed successfully; the ordinary and parallel-fill reports contain 719
+tests, three skips, and no failures or errors, including the cube-net tests.
+The installable Fabric jar is produced by `:mc1201:build` under
+`mc1201/build/libs/`; `check` alone does not establish packaging acceptance.
 
 Tests exercise real `ProtoChunk` output on all six faces, agreement between
 generated blocks and every heightmap/base-column query, explicit water levels,

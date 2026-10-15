@@ -22,6 +22,9 @@ try {
    New-Item -ItemType Directory -Force -Path $classes | Out-Null
    $sources = @(
       'src/main/java/com/yucareux/tellus/worldgen/global/SphereWorldModel.java',
+      'src/main/java/com/yucareux/tellus/worldgen/global/SphereSurfaceMapping.java',
+      'src/main/java/com/yucareux/tellus/worldgen/global/ConformalCubedSphere.java',
+      'src/main/java/com/yucareux/tellus/worldgen/global/EquiangularCubedSphere.java',
       'src/main/java/com/yucareux/tellus/worldgen/global/ClosedQuadSphereTopology.java',
       'src/main/java/com/yucareux/tellus/worldgen/global/ClosedQuadSphereEmbedding.java',
       'tools/conformal/ConformalCubedSphere.java',

@@ -27,9 +27,10 @@ For the six-face runtime smoke check, use a new template with a datapack made by
 instead of `--chunk-x`/`--chunk-z`. The runner sends `tellus sphere verify` and
 collects `sphere-runtime-check-*.json`. This exercises a real engine
 `ServerPlayer` with a packet sink and real chunk loading, without a client. It
-does not test walking, client rendering or speedup. The normal real-data run
-also leaves the target collision probe disabled; an explicit synthetic fixture
-run can exercise the target FULL-chunk AABB query and source rollback with:
+does not test walking, client rendering or speedup. The current fixture also
+places a blocking target block for the FULL-chunk AABB query and source rollback.
+Run it with explicit test-only analytic terrain to keep that fixture independent
+of geographic datasets:
 
 ```text
 --jvm-property tellus.sphere.syntheticSampler=true
@@ -38,6 +39,13 @@ run can exercise the target FULL-chunk AABB query and source rollback with:
 That property is test-only analytic terrain and makes no geographic-data claim.
 On Windows the runner selects `gradlew.bat` automatically. Controller timeouts
 also apply while the server produces no log lines.
+
+For the single-Level cube-net smoke check, create the template datapack with
+`tools/create_cube_net_datapack.py` and pass `--cube-net-check` instead. The
+runner sends `tellus cube_net verify` and collects
+`cube-net-runtime-check-*.json`. It covers all 24 directed face edges, 14 exact
+cut-edge starts, target FULL-chunk loading and blocked-landing rollback. It
+uses the same packet-sink limitation; see [cube-net-generator.md](cube-net-generator.md).
 
 The batch runner is:
 
