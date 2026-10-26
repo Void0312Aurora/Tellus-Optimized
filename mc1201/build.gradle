@@ -24,3 +24,37 @@ ext.tellus = [
 ]
 
 apply from: rootProject.file('gradle/tellus-fabric.gradle')
+
+// The headless benchmark launches the development server as a child JVM. Keep
+// its heap arguments on that child task instead of JAVA_TOOL_OPTIONS, which
+// would also apply to Gradle's own daemon and can conflict with its Xmx.
+def benchmarkHeap = providers.gradleProperty('tellusBenchmarkHeap').orNull
+if (benchmarkHeap != null && !benchmarkHeap.isBlank()) {
+	tasks.named('runServer').configure {
+		jvmArgs "-Xms${benchmarkHeap}", "-Xmx${benchmarkHeap}"
+	}
+}
+
+// Test JVMs do not inherit Gradle's system properties. Exercise the opt-in path
+// in its own process so static executor configuration is reproducible.
+tasks.register('testParallelChunkgen', Test) {
+	group = 'verification'
+	description = 'Tests section output and task failures with parallel chunk filling enabled.'
+	testClassesDirs = sourceSets.test.output.classesDirs
+	classpath = sourceSets.test.runtimeClasspath
+	javaLauncher = tasks.named('test', Test).get().javaLauncher
+	useJUnitPlatform()
+	filter {
+		includeTestsMatching 'com.yucareux.tellus.worldgen.TellusWorldgenSourcesTest'
+		includeTestsMatching 'com.yucareux.tellus.worldgen.ParallelSolidSectionFillTest'
+	}
+	def testGameDir = layout.buildDirectory.dir('parallel-chunkgen-test-game').get().asFile
+	systemProperty 'tellus.gameDir', testGameDir.absolutePath
+	systemProperty 'tellus.configDir', new File(testGameDir, 'config').absolutePath
+	systemProperty 'tellus.chunkgen.parallelSolidSections', 'true'
+	systemProperty 'tellus.chunkgen.threads.max', '44'
+}
+
+tasks.named('check') {
+	dependsOn tasks.named('testParallelChunkgen')
+}

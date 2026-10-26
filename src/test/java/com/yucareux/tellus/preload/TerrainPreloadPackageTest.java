@@ -265,6 +265,39 @@ class TerrainPreloadPackageTest {
    }
 
    @Test
+   void batchedTerrainGridMatchesScalarTerrainAndOverrideSamples() {
+      TerrainPreloadArea area = TerrainPreloadArea.fromChunkBounds(0.0, 0.0, 2, 1.0, 0, 0, 1, 1);
+      int[] heights = new int[25];
+      byte[] covers = new byte[25];
+      byte[] masks = new byte[25];
+      byte[] flags = new byte[25];
+      for (int z = 0; z < 5; z++) {
+         for (int x = 0; x < 5; x++) {
+            int index = z * 5 + x;
+            heights[index] = z * 100 + x * 7;
+            masks[index] = (byte)((x + z) % 3 == 0 ? 1 : 0);
+            flags[index] = (byte)((x == 4 || z == 4) ? TerrainPreloadPackage.FLAG_MAPTERHORN_LAND_OVERRIDE : 0);
+         }
+      }
+      TerrainPreloadPackage pack = new TerrainPreloadPackage(
+         "batched", "fingerprint", area, 16, 5, 5, heights, covers, masks, flags
+      );
+      int[] batchedHeights = new int[16 * 16];
+      boolean[] batchedOverrides = new boolean[16 * 16];
+
+      assertTrue(pack.sampleTerrainGrid(8, 8, 16, batchedHeights, batchedOverrides));
+      for (int z = 0; z < 16; z++) {
+         for (int x = 0; x < 16; x++) {
+            TerrainPreloadPackage.Sample scalar = pack.sample(8 + x, 8 + z);
+            int index = z * 16 + x;
+            assertEquals(scalar.terrainHeight(), batchedHeights[index]);
+            assertEquals(scalar.mapterhornLandOverride(), batchedOverrides[index]);
+         }
+      }
+      assertFalse(pack.sampleTerrainGrid(-1, 0, 4, new int[16], new boolean[16]));
+   }
+
+   @Test
    void packageVisualTransitionDoesNotMoveWaterBoundaries() {
       TerrainPreloadArea area = TerrainPreloadArea.fromChunkBounds(0.0, 0.0, 1, 1.0, 0, 0, 0, 0);
       TerrainPreloadPackage pack = new TerrainPreloadPackage(

@@ -30,6 +30,7 @@ import com.yucareux.tellus.world.data.osm.TellusOsmSandSource;
 import com.yucareux.tellus.world.data.resolve.ResolveEcoregion;
 import com.yucareux.tellus.world.data.resolve.TellusResolveSource;
 import com.yucareux.tellus.world.realtime.TellusRealtimeState;
+import com.yucareux.tellus.worldgen.global.GlobalMapModel;
 import com.yucareux.tellus.worldgen.arnis.ArnisBuildingRules;
 import com.yucareux.tellus.worldgen.road.StreetLightPlanner;
 import com.yucareux.tellus.worldgen.road.StreetLightModel;
@@ -72,6 +73,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.concurrent.TimeUnit;
@@ -374,6 +376,7 @@ public final class EarthChunkGenerator extends ChunkGenerator {
    private static final Map<EarthChunkGenerator.BiomeSettingsKey, BiomeGenerationSettings> FILTERED_SETTINGS = new ConcurrentHashMap<>();
    private static final Map<EarthChunkGenerator.TreeFeatureSettingsKey, List<ConfiguredFeature<?, ?>>> TREE_FEATURES = new ConcurrentHashMap<>();
    private final EarthGeneratorSettings settings;
+   private final GlobalMapModel globalMapModel;
    private final int seaLevel;
    private final int minY;
    private final int height;
@@ -409,6 +412,7 @@ public final class EarthChunkGenerator extends ChunkGenerator {
    public EarthChunkGenerator(BiomeSource biomeSource, EarthGeneratorSettings settings) {
       super(biomeSource, biome -> generationSettingsForBiome(biome, settings));
       this.settings = settings;
+      this.globalMapModel = GlobalMapModel.forWorldScale(settings.worldScale());
       this.seaLevel = settings.effectiveHeightOffset();
       EarthGeneratorSettings.HeightLimits limits = EarthGeneratorSettings.resolveHeightLimits(settings);
       ExperimentalHeightSupport.validateOrThrow(settings, limits);
@@ -417,9 +421,11 @@ public final class EarthChunkGenerator extends ChunkGenerator {
       this.waterResolver = TellusWorldgenSources.waterResolver(settings);
       this.antarcticSnowPolicy = AntarcticSnowPolicy.forWorldScale(settings.worldScale());
       this.preloadedTerrain = TerrainPreloadPackageRegistry.instance().viewFor(settings);
-      double blocksPerDegree = blocksPerDegree(settings.worldScale());
-      int spawnBlockX = Mth.floor(settings.spawnLongitude() * blocksPerDegree);
-      int spawnBlockZ = Mth.floor(EarthProjection.latToBlockZ(settings.spawnLatitude(), settings.worldScale()));
+      GlobalMapModel.BlockPoint spawnPoint = this.globalMapModel.project(
+         new GlobalMapModel.GeoPoint(settings.spawnLatitude(), settings.spawnLongitude(), 0.0)
+      );
+      int spawnBlockX = Mth.floor(spawnPoint.x());
+      int spawnBlockZ = Mth.floor(spawnPoint.z());
       this.configuredSpawnChunkX = Math.floorDiv(spawnBlockX, 16);
       this.configuredSpawnChunkZ = Math.floorDiv(spawnBlockZ, 16);
       if (biomeSource instanceof EarthBiomeSource earthBiomeSource) {
@@ -450,6 +456,11 @@ public final class EarthChunkGenerator extends ChunkGenerator {
 
    public EarthGeneratorSettings settings() {
       return this.settings;
+   }
+
+   /** Shared progressive chart and geodetic projection model for this generator. */
+   public GlobalMapModel globalMapModel() {
+      return this.globalMapModel;
    }
 
    public boolean shouldSuppressWaterSourceConversion(int blockX, int blockZ) {
@@ -523,9 +534,11 @@ public final class EarthChunkGenerator extends ChunkGenerator {
    }
 
    private BlockPos getSurfacePosition(LevelHeightAccessor heightAccessor, double latitude, double longitude, boolean useDetailedWaterResolver) {
-      double blocksPerDegree = blocksPerDegree(this.settings.worldScale());
-      int spawnX = Mth.floor(longitude * blocksPerDegree);
-      int spawnZ = Mth.floor(EarthProjection.latToBlockZ(latitude, this.settings.worldScale()));
+      GlobalMapModel.BlockPoint projected = this.globalMapModel.project(
+         new GlobalMapModel.GeoPoint(latitude, longitude, 0.0)
+      );
+      int spawnX = Mth.floor(projected.x());
+      int spawnZ = Mth.floor(projected.z());
       ExperimentalHeightSupport.validateHorizontalPositionOrThrow(
          this.settings, spawnX, spawnZ, "surface target lat=" + latitude + ", lon=" + longitude
       );
@@ -553,11 +566,11 @@ public final class EarthChunkGenerator extends ChunkGenerator {
    }
 
    public double longitudeFromBlock(double blockX) {
-      return blockX / blocksPerDegree(this.settings.worldScale());
+      return this.globalMapModel.unproject(blockX, 0.0).longitude();
    }
 
    public double latitudeFromBlock(double blockZ) {
-      return EarthProjection.blockZToLat(blockZ, this.settings.worldScale());
+      return this.globalMapModel.unproject(0.0, blockZ).latitude();
    }
 
    private static double blocksPerDegree(double worldScale) {
@@ -4171,16 +4184,77 @@ public final class EarthChunkGenerator extends ChunkGenerator {
       int deepslateStart,
       EarthChunkGenerator.SolidSectionFillProfiler profiler
    ) {
+      fillSolidSections(
+         writer, solidSections, sectionTopYs, solidMaxIndex, stone, deepslate, deepslateStart, profiler,
+         TellusWorldgenSources.parallelSolidSectionFillEnabled(Math.min(solidMaxIndex + 1, sectionTopYs.length))
+      );
+   }
+
+   static void fillSolidSections(
+      EarthChunkGenerator.ChunkSectionWriter writer,
+      boolean[] solidSections,
+      int[] sectionTopYs,
+      int solidMaxIndex,
+      BlockState stone,
+      BlockState deepslate,
+      int deepslateStart,
+      EarthChunkGenerator.SolidSectionFillProfiler profiler,
+      boolean parallel
+   ) {
       int sectionCount = sectionTopYs.length;
       long sectionScanStartNs = beginFullChunkProfiling();
+      int upperBound = Math.min(solidMaxIndex, sectionCount - 1);
+      if (parallel) {
+         int[] eligibleSections = new int[upperBound + 1];
+         int eligibleCount = 0;
+         for (int i = 0; i <= upperBound; i++) {
+            int topY = sectionTopYs[i];
+            int bottomY = topY - 15;
+            if (bottomY >= 0 || topY < 0) {
+               eligibleSections[eligibleCount++] = i;
+            }
+         }
 
-      for (int i = 0; i <= solidMaxIndex && i < sectionCount; i++) {
-         int topY = sectionTopYs[i];
-         int bottomY = topY - 15;
-         if (bottomY >= 0 || topY < 0) {
-            BlockState fill = topY < deepslateStart ? deepslate : stone;
-            writer.fillSectionConstant(i, fill, profiler);
-            solidSections[i] = true;
+         int taskCount = TellusWorldgenSources.parallelSolidSectionTaskCount(eligibleCount);
+         List<CompletableFuture<Void>> fills = new ArrayList<>(taskCount);
+         EarthChunkGenerator.SolidSectionFillProfiler[] taskProfilers =
+            new EarthChunkGenerator.SolidSectionFillProfiler[taskCount];
+         for (int taskIndex = 0; taskIndex < taskCount; taskIndex++) {
+            int from = taskIndex * eligibleCount / taskCount;
+            int to = (taskIndex + 1) * eligibleCount / taskCount;
+            EarthChunkGenerator.SolidSectionFillProfiler taskProfiler =
+               new EarthChunkGenerator.SolidSectionFillProfiler();
+            taskProfilers[taskIndex] = taskProfiler;
+            int rangeStart = from;
+            int rangeEnd = to;
+            fills.add(
+               TellusWorldgenSources.submitChunkComputeTask(
+                  () -> {
+                     for (int offset = rangeStart; offset < rangeEnd; offset++) {
+                        int sectionIndex = eligibleSections[offset];
+                        BlockState fill = sectionTopYs[sectionIndex] < deepslateStart ? deepslate : stone;
+                        writer.fillSectionConstantIndependent(sectionIndex, fill, taskProfiler);
+                        solidSections[sectionIndex] = true;
+                     }
+                  }
+               )
+            );
+         }
+         CompletableFuture.allOf(fills.toArray(CompletableFuture[]::new)).join();
+         for (EarthChunkGenerator.SolidSectionFillProfiler taskProfiler : taskProfilers) {
+            profiler.sectionAccessNs += taskProfiler.sectionAccessNs;
+            profiler.sectionWriteNs += taskProfiler.sectionWriteNs;
+            profiler.recalcNs += taskProfiler.recalcNs;
+         }
+      } else {
+         for (int i = 0; i <= upperBound; i++) {
+            int topY = sectionTopYs[i];
+            int bottomY = topY - 15;
+            if (bottomY >= 0 || topY < 0) {
+               BlockState fill = topY < deepslateStart ? deepslate : stone;
+               writer.fillSectionConstant(i, fill, profiler);
+               solidSections[i] = true;
+            }
          }
       }
 
@@ -12938,7 +13012,7 @@ public final class EarthChunkGenerator extends ChunkGenerator {
       private final boolean[] dirtySections;
       private final boolean[] acquiredSections;
       private final PalettedContainer<BlockState>[] stateContainers;
-      private int dirtySectionCount;
+      private final AtomicInteger dirtySectionCount = new AtomicInteger();
       private boolean closed;
 
       @SuppressWarnings("unchecked")
@@ -12962,8 +13036,42 @@ public final class EarthChunkGenerator extends ChunkGenerator {
             }
          }
 
-         profiler.sectionWriteNs += elapsedFullChunkProfilingSince(sectionWriteStartNs);
+         long elapsedNs = elapsedFullChunkProfilingSince(sectionWriteStartNs);
+         synchronized (profiler) {
+            profiler.sectionWriteNs += elapsedNs;
+         }
          this.markDirty(sectionIndex);
+      }
+
+      // Only used for independent sections before any column writes. The task owns
+      // both acquisition and release; the calling thread joins before further edits.
+      void fillSectionConstantIndependent(int sectionIndex, BlockState state, EarthChunkGenerator.SolidSectionFillProfiler profiler) {
+         if (this.acquiredSections[sectionIndex]) {
+            throw new IllegalStateException("Section already acquired by chunk writer: " + sectionIndex);
+         }
+         long accessStartNs = beginFullChunkProfiling();
+         LevelChunkSection section = Objects.requireNonNull(this.sections[sectionIndex], "section");
+         section.acquire();
+         long accessNs = elapsedFullChunkProfilingSince(accessStartNs);
+         long writeStartNs = beginFullChunkProfiling();
+         try {
+            PalettedContainer<BlockState> states = section.getStates();
+            for (int y = 0; y < 16; y++) {
+               for (int z = 0; z < 16; z++) {
+                  for (int x = 0; x < 16; x++) {
+                     states.getAndSetUnchecked(x, y, z, state);
+                  }
+               }
+            }
+            this.markDirty(sectionIndex);
+         } finally {
+            section.release();
+            long writeNs = elapsedFullChunkProfilingSince(writeStartNs);
+            synchronized (profiler) {
+               profiler.sectionAccessNs += accessNs;
+               profiler.sectionWriteNs += writeNs;
+            }
+         }
       }
 
       void fillStoneColumnSpan(int localX, int localZ, int startY, int endY, int deepslateStart, BlockState stone, BlockState deepslate) {
@@ -13083,7 +13191,7 @@ public final class EarthChunkGenerator extends ChunkGenerator {
 
       FlushResult finish() {
          if (this.closed) {
-            return new FlushResult(0L, this.dirtySectionCount);
+            return new FlushResult(0L, this.dirtySectionCount.get());
          }
 
          this.releaseSections();
@@ -13095,7 +13203,7 @@ public final class EarthChunkGenerator extends ChunkGenerator {
          }
 
          this.closed = true;
-         return new FlushResult(elapsedFullChunkProfilingSince(recalcStartNs), this.dirtySectionCount);
+         return new FlushResult(elapsedFullChunkProfilingSince(recalcStartNs), this.dirtySectionCount.get());
       }
 
       void close() {
@@ -13130,7 +13238,10 @@ public final class EarthChunkGenerator extends ChunkGenerator {
             this.stateContainers[sectionIndex] = section.getStates();
             this.acquiredSections[sectionIndex] = true;
             if (profiler != null) {
-               profiler.sectionAccessNs += elapsedFullChunkProfilingSince(sectionAccessStartNs);
+               long elapsedNs = elapsedFullChunkProfilingSince(sectionAccessStartNs);
+               synchronized (profiler) {
+                  profiler.sectionAccessNs += elapsedNs;
+               }
             }
          }
 
@@ -13140,7 +13251,7 @@ public final class EarthChunkGenerator extends ChunkGenerator {
       private void markDirty(int sectionIndex) {
          if (!this.dirtySections[sectionIndex]) {
             this.dirtySections[sectionIndex] = true;
-            this.dirtySectionCount++;
+            this.dirtySectionCount.incrementAndGet();
          }
       }
 
@@ -14156,7 +14267,7 @@ public final class EarthChunkGenerator extends ChunkGenerator {
       }
    }
 
-   private static final class SolidSectionFillProfiler {
+   static final class SolidSectionFillProfiler {
       private long maxIndexNs;
       private long scanNs;
       private long sectionAccessNs;

@@ -2,6 +2,7 @@ package com.yucareux.tellus;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.mojang.brigadier.arguments.BoolArgumentType;
@@ -11,6 +12,7 @@ import com.mojang.serialization.JsonOps;
 import com.yucareux.tellus.integration.distant_horizons.DistantHorizonsIntegration;
 import com.yucareux.tellus.integration.distant_horizons.managed.ManagedTerrainDownloadManager;
 import com.yucareux.tellus.integration.voxy.TellusVoxyPregenManager;
+import com.yucareux.tellus.compat.ChunkBenchmarkVersionCompat;
 import com.yucareux.tellus.compat.MinecraftRelease;
 import com.yucareux.tellus.compat.MinecraftVersionCompat;
 import com.yucareux.tellus.compat.TellusMinecraftCompat;
@@ -25,7 +27,9 @@ import com.yucareux.tellus.world.realtime.TellusRealtimeState;
 import com.yucareux.tellus.world.realtime.WeatherTemperaturePolicy;
 import com.yucareux.tellus.worldgen.EarthChunkGenerator;
 import com.yucareux.tellus.worldgen.EarthGeneratorSettings;
+import com.yucareux.tellus.worldgen.global.GlobalMapModel;
 import com.yucareux.tellus.worldgen.ExperimentalHeightSupport;
+import com.yucareux.tellus.worldgen.TellusWorldgenSources;
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -35,10 +39,13 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -53,10 +60,13 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Mth;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.DataPackConfig;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.WorldDataConfiguration;
 import net.minecraft.world.level.biome.Biome;
+import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.level.dimension.DimensionType;
 import net.minecraft.world.level.dimension.LevelStem;
@@ -82,6 +92,12 @@ public class TellusCommon {
    private static final TellusRealtimeManager REALTIME_MANAGER = new TellusRealtimeManager();
    private static final TellusVoxyPregenManager VOXY_PREGEN_MANAGER = new TellusVoxyPregenManager();
    private static final ManagedTerrainDownloadManager MANAGED_TERRAIN_DOWNLOAD_MANAGER = new ManagedTerrainDownloadManager();
+   private static final boolean BENCHMARK_ENABLED = Boolean.parseBoolean(
+      System.getProperty("tellus.benchmark.enabled", "false")
+   );
+   private static final boolean BENCHMARK_EXIT = Boolean.parseBoolean(
+      System.getProperty("tellus.benchmark.exit", "false")
+   );
    public static final Logger LOGGER = LoggerFactory.getLogger("tellus");
 
 
@@ -98,6 +114,27 @@ public class TellusCommon {
                                  .requires(TellusMinecraftCompat::hasGamemasterPermission))
                               .executes(context -> openGeoTpMap((CommandSourceStack)context.getSource()))
                         ))
+                     .then(
+                        Commands.literal("benchmark")
+                           .requires(source -> BENCHMARK_ENABLED && TellusMinecraftCompat.hasGamemasterPermission(source))
+                           .then(
+                              Commands.argument("chunkX", IntegerArgumentType.integer())
+                                 .then(
+                                    Commands.argument("chunkZ", IntegerArgumentType.integer())
+                                       .then(
+                                          Commands.argument("radius", IntegerArgumentType.integer(0, 32))
+                                             .executes(
+                                                context -> runChunkBenchmark(
+                                                   (CommandSourceStack)context.getSource(),
+                                                   IntegerArgumentType.getInteger(context, "chunkX"),
+                                                   IntegerArgumentType.getInteger(context, "chunkZ"),
+                                                   IntegerArgumentType.getInteger(context, "radius")
+                                                )
+                                             )
+                                       )
+                                 )
+                           )
+                     )
                      .then(
                         (Commands.literal("weather")
                               .executes(context -> showTellusWeather((CommandSourceStack)context.getSource())))
@@ -265,6 +302,289 @@ public class TellusCommon {
             source.sendFailure(Component.translatable("tellus.command.geotp.tellus_world_only"));
             return 0;
          }
+      }
+   }
+
+   private static int runChunkBenchmark(CommandSourceStack source, int centerChunkX, int centerChunkZ, int radius) {
+      MinecraftServer server = source.getServer();
+      ServerLevel level = server.getLevel(Level.OVERWORLD);
+      if (level == null) {
+         source.sendFailure(Component.literal("Tellus benchmark requires an overworld"));
+         return 0;
+      }
+
+      int side = radius * 2 + 1;
+      int chunkCount = side * side;
+      List<Long> chunkTimesNs = new ArrayList<>(chunkCount);
+      List<Long> chunkStateHashes = new ArrayList<>(chunkCount);
+      List<String> chunkStateHashKeys = new ArrayList<>(chunkCount);
+      List<ChunkAccess> chunksForHash = new ArrayList<>(chunkCount);
+      boolean stateHashEnabled = Boolean.parseBoolean(
+         System.getProperty("tellus.benchmark.stateHash", "false")
+      );
+      boolean areaPrefetch = Boolean.parseBoolean(
+         System.getProperty("tellus.benchmark.areaPrefetch", "false")
+      );
+      boolean chartProbe = Boolean.parseBoolean(
+         System.getProperty("tellus.benchmark.chartProbe", "false")
+      );
+      long areaPrefetchNs = 0L;
+      if (areaPrefetch) {
+         ChunkGenerator generator = level.getChunkSource().getGenerator();
+         if (generator instanceof EarthChunkGenerator earthGenerator) {
+            long prefetchStartedNs = System.nanoTime();
+            int minBlockX = Math.multiplyExact(centerChunkX - radius, 16);
+            int minBlockZ = Math.multiplyExact(centerChunkZ - radius, 16);
+            int maxBlockX = Math.multiplyExact(centerChunkX + radius + 1, 16) - 1;
+            int maxBlockZ = Math.multiplyExact(centerChunkZ + radius + 1, 16) - 1;
+            earthGenerator.prefetchForArea(
+               minBlockX,
+               minBlockZ,
+               maxBlockX,
+               maxBlockZ,
+               true,
+               true,
+               earthGenerator.settings().worldScale()
+            ).join();
+            areaPrefetchNs = System.nanoTime() - prefetchStartedNs;
+         } else {
+            throw new IllegalStateException("Tellus benchmark requires an EarthChunkGenerator for area prefetch");
+         }
+      }
+      long startedNs = System.nanoTime();
+      JsonObject result = new JsonObject();
+      result.addProperty("schemaVersion", 1);
+      result.addProperty("centerChunkX", centerChunkX);
+      result.addProperty("centerChunkZ", centerChunkZ);
+      result.addProperty("radius", radius);
+      result.addProperty("requestedChunks", chunkCount);
+      result.addProperty("chunkStatus", "FULL");
+      result.addProperty("stateHashEnabled", stateHashEnabled);
+      result.addProperty("chartProbeEnabled", chartProbe);
+      result.addProperty("areaPrefetch", areaPrefetch);
+      result.addProperty("areaPrefetchMillis", areaPrefetchNs / 1_000_000.0);
+      boolean concurrentRequests = Boolean.parseBoolean(
+         System.getProperty("tellus.benchmark.concurrentRequests", "false")
+      );
+      result.addProperty("concurrentRequests", concurrentRequests);
+      result.addProperty(
+         "parallelSolidSections",
+         Boolean.parseBoolean(System.getProperty("tellus.chunkgen.parallelSolidSections", "false"))
+      );
+      result.addProperty("chunkComputeThreads", System.getProperty("tellus.chunkgen.threads.max", "default"));
+      result.addProperty("parallelSolidSectionsConfigured", TellusWorldgenSources.parallelSolidSectionFillConfigured());
+      result.addProperty("chunkComputeExecutorConfigured", TellusWorldgenSources.chunkComputeExecutorConfigured());
+      result.addProperty("parallelSolidSectionsEnabledFor254", TellusWorldgenSources.parallelSolidSectionFillEnabledFor(254));
+      result.addProperty(
+         "parallelWaterRegionBuild",
+         Boolean.parseBoolean(System.getProperty("tellus.water.parallelRegionBuild", "false"))
+      );
+      result.addProperty("chunkComputePoolSizeAtStart", TellusWorldgenSources.chunkComputePoolSize());
+      result.addProperty("chunkComputeLargestPoolSizeAtStart", TellusWorldgenSources.chunkComputeLargestPoolSize());
+      if (chartProbe) {
+         ChunkGenerator generator = level.getChunkSource().getGenerator();
+         if (!(generator instanceof EarthChunkGenerator earthGenerator)) {
+            throw new IllegalStateException("Tellus chart probe requires an EarthChunkGenerator");
+         }
+         GlobalMapModel model = earthGenerator.globalMapModel();
+         result.addProperty("chartSizeBlocks", model.config().chartSizeBlocks());
+         result.addProperty("chartExpansionOrder", model.config().expansionOrder());
+         result.addProperty("chartTruncationToleranceMeters", model.config().truncationToleranceMeters());
+         JsonArray chartSamples = new JsonArray();
+         JsonArray chartRequestOrder = new JsonArray();
+         Set<GlobalMapModel.ChartKey> requestedCharts = new LinkedHashSet<>();
+         double maxErrorBoundMeters = 0.0;
+         for (int dz = -radius; dz <= radius; dz++) {
+            for (int dx = -radius; dx <= radius; dx++) {
+               int chunkX = centerChunkX + dx;
+               int chunkZ = centerChunkZ + dz;
+               double blockX = chunkX * 16.0 + 8.0;
+               double blockZ = chunkZ * 16.0 + 8.0;
+               GlobalMapModel.ChartCoordinate coordinate = model.toChartCoordinates(blockX, blockZ);
+               GlobalMapModel.ChartKey chart = coordinate.chart();
+               int order = model.recommendedExpansionOrder(chart);
+               double footprint = model.chartHalfDiagonalMeters(chart);
+               double errorBound = model.truncationErrorBoundMeters(footprint, order);
+               maxErrorBoundMeters = Math.max(maxErrorBoundMeters, errorBound);
+               requestedCharts.add(chart);
+               JsonObject sample = new JsonObject();
+               sample.addProperty("chunkX", chunkX);
+               sample.addProperty("chunkZ", chunkZ);
+               sample.addProperty("chartX", chart.x());
+               sample.addProperty("chartZ", chart.z());
+               sample.addProperty("localX", coordinate.localX());
+               sample.addProperty("localZ", coordinate.localZ());
+               sample.addProperty("recommendedExpansionOrder", order);
+               sample.addProperty("chartHalfDiagonalMeters", footprint);
+               sample.addProperty("truncationErrorBoundMeters", errorBound);
+               chartSamples.add(sample);
+            }
+         }
+         for (GlobalMapModel.ChartKey chart : requestedCharts) {
+            JsonObject chartEntry = new JsonObject();
+            chartEntry.addProperty("x", chart.x());
+            chartEntry.addProperty("z", chart.z());
+            chartRequestOrder.add(chartEntry);
+         }
+         result.add("chartSamples", chartSamples);
+         result.add("chartRequestOrder", chartRequestOrder);
+         result.addProperty("requestedChartCount", requestedCharts.size());
+         result.addProperty("maxChartTruncationErrorBoundMeters", maxErrorBoundMeters);
+      }
+
+      try {
+         if (concurrentRequests) {
+            List<CompletableFuture<ChunkBenchmarkSample>> requests = new ArrayList<>(chunkCount);
+            for (int dz = -radius; dz <= radius; dz++) {
+               for (int dx = -radius; dx <= radius; dx++) {
+                  int chunkX = centerChunkX + dx;
+                  int chunkZ = centerChunkZ + dz;
+                  long chunkStartedNs = System.nanoTime();
+                  CompletableFuture<ChunkBenchmarkSample> request = ChunkBenchmarkVersionCompat.requestFullChunkAsync(
+                     level.getChunkSource(), chunkX, chunkZ
+                  ).thenApply(chunk -> {
+                     if (chunk == null) {
+                        throw new IllegalStateException("Chunk source returned null");
+                     }
+                     return new ChunkBenchmarkSample(System.nanoTime() - chunkStartedNs, chunk);
+                  });
+                  requests.add(request);
+                  if (stateHashEnabled) {
+                     chunkStateHashKeys.add(chunkX + "," + chunkZ);
+                  }
+               }
+            }
+            CompletableFuture.allOf(requests.toArray(CompletableFuture[]::new)).join();
+            for (CompletableFuture<ChunkBenchmarkSample> request : requests) {
+               ChunkBenchmarkSample sample = request.join();
+               chunkTimesNs.add(sample.elapsedNanos());
+               if (stateHashEnabled) {
+                  chunksForHash.add(sample.chunk());
+               }
+            }
+         } else {
+            for (int dz = -radius; dz <= radius; dz++) {
+               for (int dx = -radius; dx <= radius; dx++) {
+                  int chunkX = centerChunkX + dx;
+                  int chunkZ = centerChunkZ + dz;
+                  long chunkStartedNs = System.nanoTime();
+                  ChunkAccess chunk = ChunkBenchmarkVersionCompat.requestFullChunk(
+                     level.getChunkSource(), chunkX, chunkZ
+                  );
+                  if (chunk == null) {
+                     throw new IllegalStateException("Chunk source returned null");
+                  }
+                  chunkTimesNs.add(System.nanoTime() - chunkStartedNs);
+                  if (stateHashEnabled) {
+                     chunkStateHashKeys.add(chunkX + "," + chunkZ);
+                     chunksForHash.add(chunk);
+                  }
+               }
+            }
+         }
+
+         long elapsedNs = System.nanoTime() - startedNs;
+         long stateHashNs = 0L;
+         if (stateHashEnabled) {
+            long hashStartedNs = System.nanoTime();
+            for (ChunkAccess chunk : chunksForHash) {
+               chunkStateHashes.add(hashBlockStates(chunk));
+            }
+            stateHashNs = System.nanoTime() - hashStartedNs;
+         }
+         long minNs = chunkTimesNs.stream().mapToLong(Long::longValue).min().orElse(0L);
+         long maxNs = chunkTimesNs.stream().mapToLong(Long::longValue).max().orElse(0L);
+         long sumNs = chunkTimesNs.stream().mapToLong(Long::longValue).sum();
+         result.addProperty("completedChunks", chunkTimesNs.size());
+         result.addProperty("elapsedMillis", elapsedNs / 1_000_000.0);
+         if (stateHashEnabled) {
+            JsonObject stateHashes = new JsonObject();
+            long aggregate = 0xcbf29ce484222325L;
+            for (int i = 0; i < chunkStateHashes.size(); i++) {
+               long hash = chunkStateHashes.get(i);
+               stateHashes.addProperty(chunkStateHashKeys.get(i), Long.toUnsignedString(hash));
+               aggregate ^= hash;
+               aggregate *= 0x100000001b3L;
+            }
+            result.add("stateHashes", stateHashes);
+            result.addProperty("stateHashAggregate", Long.toUnsignedString(aggregate));
+            result.addProperty("stateHashMillis", stateHashNs / 1_000_000.0);
+         }
+         result.addProperty("sumChunkMillis", sumNs / 1_000_000.0);
+         result.addProperty("minChunkMillis", minNs / 1_000_000.0);
+         result.addProperty("maxChunkMillis", maxNs / 1_000_000.0);
+         result.addProperty("chunkComputePoolSizeAtEnd", TellusWorldgenSources.chunkComputePoolSize());
+         result.addProperty("chunkComputeLargestPoolSizeAtEnd", TellusWorldgenSources.chunkComputeLargestPoolSize());
+         result.addProperty("chunkComputeCompletedTaskCount", TellusWorldgenSources.chunkComputeCompletedTaskCount());
+         Path output = writeBenchmarkResult(result);
+         LOGGER.info(
+            "Tellus benchmark completed: {} chunks in {} ms (min={} ms, max={} ms), result={}",
+            chunkTimesNs.size(),
+            String.format(Locale.ROOT, "%.3f", elapsedNs / 1_000_000.0),
+            String.format(Locale.ROOT, "%.3f", minNs / 1_000_000.0),
+            String.format(Locale.ROOT, "%.3f", maxNs / 1_000_000.0),
+            output
+         );
+         source.sendSuccess(
+            () -> Component.literal(
+               String.format(Locale.ROOT, "Tellus benchmark completed: %d chunks, %.3f ms",
+                  chunkTimesNs.size(), elapsedNs / 1_000_000.0)
+            ),
+            false
+         );
+         if (BENCHMARK_EXIT) {
+            server.execute(() -> server.halt(false));
+         }
+         return 1;
+      } catch (Throwable error) {
+         result.addProperty("completedChunks", chunkTimesNs.size());
+         result.addProperty("elapsedMillis", (System.nanoTime() - startedNs) / 1_000_000.0);
+         result.addProperty("error", error.toString());
+         Path output = writeBenchmarkResult(result);
+         LOGGER.error("Tellus benchmark failed after {} chunks, result={}", chunkTimesNs.size(), output, error);
+         source.sendFailure(Component.literal("Tellus benchmark failed after " + chunkTimesNs.size() + " chunks: " + error));
+         if (BENCHMARK_EXIT) {
+            server.execute(() -> server.halt(false));
+         }
+         return 0;
+      }
+   }
+
+   private static long hashBlockStates(ChunkAccess chunk) {
+      BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
+      int minX = chunk.getPos().getMinBlockX();
+      int minZ = chunk.getPos().getMinBlockZ();
+      int minY = ChunkBenchmarkVersionCompat.chunkMinY(chunk);
+      int maxY = minY + chunk.getHeight();
+      long hash = 0xcbf29ce484222325L;
+      for (int y = minY; y < maxY; y++) {
+         for (int z = 0; z < 16; z++) {
+            for (int x = 0; x < 16; x++) {
+               cursor.set(minX + x, y, minZ + z);
+               BlockState state = chunk.getBlockState(cursor);
+               hash ^= Block.getId(state);
+               hash *= 0x100000001b3L;
+            }
+         }
+      }
+      return hash;
+   }
+
+   private record ChunkBenchmarkSample(long elapsedNanos, ChunkAccess chunk) {
+   }
+
+   private static Path writeBenchmarkResult(JsonObject result) {
+      Path directory = TellusPlatform.gameDir().resolve("tellus").resolve("benchmarks");
+      try {
+         Files.createDirectories(directory);
+         Path output = directory.resolve("chunk-benchmark-" + System.currentTimeMillis() + ".json");
+         try (BufferedWriter writer = Files.newBufferedWriter(output, StandardCharsets.UTF_8)) {
+            GSON.toJson(result, writer);
+         }
+         return output;
+      } catch (IOException error) {
+         LOGGER.error("Failed to write Tellus benchmark result", error);
+         return directory.resolve("chunk-benchmark-write-failed.json");
       }
    }
 

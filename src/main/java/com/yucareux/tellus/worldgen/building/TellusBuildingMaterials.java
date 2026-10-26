@@ -341,7 +341,12 @@ public final class TellusBuildingMaterials {
             trim = BUILDING_TRIM_STATE;
          }
          case CURTAIN_WALL -> {
-            wall = category == BuildingProfile.BuildingCategory.GLASSY_SKYSCRAPER ? BUILDING_TOWER_WINDOW_STATE : BUILDING_TOWER_WALL_STATE;
+            // Arnis 3.x style selection can promote a generic tall building to
+            // a glass curtain variant while retaining the Tellus category.
+            wall = category == BuildingProfile.BuildingCategory.GLASSY_SKYSCRAPER
+                  || style.wallDepthStyle() == BuildingStyle.WallDepthStyle.GLASS_CURTAIN
+               ? BUILDING_TOWER_WINDOW_STATE
+               : BUILDING_TOWER_WALL_STATE;
             secondaryWall = BUILDING_COMMERCIAL_WALL_STATE;
             accent = BUILDING_BLUE_ACCENT_STATE;
             trim = BUILDING_WHITE_TRIM_STATE;

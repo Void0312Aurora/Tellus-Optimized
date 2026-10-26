@@ -228,6 +228,51 @@ public final class TerrainPreloadPackageRegistry {
          return null;
       }
 
+      public boolean sampleTerrainGrid(
+         int minBlockX,
+         int minBlockZ,
+         int gridSize,
+         double requestedResolutionMeters,
+         int[] terrainHeightsOut,
+         boolean[] mapterhornLandOverrideOut
+      ) {
+         if (gridSize < 0) {
+            throw new IllegalArgumentException("gridSize must be non-negative");
+         }
+         int area = Math.multiplyExact(gridSize, gridSize);
+         if (terrainHeightsOut == null || terrainHeightsOut.length < area
+            || mapterhornLandOverrideOut == null || mapterhornLandOverrideOut.length < area) {
+            throw new IllegalArgumentException("output arrays are smaller than grid area");
+         }
+         if (gridSize == 0) {
+            return true;
+         }
+         int maxBlockX = minBlockX + gridSize - 1;
+         int maxBlockZ = minBlockZ + gridSize - 1;
+         int centerX = minBlockX + gridSize / 2;
+         int centerZ = minBlockZ + gridSize / 2;
+         for (TerrainPreloadPackageRegistry.Entry entry : this.entriesFor(centerX, centerZ)) {
+            if (!entry.contains(minBlockX, minBlockZ)
+               || !entry.contains(maxBlockX, maxBlockZ)
+               || !entry.supportsResolution(requestedResolutionMeters)) {
+               continue;
+            }
+            TerrainPreloadPackage pack = entry.readyOrScheduleLoad();
+            if (pack == null) {
+               if (!entry.failed()) {
+                  return false;
+               }
+               continue;
+            }
+            if (pack.matches(this.settingsFingerprint, centerX, centerZ)
+               && pack.supportsResolution(requestedResolutionMeters)
+               && pack.sampleTerrainGrid(minBlockX, minBlockZ, gridSize, terrainHeightsOut, mapterhornLandOverrideOut)) {
+               return true;
+            }
+         }
+         return false;
+      }
+
       public boolean contains(int blockX, int blockZ) {
          return this.contains(blockX, blockZ, Double.POSITIVE_INFINITY);
       }

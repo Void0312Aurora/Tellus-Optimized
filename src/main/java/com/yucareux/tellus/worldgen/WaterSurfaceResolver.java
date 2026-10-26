@@ -16,7 +16,10 @@ import com.yucareux.tellus.world.data.osm.OsmQueryMode;
 import com.yucareux.tellus.world.data.osm.OsmWaterFeature;
 import com.yucareux.tellus.world.data.osm.TellusOsmWaterSource;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicLong;
 import net.minecraft.util.Mth;
 
@@ -88,6 +91,7 @@ public final class WaterSurfaceResolver implements TellusCacheHandle {
    private static final int COARSE_CONNECT_STEP = 8;
    private static final int MAX_REGION_MARGIN_BLOCKS = 512;
    private static final boolean DEFER_DETAILED_WATER = Boolean.parseBoolean(System.getProperty("tellus.chunkdetail.deferDetailedWater", "true"));
+   private static final boolean BATCH_TERRAIN_GRID = Boolean.parseBoolean(System.getProperty("tellus.water.batchTerrainGrid", "true"));
    private static final int DIST_COST_CARDINAL = 10;
    private static final int DIST_COST_DIAGONAL = 14;
    private static final int[] NEIGHBOR_OFFSETS = new int[]{1, 0, -1, 0, 0, 1, 0, -1};
@@ -103,6 +107,7 @@ public final class WaterSurfaceResolver implements TellusCacheHandle {
       DIST_COST_DIAGONAL
    };
    private static final boolean DEBUG_WATER = Boolean.getBoolean("tellus.debugWater");
+   private static final boolean DEBUG_WATER_CHECKSUM = Boolean.getBoolean("tellus.debugWaterChecksum");
    private static final ThreadLocal<WaterSurfaceResolver.RegionScratch> REGION_SCRATCH = ThreadLocal.withInitial(WaterSurfaceResolver.RegionScratch::new);
    private final TellusLandCoverSource landCoverSource;
    private final TellusLandMaskSource landMaskSource;
@@ -123,6 +128,7 @@ public final class WaterSurfaceResolver implements TellusCacheHandle {
    private final int riverMaxWidth;
    private final int maxDistanceToShore;
    private final int regionMargin;
+   private final int waterfallQueryMargin;
    private final boolean regionClamped;
    private final Cache<Long, Integer> lakeSurfaceCache;
    private final OceanCoastField oceanCoastField;
@@ -155,11 +161,15 @@ public final class WaterSurfaceResolver implements TellusCacheHandle {
          LakeBedProfile.maximumShoreInfluenceBlocks(),
          Math.max(this.riverLakeBlendDistance, MAX_ADAPTIVE_BLEND_BLOCKS)
       );
+      this.waterfallQueryMargin = this.osmWaterEnabled
+         ? WaterfallNoCarveZone.queryMarginBlocks(settings.worldScale())
+         : 0;
+      // The waterfall radius is a feature-query halo, not a per-cell analysis
+      // halo. Keeping it out of the working grid avoids expanding every normal
+      // 64x64 region to more than a million sampled cells at scale 1.
       int rawRegionMargin = Math.max(
          this.maxDistanceToShore + SEA_LEVEL_TOLERANCE,
-         this.osmWaterEnabled
-            ? Math.max(FLOW_CONTEXT_BLOCKS, WaterfallNoCarveZone.queryMarginBlocks(settings.worldScale()))
-            : 0
+         this.osmWaterEnabled ? FLOW_CONTEXT_BLOCKS : 0
       );
       this.regionMargin = Math.min(rawRegionMargin, MAX_REGION_MARGIN_BLOCKS);
       this.regionClamped = rawRegionMargin > this.regionMargin;
@@ -705,7 +715,7 @@ public final class WaterSurfaceResolver implements TellusCacheHandle {
    }
 
    private int waterInfluencePadding() {
-      return Math.max(this.shorelinePadding(), this.regionMargin);
+      return Math.max(Math.max(this.shorelinePadding(), this.regionMargin), this.waterfallQueryMargin);
    }
 
    private boolean useLegacyBlockingWaterFallback() {
@@ -829,6 +839,152 @@ public final class WaterSurfaceResolver implements TellusCacheHandle {
       double worldScale = this.settings.worldScale();
       TellusLandMaskSource.LandMaskSampler landMaskSampler = this.osmWaterEnabled ? null : this.landMaskSource.newSampler();
 
+      boolean preloadedGridReady = false;
+      boolean preloadCenterCovered = this.osmWaterEnabled && BATCH_TERRAIN_GRID && this.preloadedTerrain != null
+         && this.preloadedTerrain.contains(
+            gridMinX + gridSize / 2,
+            gridMinZ + gridSize / 2,
+            this.settings.worldScale()
+         );
+      if (this.osmWaterEnabled && preloadCenterCovered && BATCH_TERRAIN_GRID) {
+         preloadedGridReady = this.preloadedTerrain.sampleTerrainGrid(
+            gridMinX,
+            gridMinZ,
+            gridSize,
+            this.settings.worldScale(),
+            surfaceHeights,
+            mapterhornLandOverride
+         );
+      }
+      if (preloadedGridReady) {
+         for (int dz = 0; dz < gridSize; dz++) {
+            int row = dz * gridSize;
+            for (int dx = 0; dx < gridSize; dx++) {
+               int index = row + dx;
+               landMaskLand[index] = false;
+               baseWaterMask[index] = false;
+               noDataMask[index] = false;
+            }
+         }
+      } else if (this.osmWaterEnabled && !preloadCenterCovered && BATCH_TERRAIN_GRID) {
+         // OSM water uses the terrain DEM only as a surface-height source. Batch
+         // the Mercator/tile work once for the complete grid instead of repeating
+         // the same coordinate transform and tile lookup for every cell.
+         double[] terrainMeters = scratch.terrainMeters;
+         this.elevationSource.sampleTerrainGridMeters(
+            gridMinX,
+            gridMinZ,
+            gridSize,
+            worldScale,
+            this.settings.demSelection(),
+            this.settings.worldScale(),
+            terrainMeters,
+            mapterhornLandOverride
+         );
+         for (int dz = 0; dz < gridSize; dz++) {
+            int worldZ = gridMinZ + dz;
+            int row = dz * gridSize;
+            for (int dx = 0; dx < gridSize; dx++) {
+               int index = row + dx;
+               landMaskLand[index] = false;
+               surfaceHeights[index] = this.scaleElevationToHeight(terrainMeters[index], worldZ);
+               baseWaterMask[index] = false;
+               noDataMask[index] = false;
+            }
+         }
+      } else if (TellusWorldgenSources.parallelWaterRegionBuildEnabled(gridArea)) {
+         int taskCount = TellusWorldgenSources.parallelWaterRegionTaskCount(gridSize);
+         boolean[] taskHasWater = new boolean[taskCount];
+         List<CompletableFuture<Void>> tasks = new ArrayList<>(taskCount);
+         for (int taskIndex = 0; taskIndex < taskCount; taskIndex++) {
+            int from = taskIndex * gridSize / taskCount;
+            int to = (taskIndex + 1) * gridSize / taskCount;
+            int task = taskIndex;
+            tasks.add(
+               TellusWorldgenSources.submitChunkComputeTask(() -> {
+                  boolean localHasWater = false;
+                  TellusLandMaskSource.LandMaskSampler taskLandMaskSampler =
+                     this.osmWaterEnabled ? null : this.landMaskSource.newSampler();
+                  for (int dz = from; dz < to; dz++) {
+                     int worldZ = gridMinZ + dz;
+                     int row = dz * gridSize;
+
+                     for (int dx = 0; dx < gridSize; dx++) {
+                        int worldX = gridMinX + dx;
+                        int index = row + dx;
+                        if (this.osmWaterEnabled) {
+                           landMaskLand[index] = false;
+                           WaterSurfaceResolver.SurfaceSample surfaceSample = this.sampleSurface(
+                              worldX, worldZ, false, this.settings.worldScale()
+                           );
+                           surfaceHeights[index] = surfaceSample.height();
+                           mapterhornLandOverride[index] = surfaceSample.mapterhornLandOverride();
+                           baseWaterMask[index] = false;
+                           noDataMask[index] = false;
+                           continue;
+                        }
+
+                        TellusLandMaskSource.LandMaskSample landMaskSample =
+                           this.sampleLandMask(worldX, worldZ, taskLandMaskSampler, worldScale);
+                        boolean maskKnown = landMaskSample.known();
+                        boolean landMaskIsLand = maskKnown && landMaskSample.land();
+                        boolean landMaskOcean = maskKnown && !landMaskIsLand;
+                        int coverClass = this.sampleCoverClass(worldX, worldZ);
+                        WaterSurfaceResolver.SurfaceSample surfaceSample = this.sampleSurface(
+                           worldX, worldZ, coverClass, landMaskSample, this.settings.worldScale()
+                        );
+                        int surface = surfaceSample.height();
+                        boolean demLandOverride = surfaceSample.mapterhornLandOverride();
+                        mapterhornLandOverride[index] = demLandOverride;
+                        boolean isNoData = coverClass == ESA_NO_DATA;
+                        boolean oceanMask;
+                        if (maskKnown) {
+                           oceanMask = landMaskOcean && (isNoData || coverClass == ESA_WATER);
+                        } else {
+                           oceanMask = isNoData && surface <= this.seaLevel;
+                        }
+
+                        boolean esaWater = !suppressOceanWater(oceanMask, demLandOverride)
+                           && (coverClass == ESA_WATER
+                              || oceanMask && (surface <= this.seaLevel || landMaskOcean && (isNoData || coverClass == ESA_WATER)));
+                        boolean isWater = !this.osmWaterEnabled && esaWater;
+                        landMaskLand[index] = landMaskIsLand;
+                        surfaceHeights[index] = surface;
+                        baseWaterMask[index] = isWater;
+                        noDataMask[index] = isWater && oceanMask;
+                        if (isWater && landMaskOcean && (isNoData || coverClass == ESA_WATER)) {
+                           oceanHintMask[index] = true;
+                        }
+
+                        if (isWater) {
+                           localHasWater = true;
+                        }
+                     }
+                  }
+                  taskHasWater[task] = localHasWater;
+               })
+            );
+         }
+         CompletableFuture.allOf(tasks.toArray(CompletableFuture[]::new)).join();
+         for (boolean taskHas : taskHasWater) {
+            hasWater |= taskHas;
+         }
+         if (!this.osmWaterEnabled) {
+            // coarseWater cells are shared by several source rows; reduce them
+            // after the row tasks finish to avoid cross-task writes.
+            for (int dz = 0; dz < gridSize; dz++) {
+               int coarseZ = dz / coarseStep;
+               int coarseRow = coarseZ * coarseSize;
+               int row = dz * gridSize;
+               for (int dx = 0; dx < gridSize; dx++) {
+                  int index = row + dx;
+                  if (baseWaterMask[index] && !noDataMask[index] && surfaceHeights[index] <= inlandLevel) {
+                     coarseWater[coarseRow + dx / coarseStep] = true;
+                  }
+               }
+            }
+         }
+      } else {
       for (int dz = 0; dz < gridSize; dz++) {
          int worldZ = gridMinZ + dz;
          int row = dz * gridSize;
@@ -890,6 +1046,7 @@ public final class WaterSurfaceResolver implements TellusCacheHandle {
             }
          }
       }
+      }
 
       if (this.osmWaterEnabled) {
          boolean osmRegionHasWater = this.populateOsmBaseWaterMask(
@@ -911,6 +1068,56 @@ public final class WaterSurfaceResolver implements TellusCacheHandle {
             hasWater = true;
          }
 
+         if (TellusWorldgenSources.parallelWaterRegionBuildEnabled(gridArea)) {
+            this.oceanCoastField.warmArea(
+               gridMinX, gridMinZ, gridMinX + gridSize - 1, gridMinZ + gridSize - 1
+            );
+            int taskCount = TellusWorldgenSources.parallelWaterRegionTaskCount(gridSize);
+            boolean[] taskHasOcean = new boolean[taskCount];
+            List<CompletableFuture<Void>> tasks = new ArrayList<>(taskCount);
+            for (int taskIndex = 0; taskIndex < taskCount; taskIndex++) {
+               int from = taskIndex * gridSize / taskCount;
+               int to = (taskIndex + 1) * gridSize / taskCount;
+               int task = taskIndex;
+               tasks.add(
+                  TellusWorldgenSources.submitChunkComputeTask(() -> {
+                     boolean localHasOcean = false;
+                     for (int dz = from; dz < to; dz++) {
+                        int row = dz * gridSize;
+                        int worldZ = gridMinZ + dz;
+                        for (int dx = 0; dx < gridSize; dx++) {
+                           int index = row + dx;
+                           OceanCoastSample coast = this.oceanCoastField.sample(gridMinX + dx, worldZ);
+                           if (!coast.complete()) {
+                              throw new OceanCoverageUnavailableException(coast.coverageStatus(), gridMinX + dx, worldZ);
+                           }
+                           if (coast.ocean()) {
+                              // Overture ocean-surface polygons are definitive and override any
+                              // overlapping inland-water geometry or DEM elevation.
+                              baseWaterMask[index] = true;
+                              noDataMask[index] = true;
+                              oceanHintMask[index] = true;
+                              lineWaterMask[index] = false;
+                              areaWaterMask[index] = false;
+                              flowingWaterMask[index] = false;
+                              waterBodyKeys[index] = 0L;
+                              waterBodySurfaceHints[index] = Integer.MIN_VALUE;
+                              localHasOcean = true;
+                           } else {
+                              oceanHintMask[index] = false;
+                              noDataMask[index] = false;
+                           }
+                        }
+                     }
+                     taskHasOcean[task] = localHasOcean;
+                  })
+               );
+            }
+            CompletableFuture.allOf(tasks.toArray(CompletableFuture[]::new)).join();
+            for (boolean taskHas : taskHasOcean) {
+               hasWater |= taskHas;
+            }
+         } else {
          for (int dz = 0; dz < gridSize; dz++) {
             int row = dz * gridSize;
             int worldZ = gridMinZ + dz;
@@ -937,6 +1144,7 @@ public final class WaterSurfaceResolver implements TellusCacheHandle {
                   noDataMask[index] = false;
                }
             }
+         }
          }
 
          for (int dz = 0; dz < gridSize; dz++) {
@@ -1366,6 +1574,7 @@ public final class WaterSurfaceResolver implements TellusCacheHandle {
                   new Object[]{regionX, regionZ, elapsed / 1000000L, this.settings.worldScale(), this.regionMargin}
                );
          }
+         this.logWaterRegionChecksum(regionX, regionZ, regionTerrain, regionWater, regionRaw, regionFlags, regionSourceConversionProtection);
 
          clearComponents(components, componentCount);
          return new WaterSurfaceResolver.WaterRegionData(
@@ -1378,6 +1587,27 @@ public final class WaterSurfaceResolver implements TellusCacheHandle {
             regionSourceConversionProtection
          );
       }
+   }
+
+   private void logWaterRegionChecksum(
+      int regionX,
+      int regionZ,
+      int[] regionTerrain,
+      int[] regionWater,
+      int[] regionRaw,
+      byte[] regionFlags,
+      boolean[] regionSourceConversionProtection
+   ) {
+      if (!DEBUG_WATER_CHECKSUM) {
+         return;
+      }
+      int checksum = 1;
+      checksum = 31 * checksum + Arrays.hashCode(regionTerrain);
+      checksum = 31 * checksum + Arrays.hashCode(regionWater);
+      checksum = 31 * checksum + Arrays.hashCode(regionRaw);
+      checksum = 31 * checksum + Arrays.hashCode(regionFlags);
+      checksum = 31 * checksum + Arrays.hashCode(regionSourceConversionProtection);
+      Tellus.LOGGER.info("Water region {}:{} checksum={}", regionX, regionZ, checksum);
    }
 
    private WaterSurfaceResolver.WaterRegionData buildDryRegionData(
@@ -1416,6 +1646,7 @@ public final class WaterSurfaceResolver implements TellusCacheHandle {
                new Object[]{regionX, regionZ, elapsed / 1000000L, this.settings.worldScale(), this.regionMargin}
             );
       }
+      this.logWaterRegionChecksum(regionX, regionZ, regionTerrain, regionWater, regionRaw, regionFlags, regionSourceConversionProtection);
 
       return new WaterSurfaceResolver.WaterRegionData(
          regionMinX,
@@ -3761,6 +3992,7 @@ public final class WaterSurfaceResolver implements TellusCacheHandle {
       private long[] waterBodyKeys;
       private int[] waterBodySurfaceHints;
       private int[] surfaceHeights;
+      private double[] terrainMeters;
       private int[] componentIds;
       private WaterSurfaceResolver.ComponentData[] components;
       private int[] waterSurface;
@@ -3816,6 +4048,7 @@ public final class WaterSurfaceResolver implements TellusCacheHandle {
             this.waterBodyKeys = new long[size];
             this.waterBodySurfaceHints = new int[size];
             this.surfaceHeights = new int[size];
+            this.terrainMeters = new double[size];
             this.componentIds = new int[size];
             this.components = new WaterSurfaceResolver.ComponentData[size];
             this.waterSurface = new int[size];
