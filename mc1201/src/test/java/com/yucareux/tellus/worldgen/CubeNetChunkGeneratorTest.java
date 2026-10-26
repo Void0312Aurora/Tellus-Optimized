@@ -1,7 +1,10 @@
 package com.yucareux.tellus.worldgen;
 
 import com.yucareux.tellus.worldgen.global.SphereChunkSampler;
+import com.yucareux.tellus.worldgen.global.CubeNetApronResolver;
 import com.yucareux.tellus.worldgen.global.CubeNetLayout;
+import com.yucareux.tellus.worldgen.global.SphereSingularityPolicy;
+import com.yucareux.tellus.worldgen.global.SphereWorldModel;
 import java.nio.file.Path;
 import java.util.concurrent.atomic.AtomicInteger;
 import net.minecraft.SharedConstants;
@@ -135,6 +138,161 @@ class CubeNetChunkGeneratorTest {
    }
 
    @Test
+   void materializesACutApronAsANativeChunkFromCanonicalFaceColumns() {
+      AtomicInteger calls = new AtomicInteger();
+      var generator = new CubeNetChunkGenerator(new FixedBiomeSource(plains), 1000.0, 64, -64, 384,
+         (point, resolution) -> {
+            calls.incrementAndGet();
+            return new SphereChunkSampler.SurfaceData(-1000.0, 80, 0.0);
+         });
+      var layout = generator.adapter().layout();
+      ChunkPos proxy = null;
+      for (var face : CubeNetLayout.Face.values()) for (var side : CubeNetLayout.Side.values()) {
+         if (layout.arePlanarNeighbors(face, side)) continue;
+         double edge = layout.faceSize() * 0.5;
+         double u = switch (side) {
+            case WEST -> -8.0;
+            case EAST -> layout.faceSize() + 8.0;
+            case NORTH, SOUTH -> edge;
+         };
+         double v = switch (side) {
+            case NORTH -> -8.0;
+            case SOUTH -> layout.faceSize() + 8.0;
+            case WEST, EAST -> edge;
+         };
+         var planar = layout.toPlanarUnbounded(new CubeNetLayout.FacePoint(face, u, v));
+         ChunkPos candidate = new ChunkPos((int)Math.floor(planar.x() / 16.0),
+            (int)Math.floor(planar.z() / 16.0));
+         if (generator.apronResolver().resolveChunk(candidate.x, candidate.z).isPresent()) {
+            proxy = candidate;
+            break;
+         }
+      }
+      assertNotNull(proxy, "no native apron chunk found");
+      var chunk = new ProtoChunk(proxy, UpgradeData.EMPTY, LevelHeightAccessor.create(-64, 384), registry, null);
+      generator.fillFromNoise(Runnable::run, null, null, null, chunk).join();
+      assertEquals(256, calls.get());
+      assertTrue(chunk.getBlockState(new net.minecraft.core.BlockPos(proxy.getMinBlockX(), 10,
+         proxy.getMinBlockZ())).is(Blocks.STONE));
+      assertTrue(chunk.getBlockState(new net.minecraft.core.BlockPos(proxy.getMinBlockX(), 64,
+         proxy.getMinBlockZ())).is(Blocks.WATER));
+   }
+
+   @Test
+   void convertsApronTargetFaceBlockCenterToCanonicalChunkCoordinates() {
+      var generator = new CubeNetChunkGenerator(new FixedBiomeSource(plains), 1000.0, 64, -64, 384,
+         (point, resolution) -> new SphereChunkSampler.SurfaceData(10.0, 30));
+      var layout = generator.adapter().layout();
+      CubeNetApronResolver.ChunkProjection projection = null;
+      for (var face : CubeNetLayout.Face.values()) for (var side : CubeNetLayout.Side.values()) {
+         if (layout.arePlanarNeighbors(face, side)) continue;
+         double edge = layout.faceSize() * 0.5;
+         double u = switch (side) {
+            case WEST -> -8.0;
+            case EAST -> layout.faceSize() + 8.0;
+            case NORTH, SOUTH -> edge;
+         };
+         double v = switch (side) {
+            case NORTH -> -8.0;
+            case SOUTH -> layout.faceSize() + 8.0;
+            case WEST, EAST -> edge;
+         };
+         var planar = layout.toPlanarUnbounded(new CubeNetLayout.FacePoint(face, u, v));
+         ChunkPos candidate = new ChunkPos((int)Math.floor(planar.x() / 16.0),
+            (int)Math.floor(planar.z() / 16.0));
+         projection = generator.apronResolver().resolveChunk(candidate.x, candidate.z).orElse(null);
+         if (projection != null) break;
+      }
+      assertNotNull(projection, "no native apron projection found");
+      int targetX = projection.targetChunkX() * 16 + 8;
+      int targetZ = projection.targetChunkZ() * 16 + 8;
+      var targetCenter = layout.toPlanarUnbounded(new CubeNetLayout.FacePoint(
+         projection.targetFace(), targetX + 0.5, targetZ + 0.5));
+      ChunkPos expected = new ChunkPos(
+         Math.floorDiv((int)Math.floor(targetCenter.x()), 16),
+         Math.floorDiv((int)Math.floor(targetCenter.z()), 16));
+      assertEquals(expected, CubeNetApronChunkSync.canonicalChunkPosition(layout, projection));
+      assertTrue(generator.address(expected).isPresent(), "target must resolve to a canonical face chunk");
+   }
+
+   @Test
+   void leavesQuarantinedCornerChunksEmptyInsteadOfThrowing() {
+      AtomicInteger calls = new AtomicInteger();
+      var generator = new CubeNetChunkGenerator(new FixedBiomeSource(plains), 1000.0, 64, -64, 384,
+         (point, resolution) -> {
+            calls.incrementAndGet();
+            return new SphereChunkSampler.SurfaceData(10.0, 30);
+         });
+      var layout = generator.adapter().layout();
+      var planarCenter = layout.toPlanar(new CubeNetLayout.FacePoint(CubeNetLayout.Face.NEG_Z,
+         1 * 16.0 + 8.0, 627 * 16.0 + 8.0));
+      var quarantined = new ChunkPos((int)Math.floor(planarCenter.x() / 16.0),
+         (int)Math.floor(planarCenter.z() / 16.0));
+      var chunk = new ProtoChunk(quarantined, UpgradeData.EMPTY,
+         LevelHeightAccessor.create(-64, 384), registry, null);
+      generator.fillFromNoise(Runnable::run, null, null, null, chunk).join();
+      assertEquals(0, calls.get());
+      assertEquals(-64, generator.getBaseHeight(quarantined.getMinBlockX(), quarantined.getMinBlockZ(),
+         net.minecraft.world.level.levelgen.Heightmap.Types.WORLD_SURFACE_WG, chunk, null));
+   }
+
+   @Test
+   void materializesTheTransitionBufferWithTheOrdinarySampler() {
+      AtomicInteger calls = new AtomicInteger();
+      var generator = new CubeNetChunkGenerator(new FixedBiomeSource(plains), 1000.0, 64, -64, 384,
+         (point, resolution) -> {
+            calls.incrementAndGet();
+            return new SphereChunkSampler.SurfaceData(10.0, 30);
+         });
+      var policy = new SphereSingularityPolicy(generator.model(), SphereSingularityPolicy.DEFAULT_CONFIG);
+      SphereWorldModel.SphereChunkAddress transition = null;
+      int chunks = Math.toIntExact(generator.model().chunksPerFace());
+      outer: for (int face = 0; face < SphereWorldModel.FACE_COUNT; face++) {
+         for (int z = 0; z < chunks; z++) for (int x = 0; x < chunks; x++) {
+            var candidate = new SphereWorldModel.SphereChunkAddress(face, x, z);
+            if (policy.status(candidate) == SphereSingularityPolicy.Status.TRANSITION) {
+               transition = candidate;
+               break outer;
+            }
+         }
+      }
+      assertNotNull(transition, "test model must contain a transition chunk");
+      assertTrue(policy.admitsTerrainMaterialization(transition));
+      assertFalse(policy.admitsOrdinaryMaterialization(transition));
+
+      var layout = generator.adapter().layout();
+      var center = layout.toPlanar(new CubeNetLayout.FacePoint(CubeNetLayout.Face.of(transition.face()),
+         transition.blockX() + 8.0, transition.blockZ() + 8.0));
+      var pos = new ChunkPos((int)Math.floor(center.x() / 16.0), (int)Math.floor(center.z() / 16.0));
+      var chunk = new ProtoChunk(pos, UpgradeData.EMPTY, LevelHeightAccessor.create(-64, 384), registry, null);
+      generator.fillFromNoise(Runnable::run, null, null, null, chunk).join();
+      assertEquals(256, calls.get());
+      assertTrue(chunk.getBlockState(new net.minecraft.core.BlockPos(pos.getMinBlockX(), 10,
+         pos.getMinBlockZ())).is(Blocks.STONE));
+   }
+
+   @Test
+   void boundaryVisualGateIncludesTheMovementChunkAllowanceAndIgnoresOrdinarySeams() {
+      var generator = new CubeNetChunkGenerator(new FixedBiomeSource(plains), 1000.0, 64, -64, 384,
+         (point, resolution) -> new SphereChunkSampler.SurfaceData(10.0, 30));
+      assertTrue(generator.admitsOrdinaryPlanarPoint(10848.5, -607.5));
+      assertFalse(generator.admitsBoundaryHintPoint(10848.5, -607.5),
+         "the visual wall must include the conservative chunk movement gate");
+      assertTrue(generator.admitsBoundaryHintPoint(10920.5, -679.5));
+      assertTrue(generator.nearOrdinaryBoundary(10920.5, -679.5, 96.0));
+      assertFalse(generator.nearOrdinaryBoundary(15360.0, -5120.0, 96.0));
+      assertFalse(generator.nearOrdinaryBoundary(15360.0, -1.0, 96.0),
+         "an ordinary cube seam must not display an exclusion wall");
+      var contact = CubeNetRuntime.findBoundaryHint(generator, 10848.004495571211, -619.5);
+      assertNotNull(contact);
+      assertEquals(0.0, contact.tangentX(), 0.0001,
+         "sub-block contact must retain the west wall direction");
+      assertEquals(1.0, Math.abs(contact.tangentZ()), 0.0001);
+      assertEquals(10847.5, contact.x(), 0.0001,
+         "the half-block visual inset must remain beyond the camera near plane");
+   }
+
+   @Test
    void codecPreservesTheSingleLevelCubeNetContract() {
       var generator = new CubeNetChunkGenerator(new FixedBiomeSource(plains), 1.0, 100, -128, 512);
       var ops = RegistryOps.create(JsonOps.INSTANCE,
@@ -147,7 +305,8 @@ class CubeNetChunkGeneratorTest {
       assertEquals(-128, restored.getMinY());
       assertEquals(512, restored.getGenDepth());
       assertEquals(generator.model().config(), restored.model().config());
-      encoded.addProperty("geometry_version", 1);
+      assertEquals(2, restored.apronWidthChunks());
+      encoded.addProperty("geometry_version", 2);
       assertTrue(CubeNetChunkGenerator.CODEC.parse(ops, encoded).error().isPresent());
    }
 }

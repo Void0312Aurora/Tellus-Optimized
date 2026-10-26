@@ -2,6 +2,7 @@ package com.yucareux.tellus.mixin.client;
 
 import com.yucareux.tellus.client.SphereClientMotion;
 import com.yucareux.tellus.client.SphereClientState;
+import com.yucareux.tellus.client.CubeNetClientTransition;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.MoverType;
@@ -19,6 +20,13 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class SphericalClientEntityMoveMixin {
    @Inject(method = "move", at = @At("HEAD"), cancellable = true)
    private void tellus$guardQuarantinedPrediction(MoverType type, Vec3 movement, CallbackInfo ci) {
+      if ((Object)this instanceof LocalPlayer player && type == MoverType.SELF
+         && CubeNetClientTransition.holdsPlayer()) {
+         player.setDeltaMovement(Vec3.ZERO);
+         player.fallDistance = 0.0f;
+         ci.cancel();
+         return;
+      }
       if ((Object)this instanceof LocalPlayer && type == MoverType.SELF
          && blockLocalMove((LocalPlayer)(Object)this, movement)) {
          ci.cancel();

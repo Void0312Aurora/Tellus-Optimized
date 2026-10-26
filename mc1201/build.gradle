@@ -32,6 +32,17 @@ if (isolatedRunDir != null && !isolatedRunDir.isBlank()) {
 	loom.runs.server.runDir = project.relativePath(file(isolatedRunDir))
 }
 
+// Keep interactive acceptance runs separate from ordinary development saves.
+def isolatedClientRunDir = providers.gradleProperty('tellusClientRunDir').orNull
+if (isolatedClientRunDir != null && !isolatedClientRunDir.isBlank()) {
+	loom.runs.client.runDir = project.relativePath(file(isolatedClientRunDir))
+}
+
+def clientTestServer = providers.gradleProperty('tellusClientTestServer').orNull
+if (clientTestServer != null && !clientTestServer.isBlank()) {
+	loom.runs.client.programArgs '--username', 'TellusTester', '--quickPlayMultiplayer', clientTestServer
+}
+
 // The headless benchmark launches the development server as a child JVM. Keep
 // its heap arguments on that child task instead of JAVA_TOOL_OPTIONS, which
 // would also apply to Gradle's own daemon and can conflict with its Xmx.

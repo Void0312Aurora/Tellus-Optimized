@@ -1,0 +1,9 @@
+cap_radius_km,transition_width_km,unesco_records,excluded_sites,transition_sites,total_sites
+50,50,1273,0,0,0
+100,50,1273,0,0,0
+150,50,1273,0,0,0
+175,50,1273,0,0,0
+200,50,1273,0,0,0
+250,50,1273,0,0,0
+300,50,1273,0,2,2
+360,50,1273,2,2,4

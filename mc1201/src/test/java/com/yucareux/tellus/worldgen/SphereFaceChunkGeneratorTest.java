@@ -4,6 +4,7 @@ import com.google.gson.JsonObject;
 import com.mojang.serialization.JsonOps;
 import com.mojang.serialization.Lifecycle;
 import com.yucareux.tellus.worldgen.global.SphereChunkSampler;
+import com.yucareux.tellus.worldgen.global.SphereSingularityPolicy;
 import com.yucareux.tellus.worldgen.global.SphereWorldModel;
 import java.nio.file.Path;
 import java.util.concurrent.CompletionException;
@@ -176,6 +177,33 @@ class SphereFaceChunkGeneratorTest {
    }
 
    @Test
+   void transitionBufferUsesTheOrdinaryTerrainSampler() {
+      AtomicInteger calls = new AtomicInteger();
+      var generator = generator(0, 1000.0, (point, resolution) -> {
+         calls.incrementAndGet();
+         return new SphereChunkSampler.SurfaceData(10.0, 30);
+      });
+      var policy = generator.singularityPolicy();
+      SphereWorldModel.SphereChunkAddress transition = null;
+      int chunks = Math.toIntExact(generator.model().chunksPerFace());
+      outer: for (int z = 0; z < chunks; z++) for (int x = 0; x < chunks; x++) {
+         var candidate = new SphereWorldModel.SphereChunkAddress(0, x, z);
+         if (policy.status(candidate) == SphereSingularityPolicy.Status.TRANSITION) {
+            transition = candidate;
+            break outer;
+         }
+      }
+      assertNotNull(transition, "test model must contain a transition chunk");
+      var engine = generator.topology().engineCoordinate(transition);
+      var chunk = chunk(new ChunkPos((int)engine.chunkX(), (int)engine.chunkZ()));
+      assertEquals(transition, generator.address(chunk.getPos()));
+      generator.fillFromNoise(Runnable::run, null, null, null, chunk).join();
+      assertEquals(256, calls.get());
+      assertTrue(chunk.getBlockState(new BlockPos(chunk.getPos().getMinBlockX(), 10,
+         chunk.getPos().getMinBlockZ())).is(Blocks.STONE));
+   }
+
+   @Test
    void codecPreservesFaceScaleAndVerticalConfigurationAndRejectsUnknownGeometry() {
       var generator = new SphereFaceChunkGenerator(new FixedBiomeSource(plains), 5, 1.0, 100, -128, 512, "tellus:test_earth");
       var ops = RegistryOps.create(JsonOps.INSTANCE, HolderLookup.Provider.create(java.util.stream.Stream.of(registry.asLookup())));
@@ -234,6 +262,11 @@ class SphereFaceChunkGeneratorTest {
 
    private static SphereFaceChunkGenerator generator(int face, SphereChunkSampler.PointSampler sampler) {
       return new SphereFaceChunkGenerator(new FixedBiomeSource(plains), face, 1.0, 64, -64, 384, sampler);
+   }
+
+   private static SphereFaceChunkGenerator generator(int face, double scale,
+      SphereChunkSampler.PointSampler sampler) {
+      return new SphereFaceChunkGenerator(new FixedBiomeSource(plains), face, scale, 64, -64, 384, sampler);
    }
 
    private static ProtoChunk chunk(ChunkPos pos) {

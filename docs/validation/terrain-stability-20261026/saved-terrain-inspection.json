@@ -1,0 +1,35 @@
+{
+  "areas": [
+    {
+      "name": "swiss",
+      "chunks": 25,
+      "statuses": {
+        "minecraft:full": 25
+      },
+      "surfaceYMin": 1669,
+      "surfaceYMax": 1674,
+      "blockPalette": [
+        "minecraft:air",
+        "minecraft:bedrock",
+        "minecraft:stone"
+      ]
+    },
+    {
+      "name": "chengdu",
+      "chunks": 25,
+      "statuses": {
+        "minecraft:full": 25
+      },
+      "surfaceYMin": 563,
+      "surfaceYMax": 570,
+      "blockPalette": [
+        "minecraft:air",
+        "minecraft:bedrock",
+        "minecraft:dirt",
+        "minecraft:grass_block",
+        "minecraft:stone"
+      ]
+    }
+  ],
+  "totalStoredChunkRecords": 2508
+}

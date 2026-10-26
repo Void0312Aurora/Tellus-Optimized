@@ -195,7 +195,7 @@ public final class SphereFaceChunkGenerator extends ChunkGenerator {
    SphereChunkSampler.TerrainGrid terrainGrid(SphereWorldModel.SphereChunkAddress address) {
       try {
          return this.terrainCache.get(ChunkPos.asLong((int)address.chunkX(), (int)address.chunkZ()), () -> {
-            this.singularityPolicy.requireOrdinary(address);
+            this.singularityPolicy.requireTerrainMaterialization(address);
             var grid = this.sampler.get().sampleTerrain(address);
             if (grid.columns().stream().anyMatch(column -> !column.data().elevationAvailable())) {
                throw new IllegalStateException("spherical terrain elevation is unavailable for " + address);
