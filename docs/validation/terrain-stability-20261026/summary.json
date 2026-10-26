@@ -1,0 +1,69 @@
+{
+  "worldScale": 1,
+  "syntheticSampler": false,
+  "dimension": "tellus:earth_cube_net",
+  "generator": "CubeNetChunkGenerator",
+  "areas": [
+    {
+      "area": "swiss",
+      "latitude": 46.02176,
+      "longitude": 7.74811,
+      "chunks": 25,
+      "firstGenerationMillis": 11052.3672,
+      "stateHashAggregate": "13410566470396009181",
+      "comparisons": {
+        "first": {
+          "matchingChunks": 25,
+          "totalChunks": 25,
+          "elapsedMillis": 11052.3672
+        },
+        "before-restart": {
+          "matchingChunks": 25,
+          "totalChunks": 25,
+          "elapsedMillis": 1282.1061
+        },
+        "reloaded": {
+          "matchingChunks": 25,
+          "totalChunks": 25,
+          "elapsedMillis": 2083.4438
+        },
+        "regenerated": {
+          "matchingChunks": 25,
+          "totalChunks": 25,
+          "elapsedMillis": 6166.8237
+        }
+      }
+    },
+    {
+      "area": "chengdu",
+      "latitude": 30.67,
+      "longitude": 104.06,
+      "chunks": 25,
+      "firstGenerationMillis": 13642.8883,
+      "stateHashAggregate": "18074710920708630447",
+      "comparisons": {
+        "first": {
+          "matchingChunks": 25,
+          "totalChunks": 25,
+          "elapsedMillis": 13642.8883
+        },
+        "before-restart": {
+          "matchingChunks": 25,
+          "totalChunks": 25,
+          "elapsedMillis": 1.1096
+        },
+        "reloaded": {
+          "matchingChunks": 25,
+          "totalChunks": 25,
+          "elapsedMillis": 242.8791
+        },
+        "regenerated": {
+          "matchingChunks": 25,
+          "totalChunks": 25,
+          "elapsedMillis": 6002.8634
+        }
+      }
+    }
+  ],
+  "passed": true
+}
