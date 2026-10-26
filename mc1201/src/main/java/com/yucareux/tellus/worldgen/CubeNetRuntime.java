@@ -670,7 +670,7 @@ public final class CubeNetRuntime {
          // vanilla movement validation. Starting it from Entity#move changes
          // the authoritative position before that validation and produces a
          // false moved-too-quickly warning for the same packet.
-         this.deferred.put(playerId, new DeferredTransfer(destination[0], player.getY() + movement.y,
+         this.deferred.put(playerId, snapshotDeferred(player, destination[0], player.getY() + movement.y,
             destination[1], new Vec3(planarVelocity[0], player.getDeltaMovement().y, planarVelocity[1]), yaw,
             shadingQuarterTurns));
          this.transitionStates.put(playerId, TransitionState.PREPARE);
@@ -817,14 +817,7 @@ public final class CubeNetRuntime {
          }
          this.prepareApproach(player);
          this.sampleMotion(player, server.getTickCount());
-         DeferredTransfer deferredTransfer = this.deferred.remove(player.getUUID());
-         if (deferredTransfer != null) {
-            this.transitionStates.put(player.getUUID(), TransitionState.PREPARE);
-            TellusCommon.LOGGER.info("Cube-net seam starting deferred transfer for {}",
-               player.getGameProfile().getName());
-            this.begin(player, deferredTransfer.x(), deferredTransfer.y(), deferredTransfer.z(),
-               deferredTransfer.velocity(), deferredTransfer.yaw(), deferredTransfer.shadingQuarterTurns());
-         }
+         this.startDeferred(player);
          this.route(player);
          if (!this.pending.containsKey(player.getUUID())) this.maybeRebaseApron(player);
          // Cut-edge terrain is now materialized as native LevelChunks by
@@ -833,7 +826,10 @@ public final class CubeNetRuntime {
       }
       this.tickEntities();
       if (this.smoke != null) {
-         this.smoke.tick(this::route, this.pending::containsKey);
+         // The smoke fixture observes the one-tick deferred handoff as part
+         // of the same transfer gate as the async chunk load.
+         this.startDeferred(this.smoke.player());
+         this.smoke.tick(this::route, this.pending::containsKey, this.deferred::containsKey);
          if (this.smoke.finished()) {
             this.cancel(this.smoke.player());
             this.smoke.finish();
@@ -841,6 +837,15 @@ public final class CubeNetRuntime {
          }
       }
       this.retryAfter.entrySet().removeIf(entry -> entry.getValue() < server.getTickCount());
+   }
+
+   private void startDeferred(ServerPlayer player) {
+      DeferredTransfer deferredTransfer = this.deferred.remove(player.getUUID());
+      if (deferredTransfer == null) return;
+      this.transitionStates.put(player.getUUID(), TransitionState.PREPARE);
+      TellusCommon.LOGGER.info("Cube-net seam starting deferred transfer for {}",
+         player.getGameProfile().getName());
+      this.begin(player, deferredTransfer);
    }
 
    private void prepareApproach(ServerPlayer player) {
@@ -953,7 +958,7 @@ public final class CubeNetRuntime {
       double[] destination = planar(layout, target);
       double[] planarVelocity = rebaseVelocity(layout, apron, player.getDeltaMovement());
       float yaw = rebaseYaw(layout, apron, player.getYRot());
-      DeferredTransfer deferredTransfer = new DeferredTransfer(destination[0], player.getY(), destination[1],
+      DeferredTransfer deferredTransfer = snapshotDeferred(player, destination[0], player.getY(), destination[1],
          new Vec3(planarVelocity[0], player.getDeltaMovement().y, planarVelocity[1]), yaw,
          shadingQuarterTurns(layout, layout.seam(apron.sourceFace(), apron.sourceSide())));
       if (this.deferred.putIfAbsent(player.getUUID(), deferredTransfer) == null) {
@@ -1457,8 +1462,11 @@ public final class CubeNetRuntime {
       }
    }
 
-   private void begin(ServerPlayer player, double x, double y, double z, Vec3 velocity, float yaw,
-      int shadingQuarterTurns) {
+   private void begin(ServerPlayer player, DeferredTransfer deferredTransfer) {
+      double x = deferredTransfer.x(), y = deferredTransfer.y(), z = deferredTransfer.z();
+      Vec3 velocity = deferredTransfer.velocity();
+      float yaw = deferredTransfer.yaw();
+      int shadingQuarterTurns = deferredTransfer.shadingQuarterTurns();
       ServerLevel target = player.serverLevel();
       ChunkPos chunk = new ChunkPos((int)Math.floor(x / 16.0), (int)Math.floor(z / 16.0));
       int radius = target.getChunkSource().getGenerator() instanceof CubeNetChunkGenerator cubeNet
@@ -1483,9 +1491,9 @@ public final class CubeNetRuntime {
       CompletableFuture<Void> clientReady = preparation != null ? preparation.clientReady() : clientStaging
          ? new CompletableFuture<>() : CompletableFuture.completedFuture(null);
       var transfer = new Transfer(target, x, y, z, chunk, velocity, yaw, shadingQuarterTurns,
-         player.server.getTickCount(),
-         player.getX(), player.getY(), player.getZ(), player.getYRot(), player.getXRot(),
-         player.getDeltaMovement(), player.fallDistance, ready, transitionId, clientReady,
+         player.server.getTickCount(), deferredTransfer.sourceX(), deferredTransfer.sourceY(),
+         deferredTransfer.sourceZ(), deferredTransfer.sourceYaw(), deferredTransfer.sourcePitch(),
+         deferredTransfer.sourceVelocity(), deferredTransfer.fallDistance(), ready, transitionId, clientReady,
          preparation == null ? new ClientChunkDelivery() : preparation.clientChunks(), radius);
       this.pending.put(id, transfer);
       this.transitionStates.put(id, TransitionState.STAGED);
@@ -1494,6 +1502,14 @@ public final class CubeNetRuntime {
             chunk.x, chunk.z, radius, true, shadingQuarterTurns));
       }
       this.hold(player, true);
+   }
+
+   private static DeferredTransfer snapshotDeferred(ServerPlayer player, double x, double y, double z,
+      Vec3 velocity, float yaw, int shadingQuarterTurns) {
+      // hold() zeros movement while the async transfer is staged; keep the
+      // pre-hold pose so a rejected landing can restore the original motion.
+      return new DeferredTransfer(x, y, z, velocity, yaw, shadingQuarterTurns, player.getX(), player.getY(),
+         player.getZ(), player.getYRot(), player.getXRot(), player.getDeltaMovement(), player.fallDistance);
    }
 
    /**
@@ -2055,7 +2071,8 @@ public final class CubeNetRuntime {
    private record LeashLink(Mob mob, Entity holder) { }
 
    private record DeferredTransfer(double x, double y, double z, Vec3 velocity, float yaw,
-      int shadingQuarterTurns) { }
+      int shadingQuarterTurns, double sourceX, double sourceY, double sourceZ, float sourceYaw,
+      float sourcePitch, Vec3 sourceVelocity, float fallDistance) { }
 
    record BoundaryHint(double x, double z, double tangentX, double tangentZ) { }
 

@@ -9,6 +9,9 @@ ext.tellus = [
 	minecraftVersion: '1.21.11',
 	neoForgeVersion: '21.11.38-beta',
 	javaVersion: 21,
+	// Use ModDevGradle's binary pipeline for the large 1.21.11 artifact; the
+	// default Vineflower pass exceeds the available heap during first setup.
+	disableRecompilation: true,
 	distantHorizonsRuntimeProperty: 'mc12111_neoforge_distant_horizons_runtime_path',
 	sharedSourceLayers: ['post-1201', 'mc262', 'mc12111', 'forge-family', 'neoforge'],
 	sharedClientSourceLayers: ['pre-26', 'mc1211', 'mc12111'],

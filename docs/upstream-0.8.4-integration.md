@@ -46,41 +46,62 @@ not establish new real-world source coverage.
 
 ## Verification
 
-Fabric 1.20.1 main, client and test sources compile. Its full suite reports
-955 tests: 944 passed, 11 skipped, no failures or errors. The opt-in parallel
-chunk-generation suite reports 7 tests: 6 passed, 1 skipped, no failures or
-errors. The installable jar and the shared-source duplication check pass.
+The full Gradle `build` completed successfully across all ten configured
+Minecraft/loader targets. The XML test reports contain 9,460 test cases, with
+zero failures and errors; 160 cases are skipped. Per target:
 
-Fabric 26.2 main, client and test sources also compile. The first compile exposed
-the benchmark's direct use of the removed `ResourceKey.location` method; using
-the existing version adapter fixes it. Its full suite reports 977 tests:
-966 passed, 11 skipped, no failures or errors. Its installable jar also builds.
+| Target | Tests | Skipped | Failures/errors |
+| --- | ---: | ---: | ---: |
+| `mc1201` Fabric | 962 | 12 | 0 |
+| `mc1201-forge` | 861 | 58 | 0 |
+| `mc1211` Fabric | 942 | 11 | 0 |
+| `mc1211-neoforge` | 942 | 11 | 0 |
+| `mc12111` Fabric | 942 | 11 | 0 |
+| `mc12111-neoforge` | 942 | 11 | 0 |
+| `mc262` Fabric | 977 | 11 | 0 |
+| `mc262-neoforge` | 942 | 11 | 0 |
+| `mc263` Fabric | 975 | 12 | 0 |
+| `mc263-neoforge` | 975 | 12 | 0 |
 
-The final combined run completes successfully in 1 minute 16 seconds, with both
-full test suites, the parallel-generation suite, both installable artifacts and
-the shared-source duplication check. The six new regression tests pass on both
-Fabric versions. Local logs are preserved under `build/upstream-integration/`.
+The Forge 1.20.1 JUnit task excludes four bootstrap-dependent shared tests
+(`TellusGeodeticElevationTest`, `TellusWorldgenSourcesTest`,
+`GeodeticOsmQueryTest` and `OceanCoastFieldConcurrencyTest`) because invoking
+vanilla bootstrap without Forge's ModLauncher fails before their assertions.
+Those tests run in the Fabric suite; the Forge test report still completes with
+no failures. The target also retains the project's pre-existing exclusions.
 
-Reproduction command, using a Java 25 Gradle runtime and installed Java toolchains:
+After the full matrix, a focused rerun of `mc1201:test`,
+`mc1201:testParallelChunkgen` and `mc1201:remapJar` passed following a fix to the
+runtime smoke fixture's deferred-transfer handoff. The parallel suite covers 7
+cases (6 passed, 1 skipped). The shared-source duplication check passed in the
+full matrix.
+
+The pinned Python geography and reference-POI suites pass all 13 tests. A
+headless installed Fabric server then passed the sphere crossing, sphere save
+reopen, and cube-net runtime checks. Sphere crossing preserved the geographic
+position to a residual below `1e-9 m`, and collision rollback passed. The
+cube-net check exercised all 24 directed edges, all 14 exact cut-edge starts,
+and collision rollback against real FULL chunks. These server fixtures use a
+synthetic terrain sampler and packet sink without a connected client; they do
+not establish terrain-source quality, rendering, or multiplayer behavior.
+Evidence and local logs are preserved under `build/upstream-integration/`.
+
+Reproduction command, using a Java 25 Gradle runtime and installed Java
+toolchains:
 
 ```sh
-./gradlew -PtellusTargets=mc1201,mc262 \
-  :mc1201:test :mc1201:testParallelChunkgen :mc1201:remapJar \
-  :mc262:test :mc262:assemble checkVersionSourceDuplication \
-  --no-daemon --console=plain
+./gradlew build --no-daemon --max-workers=2 --console=plain
 ```
 
 ## Remaining acceptance scope
 
-- Other Minecraft versions and Forge/NeoForge have not been rerun locally.
-- No real client/server traversal, edited-save reopen, source-cache performance
-  comparison or multiplayer acceptance was performed for this integration.
+- No connected client/rendering or multiplayer acceptance was performed.
 - Upstream water, land-cover and landmark changes intentionally alter generated
   terrain; the 0.8.3 hash and timing records are historical baselines, not results
   for this integration. The old saves and deployment jars were not replaced.
 - The upstream DH override still recognizes `EarthChunkGenerator`; this merge
   does not implement DH generation or seam rendering for `CubeNetChunkGenerator`.
 
-The conflicts are resolvable with explicit compatibility choices. Passing the
-local build/tests is a source-level integration result; gameplay and renderer
-acceptance remain separate work before promoting the branch.
+The conflicts are resolvable with explicit compatibility choices. The local
+all-target build, tests and headless runtime fixtures pass; connected-client,
+renderer and data-quality acceptance remain separate work before a release.

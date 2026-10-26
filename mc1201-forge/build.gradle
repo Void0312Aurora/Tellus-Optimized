@@ -164,6 +164,13 @@ tasks.named('test').configure {
 	exclude '**/TellusBuildingStylesTest.class'
 	exclude '**/TellusEmptyBeardifierTest.class'
 	exclude '**/TellusVanillaNoiseCaveSamplerTest.class'
+	// Vanilla Bootstrap reaches Forge NetworkHooks without ModLauncher in this JUnit task.
+	exclude '**/TellusGeodeticElevationTest.class'
+	exclude '**/TellusWorldgenSourcesTest.class'
+	// The geodetic OSM fixture also invokes the vanilla bootstrap directly;
+	// Forge's raw JUnit classpath cannot provide the ModLauncher transformers.
+	exclude '**/GeodeticOsmQueryTest.class'
+	exclude '**/OceanCoastFieldConcurrencyTest.class'
 }
 
 java {

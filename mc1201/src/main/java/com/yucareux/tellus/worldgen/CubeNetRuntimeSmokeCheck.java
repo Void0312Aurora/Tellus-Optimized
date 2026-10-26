@@ -54,6 +54,7 @@ final class CubeNetRuntimeSmokeCheck {
    private int stage;
    private int stageTick;
    private boolean requested;
+   private boolean interveningPositionUpdate;
    private boolean finished;
    private CompletableFuture<Void> ready;
    private CubeNetLayout.PlanarPoint source;
@@ -115,7 +116,19 @@ final class CubeNetRuntimeSmokeCheck {
       var point = new CubeNetLayout.FacePoint(test.face(), u, v);
       this.source = this.layout.toPlanar(point);
       this.transfer = this.layout.crossSeam(point, du, dv);
-      this.destination = this.layout.toPlanar(this.transfer.destination());
+      var destinationPoint = this.transfer.destination();
+      boolean cut = !this.layout.arePlanarNeighbors(test.face(), test.side());
+      if (cut && !this.nativeApron) {
+         double insetU = destinationPoint.u(), insetV = destinationPoint.v();
+         switch (this.transfer.seam().targetSide()) {
+            case WEST -> insetU += 0.5;
+            case EAST -> insetU -= 0.5;
+            case NORTH -> insetV += 0.5;
+            case SOUTH -> insetV -= 0.5;
+         }
+         destinationPoint = new CubeNetLayout.FacePoint(destinationPoint.face(), insetU, insetV);
+      }
+      this.destination = this.layout.toPlanar(destinationPoint);
       double[] planarMovement = this.layout.planarVector(test.face(), du, dv);
       this.movement = new Vec3(planarMovement[0], 0.125, planarMovement[1]);
       this.expectedPlanar = (this.nativeApron || this.layout.arePlanarNeighbors(test.face(), test.side()))
@@ -145,7 +158,7 @@ final class CubeNetRuntimeSmokeCheck {
       return CompletableFuture.allOf(loads.toArray(CompletableFuture[]::new));
    }
 
-   void tick(Consumer<ServerPlayer> route, Predicate<UUID> pending) {
+   void tick(Consumer<ServerPlayer> route, Predicate<UUID> pending, Predicate<UUID> deferred) {
       try {
          require(this.server.getTickCount() - this.stageTick < 1200, "fixture stage timed out");
          if (!this.ready.isDone()) return;
@@ -159,23 +172,35 @@ final class CubeNetRuntimeSmokeCheck {
                require(this.level.setBlock(this.obstacle, Blocks.STONE.defaultBlockState(), 3), "obstacle not placed");
             }
             this.player.move(MoverType.SELF, this.movement);
-            require(pending.test(this.player.getUUID()) == (cut && !this.nativeApron),
+            require((pending.test(this.player.getUUID()) || deferred.test(this.player.getUUID()))
+                  == (cut && !this.nativeApron),
                "movement hook did not select the expected direct/apron/seam path");
             if (cut && !this.nativeApron) {
                require(this.player.position().distanceTo(new Vec3(this.source.x(), this.y, this.source.z())) < 1E-6,
                   "pending transfer committed movement early");
-               // Simulate an intervening position update while the load waits.
-               this.player.moveTo(this.source.x() + 3, this.y + 2, this.source.z() + 3, 80, 42);
-               this.player.fallDistance = 0;
             }
             this.requested = true;
          }
          route.accept(this.player);
-         if (pending.test(this.player.getUUID())) {
+         if (deferred.test(this.player.getUUID())) {
             require(this.player.position().distanceTo(new Vec3(this.source.x(), this.y, this.source.z())) < 1E-6,
-               "waiting transfer did not restore its source anchor");
-            require(this.player.fallDistance == 7.5F, "waiting transfer lost fall distance");
+               "deferred transfer changed its source anchor");
             return;
+         }
+         if (pending.test(this.player.getUUID())) {
+            if (!this.interveningPositionUpdate) {
+               // A pending async load must restore the captured source pose.
+               this.player.moveTo(this.source.x() + 3, this.y + 2, this.source.z() + 3, 80, 42);
+               this.player.fallDistance = 0;
+               route.accept(this.player);
+               this.interveningPositionUpdate = true;
+            }
+            if (pending.test(this.player.getUUID())) {
+               require(this.player.position().distanceTo(new Vec3(this.source.x(), this.y, this.source.z())) < 1E-6,
+                  "waiting transfer did not restore its source anchor");
+               require(this.player.fallDistance == 7.5F, "waiting transfer lost fall distance");
+               return;
+            }
          }
          require(this.player.serverLevel() == this.level, "transfer changed Level");
          if (test.blocked()) {
