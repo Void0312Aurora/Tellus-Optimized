@@ -15,6 +15,7 @@ import java.util.concurrent.Executor;
 import java.util.function.Supplier;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.RegistryAccess;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.WorldGenRegion;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.LevelHeightAccessor;
@@ -38,7 +39,7 @@ import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemp
 
 /**
  * First engine entry point for one canonical spherical face, with radial column
- * storage. Faces are separate address domains until cross-face routing exists.
+ * storage. An explicit planet id connects six matching face dimensions.
  */
 public final class SphereFaceChunkGenerator extends ChunkGenerator {
    public static final Codec<SphereFaceChunkGenerator> CODEC = RecordCodecBuilder.create(instance -> instance.group(
@@ -48,14 +49,16 @@ public final class SphereFaceChunkGenerator extends ChunkGenerator {
       Codec.DOUBLE.fieldOf("world_scale").forGetter(SphereFaceChunkGenerator::worldScale),
       Codec.INT.fieldOf("sea_level").forGetter(SphereFaceChunkGenerator::getSeaLevel),
       Codec.intRange(-2032, 2016).fieldOf("min_y").forGetter(SphereFaceChunkGenerator::getMinY),
-      Codec.intRange(16, 4064).fieldOf("height").forGetter(SphereFaceChunkGenerator::getGenDepth)
-   ).apply(instance, (version, biome, face, scale, sea, min, height) ->
-      new SphereFaceChunkGenerator(biome, face, scale, sea, min, height)));
+      Codec.intRange(16, 4064).fieldOf("height").forGetter(SphereFaceChunkGenerator::getGenDepth),
+      Codec.STRING.optionalFieldOf("planet", "").forGetter(SphereFaceChunkGenerator::planet)
+   ).apply(instance, (version, biome, face, scale, sea, min, height, planet) ->
+      new SphereFaceChunkGenerator(biome, face, scale, sea, min, height, planet)));
 
    private final int face;
    private final int seaLevel;
    private final int minY;
    private final int height;
+   private final String planet;
    private final SphereWorldModel model;
    private final SphereFaceTopology topology;
    private final SphereTerrainMaterializer materializer;
@@ -64,11 +67,22 @@ public final class SphereFaceChunkGenerator extends ChunkGenerator {
       .maximumSize(128).build();
 
    public SphereFaceChunkGenerator(FixedBiomeSource biome, int face, double scale, int seaLevel, int minY, int height) {
-      this(biome, face, scale, seaLevel, minY, height, null);
+      this(biome, face, scale, seaLevel, minY, height, "", null);
+   }
+
+   public SphereFaceChunkGenerator(FixedBiomeSource biome, int face, double scale, int seaLevel, int minY, int height, String planet) {
+      this(biome, face, scale, seaLevel, minY, height, planet, null);
    }
 
    SphereFaceChunkGenerator(
       FixedBiomeSource biome, int face, double scale, int seaLevel, int minY, int height,
+      SphereChunkSampler.PointSampler pointSampler
+   ) {
+      this(biome, face, scale, seaLevel, minY, height, "", pointSampler);
+   }
+
+   private SphereFaceChunkGenerator(
+      FixedBiomeSource biome, int face, double scale, int seaLevel, int minY, int height, String planet,
       SphereChunkSampler.PointSampler pointSampler
    ) {
       super(biome, ignored -> BiomeGenerationSettings.EMPTY);
@@ -80,6 +94,11 @@ public final class SphereFaceChunkGenerator extends ChunkGenerator {
       this.seaLevel = seaLevel;
       this.minY = minY;
       this.height = height;
+      ResourceLocation planetId = planet == null || planet.isEmpty() ? null : ResourceLocation.tryParse(planet);
+      if (planet == null || (!planet.isEmpty() && (planetId == null || !planetId.toString().equals(planet)))) {
+         throw new IllegalArgumentException("planet must be empty or a namespace:path identifier");
+      }
+      this.planet = planet;
       this.model = SphereWorldModel.forWorldScale(scale);
       this.topology = new SphereFaceTopology(this.model);
       this.materializer = new SphereTerrainMaterializer(scale, seaLevel);
@@ -90,6 +109,7 @@ public final class SphereFaceChunkGenerator extends ChunkGenerator {
    }
 
    public int face() { return this.face; }
+   public String planet() { return this.planet; }
    public double worldScale() { return this.model.config().worldScale(); }
    public SphereWorldModel model() { return this.model; }
    public SphereFaceTopology topology() { return this.topology; }

@@ -23,6 +23,26 @@ public final class SphereFaceTopology {
       return this.model;
    }
 
+   public double minEngineBlock() { return -this.halfChunks * 16.0; }
+
+   public double maxEngineBlock() { return this.model.config().faceBlocks() + this.minEngineBlock(); }
+
+   public boolean containsEnginePoint(double x, double z) {
+      return Double.isFinite(x) && Double.isFinite(z)
+         && x >= this.minEngineBlock() && x < this.maxEngineBlock()
+         && z >= this.minEngineBlock() && z < this.maxEngineBlock();
+   }
+
+   /** Continuous coordinates for teleportation and entity motion, with no cell rounding. */
+   public EnginePoint enginePoint(SphereWorldModel.ContinuousFaceCoordinate coordinate) {
+      return new EnginePoint(coordinate.face(), coordinate.blockX() + this.minEngineBlock(),
+         coordinate.blockZ() + this.minEngineBlock());
+   }
+
+   public SphereWorldModel.FaceTransition transition(int face, double x, double z) {
+      return this.model.transition(face, x - this.minEngineBlock(), z - this.minEngineBlock());
+   }
+
    /** Converts an engine-local coordinate in one face to its canonical address. */
    public SphereWorldModel.SphereChunkAddress address(int face, long engineChunkX, long engineChunkZ) {
       validateEngineCoordinate(engineChunkX, engineChunkZ);
@@ -98,4 +118,6 @@ public final class SphereFaceTopology {
    }
 
    public record EngineChunkCoordinate(int face, long chunkX, long chunkZ) { }
+
+   public record EnginePoint(int face, double x, double z) { }
 }

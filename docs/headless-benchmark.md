@@ -22,6 +22,14 @@ benchmark in that dimension and records the generator class, dimension, Git
 revision, and whether the worktree contained uncommitted changes. The explicit
 run directory keeps these tests separate from the regular save and cache.
 
+For the six-face runtime smoke check, use a new template with a datapack made by
+`tools/create_sphere_datapack.py`, and pass `--sphere-check-planet tellus:earth`
+instead of `--chunk-x`/`--chunk-z`. The runner sends `tellus sphere verify` and
+collects `sphere-runtime-check-*.json`. This exercises a real engine
+`ServerPlayer` with a packet sink and real chunk loading, without a client. It
+does not test walking, collision, rendering or speedup. Controller timeouts also
+apply while the server produces no log lines.
+
 The batch runner is:
 
 ```text

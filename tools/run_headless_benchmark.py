@@ -12,10 +12,12 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import queue
 import re
 import shutil
 import subprocess
 import sys
+import threading
 import time
 from pathlib import Path
 from typing import Iterable
@@ -29,8 +31,9 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--world-template", type=Path, required=True,
                         help="Existing Tellus save used as the immutable template.")
-    parser.add_argument("--chunk-x", type=int, required=True, help="Center chunk X coordinate.")
-    parser.add_argument("--chunk-z", type=int, required=True, help="Center chunk Z coordinate.")
+    parser.add_argument("--chunk-x", type=int, help="Center chunk X coordinate (required for chunk benchmarks).")
+    parser.add_argument("--chunk-z", type=int, help="Center chunk Z coordinate (required for chunk benchmarks).")
+    parser.add_argument("--sphere-check-planet", help="Run the opt-in two-way spherical ServerPlayer routing check instead of a chunk benchmark.")
     parser.add_argument("--radius", type=int, default=0, choices=range(0, 33),
                         help="Square radius in chunks around the center (default: 0).")
     parser.add_argument("--workers", type=int, default=1,
@@ -157,16 +160,36 @@ def env_with_benchmark_properties(run_dir: Path, args: argparse.Namespace) -> di
 
 
 def iter_output(process: subprocess.Popen[str], log_path: Path) -> Iterable[str]:
-    with log_path.open("w", encoding="utf-8", errors="replace") as log:
-        assert process.stdout is not None
-        for line in process.stdout:
-            log.write(line)
-            log.flush()
-            yield line
+    # A quiet server must still reach the timeout check. Reading directly from
+    # stdout would block the controller until another log line appeared.
+    lines: queue.Queue[str | None] = queue.Queue()
+
+    def read() -> None:
+        try:
+            with log_path.open("w", encoding="utf-8", errors="replace") as log:
+                assert process.stdout is not None
+                for line in process.stdout:
+                    log.write(line)
+                    log.flush()
+                    lines.put(line)
+        finally:
+            lines.put(None)
+
+    reader = threading.Thread(target=read, daemon=True)
+    reader.start()
+    while True:
+        try:
+            line = lines.get(timeout=1.0)
+        except queue.Empty:
+            yield ""
+            continue
+        if line is None:
+            return
+        yield line
 
 
-def latest_result(result_dir: Path, before: set[Path]) -> Path | None:
-    candidates = [p for p in result_dir.glob("chunk-benchmark-*.json") if p not in before]
+def latest_result(result_dir: Path, before: set[Path], pattern: str = "chunk-benchmark-*.json") -> Path | None:
+    candidates = [p for p in result_dir.glob(pattern) if p not in before]
     return max(candidates, key=lambda p: p.stat().st_mtime_ns, default=None)
 
 
@@ -174,6 +197,10 @@ def main() -> int:
     args = parse_args()
     if args.workers < 1:
         raise SystemExit("--workers must be at least 1")
+    if args.sphere_check_planet is None and (args.chunk_x is None or args.chunk_z is None):
+        raise SystemExit("--chunk-x and --chunk-z are required for chunk benchmarks")
+    if args.sphere_check_planet is not None and not re.fullmatch(r"[a-z0-9_.-]+:[a-z0-9_./-]+", args.sphere_check_planet):
+        raise SystemExit("--sphere-check-planet must be a namespace:path identifier")
     project_root = args.project_root.expanduser().resolve()
     run_dir = (args.run_dir or project_root / args.module / "run").expanduser().resolve()
     if args.run_dir is not None and args.module != "mc1201":
@@ -199,7 +226,8 @@ def main() -> int:
             shutil.copytree(cache_template, tellus_dir / "cache")
     write_server_config(run_dir, args.world_type)
     result_dir = run_dir / "tellus" / "benchmarks"
-    before = set(result_dir.glob("chunk-benchmark-*.json")) if result_dir.exists() else set()
+    pattern = "sphere-runtime-check-*.json" if args.sphere_check_planet else "chunk-benchmark-*.json"
+    before = set(result_dir.glob(pattern)) if result_dir.exists() else set()
 
     command = [
         "./gradlew",
@@ -233,7 +261,8 @@ def main() -> int:
         for line in iter_output(process, log_path):
             if not sent and any(marker in line for marker in READY_MARKERS):
                 assert process.stdin is not None
-                command_line = f"execute in {args.dimension} run tellus benchmark {args.chunk_x} {args.chunk_z} {args.radius}\n"
+                command_line = (f"tellus sphere verify {args.sphere_check_planet}\n" if args.sphere_check_planet
+                                else f"execute in {args.dimension} run tellus benchmark {args.chunk_x} {args.chunk_z} {args.radius}\n")
                 process.stdin.write(command_line)
                 process.stdin.flush()
                 sent = True
@@ -256,7 +285,7 @@ def main() -> int:
                 process.kill()
                 process.wait(timeout=30)
 
-    result_path = latest_result(result_dir, before)
+    result_path = latest_result(result_dir, before, pattern)
     if result_path is None:
         print(f"[benchmark] no result JSON found; see {log_path}", file=sys.stderr)
         return 2 if process.returncode == 0 else process.returncode or 2
@@ -266,6 +295,7 @@ def main() -> int:
         {
             "runnerLabel": label,
             "runnerDimension": args.dimension,
+            "runnerSphereCheckPlanet": args.sphere_check_planet,
             "runnerRunDir": str(run_dir),
             "runnerRevision": start_revision,
             "runnerWorktreeDirtyAtStart": start_dirty,
@@ -292,7 +322,7 @@ def main() -> int:
         world = run_dir / "world"
         if world.exists():
             shutil.rmtree(world)
-    return 0 if result.get("error") is None and process.returncode == 0 else 1
+    return 0 if result.get("error") is None and result.get("passed", True) and process.returncode == 0 else 1
 
 
 if __name__ == "__main__":
