@@ -7,7 +7,7 @@ plugins {
 
 def minecraftVersion = '1.20.1'
 def forgeVersion = '47.4.20'
-def distantHorizonsApiVersion = '7.0.0'
+def distantHorizonsApiVersion = '7.1.0'
 def twelveMonkeysImageioVersion = '3.13.1'
 def javaVersion = 17
 def distantHorizonsRuntimePath = providers.gradleProperty('mc1201_forge_distant_horizons_runtime_path').orNull
@@ -105,6 +105,10 @@ configurations {
 }
 
 dependencies {
+	// Unimined puts Minecraft on the source set classpath directly; IDE importers only read the classpath configurations.
+	compileOnly files(configurations.minecraft, configurations.minecraftLibraries)
+	testCompileOnly files(configurations.testMinecraft, configurations.testMinecraftLibraries)
+
 	shade 'org.tukaani:xz:1.10'
 	shade('io.github.sebasbaumh:mapbox-vector-tile-java:23.2.0') {
 		exclude group: 'org.slf4j', module: 'slf4j-api'

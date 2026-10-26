@@ -15,8 +15,10 @@ import com.yucareux.tellus.Tellus;
 import com.yucareux.tellus.integration.distant_horizons.managed.ManagedTerrainNetworkPolicy;
 import com.yucareux.tellus.world.data.pmtiles.PmTilesSafety;
 import com.yucareux.tellus.world.data.source.ParallelDownloadRunner;
+import com.yucareux.tellus.world.data.source.SourceInterrupts;
 import com.yucareux.tellus.worldgen.EarthProjection;
 import com.yucareux.tellus.world.data.geo.GeodeticBounds;
+import com.yucareux.tellus.worldgen.landmark.LandmarkCatalog;
 import io.github.sebasbaumh.mapbox.vectortile.VectorTile.Tile;
 import io.github.sebasbaumh.mapbox.vectortile.VectorTile.Tile.Feature;
 import io.github.sebasbaumh.mapbox.vectortile.VectorTile.Tile.GeomType;
@@ -113,7 +115,8 @@ public final class TellusOsmRoadSource implements TellusCacheHandle {
       this.ensureInitialized();
       if (this.available && !(worldScale <= 0.0)) {
          TellusOsmRoadSource.GeoBounds bounds = geoBoundsForBlockArea(minBlockX, minBlockZ, maxBlockX, maxBlockZ, marginBlocks, worldScale);
-         return this.roadsForBoundsWithStatus(bounds, mode);
+         RoadQueryResult result = this.roadsForBoundsWithStatus(bounds, mode);
+         return new RoadQueryResult(LandmarkCatalog.withoutReplacedRoads(result.features()), result.hadCacheMiss());
       } else {
          return new TellusOsmRoadSource.RoadQueryResult(List.of(), false);
       }
@@ -366,6 +369,7 @@ public final class TellusOsmRoadSource implements TellusCacheHandle {
                OsmPerf.recordTileLoad(OsmPerf.TileSource.OSM_ROADS, OsmPerf.TileLoadPath.PARSED_DISK);
                return parsed;
             } catch (RuntimeException | IOException var12) {
+               SourceInterrupts.throwIfInterruption(var12);
                Tellus.LOGGER.debug("Invalid parsed Overture road cache tile {}, refetching", key, var12);
 
                try {
@@ -385,6 +389,7 @@ public final class TellusOsmRoadSource implements TellusCacheHandle {
                OsmPerf.recordTileLoad(OsmPerf.TileSource.OSM_ROADS, OsmPerf.TileLoadPath.RAW_DISK);
                return parsed;
             } catch (RuntimeException | IOException var11) {
+               SourceInterrupts.throwIfInterruption(var11);
                Tellus.LOGGER.debug("Invalid Overture road cache tile {}, refetching", key, var11);
 
                try {

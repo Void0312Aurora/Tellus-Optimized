@@ -60,6 +60,49 @@ class GeodeticOsmQueryTest {
    }
 
    @Test
+   void geodeticBuildingsKeepSourceFeaturesWhilePlanarQueriesUseReplacementLandmarks() throws Exception {
+      double lon = 2.294498;
+      double lat = 48.858261;
+      var tower = new OsmBuildingFeature(OsmBuildingKind.FOOTPRINT, 101,
+         "930b868b-1163-4f10-b7ee-d3e3bf82bf7a", false,
+         new OsmBuildingMetadata("residential", null, null, null, 3, null, null, null, null, null),
+         12.0, 0.0, new double[][]{{lon, lon + 0.00005, lon + 0.00005, lon, lon}},
+         new double[][]{{lat, lat, lat + 0.00005, lat + 0.00005, lat}});
+      assertTrue(com.yucareux.tellus.worldgen.landmark.LandmarkCatalog.suppressesBuilding(tower));
+      var source = new TellusOsmBuildingSource();
+      prepare(source);
+      put(source, 2, new OsmBuildingTile(List.of(tower)));
+      var geo = source.buildingsForGeoAreaWithStatus(
+         new GeodeticBounds(lat - 0.001, lon - 0.001, lat + 0.001, lon + 0.001), OsmQueryMode.BLOCKING);
+      assertEquals(List.of(tower), geo.features());
+      int x = (int)Math.floor(lon * 111319.49166666667);
+      int z = (int)Math.floor(com.yucareux.tellus.worldgen.EarthProjection.latToBlockZ(lat, 1.0));
+      var planar = source.buildingsForAreaWithStatus(x - 64, z - 64, x + 64, z + 64, 1.0, 0, OsmQueryMode.BLOCKING);
+      assertFalse(planar.hadCacheMiss());
+      assertTrue(planar.features().isEmpty());
+   }
+
+   @Test
+   void geodeticRoadsKeepBridgeGeometryWhilePlanarQueriesUseReplacementLandmarks() throws Exception {
+      double lon = -122.4783550;
+      double lat = 37.8200668;
+      var bridge = new RoadFeature(102, RoadClass.NORMAL, RoadMode.BRIDGE, 1, "primary",
+         new double[]{lon, lon}, new double[]{lat - 0.00005, lat + 0.00005});
+      assertTrue(com.yucareux.tellus.worldgen.landmark.LandmarkCatalog.replacesRoad(bridge));
+      var source = new TellusOsmRoadSource();
+      prepare(source);
+      put(source, 0, new OverpassRoadTile(List.of(bridge)));
+      var geo = source.roadsForGeoAreaWithStatus(
+         new GeodeticBounds(lat - 0.001, lon - 0.001, lat + 0.001, lon + 0.001), OsmQueryMode.BLOCKING);
+      assertEquals(List.of(bridge), geo.features());
+      int x = (int)Math.floor(lon * 111319.49166666667);
+      int z = (int)Math.floor(com.yucareux.tellus.worldgen.EarthProjection.latToBlockZ(lat, 1.0));
+      var planar = source.roadsForAreaWithStatus(x - 64, z - 64, x + 64, z + 64, 1.0, 0, OsmQueryMode.BLOCKING);
+      assertFalse(planar.hadCacheMiss());
+      assertTrue(planar.features().isEmpty());
+   }
+
+   @Test
    void roadsAndWaterUseBothDateLineWindows() throws Exception {
       var roads = new TellusOsmRoadSource();
       prepare(roads);

@@ -1,9 +1,13 @@
 package com.yucareux.tellus.compat;
 
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.animal.axolotl.Axolotl;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.biome.Biome;
 
@@ -31,6 +35,14 @@ public final class MinecraftRelease {
 
    public static Block block(String path) {
       ResourceLocation id = resourceLocation("minecraft", path);
-      return BuiltInRegistries.BLOCK.getOptional(id).orElseThrow(() -> new IllegalStateException("Missing Minecraft block " + id));
+      // Forge deprecates BuiltInRegistries.BLOCK but not the root registry, and this layer also builds for Fabric.
+      return BuiltInRegistries.REGISTRY.getOptional(Registries.BLOCK.location())
+         .flatMap(blocks -> blocks.getOptional(id))
+         .map(Block.class::cast)
+         .orElseThrow(() -> new IllegalStateException("Missing Minecraft block " + id));
+   }
+
+   public static Axolotl createAxolotl(ServerLevel level, BlockPos position) {
+      return (Axolotl)EntityType.AXOLOTL.create(level);
    }
 }

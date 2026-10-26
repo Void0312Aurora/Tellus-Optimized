@@ -1,0 +1,28 @@
+{
+	"required": true,
+	"package": "com.yucareux.tellus.mixin",
+	"compatibilityLevel": "JAVA_21",
+	"mixins": [
+		"DistantHorizonsChunkUpdateMixin",
+		"BiomeFreezeMixin",
+		"BiomePrecipitationMixin",
+		"BlockEntityLoadStaticMixin",
+		"BlockPosHighYMixin",
+		"DimensionTypeHighYMixin",
+		"HeightRangePlacementMixin",
+		"LevelHighYPackedCoordinateMixin",
+		"LevelChunkStaleBlockEntityMixin",
+		"MinecraftServerInitialSpawnMixin",
+		"OceanMonumentBuildingMixin",
+		"SerializableChunkDataHighYMixin",
+		"OceanMonumentStructureMixin",
+		"ServerMainNewWorldHeightMixin",
+		"WaterSourceConversionMixin"
+	],
+	"injectors": {
+		"defaultRequire": 1
+	},
+	"overwrites": {
+		"requireAnnotations": true
+	}
+}

@@ -21,7 +21,6 @@ import net.minecraft.SharedConstants;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.data.registries.VanillaRegistries;
 import net.minecraft.server.Bootstrap;
 import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.biome.Biomes;
@@ -57,7 +56,7 @@ class TellusBuildingInteriorRenderingTest {
       Bootstrap.bootStrap();
       System.setProperty("tellus.gameDir", directory.toString());
       System.setProperty("tellus.configDir", directory.resolve("config").toString());
-      var biome = VanillaRegistries.createLookup().lookupOrThrow(Registries.BIOME).getOrThrow(Biomes.PLAINS);
+      var biome = com.yucareux.tellus.test.MinecraftTestRegistries.create().lookupOrThrow(Registries.BIOME).getOrThrow(Biomes.PLAINS);
       var components = EarthGeneratorSettings.class.getRecordComponents();
       Class<?>[] types = new Class<?>[components.length];
       Object[] values = new Object[components.length];
@@ -67,7 +66,7 @@ class TellusBuildingInteriorRenderingTest {
       }
       EarthGeneratorSettings settings = EarthGeneratorSettings.class.getDeclaredConstructor(types).newInstance(values);
       assertEquals(1.0, settings.worldScale());
-      try (var ignored = ManagedTerrainNetworkPolicy.cacheOnly()) {
+      try (@SuppressWarnings("unused") var ignored = ManagedTerrainNetworkPolicy.cacheOnly()) {
          generator = new EarthChunkGenerator(new FixedBiomeSource(biome), settings);
       }
       Class<?> featureType = Class.forName(EarthChunkGenerator.class.getName() + "$PreparedBuildingFeature");

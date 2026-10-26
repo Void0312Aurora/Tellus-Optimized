@@ -23,6 +23,7 @@
 		"ServerPlayerTeleportMixin",
 		"ServerGamePacketListenerTeleportMixin",
 		"ServerVehicleMovePacketMixin",
+		"ServerMainNewWorldHeightMixin",
 		"WaterSourceConversionMixin"
 	],
 	"injectors": {

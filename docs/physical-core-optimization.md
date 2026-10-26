@@ -1,6 +1,17 @@
 # Physical-core chunk generation experiment
 
-This branch experiments with using the host's physical CPU cores for the CPU-heavy part of Tellus chunk generation. It does not change the terrain rules or the Minecraft chunk format.
+## Integration note (2026-10-26)
+
+The measurements below describe the 0.8.3 fork baseline. The upstream 0.8.4
+integration moves `EarthChunkGenerator` into the common source layer and keeps
+the opt-in parallel section fills. Its water solver uses bounded scratch pools
+and shared surface-input tiles; these supersede this document's old
+`tellus.water.batchTerrainGrid` switch. The old timings, working-grid dimensions
+and checksums have not been remeasured on 0.8.4. Parallel legacy water scans and
+the checksum diagnostic are retained. See [the integration record](upstream-0.8.4-integration.md)
+for the conflict decisions and current validation scope.
+
+The 0.8.3 experiment used the host's physical CPU cores for the CPU-heavy part of Tellus chunk generation without changing that baseline's terrain rules or Minecraft chunk format.
 
 ## First stage: independent solid-section fills
 

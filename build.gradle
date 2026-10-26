@@ -16,6 +16,21 @@ ext.tellusSharedSourceDirs = { Collection<String> layers, String sourcePath ->
 subprojects {
 	group = rootProject.group
 	version = rootProject.version
+
+	// IDEs cannot evaluate the closure excludes that let one source layer override another,
+	// so every file Gradle skips becomes an explicit exclude on its Eclipse source folder.
+	pluginManager.withPlugin('eclipse') {
+		// Buildship applies eclipse before this script runs, and the classpath merger is replaced once Java is applied.
+		plugins.withType(JavaBasePlugin) {
+			eclipse.classpath.file.whenMerged { classpath ->
+				def compiled = sourceSets.collectMany { [it.java, it.resources] }.collectMany { it.files } as Set
+				classpath.entries.findAll { it instanceof org.gradle.plugins.ide.eclipse.model.SourceFolder && it.dir?.isDirectory() }.each { folder ->
+					def skipped = fileTree(folder.dir).files.findAll { !compiled.contains(it) }
+					folder.excludes = (folder.excludes + skipped.collect { folder.dir.toPath().relativize(it.toPath()).toString().replace('\\', '/') }).unique()
+				}
+			}
+		}
+	}
 }
 
 def tellusTargets = [
@@ -27,6 +42,8 @@ def tellusTargets = [
 	[project: 'mc12111-neoforge', suffix: '12111NeoForge', label: 'Minecraft 1.21.11 NeoForge', loader: 'neoforge'],
 	[project: 'mc262', suffix: '262', label: 'Minecraft 26.2 Fabric', loader: 'fabric'],
 	[project: 'mc262-neoforge', suffix: '262NeoForge', label: 'Minecraft 26.2 NeoForge', loader: 'neoforge'],
+	[project: 'mc263', suffix: '263', label: 'Minecraft 26.3 Fabric', loader: 'fabric'],
+	[project: 'mc263-neoforge', suffix: '263NeoForge', label: 'Minecraft 26.3 NeoForge', loader: 'neoforge'],
 ].findAll { target -> findProject(":${target.project}") != null }
 
 ['clean', 'assemble', 'check', 'build'].each { lifecycleTask ->

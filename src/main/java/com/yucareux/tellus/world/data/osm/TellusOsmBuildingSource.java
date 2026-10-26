@@ -11,8 +11,10 @@ import com.yucareux.tellus.cache.TellusCacheHandle;
 import com.yucareux.tellus.cache.TellusCacheRegistry;
 import com.yucareux.tellus.world.data.pmtiles.PmTilesSafety;
 import com.yucareux.tellus.world.data.source.ParallelDownloadRunner;
+import com.yucareux.tellus.world.data.source.SourceInterrupts;
 import com.yucareux.tellus.worldgen.EarthProjection;
 import com.yucareux.tellus.world.data.geo.GeodeticBounds;
+import com.yucareux.tellus.worldgen.landmark.LandmarkCatalog;
 import io.github.sebasbaumh.mapbox.vectortile.VectorTile.Tile;
 import io.github.sebasbaumh.mapbox.vectortile.VectorTile.Tile.Feature;
 import io.github.sebasbaumh.mapbox.vectortile.VectorTile.Tile.GeomType;
@@ -100,7 +102,9 @@ public final class TellusOsmBuildingSource implements TellusCacheHandle {
       this.ensureInitialized();
       if (this.available && !(worldScale <= 0.0)) {
          GeoBounds bounds = geoBoundsForBlockArea(minBlockX, minBlockZ, maxBlockX, maxBlockZ, marginBlocks, worldScale);
-         return this.buildingsForBoundsWithStatus(bounds, mode);
+         BuildingQueryResult result = this.buildingsForBoundsWithStatus(bounds, mode);
+         // Only the planar generator installs the replacement landmark models.
+         return new BuildingQueryResult(LandmarkCatalog.withoutSuppressedBuildings(result.features()), result.hadCacheMiss());
       } else {
          return new BuildingQueryResult(List.of(), false);
       }
@@ -301,6 +305,7 @@ public final class TellusOsmBuildingSource implements TellusCacheHandle {
                OsmPerf.recordTileLoad(OsmPerf.TileSource.OSM_BUILDINGS, OsmPerf.TileLoadPath.PARSED_DISK);
                return parsed;
             } catch (RuntimeException | IOException error) {
+               SourceInterrupts.throwIfInterruption(error);
                Tellus.LOGGER.debug("Invalid parsed Overture building cache tile {}, refetching", key, error);
 
                try {
@@ -320,6 +325,7 @@ public final class TellusOsmBuildingSource implements TellusCacheHandle {
                OsmPerf.recordTileLoad(OsmPerf.TileSource.OSM_BUILDINGS, OsmPerf.TileLoadPath.RAW_DISK);
                return parsed;
             } catch (RuntimeException | IOException error) {
+               SourceInterrupts.throwIfInterruption(error);
                Tellus.LOGGER.debug("Invalid Overture building cache tile {}, refetching", key, error);
 
                try {
