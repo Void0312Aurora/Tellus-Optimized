@@ -17,6 +17,8 @@ import java.util.UUID;
 import net.minecraft.world.phys.Vec3;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class CubeNetTransitionPayloadTest {
@@ -60,7 +62,7 @@ class CubeNetTransitionPayloadTest {
       assertThrows(IllegalArgumentException.class,
          () -> new CubeNetTransitionPreparePayload(id, 0, 0, -1));
       assertThrows(IllegalArgumentException.class,
-         () -> new CubeNetTransitionPreparePayload(id, 0, 0, 34));
+         () -> new CubeNetTransitionPreparePayload(id, 0, 0, 36));
    }
 
    @Test
@@ -113,5 +115,18 @@ class CubeNetTransitionPayloadTest {
       UUID id = UUID.randomUUID();
       assertThrows(IllegalArgumentException.class,
          () -> new CubeNetTransitionMotionPayload(id, Double.NaN, 0, 0, 0, 0, 0, 0, 0, true));
+   }
+
+   @Test
+   void firstMotionMustStayWithinTheAuthoritativeVelocityAndGroundSnapshot() {
+      UUID id = UUID.randomUUID();
+      Vec3 expected = new Vec3(0.12, -0.08, 0.34);
+      var valid = new CubeNetTransitionMotionPayload(id, Vec3.ZERO, 0.0f, 0.0f, expected, true);
+      var forgedVelocity = new CubeNetTransitionMotionPayload(id, Vec3.ZERO, 0.0f, 0.0f,
+         new Vec3(3.5, 0.0, 0.0), true);
+      var forgedGround = new CubeNetTransitionMotionPayload(id, Vec3.ZERO, 0.0f, 0.0f, expected, false);
+      assertTrue(CubeNetRuntime.isCustomMotionWithinSnapshot(expected, true, valid));
+      assertFalse(CubeNetRuntime.isCustomMotionWithinSnapshot(expected, true, forgedVelocity));
+      assertFalse(CubeNetRuntime.isCustomMotionWithinSnapshot(expected, true, forgedGround));
    }
 }

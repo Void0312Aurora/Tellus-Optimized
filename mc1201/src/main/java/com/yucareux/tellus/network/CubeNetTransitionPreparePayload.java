@@ -28,7 +28,7 @@ public record CubeNetTransitionPreparePayload(UUID transitionId, int centerChunk
 
    public CubeNetTransitionPreparePayload {
       Objects.requireNonNull(transitionId, "transitionId");
-      if (radius < 0 || radius > 33) throw new IllegalArgumentException("invalid transition radius");
+      if (radius < 0 || radius > 35) throw new IllegalArgumentException("invalid transition radius");
       if (shadingQuarterTurns < 0 || shadingQuarterTurns > 3) {
          throw new IllegalArgumentException("invalid shading quarter turns");
       }

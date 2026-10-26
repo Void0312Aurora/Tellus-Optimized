@@ -23,6 +23,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicBoolean;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
@@ -69,6 +70,14 @@ public final class CubeNetRuntime {
    private static final int LOAD_TIMEOUT_TICKS = 1200;
    private static final int CLIENT_CHUNK_RETRY_TICKS = 160;
    private static final int MAX_CLIENT_CHUNK_SENDS = 2;
+   private static final int MAX_CHUNK_PACKETS_PER_TICK = 8;
+   private static final int MAX_CONCURRENT_CHUNK_LOADS = 8;
+   private static final long ESTIMATED_CHUNK_LOAD_BYTES = 8L * 1024L * 1024L;
+   private static final long MAX_CHUNK_LOAD_BYTES =
+      MAX_CONCURRENT_CHUNK_LOADS * ESTIMATED_CHUNK_LOAD_BYTES;
+   private static final Semaphore CHUNK_LOAD_BUDGET = new Semaphore(
+      Math.min(MAX_CONCURRENT_CHUNK_LOADS,
+         Math.toIntExact(MAX_CHUNK_LOAD_BYTES / ESTIMATED_CHUNK_LOAD_BYTES)));
    private static final int APRON_REBASE_DEPTH_BLOCKS = 24;
    private static final double SEAM_DESTINATION_INSET = 0.5;
    // Chunk loading and client-side interpolation can leave source-face
@@ -89,6 +98,8 @@ public final class CubeNetRuntime {
     * stale client packets) and must remain in vanilla's teleport handling.
     */
    private static final double MAX_SEAM_STEP_SQUARED = 4.0;
+   private static final double MAX_CUSTOM_SPEED_SQUARED = 25.0;
+   private static final double MAX_CUSTOM_VELOCITY_DELTA_SQUARED = 9.0;
    private static final double MAX_CUBE_NET_PACKET_STEP_SQUARED = 256.0;
    private static final double BOUNDARY_HINT_SEARCH_RADIUS = 96.0;
    private static final double BOUNDARY_HINT_SEARCH_STEP = 4.0;
@@ -394,6 +405,15 @@ public final class CubeNetRuntime {
             player.getGameProfile().getName(), payload.transitionId(), distanceSquared(dx, dy, dz));
          return;
       }
+      if (!isCustomMotionWithinSnapshot(correction.velocity(), correction.onGround(), payload)
+         || !player.level().noCollision(player, player.getBoundingBox().move(dx, dy, dz))) {
+         this.counters(id).rejected++;
+         TellusCommon.LOGGER.warn("Cube-net first custom motion rejected authoritative state player={} id={} "
+               + "speedSquared={} onGround={} collisionFree={}",
+            player.getGameProfile().getName(), payload.transitionId(), payload.velocity().lengthSqr(),
+            payload.onGround(), player.level().noCollision(player, player.getBoundingBox().move(dx, dy, dz)));
+         return;
+      }
       player.absMoveTo(payload.x(), payload.y(), payload.z(), payload.yaw(), payload.pitch());
       player.setDeltaMovement(payload.velocity());
       player.setOnGround(payload.onGround());
@@ -574,6 +594,13 @@ public final class CubeNetRuntime {
 
    private static double distanceSquared(double x, double y, double z) {
       return x * x + y * y + z * z;
+   }
+
+   static boolean isCustomMotionWithinSnapshot(Vec3 expectedVelocity, boolean expectedOnGround,
+      CubeNetTransitionMotionPayload payload) {
+      return payload.onGround() == expectedOnGround
+         && payload.velocity().lengthSqr() <= MAX_CUSTOM_SPEED_SQUARED
+         && payload.velocity().distanceToSqr(expectedVelocity) <= MAX_CUSTOM_VELOCITY_DELTA_SQUARED;
    }
 
    private boolean interceptBoundaryMove0(ServerPlayer player, Vec3 movement) {
@@ -1488,14 +1515,26 @@ public final class CubeNetRuntime {
          for (int dx = -radius; dx <= radius; dx++) {
          int cx = center.x + dx, cz = center.z + dz;
          loads.add(CompletableFuture.supplyAsync(
-            () -> level.getChunkSource().getChunkFuture(cx, cz, ChunkStatus.FULL, true),
+            () -> {
+               try {
+                  CHUNK_LOAD_BUDGET.acquire();
+               } catch (InterruptedException error) {
+                  Thread.currentThread().interrupt();
+                  throw new java.util.concurrent.CompletionException(error);
+               }
+               return level.getChunkSource().getChunkFuture(cx, cz, ChunkStatus.FULL, true);
+            },
             Util.backgroundExecutor()).thenCompose(future -> future).thenAccept(result -> {
                if (result.left().isEmpty()) {
                   throw new IllegalStateException("destination chunk unavailable: " + result.right());
                }
-            }));
+            }).whenComplete((ignored, error) -> releaseChunkLoadBudget()));
       }
       return CompletableFuture.allOf(loads.toArray(CompletableFuture[]::new));
+   }
+
+   private static void releaseChunkLoadBudget() {
+      CHUNK_LOAD_BUDGET.release();
    }
 
    /**
@@ -1508,18 +1547,27 @@ public final class CubeNetRuntime {
       ClientChunkDelivery delivery, ServerPlayer player, int radius, int tick, boolean retrySupported) {
       if (player == null || !delivery.isDue(tick, retrySupported)
          || !CubeNetApronChunkSync.readyForStaging(level, center, radius)) return;
-      int attempt = delivery.markSent(tick, retrySupported);
-      player.connection.send(new ClientboundSetChunkCacheCenterPacket(center.x, center.z));
-      for (int dz = -radius; dz <= radius; dz++) {
-         for (int dx = -radius; dx <= radius; dx++) {
-            LevelChunk chunk = (LevelChunk) level.getChunkSource().getChunk(
-               center.x + dx, center.z + dz, true);
-            player.connection.send(new ClientboundLevelChunkWithLightPacket(
-               chunk, level.getChunkSource().getLightEngine(), null, null));
-         }
+      int attempt = delivery.beginAttempt(tick, retrySupported, center, radius);
+      if (attempt < 0) return;
+      if (delivery.consumeCenterPacket()) {
+         player.connection.send(new ClientboundSetChunkCacheCenterPacket(center.x, center.z));
       }
-      TellusCommon.LOGGER.info("Cube-net client destination chunks staged for {} center=({}, {}) radius={} attempt={}",
-         player.getGameProfile().getName(), center.x, center.z, radius, attempt);
+      int packetsSent = 0;
+      while (packetsSent < MAX_CHUNK_PACKETS_PER_TICK) {
+         ChunkPos next = delivery.nextChunk();
+         if (next == null) break;
+         LevelChunk chunk = (LevelChunk) level.getChunkSource().getChunk(next.x, next.z, true);
+         player.connection.send(new ClientboundLevelChunkWithLightPacket(
+            chunk, level.getChunkSource().getLightEngine(), null, null));
+         delivery.advance();
+         packetsSent++;
+      }
+      if (delivery.finishedAttempt()) {
+         TellusCommon.LOGGER.info("Cube-net client destination chunks staged for {} center=({}, {}) radius={} "
+               + "attempt={} packetsThisTick={} packetBudget={} loadTaskBudget={} estimatedLoadBytes={}",
+            player.getGameProfile().getName(), center.x, center.z, radius, attempt, packetsSent,
+            MAX_CHUNK_PACKETS_PER_TICK, MAX_CONCURRENT_CHUNK_LOADS, MAX_CHUNK_LOAD_BYTES);
+      }
    }
 
    private static boolean supportsChunkReceipt(ServerPlayer player) {
@@ -1597,7 +1645,7 @@ public final class CubeNetRuntime {
       tracker.tellus$clearAwaitingTeleport();
       this.correctionGates.put(player.getUUID(), new Correction(x, y, z,
          player.server.getTickCount() + CORRECTION_GATE_TICKS, yaw, pitch, teleportId, transitionId, false,
-         player.server.getTickCount()));
+         player.getDeltaMovement(), player.onGround(), player.fallDistance, player.server.getTickCount()));
       this.counters(player.getUUID()).sent++;
       TellusCommon.LOGGER.info(
          "Cube-net seam correction armed player={} tick={} mechanism={} teleportId={} vanillaWaitReleased=true "
@@ -1873,17 +1921,66 @@ public final class CubeNetRuntime {
       private int attempts;
       private int lastSentTick = Integer.MIN_VALUE;
       private boolean clientReceived;
+      private List<ChunkPos> chunks = List.of();
+      private int nextChunk;
+      private boolean centerPacketPending;
 
       boolean isDue(int tick, boolean retrySupported) {
          int maxAttempts = retrySupported ? MAX_CLIENT_CHUNK_SENDS : 1;
-         return !this.clientReceived && this.attempts < maxAttempts
+         if (this.clientReceived) return false;
+         if (this.nextChunk < this.chunks.size()) return true;
+         return this.attempts < maxAttempts
             && (this.attempts == 0 || tick - this.lastSentTick >= CLIENT_CHUNK_RETRY_TICKS);
       }
 
+      int beginAttempt(int tick, boolean retrySupported, ChunkPos center, int radius) {
+         if (!this.isDue(tick, retrySupported)) return -1;
+         if (this.chunks.isEmpty()) {
+            List<ChunkPos> configured = new ArrayList<>();
+            for (int dz = -radius; dz <= radius; dz++) {
+               for (int dx = -radius; dx <= radius; dx++) {
+                  configured.add(new ChunkPos(center.x + dx, center.z + dz));
+               }
+            }
+            this.chunks = List.copyOf(configured);
+         }
+         if (this.attempts == 0 || this.nextChunk >= this.chunks.size()) {
+            this.lastSentTick = tick;
+            this.nextChunk = 0;
+            this.centerPacketPending = true;
+            this.attempts++;
+         }
+         return this.attempts;
+      }
+
+      /** Compatibility helper for focused tests that model a completed batch. */
       int markSent(int tick, boolean retrySupported) {
-         if (!this.isDue(tick, retrySupported)) throw new IllegalStateException("Client chunk send is not due");
+         if (!this.isDue(tick, retrySupported)) {
+            throw new IllegalStateException("Client chunk send is not due");
+         }
          this.lastSentTick = tick;
-         return ++this.attempts;
+         this.attempts++;
+         this.chunks = List.of();
+         this.nextChunk = 0;
+         return this.attempts;
+      }
+
+      boolean consumeCenterPacket() {
+         boolean pending = this.centerPacketPending;
+         this.centerPacketPending = false;
+         return pending;
+      }
+
+      ChunkPos nextChunk() {
+         return this.nextChunk < this.chunks.size() ? this.chunks.get(this.nextChunk) : null;
+      }
+
+      void advance() {
+         if (this.nextChunk < this.chunks.size()) this.nextChunk++;
+      }
+
+      boolean finishedAttempt() {
+         return this.nextChunk >= this.chunks.size();
       }
 
       boolean markClientReceived() {
@@ -1905,14 +2002,16 @@ public final class CubeNetRuntime {
    record BoundaryHint(double x, double z, double tangentX, double tangentZ) { }
 
    private record Correction(double x, double y, double z, int expiresAtTick, float yaw, float pitch,
-      int teleportId, UUID transitionId, boolean acknowledged, int lastVehicleResendTick) {
+      int teleportId, UUID transitionId, boolean acknowledged, Vec3 velocity, boolean onGround,
+      float fallDistance, int lastVehicleResendTick) {
       private Correction withAcknowledged() {
          return new Correction(x, y, z, expiresAtTick, yaw, pitch, teleportId, transitionId, true,
-            lastVehicleResendTick);
+            velocity, onGround, fallDistance, lastVehicleResendTick);
       }
 
       private Correction withVehicleResendTick(int tick) {
-         return new Correction(x, y, z, expiresAtTick, yaw, pitch, teleportId, transitionId, acknowledged, tick);
+         return new Correction(x, y, z, expiresAtTick, yaw, pitch, teleportId, transitionId, acknowledged,
+            velocity, onGround, fallDistance, tick);
       }
    }
 

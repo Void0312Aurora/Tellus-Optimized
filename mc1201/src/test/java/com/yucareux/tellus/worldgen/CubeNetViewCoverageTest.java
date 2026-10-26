@@ -29,6 +29,15 @@ class CubeNetViewCoverageTest {
    }
 
    @Test
+   void defaultAndMaximumConfigurationCoverTheSupportedDistanceRange() {
+      assertEquals(5, CubeNetViewCoverage.DEFAULT_APRON_CHUNKS);
+      var minimum = CubeNetViewCoverage.forDistances(2, 2, 2, 24);
+      assertEquals(5, minimum.requiredApronChunks());
+      var maximum = CubeNetViewCoverage.forDistances(32, 32, 32, 24);
+      assertEquals(35, maximum.requiredApronChunks());
+   }
+
+   @Test
    void rejectsInvalidEngineDistances() {
       assertThrows(IllegalArgumentException.class,
          () -> CubeNetViewCoverage.forDistances(1, 4, 4, 24));

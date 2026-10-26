@@ -305,7 +305,7 @@ class CubeNetChunkGeneratorTest {
       assertEquals(-128, restored.getMinY());
       assertEquals(512, restored.getGenDepth());
       assertEquals(generator.model().config(), restored.model().config());
-      assertEquals(2, restored.apronWidthChunks());
+      assertEquals(CubeNetViewCoverage.DEFAULT_APRON_CHUNKS, restored.apronWidthChunks());
       encoded.addProperty("geometry_version", 2);
       assertTrue(CubeNetChunkGenerator.CODEC.parse(ops, encoded).error().isPresent());
    }

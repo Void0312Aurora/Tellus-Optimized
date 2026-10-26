@@ -2,10 +2,15 @@ package com.yucareux.tellus.worldgen;
 
 /** Horizontal mesh, neighbor-data and source-apron bounds for one handoff. */
 public record CubeNetViewCoverage(int viewRadius, int dataRadius, int requiredApronChunks) {
+   public static final int MIN_DISTANCE = 2;
+   public static final int MAX_DISTANCE = 32;
+   public static final int DEFAULT_APRON_CHUNKS = 5;
+
    public static CubeNetViewCoverage forDistances(int requestedView, int serverView,
       int simulationDistance, int rebaseDepth) {
-      if (requestedView < 2 || requestedView > 32 || serverView < 2 || serverView > 32
-         || simulationDistance < 2 || simulationDistance > 32 || rebaseDepth < 0) {
+      if (requestedView < MIN_DISTANCE || requestedView > MAX_DISTANCE
+         || serverView < MIN_DISTANCE || serverView > MAX_DISTANCE
+         || simulationDistance < MIN_DISTANCE || simulationDistance > MAX_DISTANCE || rebaseDepth < 0) {
          throw new IllegalArgumentException("invalid cube-net view bounds");
       }
       int view = Math.min(requestedView, serverView);
