@@ -322,6 +322,36 @@ public final class CubeNetRuntime {
       if (runtime != null) runtime.acceptClientMotion0(player, payload);
    }
 
+   /** Cancels a transition when the client has no compatible seam renderer. */
+   public static void acceptClientUnsupported(ServerPlayer player, UUID transitionId, String backend) {
+      CubeNetRuntime runtime = ACTIVE;
+      if (runtime != null) runtime.acceptClientUnsupported0(player, transitionId, backend);
+   }
+
+   private void acceptClientUnsupported0(ServerPlayer player, UUID transitionId, String backend) {
+      if (player == null) return;
+      Preparation preparation = this.preparations.get(player.getUUID());
+      if (preparation != null && preparation.transitionId().equals(transitionId)) {
+         TellusCommon.LOGGER.warn("Cube-net approach rejected by client backend player={} backend={} id={}",
+            player.getGameProfile().getName(), backend, transitionId);
+         this.cancelPreparation(player.getUUID(), player);
+         return;
+      }
+      Transfer transfer = this.pending.get(player.getUUID());
+      if (transfer != null && transfer.transitionId().equals(transitionId)) {
+         TellusCommon.LOGGER.warn("Cube-net seam transfer rejected by client backend player={} backend={} id={}",
+            player.getGameProfile().getName(), backend, transitionId);
+         this.fail(player, "Cube-net seam rendering is unavailable with " + backend);
+         return;
+      }
+      EntityTransfer entityTransfer = this.entityTransfers.get(player.getUUID());
+      if (entityTransfer != null && entityTransfer.transitionId().equals(transitionId)) {
+         TellusCommon.LOGGER.warn("Cube-net entity transfer rejected by client backend player={} backend={} id={}",
+            player.getGameProfile().getName(), backend, transitionId);
+         this.failEntity(entityTransfer, "Cube-net seam rendering is unavailable with " + backend);
+      }
+   }
+
    private void acceptClientReady0(ServerPlayer player, UUID transitionId) {
       Preparation preparation = this.preparations.get(player.getUUID());
       if (preparation != null && preparation.transitionId().equals(transitionId)

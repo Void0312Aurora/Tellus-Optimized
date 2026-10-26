@@ -5,6 +5,7 @@ import com.yucareux.tellus.client.hud.ManagedTerrainDownloadOverlay;
 import com.yucareux.tellus.client.SphereClientState;
 import com.yucareux.tellus.client.CubeNetClientTransition;
 import com.yucareux.tellus.client.CubeNetBoundaryRenderer;
+import com.yucareux.tellus.compat.TellusRenderCompatibility;
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
 import com.yucareux.tellus.integration.distant_horizons.managed.ManagedTerrainClientState;
 import com.yucareux.tellus.integration.distant_horizons.managed.ManagedTerrainViewDistance;
@@ -46,6 +47,11 @@ public class TellusClient implements ClientModInitializer {
 
    @Override
    public void onInitializeClient() {
+      if (TellusRenderCompatibility.sodiumLoaded()) {
+         TellusCommon.LOGGER.warn(
+            "Sodium detected ({}); vanilla Cube-net staged rendering is disabled until a native adapter is available",
+            TellusRenderCompatibility.backendId());
+      }
       TellusClientPlatform.configureGeoTeleport(
          () -> ClientPlayNetworking.canSend(GeoTpTeleportPayload.TYPE),
          (latitude, longitude) -> ClientPlayNetworking.send(new GeoTpTeleportPayload(latitude, longitude))

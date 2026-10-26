@@ -5,6 +5,8 @@ import com.yucareux.tellus.network.CubeNetTransitionReadyPayload;
 import com.yucareux.tellus.network.CubeNetTransitionChunksReceivedPayload;
 import com.yucareux.tellus.network.CubeNetTransitionCommitPayload;
 import com.yucareux.tellus.network.CubeNetTransitionMotionPayload;
+import com.yucareux.tellus.network.CubeNetTransitionUnsupportedPayload;
+import com.yucareux.tellus.compat.TellusRenderCompatibility;
 import com.yucareux.tellus.TellusCommon;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
@@ -93,6 +95,11 @@ public final class CubeNetClientTransition {
    }
 
    public static void prepare(CubeNetTransitionPreparePayload payload) {
+      Minecraft client = Minecraft.getInstance();
+      if (!TellusRenderCompatibility.cubeNetStagingSupported()) {
+         rejectUnsupported(client, payload.transitionId());
+         return;
+      }
       Pending existing = pending;
       if (existing != null && existing.area.transitionId().equals(payload.transitionId())
          && existing.area.centerChunkX() == payload.centerChunkX()
@@ -101,7 +108,6 @@ public final class CubeNetClientTransition {
          return;
       }
       reset();
-      Minecraft client = Minecraft.getInstance();
       if (client.level == null || client.player == null) return;
       if (payload.radius() < client.options.getEffectiveRenderDistance() + 1) {
          TellusCommon.LOGGER.warn("Cube-net target area does not cover the configured view: radius={} view={}",
@@ -113,6 +119,16 @@ public final class CubeNetClientTransition {
       pending = new Pending(payload, cache, client.options.getEffectiveRenderDistance());
       TellusCommon.LOGGER.info("Cube-net client preparing {} source={} target=({}, {})",
          payload.transitionId(), source, payload.centerChunkX(), payload.centerChunkZ());
+   }
+
+   private static void rejectUnsupported(Minecraft client, java.util.UUID transitionId) {
+      TellusCommon.LOGGER.warn("Cube-net transition {} rejected by client renderer backend {}",
+         transitionId, TellusRenderCompatibility.backendId());
+      if (client.getConnection() != null
+         && ClientPlayNetworking.canSend(CubeNetTransitionUnsupportedPayload.TYPE)) {
+         ClientPlayNetworking.send(new CubeNetTransitionUnsupportedPayload(
+            transitionId, TellusRenderCompatibility.backendId()));
+      }
    }
 
    public static LevelChunk stagedChunk(ClientChunkCache cache, int x, int z) {

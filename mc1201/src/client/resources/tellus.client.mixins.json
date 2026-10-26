@@ -1,6 +1,7 @@
 {
 	"required": true,
 	"package": "com.yucareux.tellus.mixin.client",
+	"plugin": "com.yucareux.tellus.mixin.client.TellusClientMixinPlugin",
 	"compatibilityLevel": "JAVA_17",
 	"client": [
 		"AbstractWidgetAccessor",

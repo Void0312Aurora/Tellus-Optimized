@@ -6,6 +6,7 @@ import com.yucareux.tellus.network.CubeNetTransitionCancelPayload;
 import com.yucareux.tellus.network.CubeNetTransitionCommitPayload;
 import com.yucareux.tellus.network.CubeNetTransitionMotionPayload;
 import com.yucareux.tellus.network.CubeNetTransitionChunksReceivedPayload;
+import com.yucareux.tellus.network.CubeNetTransitionUnsupportedPayload;
 import io.netty.buffer.Unpooled;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.SharedConstants;
@@ -128,5 +129,26 @@ class CubeNetTransitionPayloadTest {
       assertTrue(CubeNetRuntime.isCustomMotionWithinSnapshot(expected, true, valid));
       assertFalse(CubeNetRuntime.isCustomMotionWithinSnapshot(expected, true, forgedVelocity));
       assertFalse(CubeNetRuntime.isCustomMotionWithinSnapshot(expected, true, forgedGround));
+   }
+
+   @Test
+   void unsupportedRendererPayloadRoundTripsItsBackend() {
+      UUID id = UUID.randomUUID();
+      var original = new CubeNetTransitionUnsupportedPayload(id, "sodium");
+      var buffer = new FriendlyByteBuf(Unpooled.buffer());
+      original.write(buffer);
+      assertEquals(original, new CubeNetTransitionUnsupportedPayload(buffer));
+      buffer.release();
+   }
+
+   @Test
+   void unsupportedRendererPayloadRejectsInvalidBackendNames() {
+      UUID id = UUID.randomUUID();
+      assertThrows(IllegalArgumentException.class,
+         () -> new CubeNetTransitionUnsupportedPayload(id, ""));
+      assertThrows(IllegalArgumentException.class,
+         () -> new CubeNetTransitionUnsupportedPayload(id, "x".repeat(33)));
+      assertThrows(IllegalArgumentException.class,
+         () -> new CubeNetTransitionUnsupportedPayload(id, "sodium\n"));
    }
 }
