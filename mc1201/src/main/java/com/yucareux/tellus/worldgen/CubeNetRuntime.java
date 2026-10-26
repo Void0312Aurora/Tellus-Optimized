@@ -1562,10 +1562,10 @@ public final class CubeNetRuntime {
          || !CubeNetApronChunkSync.readyForStaging(level, center, radius)) return;
       int attempt = delivery.beginAttempt(tick, retrySupported, center, radius);
       if (attempt < 0) return;
-      if (delivery.consumeCenterPacket()) {
+      if (delivery.consumeCenterPacket(tick, MAX_CHUNK_PACKETS_PER_TICK)) {
          player.connection.send(new ClientboundSetChunkCacheCenterPacket(center.x, center.z));
       }
-      List<ChunkPos> batch = delivery.takeNext(MAX_CHUNK_PACKETS_PER_TICK);
+      List<ChunkPos> batch = delivery.takeNext(tick, MAX_CHUNK_PACKETS_PER_TICK);
       for (ChunkPos next : batch) {
          LevelChunk chunk = (LevelChunk) level.getChunkSource().getChunk(next.x, next.z, true);
          player.connection.send(new ClientboundLevelChunkWithLightPacket(
@@ -1575,7 +1575,8 @@ public final class CubeNetRuntime {
          TellusCommon.LOGGER.info("Cube-net client destination chunks staged for {} center=({}, {}) radius={} "
                + "attempt={} packetsThisTick={} packetBudget={} loadTaskBudget={} estimatedLoadBytes={} "
                + "observedMinTps={} sampledPeakHeapBytes={} metricSamples={}",
-            player.getGameProfile().getName(), center.x, center.z, radius, attempt, batch.size(),
+            player.getGameProfile().getName(), center.x, center.z, radius, attempt,
+            delivery.packetsSentThisTick(),
             MAX_CHUNK_PACKETS_PER_TICK, MAX_CONCURRENT_CHUNK_LOADS, MAX_CHUNK_LOAD_BYTES,
             String.format(java.util.Locale.ROOT, "%.2f", delivery.observedMinTps()),
             delivery.sampledPeakHeapBytes(), delivery.metricSamples());
@@ -1936,6 +1937,8 @@ public final class CubeNetRuntime {
       private List<ChunkPos> chunks = List.of();
       private int nextChunk;
       private boolean centerPacketPending;
+      private int packetTick = Integer.MIN_VALUE;
+      private int packetsSentThisTick;
       private int lastMetricTick = Integer.MIN_VALUE;
       private int metricSamples;
       private double observedMinTps = 20.0;
@@ -1998,19 +2001,32 @@ public final class CubeNetRuntime {
          return this.attempts;
       }
 
-      boolean consumeCenterPacket() {
-         boolean pending = this.centerPacketPending;
+      boolean consumeCenterPacket(int tick, int budget) {
+         this.beginPacketTick(tick);
+         if (!this.centerPacketPending || this.packetsSentThisTick >= budget) return false;
          this.centerPacketPending = false;
-         return pending;
+         this.packetsSentThisTick++;
+         return true;
       }
 
-      List<ChunkPos> takeNext(int budget) {
+      int packetsSentThisTick() { return this.packetsSentThisTick; }
+
+      List<ChunkPos> takeNext(int tick, int budget) {
          if (budget <= 0) throw new IllegalArgumentException("Chunk packet budget must be positive");
-         List<ChunkPos> batch = new ArrayList<>(Math.min(budget, this.chunks.size() - this.nextChunk));
-         while (batch.size() < budget && this.nextChunk < this.chunks.size()) {
+         this.beginPacketTick(tick);
+         int remaining = Math.max(0, budget - this.packetsSentThisTick);
+         List<ChunkPos> batch = new ArrayList<>(Math.min(remaining, this.chunks.size() - this.nextChunk));
+         while (batch.size() < remaining && this.nextChunk < this.chunks.size()) {
             batch.add(this.chunks.get(this.nextChunk++));
          }
+         this.packetsSentThisTick += batch.size();
          return List.copyOf(batch);
+      }
+
+      private void beginPacketTick(int tick) {
+         if (this.packetTick == tick) return;
+         this.packetTick = tick;
+         this.packetsSentThisTick = 0;
       }
 
       boolean finishedAttempt() {

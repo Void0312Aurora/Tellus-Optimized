@@ -61,13 +61,15 @@ class CubeNetSeamApproachTest {
    void maximumViewStagingNeverExceedsThePerTickChunkPacketBudget() {
       var delivery = new CubeNetRuntime.ClientChunkDelivery();
       assertEquals(1, delivery.beginAttempt(100, true, new net.minecraft.world.level.ChunkPos(0, 0), 33));
-      assertTrue(delivery.consumeCenterPacket());
+      assertTrue(delivery.consumeCenterPacket(100, CubeNetRuntime.MAX_CHUNK_PACKETS_PER_TICK));
       int expectedChunks = 67 * 67;
       int chunksSent = 0;
       int batches = 0;
       while (!delivery.finishedAttempt()) {
-         var batch = delivery.takeNext(CubeNetRuntime.MAX_CHUNK_PACKETS_PER_TICK);
+         int tick = 100 + batches;
+         var batch = delivery.takeNext(tick, CubeNetRuntime.MAX_CHUNK_PACKETS_PER_TICK);
          assertTrue(batch.size() <= CubeNetRuntime.MAX_CHUNK_PACKETS_PER_TICK);
+         assertTrue(delivery.packetsSentThisTick() <= CubeNetRuntime.MAX_CHUNK_PACKETS_PER_TICK);
          assertFalse(batch.isEmpty());
          chunksSent += batch.size();
          batches++;
@@ -75,6 +77,18 @@ class CubeNetSeamApproachTest {
       assertEquals(expectedChunks, chunksSent);
       int budget = CubeNetRuntime.MAX_CHUNK_PACKETS_PER_TICK;
       assertEquals((expectedChunks + budget - 1) / budget, batches);
+   }
+
+   @Test
+   void repeatedStagingCallsInOneTickShareTheSamePacketBudget() {
+      var delivery = new CubeNetRuntime.ClientChunkDelivery();
+      delivery.beginAttempt(100, true, new net.minecraft.world.level.ChunkPos(0, 0), 3);
+      assertTrue(delivery.consumeCenterPacket(100, CubeNetRuntime.MAX_CHUNK_PACKETS_PER_TICK));
+      assertEquals(7, delivery.takeNext(100, CubeNetRuntime.MAX_CHUNK_PACKETS_PER_TICK).size());
+      assertTrue(delivery.takeNext(100, CubeNetRuntime.MAX_CHUNK_PACKETS_PER_TICK).isEmpty());
+      assertEquals(8, delivery.packetsSentThisTick());
+      assertEquals(8, delivery.takeNext(101, CubeNetRuntime.MAX_CHUNK_PACKETS_PER_TICK).size());
+      assertEquals(8, delivery.packetsSentThisTick());
    }
 
    @Test
