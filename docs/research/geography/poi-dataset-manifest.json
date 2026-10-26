@@ -1,0 +1,34 @@
+{
+  "study_id": "reference-poi-coverage-v1",
+  "purpose": "Check registered high-value points against the actual 300 km excluded cap plus 50 km transition quarantine.",
+  "boundary_input": "build/geography/results/quarantine-boundaries-32.geojson",
+  "sources": [
+    {
+      "id": "osm-nukumanu",
+      "provider": "OpenStreetMap",
+      "source_url": "https://www.openstreetmap.org/",
+      "input": "tools/geography/osm-nukumanu-snapshot.json",
+      "scope": "Bounded Western Pacific probe; place nodes and tagged building/highway ways only.",
+      "status": "partial",
+      "limitation": "The snapshot does not include tourism or historic tags and does not cover the other seven vertices."
+    },
+    {
+      "id": "unesco-world-heritage",
+      "provider": "UNESCO DataHub",
+      "source_url": "https://data.unesco.org/explore/dataset/whc001/",
+      "export_url": "https://data.unesco.org/api/explore/v2.1/catalog/datasets/whc001/exports/csv?lang=en&timezone=UTC",
+      "input": "build/geography/unesco-whc001.csv",
+      "retrieved_utc": "2026-10-24T17:08:45Z",
+      "sha256": "EA5792071EFF563D54B293505301A8E0D157E172D353EA24A3A2DFFF2EB42FB1",
+      "records": 1273,
+      "status": "scored"
+    },
+    {
+      "id": "wikidata-geospatial",
+      "provider": "Wikidata Query Service",
+      "source_url": "https://query.wikidata.org/sparql",
+      "status": "pending",
+      "limitation": "The endpoint was actively rate-limited during this run; no empty result is treated as evidence of absence."
+    }
+  ]
+}
