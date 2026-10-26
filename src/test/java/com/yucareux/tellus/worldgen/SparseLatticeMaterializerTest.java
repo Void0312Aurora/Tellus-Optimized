@@ -69,6 +69,19 @@ class SparseLatticeMaterializerTest {
       assertThrows(IllegalArgumentException.class, () -> materializer.request(ghost));
    }
 
+   @Test
+   void directRequestsRejectPartiallyOwnedFootprints() {
+      var lower = patch(0, 20_000);
+      var higher = patch(1, 0);
+      var atlas = new SphericalLatticePrototype.Atlas(List.of(lower, higher), List.of());
+      var materializer = new SparseLatticeMaterializer(atlas, SparseLatticeMaterializerTest::generate);
+      var partial = higher.cell(1, 1, 0);
+
+      assertEquals(SphericalLatticePrototype.FootprintOwnership.PARTIAL,
+         atlas.footprint(partial).ownership());
+      assertThrows(IllegalArgumentException.class, () -> materializer.request(partial));
+   }
+
    private static SparseLatticeMaterializer.CellData generate(SphericalLatticePrototype.BlockId id) {
       int state = Math.floorMod((int)(id.patch().x() * 31 + id.patch().y() * 17
          + id.i() * 7 + id.j() * 3 + id.k()), 256);

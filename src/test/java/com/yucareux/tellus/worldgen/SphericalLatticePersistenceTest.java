@@ -76,6 +76,19 @@ class SphericalLatticePersistenceTest {
          List.of(point(0)), List.of(new SphericalLatticePersistence.CellEdit(ghost, 1))));
    }
 
+   @Test
+   void persistenceRejectsAnEditForAPartialFootprint() {
+      var lower = patch(0, 20_000);
+      var higher = patch(1, 0);
+      var atlas = new SphericalLatticePrototype.Atlas(List.of(lower, higher), List.of());
+      var partial = higher.cell(1, 1, 17);
+
+      assertEquals(SphericalLatticePrototype.FootprintOwnership.PARTIAL,
+         atlas.footprint(partial).ownership());
+      assertThrows(IllegalArgumentException.class, () -> SphericalLatticePersistence.capture(atlas,
+         List.of(higher.cellCenter(1, 1)), List.of(new SphericalLatticePersistence.CellEdit(partial, 1))));
+   }
+
    private static SphericalLatticePrototype.Atlas atlas() {
       var west = patch(0, -25_000);
       var east = patch(1, 25_000);

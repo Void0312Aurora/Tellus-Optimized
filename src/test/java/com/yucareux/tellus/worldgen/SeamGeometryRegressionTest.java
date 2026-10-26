@@ -6,6 +6,7 @@ import com.yucareux.tellus.worldgen.global.SphereWorldModel;
 import com.yucareux.tellus.worldgen.global.SphericalLatticePrototype;
 import org.junit.jupiter.api.Test;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class SeamGeometryRegressionTest {
@@ -39,6 +40,59 @@ class SeamGeometryRegressionTest {
          () -> "vertex mismatch=" + report.maxVertexMismatchMeters());
       assertTrue(report.maxInteriorMismatchMeters() < 1.0E-7,
          () -> "edge mismatch=" + report.maxInteriorMismatchMeters());
+   }
+
+   @Test
+   void connectedEmbeddingReportsGlobalMetricsAndExtraordinaryRegions() {
+      var topology = ClosedQuadSphereTopology.create(5);
+      var embedding = new ClosedQuadSphereEmbedding(topology, SphereWorldModel.forWorldScale(1.0));
+      var metrics = embedding.measureMetrics();
+
+      assertTrue(metrics.cells() == topology.cells().size());
+      assertTrue(metrics.edges() == topology.edges().size());
+      assertTrue(metrics.minEdgeScale() > 0.0);
+      assertTrue(metrics.maxEdgeScale() > metrics.minEdgeScale());
+      assertTrue(metrics.maxAngleErrorRadians() > 0.0);
+      assertTrue(metrics.minAreaScale() > 0.0);
+      assertTrue(metrics.maxAreaScale() > metrics.minAreaScale());
+      assertEquals(0.7100217862, metrics.minEdgeScale(), 1.0E-9);
+      assertEquals(0.9961768416, metrics.maxEdgeScale(), 1.0E-9);
+      assertEquals(0.5235987756, metrics.maxAngleErrorRadians(), 1.0E-9);
+      assertEquals(0.7860693612, metrics.minAreaScale(), 1.0E-9);
+      assertEquals(0.9919013596, metrics.maxAreaScale(), 1.0E-9);
+      assertTrue(metrics.extraordinaryCells() == 24,
+         () -> "unexpected extraordinary cell count=" + metrics.extraordinaryCells());
+      assertEquals(0.8583811673, metrics.extraordinaryMinEdgeScale(), 1.0E-9);
+      assertEquals(0.7860693612, metrics.extraordinaryMinAreaScale(), 1.0E-9);
+      assertTrue(metrics.extraordinaryMaxEdgeScale() >= metrics.extraordinaryMinEdgeScale());
+      assertTrue(metrics.extraordinaryMaxAngleErrorRadians() >= 0.0);
+      assertTrue(metrics.extraordinaryMaxAreaScale() >= metrics.extraordinaryMinAreaScale());
+   }
+
+   @Test
+   void spherifiedCubeCandidateKeepsHardSeamsAndImprovesWorstEdgeScale() {
+      var topology = ClosedQuadSphereTopology.create(5);
+      var model = SphereWorldModel.forWorldScale(1.0);
+      var baseline = new ClosedQuadSphereEmbedding(topology, model,
+         ClosedQuadSphereEmbedding.Mapping.EQUANGULAR_CUBE).measureMetrics();
+      var candidateEmbedding = new ClosedQuadSphereEmbedding(topology, model,
+         ClosedQuadSphereEmbedding.Mapping.SPHERIFIED_CUBE);
+      var seams = candidateEmbedding.auditSeams(65);
+      var candidate = candidateEmbedding.measureMetrics();
+
+      assertTrue(seams.maxVertexMismatchMeters() < 1.0E-7,
+         () -> "candidate vertex mismatch=" + seams.maxVertexMismatchMeters());
+      assertTrue(seams.maxInteriorMismatchMeters() < 1.0E-7,
+         () -> "candidate edge mismatch=" + seams.maxInteriorMismatchMeters());
+      assertEquals(0.7367486409, candidate.minEdgeScale(), 1.0E-9);
+      assertEquals(1.0948677952, candidate.maxEdgeScale(), 1.0E-9);
+      assertEquals(0.8159166574, candidate.minAreaScale(), 1.0E-9);
+      assertEquals(0.8792043838, candidate.maxAreaScale(), 1.0E-9);
+      double baselineWorstEdgeScale = Math.max(1.0 - baseline.minEdgeScale(), baseline.maxEdgeScale() - 1.0);
+      double candidateWorstEdgeScale = Math.max(1.0 - candidate.minEdgeScale(), candidate.maxEdgeScale() - 1.0);
+      assertTrue(candidateWorstEdgeScale < baselineWorstEdgeScale,
+         () -> "candidate worst edge scale=" + candidateWorstEdgeScale
+            + ", baseline=" + baselineWorstEdgeScale);
    }
 
    private static SphericalLatticePrototype.PatchDescriptor patch(long x, double east) {

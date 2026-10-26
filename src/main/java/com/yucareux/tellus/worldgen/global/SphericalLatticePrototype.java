@@ -16,6 +16,9 @@ import java.util.Set;
  */
 public final class SphericalLatticePrototype {
    private static final double EPSILON_METERS = 0.01;
+   /** Prototype radial spacing; the value belongs in a future grid manifest. */
+   public static final double VERTICAL_CELL_METERS = 1.0;
+   private static final int FOOTPRINT_PROBES_PER_AXIS = 3;
 
    private SphericalLatticePrototype() { }
 
@@ -105,6 +108,22 @@ public final class SphericalLatticePrototype {
             (j + 0.5) * cell - this.halfSideMeters());
       }
 
+      /**
+       * Returns the four surface corners in south-west, south-east,
+       * north-east, north-west order.  The corners are geometry only; the
+       * atlas decides whether this chart cell is authoritative.
+       */
+      public List<SphereWorldModel.GeoPoint> cellCorners(long i, long j) {
+         if (i < 0 || j < 0 || i >= this.cellsPerSide || j >= this.cellsPerSide) {
+            throw new IllegalArgumentException("cell outside patch");
+         }
+         double cell = this.sideMeters / this.cellsPerSide;
+         double x0 = i * cell - this.halfSideMeters();
+         double y0 = j * cell - this.halfSideMeters();
+         return List.of(this.pointAt(x0, y0), this.pointAt(x0 + cell, y0),
+            this.pointAt(x0 + cell, y0 + cell), this.pointAt(x0, y0 + cell));
+      }
+
       /** Inverse chart coordinates used for deterministic ownership. */
       public ChartCoordinate localCoordinates(SphereWorldModel.GeoPoint point) {
          Vector3 center = Vector3.from(this.anchor);
@@ -144,6 +163,47 @@ public final class SphericalLatticePrototype {
    }
 
    public record ChartCoordinate(double eastMeters, double northMeters) { }
+
+   public enum FootprintOwnership { FULL, PARTIAL, GHOST }
+
+   /**
+    * Geometry and conservative ownership classification for one persistent
+    * cell.  The radial interval is half-open: [bottomElevation, topElevation).
+    * Surface corners describe the un-clipped chart quadrilateral.  PARTIAL
+    * cells are retained for diagnostics but are not ordinary mutable cells.
+    */
+   public record CellFootprint(
+      BlockId id,
+      List<SphereWorldModel.GeoPoint> surfaceCorners,
+      double bottomElevationMeters,
+      double topElevationMeters,
+      BlockId centerOwner,
+      FootprintOwnership ownership
+   ) {
+      public CellFootprint {
+         Objects.requireNonNull(id, "id");
+         surfaceCorners = List.copyOf(Objects.requireNonNull(surfaceCorners, "surfaceCorners"));
+         if (surfaceCorners.size() != 4) throw new IllegalArgumentException("cell footprint requires four corners");
+         if (!Double.isFinite(bottomElevationMeters) || !Double.isFinite(topElevationMeters)
+            || !(topElevationMeters > bottomElevationMeters)) {
+            throw new IllegalArgumentException("vertical cell interval");
+         }
+         Objects.requireNonNull(centerOwner, "centerOwner");
+         Objects.requireNonNull(ownership, "ownership");
+      }
+
+      public double bottomRadiusMeters() {
+         return SphereWorldModel.EARTH_RADIUS_METERS + this.bottomElevationMeters;
+      }
+
+      public double topRadiusMeters() {
+         return SphereWorldModel.EARTH_RADIUS_METERS + this.topElevationMeters;
+      }
+
+      public boolean isOrdinaryMutableCell() {
+         return this.ownership == FootprintOwnership.FULL;
+      }
+   }
 
    public record MetricSample(
       double minScale,
@@ -344,9 +404,9 @@ public final class SphericalLatticePrototype {
       }
 
       /**
-       * Returns the canonical owner of a direct cell identity under the
-       * prototype's center-ownership rule. Overlapping non-owner cells are
-       * therefore explicit ghosts and cannot be treated as mutable cells.
+       * Returns the center-owner canonicalization of a direct cell identity.
+       * Callers that mutate or traverse cells must use {@link #isCanonical}
+       * as well: only a FULL footprint certificate is ordinary mutable state.
        */
       public BlockId canonical(BlockId cell) {
          Objects.requireNonNull(cell, "cell");
@@ -358,7 +418,29 @@ public final class SphericalLatticePrototype {
       }
 
       public boolean isCanonical(BlockId cell) {
-         return Objects.requireNonNull(cell, "cell").equals(this.canonical(cell));
+         return this.footprint(Objects.requireNonNull(cell, "cell")).isOrdinaryMutableCell();
+      }
+
+      /**
+       * Build the physical surface/radial footprint and conservatively audit
+       * its ownership.  Nine interior probes (the centres of a 3x3 split)
+       * must all resolve to the same surface cell for FULL.  A center-owned
+       * cell with any other or uncovered probe is PARTIAL and requires a
+       * transition representation; a center ghost is GHOST.
+       */
+      public CellFootprint footprint(BlockId cell) {
+         Objects.requireNonNull(cell, "cell");
+         if (!this.grid.equals(cell.grid())) throw new IllegalArgumentException("mixed grid versions");
+         PatchDescriptor patch = this.patch(cell.patch());
+         patch.cell(cell.i(), cell.j(), cell.k());
+         BlockId surfaceId = new BlockId(this.grid, cell.patch(), cell.i(), cell.j(), 0);
+         BlockId centerOwner = this.owner(patch.cellCenter(cell.i(), cell.j()));
+         FootprintOwnership ownership = sameSurfaceCell(surfaceId, centerOwner)
+            ? this.auditInteriorOwnership(patch, surfaceId) : FootprintOwnership.GHOST;
+         double bottom = cell.k() * VERTICAL_CELL_METERS;
+         double top = (cell.k() + 1.0) * VERTICAL_CELL_METERS;
+         return new CellFootprint(cell, patch.cellCorners(cell.i(), cell.j()), bottom, top,
+            withVertical(centerOwner, cell.k()), ownership);
       }
 
       public BlockId owner(SphereWorldModel.GeoPoint point) {
@@ -406,9 +488,37 @@ public final class SphericalLatticePrototype {
 
       private BlockId canonicalNeighbor(BlockId destination) {
          if (!this.isCanonical(destination)) {
-            throw new IllegalStateException("neighbor resolves to a noncanonical overlap cell: " + destination);
+            throw new IllegalStateException("neighbor resolves to a non-FULL footprint: " + destination);
          }
          return destination;
+      }
+
+      private FootprintOwnership auditInteriorOwnership(PatchDescriptor patch, BlockId expected) {
+         double cell = patch.sideMeters() / patch.cellsPerSide();
+         double originX = expected.i() * cell - patch.halfSideMeters();
+         double originY = expected.j() * cell - patch.halfSideMeters();
+         boolean partial = false;
+         for (int ix = 0; ix < FOOTPRINT_PROBES_PER_AXIS; ix++) {
+            for (int iy = 0; iy < FOOTPRINT_PROBES_PER_AXIS; iy++) {
+               double x = originX + (ix + 0.5) * cell / FOOTPRINT_PROBES_PER_AXIS;
+               double y = originY + (iy + 0.5) * cell / FOOTPRINT_PROBES_PER_AXIS;
+               try {
+                  if (!sameSurfaceCell(expected, this.owner(patch.pointAt(x, y)))) partial = true;
+               } catch (IllegalArgumentException uncovered) {
+                  partial = true;
+               }
+            }
+         }
+         return partial ? FootprintOwnership.PARTIAL : FootprintOwnership.FULL;
+      }
+
+      private static BlockId withVertical(BlockId block, int k) {
+         return new BlockId(block.grid(), block.patch(), block.i(), block.j(), k);
+      }
+
+      private static boolean sameSurfaceCell(BlockId first, BlockId second) {
+         return first.grid().equals(second.grid()) && first.patch().equals(second.patch())
+            && first.i() == second.i() && first.j() == second.j();
       }
 
       private static boolean contains(PatchDescriptor patch, SphereWorldModel.GeoPoint point) {

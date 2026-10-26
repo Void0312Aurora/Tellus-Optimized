@@ -21,7 +21,15 @@ geodetic points. `Atlas.owner(point)` uses the chart inverse and a lowest
 on the order in which descriptors are supplied. `Atlas.neighbor` uses explicit
 reciprocal boundary links; it refuses a one-way link before any cell can be
 materialized. Vertical `k` is carried through an edge transition unchanged in
-this surface-only prototype.
+this surface-only prototype. `Atlas.footprint(BlockID)` now exposes the four
+mapped surface corners and a fixed prototype radial interval of
+`[k * 1 m, (k + 1) * 1 m)`. A cell is admitted as ordinary mutable state only
+when the centers of all nine interior 3x3 probes resolve to that same surface
+cell (`FULL`). A center-owned cell with another or uncovered probe is
+`PARTIAL`; a center-non-owner cell is `GHOST`. Both exceptional states remain
+addressable for diagnostics but are rejected by ordinary materialization,
+neighbor traversal, and edit persistence until a transition representation is
+defined.
 
 These are storage contracts only. No block state, block entity, scheduled tick,
 or Minecraft `ChunkPos` is duplicated by the prototype.
@@ -60,7 +68,7 @@ while their scale varies across the patch.
   --offline --no-daemon
 ```
 
-The six prototype tests currently cover:
+The prototype tests currently cover:
 
 * deterministic metric reports for both local chart candidates;
 * agreement with the closed-form stereographic scale estimate;
@@ -68,7 +76,20 @@ The six prototype tests currently cover:
 * shared-edge neighbor reciprocity and vertical identity;
 * rejection of missing or nonreciprocal boundaries;
 * explicit evidence that the current cubed-sphere metric is bounded but not
-  locally orthogonal and unit-scale everywhere.
+  locally orthogonal and unit-scale everywhere;
+* conservative high-latitude and antimeridian coarse-locator coverage;
+* rejection of noncanonical overlap neighbors and direct edits; and
+* connected-mesh seam and global metric reports, including extraordinary
+  cells.
+
+In the current Windows checkout, the machine runtime is Microsoft OpenJDK
+21.0.12.1. `:mc1201:compileJava` completes successfully with Gradle 9.4.0 and
+Fabric Loom 1.14.10. The focused RFC sources and tests were also compiled with
+`javac --release 21` and executed with JUnit Platform Console 1.10.2: 31 tests
+started and 31 passed. A complete Gradle `:mc1201:test` run remains
+environment-blocked because Gradle's Java HTTPS client cannot complete the
+Maven Central TLS handshake while a direct PowerShell request succeeds; no
+full Gradle test pass is claimed here.
 
 The closed-topology experiment is covered separately by:
 
@@ -155,14 +176,50 @@ geometry result for the existing cubed-sphere embedding, not a low-distortion
 result: its measured stretch and angle errors remain the baseline in the Phase 1
 table.
 
-The prototype also now defines direct-ID validity as a center-ownership rule:
-`Atlas.canonical(BlockID)` maps a cell through its patch cell center and rejects
-overlapping non-owner cells as ghosts. Sparse materialization, neighbor lookup,
-and persistence edit capture/restore enforce this rule. It prevents duplicate
-mutable state under the current model, but it is not yet a complete physical
-footprint rule for clipped or transition cells. That rule, a scalable coarse
-atlas locator, and 1 m/16x16 chunk persistence remain open before Fabric seam
-integration.
+The same connected mesh now has an executable metric report. For the
+subdivision-5, `worldScale=1.0` fixture (150 cells, 300 shared edges), the
+nominal face-centre edge is `2,001,511.444 m`; measuring the actual spherical
+arcs and spherical cell areas gives:
+
+| connected mesh metric | all cells | cells incident to degree-3 vertices |
+|---|---:|---:|
+| edge-length scale range | 0.710022–0.996177 | 0.858381–0.858381 |
+| maximum right-angle error | 0.523599 rad | 0.523599 rad |
+| area scale range | 0.786069–0.991901 | 0.786069–0.786069 |
+
+The extraordinary-cell group contains 24 cells in this resolution. These
+values are measured from the seam-constrained embedding itself and therefore
+replace neither the isolated-chart estimate nor a production tolerance. They
+make the present baseline explicit: the embedding is watertight at shared
+edges, but its global metric distortion and extraordinary-vertex behavior are
+still far from the RFC's intended weak-distortion target.
+
+The same topology now also has a `SPHERIFIED_CUBE` candidate. It uses a single
+shared cube-boundary vertex map and the standard spherified-cube surface
+formula, so adjacent faces still receive exactly the same boundary data. Its
+subdivision-5 report is:
+
+| connected mesh metric | equiangular baseline | spherified candidate |
+|---|---:|---:|
+| edge-length scale range | 0.710022–0.996177 | 0.736749–1.094868 |
+| area scale range | 0.786069–0.991901 | 0.815917–0.879204 |
+| maximum right-angle error | 0.523599 rad | 0.523599 rad |
+
+The candidate reduces the worst absolute edge-scale error from approximately
+0.289978 to 0.094868 and keeps sampled seam mismatch below `1e-7 m`. It is a
+measured global candidate, not an optimized or accepted production embedding;
+its angle error and extraordinary-vertex behavior still require further work.
+
+The prototype now defines direct-ID validity with a conservative footprint
+admission rule. `Atlas.canonical(BlockID)` still reports the center-owner
+canonicalization for diagnostics, while `Atlas.isCanonical(BlockID)` requires a
+`FULL` footprint certificate. Sparse materialization, neighbor lookup, and
+persistence edit capture/restore all enforce that admission rule. The tests
+cover ordinary cells, center ghosts, and partially clipped overlap cells,
+including radial `k` values. This prevents duplicate mutable state under the
+current prototype contract, while the continuous clipped-region boundary and
+transition-cell geometry remain open. A scalable coarse atlas locator and
+1 m/16x16 chunk persistence also remain open before Fabric seam integration.
 
 ## Review follow-up: coarse atlas lookup
 
