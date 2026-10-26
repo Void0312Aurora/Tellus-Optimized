@@ -5,9 +5,33 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.HashSet;
 import java.util.Set;
+import com.yucareux.tellus.worldgen.global.SphereWorldModel;
 import org.junit.jupiter.api.Test;
 
 class LandCoverTransitionTest {
+   @Test
+   void sphericalNoiseIsContinuousAcrossTheDateLine() {
+      var west = new SphereWorldModel.GeoPoint(20.0, -179.999999999, 0.0);
+      var east = new SphereWorldModel.GeoPoint(20.0, 179.999999999, 0.0);
+      assertEquals(LandCoverTransition.sphericalTransitionThreshold(west, 1.0, 10.0),
+         LandCoverTransition.sphericalTransitionThreshold(east, 1.0, 10.0), 0.0001);
+   }
+
+   @Test
+   void sphericalNoiseVariesAlongBothDirectionsAtTheEquator() {
+      Set<Long> northSouth = new HashSet<>();
+      Set<Long> eastWest = new HashSet<>();
+      for (int meters = 0; meters < 96; meters++) {
+         double degrees = Math.toDegrees(meters / SphereWorldModel.EARTH_RADIUS_METERS);
+         northSouth.add(Math.round(LandCoverTransition.sphericalTransitionThreshold(
+            new SphereWorldModel.GeoPoint(degrees, 10.0, 0.0), 1.0, 10.0) * 1_000));
+         eastWest.add(Math.round(LandCoverTransition.sphericalTransitionThreshold(
+            new SphereWorldModel.GeoPoint(0.0, 10.0 + degrees, 0.0), 1.0, 10.0) * 1_000));
+      }
+      assertTrue(northSouth.size() > 10);
+      assertTrue(eastWest.size() > 10);
+   }
+
    @Test
    void fadesInOnlyBelowTheCategoricalSourceResolution() {
       assertEquals(0.0, LandCoverTransition.strength(10.0, 10.0));

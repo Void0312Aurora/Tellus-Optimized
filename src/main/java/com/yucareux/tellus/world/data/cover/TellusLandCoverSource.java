@@ -16,6 +16,7 @@ import com.yucareux.tellus.world.data.osm.PmTilesRangeReader;
 import com.yucareux.tellus.world.data.pmtiles.PmTilesSafety;
 import com.yucareux.tellus.world.data.source.ParallelDownloadRunner;
 import com.yucareux.tellus.worldgen.EarthProjection;
+import com.yucareux.tellus.worldgen.global.SphereWorldModel;
 import io.github.sebasbaumh.mapbox.vectortile.VectorTile.Tile;
 import io.github.sebasbaumh.mapbox.vectortile.VectorTile.Tile.Feature;
 import io.github.sebasbaumh.mapbox.vectortile.VectorTile.Tile.GeomType;
@@ -42,6 +43,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
@@ -143,6 +145,36 @@ public final class TellusLandCoverSource implements TellusCacheHandle {
       return this.sampleCoverClass(blockX, blockZ, worldScale, worldScale, managedLookupMode());
    }
 
+   /**
+    * Samples land cover from a spherical geodetic point. The point remains in
+    * latitude/longitude form through the WorldCover and raster tile readers;
+    * no projected Minecraft block coordinate is manufactured for lookup.
+    */
+   public int sampleCoverClass(SphereWorldModel.GeoPoint point, double worldScale) {
+      return this.sampleCoverClass(point, worldScale, worldScale);
+   }
+
+   public int sampleCoverClass(
+      SphereWorldModel.GeoPoint point, double worldScale, double previewResolutionMeters
+   ) {
+      Objects.requireNonNull(point, "point");
+      if (!(worldScale > 0.0) || !isWithinGeodeticCoverage(point)) {
+         return NO_DATA_CLASS;
+      }
+
+      double lon = point.longitude();
+      double lat = point.latitude();
+      double resolutionMeters = effectiveSampleResolutionMeters(worldScale, previewResolutionMeters);
+      LookupMode lookupMode = managedLookupMode();
+      WorldCoverCogSource.Sample worldCover = this.worldCoverSource.sample(
+         lon, lat, resolutionMeters, worldCoverLookupMode(lookupMode)
+      );
+      if (worldCover.available()) {
+         return worldCover.coverClass();
+      }
+      return this.sampleAtLonLat(lon, lat, this.queryZoom(resolutionMeters, lookupMode), lookupMode);
+   }
+
    public int sampleCoverClass(double blockX, double blockZ, double worldScale, double previewResolutionMeters) {
       return this.sampleCoverClass(blockX, blockZ, worldScale, previewResolutionMeters, managedLookupMode());
    }
@@ -223,6 +255,35 @@ public final class TellusLandCoverSource implements TellusCacheHandle {
 
    public int sampleVisualCoverClass(double blockX, double blockZ, double worldScale) {
       return this.sampleVisualCoverClass(blockX, blockZ, worldScale, worldScale, managedLookupMode());
+   }
+
+   public int sampleVisualCoverClass(SphereWorldModel.GeoPoint point, double worldScale) {
+      return this.sampleVisualCoverClass(point, worldScale, worldScale);
+   }
+
+   public int sampleVisualCoverClass(
+      SphereWorldModel.GeoPoint point, double worldScale, double previewResolutionMeters
+   ) {
+      Objects.requireNonNull(point, "point");
+      if (!(worldScale > 0.0) || !isWithinGeodeticCoverage(point)) {
+         return NO_DATA_CLASS;
+      }
+
+      double lon = point.longitude();
+      double lat = point.latitude();
+      double resolutionMeters = effectiveSampleResolutionMeters(worldScale, previewResolutionMeters);
+      LookupMode lookupMode = managedLookupMode();
+      WorldCoverCogSource.Sample worldCover = this.worldCoverSource.sampleVisual(
+         point, resolutionMeters, worldScale, worldCoverLookupMode(lookupMode)
+      );
+      if (worldCover.available()) {
+         return worldCover.coverClass();
+      }
+
+      int zoom = this.queryZoom(resolutionMeters, lookupMode);
+      return this.sampleVisualAtLonLat(
+         lon, lat, zoom, resolutionMeters, 0.0, 0.0, worldScale, lookupMode, point
+      );
    }
 
    public int sampleVisualCoverClass(double blockX, double blockZ, double worldScale, double previewResolutionMeters) {
@@ -739,6 +800,15 @@ public final class TellusLandCoverSource implements TellusCacheHandle {
       double worldScale,
       LookupMode lookupMode
    ) {
+      return this.sampleVisualAtLonLat(
+         lon, lat, zoom, effectiveResolutionMeters, blockX, blockZ, worldScale, lookupMode, null
+      );
+   }
+
+   private int sampleVisualAtLonLat(
+      double lon, double lat, int zoom, double effectiveResolutionMeters, double blockX, double blockZ,
+      double worldScale, LookupMode lookupMode, SphereWorldModel.GeoPoint sphericalPoint
+   ) {
       TilePosition center = tilePosition(lon, lat, zoom);
       if (center == null) {
          return NO_DATA_CLASS;
@@ -765,7 +835,7 @@ public final class TellusLandCoverSource implements TellusCacheHandle {
       int value10 = visualSampleOrCenter(zoom, x1, y0, lookupMode, centerClass);
       int value01 = visualSampleOrCenter(zoom, x0, y1, lookupMode, centerClass);
       int value11 = visualSampleOrCenter(zoom, x1, y1, lookupMode, centerClass);
-      return LandCoverTransition.selectVisualClass(
+      return LandCoverTransition.selectVisualClassAtThreshold(
          centerClass,
          value00,
          value10,
@@ -774,9 +844,9 @@ public final class TellusLandCoverSource implements TellusCacheHandle {
          blendX - x0,
          blendY - y0,
          transitionStrength,
-         blockX,
-         blockZ,
-         sourceResolutionMeters / Math.max(worldScale, Double.MIN_NORMAL)
+         sphericalPoint == null
+            ? LandCoverTransition.transitionThreshold(blockX, blockZ, sourceResolutionMeters / Math.max(worldScale, Double.MIN_NORMAL))
+            : LandCoverTransition.sphericalTransitionThreshold(sphericalPoint, worldScale, sourceResolutionMeters)
       );
    }
 
@@ -1409,6 +1479,13 @@ public final class TellusLandCoverSource implements TellusCacheHandle {
       double zA = EarthProjection.latToBlockZ(MIN_LAT, worldScale);
       double zB = EarthProjection.latToBlockZ(MAX_LAT, worldScale);
       return lon >= MIN_LON && lon <= MAX_LON && blockZ >= Math.min(zA, zB) && blockZ <= Math.max(zA, zB);
+   }
+
+   private static boolean isWithinGeodeticCoverage(SphereWorldModel.GeoPoint point) {
+      return point.latitude() >= MIN_LAT
+         && point.latitude() <= MAX_LAT
+         && point.longitude() >= MIN_LON
+         && point.longitude() <= MAX_LON;
    }
 
    private static boolean isGlobalPixelInBounds(int zoom, int globalPixelX, int globalPixelY) {

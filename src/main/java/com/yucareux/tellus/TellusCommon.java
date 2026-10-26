@@ -307,9 +307,9 @@ public class TellusCommon {
 
    private static int runChunkBenchmark(CommandSourceStack source, int centerChunkX, int centerChunkZ, int radius) {
       MinecraftServer server = source.getServer();
-      ServerLevel level = server.getLevel(Level.OVERWORLD);
+      ServerLevel level = source.getLevel();
       if (level == null) {
-         source.sendFailure(Component.literal("Tellus benchmark requires an overworld"));
+         source.sendFailure(Component.literal("Tellus benchmark requires a server level"));
          return 0;
       }
 
@@ -354,6 +354,8 @@ public class TellusCommon {
       long startedNs = System.nanoTime();
       JsonObject result = new JsonObject();
       result.addProperty("schemaVersion", 1);
+      result.addProperty("dimension", level.dimension().location().toString());
+      result.addProperty("generator", level.getChunkSource().getGenerator().getClass().getSimpleName());
       result.addProperty("centerChunkX", centerChunkX);
       result.addProperty("centerChunkZ", centerChunkZ);
       result.addProperty("radius", radius);

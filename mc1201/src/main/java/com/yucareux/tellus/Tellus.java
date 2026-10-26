@@ -6,6 +6,7 @@ import com.yucareux.tellus.network.ManagedTerrainViewPayload;
 import com.yucareux.tellus.platform.FabricTellusRuntimePlatform;
 import com.yucareux.tellus.worldgen.EarthBiomeSource;
 import com.yucareux.tellus.worldgen.EarthChunkGenerator;
+import com.yucareux.tellus.worldgen.SphereFaceChunkGenerator;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.core.Registry;
@@ -23,6 +24,7 @@ public final class Tellus extends TellusCommon implements ModInitializer {
       TellusCommon.validateRuntime();
       Registry.register(BuiltInRegistries.BIOME_SOURCE, id("earth"), EarthBiomeSource.CODEC);
       Registry.register(BuiltInRegistries.CHUNK_GENERATOR, id("earth"), EarthChunkGenerator.CODEC);
+      Registry.register(BuiltInRegistries.CHUNK_GENERATOR, id("sphere_face"), SphereFaceChunkGenerator.CODEC);
       ServerPlayNetworking.registerGlobalReceiver(
          GeoTpTeleportPayload.TYPE,
          (payload, player, responseSender) -> TellusCommon.handleGeoTeleport(payload, player)

@@ -12,6 +12,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -50,6 +51,10 @@ def parse_args() -> argparse.Namespace:
                         help="Additional JVM system property; may be repeated.")
     parser.add_argument("--module", default="mc1201", help="Gradle module (default: mc1201).")
     parser.add_argument("--project-root", type=Path, default=project_root)
+    parser.add_argument("--run-dir", type=Path, help="Isolated run directory (mc1201 only).")
+    parser.add_argument("--dimension", default="minecraft:overworld", help="Dimension containing the benchmark generator.")
+    parser.add_argument("--world-type", default="minecraft:normal", choices=("minecraft:normal", "minecraft:flat"),
+                        help="Type used when the template has no level.dat.")
     parser.add_argument("--output-dir", type=Path,
                         help="Result directory (default: tools/benchmark-results).")
     parser.add_argument("--heap", default="8g", help="Both Xms and Xmx for the server JVM.")
@@ -79,13 +84,21 @@ def copy_world_template(template: Path, target: Path) -> None:
         lock.unlink()
 
 
-def write_server_config(run_dir: Path) -> None:
+def write_server_config(run_dir: Path, world_type: str = "minecraft:normal") -> None:
     run_dir.mkdir(parents=True, exist_ok=True)
     (run_dir / "eula.txt").write_text("eula=true\n", encoding="utf-8")
     (run_dir / "server.properties").write_text(
         "\n".join(
             [
                 "level-name=world",
+                f"level-type={world_type}",
+                *(["generator-settings=" + json.dumps({
+                    "layers": [{"block": "minecraft:bedrock", "height": 1},
+                               {"block": "minecraft:dirt", "height": 2},
+                               {"block": "minecraft:grass_block", "height": 1}],
+                    "biome": "minecraft:plains", "lakes": False, "features": False,
+                    "structure_overrides": [],
+                }, separators=(",", ":"))] if world_type == "minecraft:flat" else []),
                 "online-mode=false",
                 "enable-command-block=true",
                 "spawn-protection=0",
@@ -108,6 +121,15 @@ def git_revision(project_root: Path) -> str:
         ).strip()
     except (OSError, subprocess.CalledProcessError):
         return "unknown"
+
+
+def git_worktree_dirty(project_root: Path) -> bool | None:
+    try:
+        return bool(subprocess.check_output(
+            ["git", "status", "--porcelain"], cwd=project_root, text=True
+        ).strip())
+    except (OSError, subprocess.CalledProcessError):
+        return None
 
 
 def env_with_benchmark_properties(run_dir: Path, args: argparse.Namespace) -> dict[str, str]:
@@ -153,7 +175,11 @@ def main() -> int:
     if args.workers < 1:
         raise SystemExit("--workers must be at least 1")
     project_root = args.project_root.expanduser().resolve()
-    run_dir = (project_root / args.module / "run").resolve()
+    run_dir = (args.run_dir or project_root / args.module / "run").expanduser().resolve()
+    if args.run_dir is not None and args.module != "mc1201":
+        raise SystemExit("--run-dir is supported by mc1201 only")
+    if not re.fullmatch(r"[a-z0-9_.-]+:[a-z0-9_./-]+", args.dimension):
+        raise SystemExit("--dimension must be a namespace:path identifier")
     output_dir = (args.output_dir or project_root / "tools" / "benchmark-results").expanduser().resolve()
     label = args.label or (f"parallel-{args.workers}" if args.parallel else "serial")
     log_path = output_dir / f"{label}.server.log"
@@ -171,7 +197,7 @@ def main() -> int:
                 raise SystemExit(f"cache template is not a directory: {cache_template}")
             (tellus_dir / "cache").parent.mkdir(parents=True, exist_ok=True)
             shutil.copytree(cache_template, tellus_dir / "cache")
-    write_server_config(run_dir)
+    write_server_config(run_dir, args.world_type)
     result_dir = run_dir / "tellus" / "benchmarks"
     before = set(result_dir.glob("chunk-benchmark-*.json")) if result_dir.exists() else set()
 
@@ -184,7 +210,11 @@ def main() -> int:
         "--no-daemon",
         "--max-workers=2",
     ]
+    if args.run_dir is not None:
+        command.insert(1, f"-PtellusRunDir={run_dir}")
     env = env_with_benchmark_properties(run_dir, args)
+    start_revision = git_revision(project_root)
+    start_dirty = git_worktree_dirty(project_root)
     print(f"[benchmark] starting {label}: {' '.join(command)}", flush=True)
     process = subprocess.Popen(
         command,
@@ -203,7 +233,7 @@ def main() -> int:
         for line in iter_output(process, log_path):
             if not sent and any(marker in line for marker in READY_MARKERS):
                 assert process.stdin is not None
-                command_line = f"tellus benchmark {args.chunk_x} {args.chunk_z} {args.radius}\n"
+                command_line = f"execute in {args.dimension} run tellus benchmark {args.chunk_x} {args.chunk_z} {args.radius}\n"
                 process.stdin.write(command_line)
                 process.stdin.flush()
                 sent = True
@@ -235,7 +265,11 @@ def main() -> int:
     result.update(
         {
             "runnerLabel": label,
-            "runnerRevision": git_revision(project_root),
+            "runnerDimension": args.dimension,
+            "runnerRunDir": str(run_dir),
+            "runnerRevision": start_revision,
+            "runnerWorktreeDirtyAtStart": start_dirty,
+            "runnerWorktreeDirtyAtEnd": git_worktree_dirty(project_root),
             "runnerWorkers": args.workers,
             "runnerParallel": args.parallel,
             "runnerParallelWater": args.parallel_water,

@@ -1,8 +1,13 @@
 # Global map geometry kernel
 
-`GlobalMapModel` is the first executable layer of the global-map design. It
-keeps the existing Tellus block projection as the world coordinate system and
-adds deterministic local charts on top of it:
+`GlobalMapModel` is the compatibility kernel for the current Tellus generator.
+It keeps the existing Tellus block projection as the world coordinate system
+and adds deterministic local charts on top of it. It is not the final
+projection-free spherical geometry model; that model is documented in
+[`sphere-world-geometry.md`](sphere-world-geometry.md) and implemented by
+`SphereWorldModel`.
+
+The compatibility kernel provides:
 
 - a `ChartKey` is obtained with floor division over projected block coordinates,
   including negative coordinates;

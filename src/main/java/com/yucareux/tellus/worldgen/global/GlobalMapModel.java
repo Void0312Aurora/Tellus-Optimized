@@ -3,15 +3,14 @@ package com.yucareux.tellus.worldgen.global;
 import com.yucareux.tellus.worldgen.EarthProjection;
 
 /**
- * Geometry kernel for a progressive, charted global map.
+ * Compatibility geometry kernel for the current projected Tellus generator.
  *
- * <p>The Minecraft world remains a discrete block lattice. This class keeps
- * the lattice coordinates in the existing Tellus projection, while each chart
+ * <p>The Minecraft world remains a discrete block lattice. This compatibility
+ * class keeps that lattice in the existing Tellus projection, while each chart
  * supplies a local tangent-space approximation for globe-aware operations.
- * Charts are deterministic and overlap only through their shared geodetic
- * anchor, so terrain and building providers can expand one chart at a time.
- * The truncated spherical exponential map is opt-in and does not change the
- * existing generator until a caller uses it.</p>
+ * The projection-free spherical kernel is implemented by
+ * {@link SphereWorldModel}; this class remains until the terrain and building
+ * consumers have migrated to spherical chunk addresses.</p>
  */
 public final class GlobalMapModel {
    public static final double EARTH_RADIUS_METERS = EarthProjection.METERS_PER_DEGREE * 180.0 / Math.PI;

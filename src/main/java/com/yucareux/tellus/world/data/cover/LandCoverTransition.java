@@ -1,5 +1,7 @@
 package com.yucareux.tellus.world.data.cover;
 
+import com.yucareux.tellus.worldgen.global.SphereWorldModel;
+
 /**
  * Turns categorical raster interpolation weights into stable, organic-looking
  * land-cover boundaries.
@@ -60,6 +62,16 @@ public final class LandCoverTransition {
       double blockZ,
       double sourceCellBlocks
    ) {
+      return selectVisualClassAtThreshold(
+         centerClass, class00, class10, class01, class11, fractionX, fractionZ,
+         transitionStrength, transitionThreshold(blockX, blockZ, sourceCellBlocks)
+      );
+   }
+
+   static int selectVisualClassAtThreshold(
+      int centerClass, int class00, int class10, int class01, int class11,
+      double fractionX, double fractionZ, double transitionStrength, double threshold
+   ) {
       if (!(transitionStrength > 0.0)
          || !isBlendableClass(centerClass)
          || isHardClass(centerClass)
@@ -92,7 +104,7 @@ public final class LandCoverTransition {
       scratch.add(class10, fx * inverseZ * strength);
       scratch.add(class01, inverseX * fz * strength);
       scratch.add(class11, fx * fz * strength);
-      return scratch.pick(centerClass, transitionThreshold(blockX, blockZ, sourceCellBlocks));
+      return scratch.pick(centerClass, threshold);
    }
 
    public static boolean isHardClass(int coverClass) {
@@ -121,6 +133,41 @@ public final class LandCoverTransition {
       field = field * field * (3.0 - 2.0 * field);
       double edgeDetail = hashToUnit(floorToLong(blockX), floorToLong(blockZ), EDGE_DETAIL_SEED) - 0.5;
       return clamp(field + edgeDetail * 0.12, 0.0, Math.nextDown(1.0));
+   }
+
+   /** A continuous three-dimensional noise field shared by every spherical chart. */
+   static double sphericalTransitionThreshold(
+      SphereWorldModel.GeoPoint point, double worldScale, double sourceResolutionMeters
+   ) {
+      double lat = Math.toRadians(point.latitude());
+      double lon = Math.toRadians(point.longitude());
+      double radius = SphereWorldModel.EARTH_RADIUS_METERS / worldScale;
+      double x = radius * Math.cos(lat) * Math.cos(lon);
+      double y = radius * Math.sin(lat);
+      double z = radius * Math.cos(lat) * Math.sin(lon);
+      double patch = clamp(sourceResolutionMeters / worldScale * 0.45, 2.0, 12.0);
+      double coarse = valueNoise3d(x / patch, y / patch, z / patch, COARSE_NOISE_SEED);
+      double detail = valueNoise3d(
+         x / (patch * 0.47) + 31.75, y / (patch * 0.47) - 19.25,
+         z / (patch * 0.47) + 7.5, DETAIL_NOISE_SEED
+      );
+      double field = clamp(0.5 + (0.72 * coarse + 0.28 * detail - 0.5) * 1.45, 0.0, 1.0);
+      return field * field * (3.0 - 2.0 * field);
+   }
+
+   private static double valueNoise3d(double x, double y, double z, long seed) {
+      long x0 = floorToLong(x), y0 = floorToLong(y), z0 = floorToLong(z);
+      double fx = smootherStep(x - x0), fy = smootherStep(y - y0), fz = smootherStep(z - z0);
+      double result = 0.0;
+      for (int dz = 0; dz <= 1; dz++) {
+         for (int dy = 0; dy <= 1; dy++) {
+            for (int dx = 0; dx <= 1; dx++) {
+               double weight = (dx == 0 ? 1.0 - fx : fx) * (dy == 0 ? 1.0 - fy : fy) * (dz == 0 ? 1.0 - fz : fz);
+               result += weight * hashToUnit(x0 + dx, y0 + dy, seed ^ mix64(z0 + dz));
+            }
+         }
+      }
+      return result;
    }
 
    private static boolean isBlendableClass(int coverClass) {

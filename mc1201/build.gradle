@@ -25,6 +25,13 @@ ext.tellus = [
 
 apply from: rootProject.file('gradle/tellus-fabric.gradle')
 
+// An explicit directory allows new generator smoke runs without replacing the
+// ordinary benchmark save or its cache.
+def isolatedRunDir = providers.gradleProperty('tellusRunDir').orNull
+if (isolatedRunDir != null && !isolatedRunDir.isBlank()) {
+	loom.runs.server.runDir = project.relativePath(file(isolatedRunDir))
+}
+
 // The headless benchmark launches the development server as a child JVM. Keep
 // its heap arguments on that child task instead of JAVA_TOOL_OPTIONS, which
 // would also apply to Gradle's own daemon and can conflict with its Xmx.

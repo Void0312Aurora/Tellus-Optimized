@@ -12,6 +12,7 @@ import com.yucareux.tellus.cache.TellusCacheRegistry;
 import com.yucareux.tellus.world.data.pmtiles.PmTilesSafety;
 import com.yucareux.tellus.world.data.source.ParallelDownloadRunner;
 import com.yucareux.tellus.worldgen.EarthProjection;
+import com.yucareux.tellus.world.data.geo.GeodeticBounds;
 import io.github.sebasbaumh.mapbox.vectortile.VectorTile.Tile;
 import io.github.sebasbaumh.mapbox.vectortile.VectorTile.Tile.Feature;
 import io.github.sebasbaumh.mapbox.vectortile.VectorTile.Tile.Layer;
@@ -116,31 +117,60 @@ public final class TellusOsmWaterSource implements TellusCacheHandle {
       this.ensureInitialized();
       if (this.available && !(worldScale <= 0.0)) {
          TellusOsmWaterSource.GeoBounds bounds = geoBoundsForBlockArea(minBlockX, minBlockZ, maxBlockX, maxBlockZ, marginBlocks, worldScale);
-         if (bounds == null) {
-            return new WaterQueryResult(List.of(), CoverageStatus.COMPLETE, 0);
-         } else {
-            int zoom = this.queryZoomForBounds(bounds, worldScale, maxQueryTiles);
-            List<TellusOsmWaterSource.TileKey> keys = tileKeysForBounds(bounds, zoom);
-            if (keys.isEmpty()) {
-               return new WaterQueryResult(List.of(), CoverageStatus.COMPLETE, zoom);
-            } else {
-               List<OsmWaterFeature> features = new ArrayList<>();
-               CoverageStatus coverageStatus = CoverageStatus.COMPLETE;
-
-               for (TellusOsmWaterSource.TileKey key : keys) {
-                  TellusOsmWaterSource.TileLookup lookup = this.getTileLookup(key, mode);
-                  coverageStatus = CoverageStatus.combine(coverageStatus, lookup.coverageStatus());
-                  OsmWaterTile tile = lookup.tile();
-                  if (!tile.isEmpty()) {
-                     features.addAll(tile.featuresInBounds(bounds.south(), bounds.west(), bounds.north(), bounds.east()));
-                  }
-               }
-
-               return new WaterQueryResult(features, coverageStatus, zoom);
-            }
-         }
+         return this.waterForBoundsWithStatus(bounds, mode, worldScale, maxQueryTiles);
       } else {
          return new WaterQueryResult(List.of(), CoverageStatus.FAILED, 0);
+      }
+   }
+
+   /** Queries source geometry directly in latitude/longitude, including date-line crossings. */
+   public WaterQueryResult waterForGeoAreaWithStatus(
+      GeodeticBounds bounds, double worldScale, OsmQueryMode mode
+   ) {
+      java.util.Objects.requireNonNull(bounds, "bounds");
+      this.ensureInitialized();
+      if (!this.available || !(worldScale > 0.0) || bounds.mercatorWindows().isEmpty()) {
+         return new WaterQueryResult(List.of(), CoverageStatus.FAILED, 0);
+      }
+      List<OsmWaterFeature> features = new ArrayList<>();
+      CoverageStatus coverage = CoverageStatus.COMPLETE;
+      int zoom = this.maxZoom;
+      for (GeodeticBounds window : bounds.mercatorWindows()) {
+         WaterQueryResult result = this.waterForBoundsWithStatus(
+            new GeoBounds(window.south(), window.west(), window.north(), window.east()),
+            mode, worldScale, MAX_QUERY_TILES
+         );
+         features.addAll(result.features());
+         coverage = CoverageStatus.combine(coverage, result.coverageStatus());
+         zoom = Math.min(zoom, result.zoom());
+      }
+      if (bounds.south() < MIN_LAT || bounds.north() > MAX_LAT) coverage = CoverageStatus.FAILED;
+      return new WaterQueryResult(new ArrayList<>(new java.util.LinkedHashSet<>(features)), coverage, zoom);
+   }
+
+   private WaterQueryResult waterForBoundsWithStatus(GeoBounds bounds, OsmQueryMode mode, double worldScale, int maxQueryTiles) {
+      if (bounds == null) {
+         return new WaterQueryResult(List.of(), CoverageStatus.COMPLETE, 0);
+      } else {
+         int zoom = this.queryZoomForBounds(bounds, worldScale, maxQueryTiles);
+         List<TellusOsmWaterSource.TileKey> keys = tileKeysForBounds(bounds, zoom);
+         if (keys.isEmpty()) {
+            return new WaterQueryResult(List.of(), CoverageStatus.COMPLETE, zoom);
+         } else {
+            List<OsmWaterFeature> features = new ArrayList<>();
+            CoverageStatus coverageStatus = CoverageStatus.COMPLETE;
+
+            for (TellusOsmWaterSource.TileKey key : keys) {
+               TellusOsmWaterSource.TileLookup lookup = this.getTileLookup(key, mode);
+               coverageStatus = CoverageStatus.combine(coverageStatus, lookup.coverageStatus());
+               OsmWaterTile tile = lookup.tile();
+               if (!tile.isEmpty()) {
+                  features.addAll(tile.featuresInBounds(bounds.south(), bounds.west(), bounds.north(), bounds.east()));
+               }
+            }
+
+            return new WaterQueryResult(features, coverageStatus, zoom);
+         }
       }
    }
 
