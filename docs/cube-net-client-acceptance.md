@@ -853,8 +853,11 @@ view, rather than only the former seven-section camera slab. The source apron
 must cover the view/simulation radius, threshold chunk and neighbor halo;
 undersized configurations refuse to begin staged handoff and report the needed
 width. `create_cube_net_datapack.py --apron-chunks` configures new packs. The
-old default remains 2; the maximum remains 32. Legacy clients and non-player
-probes retain their previous bounded preload.
+recorded run below used a default of 2 and maximum 32. The review correction
+now uses a default of 5 and supports widths through 35 chunks (view/simulation
+distance 32); existing measurement results below remain tied to their recorded
+configuration. Legacy clients and non-player probes retain their previous
+bounded preload.
 
 Jar SHA-256:
 `4DD9FF6F9CF3A500E04DAD37102F967383E1ACB45262F94FEDCBEA24F9A51FEC`.

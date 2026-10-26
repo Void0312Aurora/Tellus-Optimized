@@ -32,7 +32,7 @@ vertical limits as the face generator:
   "sea_level": 64,
   "min_y": -2032,
   "height": 4064,
-  "experimental_apron_chunks": 2
+  "experimental_apron_chunks": 5
 }
 ```
 
@@ -71,7 +71,8 @@ behavior remain separate acceptance work. See
 [the client acceptance record](cube-net-client-acceptance.md)
 for the measured scope and capture limitations.
 
-For staged-client traversal, set `--apron-chunks` when creating a new test pack.
+For staged-client traversal, set `--apron-chunks` when creating a new test pack;
+the helper defaults to 5 chunks.
 At the current 24-block handoff threshold the required width is
 `3 + max(effective render distance, server simulation distance)` chunks,
 including the far edge of the threshold chunk and a neighbor halo. The
@@ -79,8 +80,9 @@ effective render distance is the smaller of the advertised client distance and
 the server view distance. The runtime rejects staging if the world's configured
 apron is narrower. For example, client view 4 and simulation distance 4 require
 7 apron chunks; an 8-chunk test band supplies a small margin. The old default
-of 2 is a bounded generator fixture and does not support this complete-view
-gate. Widths over 32 chunks remain unsupported. Corner/overlap quarantine and
+of 2 was a bounded generator fixture and did not support this complete-view
+gate. The supported width is 0..35 chunks; view/simulation distance 32 requires
+35 chunks. Corner/overlap quarantine and
 full-height compilation cost still need separate acceptance.
 
 ## Current server evidence
