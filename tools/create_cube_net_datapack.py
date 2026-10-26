@@ -14,7 +14,8 @@ IDENTIFIER = re.compile(r"[a-z0-9_.-]+:[a-z0-9_./-]+")
 MAPPING = "rancic-ccam30-double-v1"
 
 
-def create_pack(output: Path, world: str, scale: float, sea: int, min_y: int, height: int) -> list[Path]:
+def create_pack(output: Path, world: str, scale: float, sea: int, min_y: int, height: int,
+                apron_chunks: int = 2) -> list[Path]:
     if not IDENTIFIER.fullmatch(world):
         raise ValueError("world must be a namespace:path identifier")
     namespace, name = world.split(":", 1)
@@ -26,6 +27,8 @@ def create_pack(output: Path, world: str, scale: float, sea: int, min_y: int, he
         raise ValueError("vertical range must be section-aligned within [-2032, 2032)")
     if not min_y <= sea < min_y + height:
         raise ValueError("sea level must lie within the dimension height range")
+    if not 0 <= apron_chunks <= 32:
+        raise ValueError("apron width must be between 0 and 32 chunks")
     if output.exists() and (not output.is_dir() or any(output.iterdir())):
         raise ValueError("output must be a new or empty directory")
 
@@ -50,7 +53,7 @@ def create_pack(output: Path, world: str, scale: float, sea: int, min_y: int, he
     }
     generator = {
         "type": "tellus:cube_net",
-        "geometry_version": 2,
+        "geometry_version": 3,
         "mapping": MAPPING,
         "excluded_radius_meters": 300000.0,
         "transition_width_meters": 50000.0,
@@ -59,6 +62,7 @@ def create_pack(output: Path, world: str, scale: float, sea: int, min_y: int, he
         "sea_level": sea,
         "min_y": min_y,
         "height": height,
+        "experimental_apron_chunks": apron_chunks,
     }
     documents = {
         "pack.mcmeta": {
@@ -92,9 +96,12 @@ def main() -> None:
     parser.add_argument("--sea-level", type=int, default=64)
     parser.add_argument("--min-y", type=int, default=-2032)
     parser.add_argument("--height", type=int, default=4064)
+    parser.add_argument("--apron-chunks", type=int, default=2,
+                        help="Native mirror band width, 0..32 chunks (default: 2).")
     args = parser.parse_args()
     try:
-        files = create_pack(args.output, args.world, args.scale, args.sea_level, args.min_y, args.height)
+        files = create_pack(args.output, args.world, args.scale, args.sea_level, args.min_y, args.height,
+                            args.apron_chunks)
     except ValueError as error:
         parser.error(str(error))
     print(f"Created {len(files)} files for {args.world}: {args.output}")

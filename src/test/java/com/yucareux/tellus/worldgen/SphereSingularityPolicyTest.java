@@ -50,6 +50,18 @@ class SphereSingularityPolicyTest {
    }
 
    @Test
+   void transitionBufferStillAdmitsTerrainButNotPlayerEntry() {
+      var policy = new SphereSingularityPolicy(MODEL,
+         new SphereSingularityPolicy.Config(0.0, 1_000_000.0));
+      var cornerChunk = new SphereWorldModel.SphereChunkAddress(0, 0, 0);
+      assertEquals(SphereSingularityPolicy.Status.TRANSITION, policy.status(cornerChunk));
+      assertTrue(policy.admitsTerrainMaterialization(cornerChunk));
+      assertFalse(policy.admitsOrdinaryMaterialization(cornerChunk));
+      assertFalse(policy.admitsOrdinaryEnginePoint(0, -MODEL.config().faceBlocks() * 0.5,
+         -MODEL.config().faceBlocks() * 0.5));
+   }
+
+   @Test
    void invalidConfigurationIsRejected() {
       assertThrows(IllegalArgumentException.class,
          () -> new SphereSingularityPolicy.Config(-1.0, 0.0));

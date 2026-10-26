@@ -5,10 +5,10 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Runtime quarantine for the eight degree-three corners of the conformal
- * cubed sphere. Classification is conservative: a block or chunk is admitted
- * only when its enclosing footprint lies outside the configured cap and
- * transition band.
+ * Runtime boundary policy for the eight degree-three corners of the conformal
+ * cubed sphere. Classification is conservative: terrain may use the ordinary
+ * sampler through the transition buffer, while player admission remains
+ * restricted to the ordinary band.
  */
 public final class SphereSingularityPolicy {
    public enum Status { ORDINARY, TRANSITION, EXCLUDED }
@@ -128,6 +128,15 @@ public final class SphereSingularityPolicy {
       return status(address) == Status.ORDINARY;
    }
 
+   /**
+    * Terrain generation may continue through the non-playable transition
+    * buffer. The excluded cap remains outside the ordinary sampler because its
+    * cells do not have a valid gameplay representation.
+    */
+   public boolean admitsTerrainMaterialization(SphereWorldModel.SphereChunkAddress address) {
+      return status(address) != Status.EXCLUDED;
+   }
+
    public boolean admitsOrdinaryEnginePoint(int face, double engineX, double engineZ) {
       return classifyEnginePoint(face, engineX, engineZ).status() == Status.ORDINARY;
    }
@@ -136,6 +145,14 @@ public final class SphereSingularityPolicy {
       Classification result = classify(address);
       if (result.status() != Status.ORDINARY) {
          throw new IllegalStateException("spherical singularity quarantine: " + result.status()
+            + " at " + address);
+      }
+   }
+
+   public void requireTerrainMaterialization(SphereWorldModel.SphereChunkAddress address) {
+      Classification result = classify(address);
+      if (result.status() == Status.EXCLUDED) {
+         throw new IllegalStateException("spherical singularity cap: " + result.status()
             + " at " + address);
       }
    }

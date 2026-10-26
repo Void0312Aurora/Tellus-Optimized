@@ -42,6 +42,16 @@ public final class CubeNetLayout {
    public PlanarPoint toPlanar(FacePoint point) {
       Objects.requireNonNull(point, "point");
       requireFaceCoordinate(point.u(), point.v());
+      return toPlanarUnbounded(point);
+   }
+
+   /**
+    * Converts a face coordinate without requiring it to remain inside the
+    * face. This is used only for derived seam apron geometry, whose points are
+    * deliberately outside the source face in the planar chart.
+    */
+   public PlanarPoint toPlanarUnbounded(FacePoint point) {
+      Objects.requireNonNull(point, "point");
       FacePlacement placement = placement(point.face());
       return new PlanarPoint(
          (double)placement.originX() * this.faceSize
@@ -283,11 +293,11 @@ public final class CubeNetLayout {
          // The translation keeps the ordinary scale-1 net inside the default
          // Minecraft world border while preserving every relative adjacency.
          Face.POS_X, new FacePlacement(Face.POS_X, 2, -1, 0, 1, -1, 0),
-         Face.NEG_X, new FacePlacement(Face.NEG_X, -1, -1, 0, 1, 1, 0),
+         Face.NEG_X, new FacePlacement(Face.NEG_X, -1, 0, 0, -1, 1, 0),
          Face.POS_Y, new FacePlacement(Face.POS_Y, 0, -1, 1, 0, 0, 1),
          Face.NEG_Y, new FacePlacement(Face.NEG_Y, 0, 1, 1, 0, 0, 1),
          Face.POS_Z, new FacePlacement(Face.POS_Z, 0, -2, 1, 0, 0, 1),
-         Face.NEG_Z, new FacePlacement(Face.NEG_Z, 0, 1, 1, 0, 0, -1));
+         Face.NEG_Z, new FacePlacement(Face.NEG_Z, 1, 1, -1, 0, 0, -1));
    }
 
    private Map<Face, Map<Side, Seam>> buildSeams() {
@@ -310,6 +320,9 @@ public final class CubeNetLayout {
       for (Face face : Face.values()) {
          FacePlacement placement = placement(face);
          if (!seen.add(placement.face())) throw new IllegalStateException("duplicate net face");
+         if (placement.uAxisX() * placement.vAxisZ() - placement.vAxisX() * placement.uAxisZ() != 1) {
+            throw new IllegalStateException("cube-net face reverses orientation: " + face);
+         }
       }
       for (Face first : Face.values()) for (Face second : Face.values()) {
          if (first.ordinal() >= second.ordinal()) continue;
@@ -336,6 +349,15 @@ public final class CubeNetLayout {
          Seam reverse = seam(seam.target(), seam.targetSide());
          if (reverse.target() != face || reverse.targetSide() != side || reverse.reverse() != seam.reverse()) {
             throw new IllegalStateException("non-reciprocal seam: " + seam);
+         }
+         if (arePlanarNeighbors(face, side)) {
+            for (double edge : new double[]{0.0, this.faceSize * 0.25, this.faceSize}) {
+               double[] source = planarEdgePoint(placement(face), side, edge);
+               PlanarPoint target = toPlanar(mapAcross(face, side, edge, 0.0));
+               if (!planarSame(source, new double[]{target.x(), target.z()})) {
+                  throw new IllegalStateException("direct edge reverses physical cell order: " + seam);
+               }
+            }
          }
       }
    }
