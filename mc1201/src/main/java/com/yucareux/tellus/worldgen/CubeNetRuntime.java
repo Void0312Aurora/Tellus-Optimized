@@ -1595,10 +1595,18 @@ public final class CubeNetRuntime {
       CubeNetViewCoverage coverage = CubeNetViewCoverage.forDistances(
          ((CubeNetClientViewDistance)player).tellus$requestedViewDistance(),
          players.getViewDistance(), players.getSimulationDistance(), APRON_REBASE_DEPTH_BLOCKS);
-      if (generator.apronWidthChunks() < coverage.requiredApronChunks()) {
-         player.sendSystemMessage(Component.literal("Cube-net crossing requires an apron of at least "
+      return transferRadius(coverage, generator.apronWidthChunks(),
+         message -> player.sendSystemMessage(Component.literal(message)));
+   }
+
+   /** The same admission and diagnostic path is used by player and mounted staging. */
+   static int transferRadius(CubeNetViewCoverage coverage, int apronChunks,
+      java.util.function.Consumer<String> rejected) {
+      if (apronChunks < coverage.requiredApronChunks()) {
+         rejected.accept("Cube-net crossing requires an apron of at least "
             + coverage.requiredApronChunks() + " chunks for this view/simulation distance; this world has "
-            + generator.apronWidthChunks()));
+            + apronChunks + ". Lower the view/simulation distances or create a new test world with --apron-chunks "
+            + coverage.requiredApronChunks());
          return -1;
       }
       return coverage.dataRadius();

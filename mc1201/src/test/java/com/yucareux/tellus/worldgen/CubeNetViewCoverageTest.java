@@ -1,6 +1,7 @@
 package com.yucareux.tellus.worldgen;
 
 import org.junit.jupiter.api.Test;
+import java.util.ArrayList;
 import static org.junit.jupiter.api.Assertions.*;
 
 class CubeNetViewCoverageTest {
@@ -29,12 +30,59 @@ class CubeNetViewCoverageTest {
    }
 
    @Test
-   void defaultAndMaximumConfigurationCoverTheSupportedDistanceRange() {
+   void minimumAndMaximumWidthsCoverTheirDeclaredDistances() {
       assertEquals(5, CubeNetViewCoverage.DEFAULT_APRON_CHUNKS);
       var minimum = CubeNetViewCoverage.forDistances(2, 2, 2, 24);
       assertEquals(5, minimum.requiredApronChunks());
       var maximum = CubeNetViewCoverage.forDistances(32, 32, 32, 24);
       assertEquals(35, maximum.requiredApronChunks());
+      var messages = new ArrayList<String>();
+      assertEquals(33, CubeNetRuntime.transferRadius(maximum, 35, messages::add));
+      assertTrue(messages.isEmpty());
+      assertEquals(-1, CubeNetRuntime.transferRadius(maximum, 34, messages::add));
+      assertTrue(messages.get(0).contains("at least 35 chunks"));
+   }
+
+   @Test
+   void defaultApronOnlyAdmitsMinimumEffectiveViewAndSimulationDistances() {
+      var messages = new ArrayList<String>();
+      var minimum = CubeNetViewCoverage.forDistances(2, 2, 2, 24);
+      assertEquals(3, CubeNetRuntime.transferRadius(minimum,
+         CubeNetViewCoverage.DEFAULT_APRON_CHUNKS, messages::add));
+      // A higher advertised client distance still fits when the server caps it to 2.
+      assertEquals(3, CubeNetRuntime.transferRadius(
+         CubeNetViewCoverage.forDistances(16, 2, 2, 24), 5, messages::add));
+      assertTrue(messages.isEmpty());
+      assertEquals(-1, CubeNetRuntime.transferRadius(
+         CubeNetViewCoverage.forDistances(3, 3, 2, 24), 5, messages::add));
+      assertEquals(-1, CubeNetRuntime.transferRadius(
+         CubeNetViewCoverage.forDistances(2, 2, 3, 24), 5, messages::add));
+      assertEquals(2, messages.size());
+   }
+
+   @Test
+   void manualViewFourApronRejectsDefaultWithAnActionableDiagnostic() {
+      var coverage = CubeNetViewCoverage.forDistances(4, 4, 4, 24);
+      var messages = new ArrayList<String>();
+      assertEquals(-1, CubeNetRuntime.transferRadius(coverage, 5, messages::add));
+      assertEquals(1, messages.size());
+      assertTrue(messages.get(0).contains("at least 7 chunks"));
+      assertTrue(messages.get(0).contains("this world has 5"));
+      assertTrue(messages.get(0).contains("--apron-chunks 7"));
+      messages.clear();
+      assertEquals(5, CubeNetRuntime.transferRadius(coverage, 7, messages::add));
+      assertTrue(messages.isEmpty());
+   }
+
+   @Test
+   void manualApronAccountsForServerViewCapAndHigherSimulationDistance() {
+      var coverage = CubeNetViewCoverage.forDistances(12, 4, 6, 24);
+      var messages = new ArrayList<String>();
+      assertEquals(-1, CubeNetRuntime.transferRadius(coverage, 8, messages::add));
+      assertTrue(messages.get(0).contains("--apron-chunks 9"));
+      messages.clear();
+      assertEquals(5, CubeNetRuntime.transferRadius(coverage, 9, messages::add));
+      assertTrue(messages.isEmpty());
    }
 
    @Test

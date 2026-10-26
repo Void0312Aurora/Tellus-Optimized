@@ -4,6 +4,7 @@ package com.yucareux.tellus.worldgen;
 public record CubeNetViewCoverage(int viewRadius, int dataRadius, int requiredApronChunks) {
    public static final int MIN_DISTANCE = 2;
    public static final int MAX_DISTANCE = 32;
+   // Minimal staged-client fixture: effective view and simulation distance must both be 2.
    public static final int DEFAULT_APRON_CHUNKS = 5;
 
    public static CubeNetViewCoverage forDistances(int requestedView, int serverView,
