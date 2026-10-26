@@ -97,7 +97,9 @@ def main() -> None:
     parser.add_argument("--min-y", type=int, default=-2032)
     parser.add_argument("--height", type=int, default=4064)
     parser.add_argument("--apron-chunks", type=int, default=5,
-                        help="Native mirror band width, 0..35 chunks (default: 5).")
+                        help="Native mirror band width, 0..35 chunks (default: 5, only for effective view "
+                             "and simulation distance 2). For other distances choose "
+                             "3 + max(min(client view, server view), server simulation distance).")
     args = parser.parse_args()
     try:
         files = create_pack(args.output, args.world, args.scale, args.sea_level, args.min_y, args.height,
