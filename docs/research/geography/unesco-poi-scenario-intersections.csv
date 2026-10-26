@@ -1,0 +1,7 @@
+cap,vertex,status,id_no,name_en,category,states_names,matched_longitude,matched_latitude
+300,4,TRANSITION,798,The Sundarbans,Natural,"[""Bangladesh""]",89.472282667,21.839117667
+300,4,TRANSITION,452,Sundarbans National Park,Natural,"[""India""]",88.895833330,21.945000000
+360,4,EXCLUDED,798,The Sundarbans,Natural,"[""Bangladesh""]",89.472282667,21.839117667
+360,4,EXCLUDED,452,Sundarbans National Park,Natural,"[""India""]",88.895833330,21.945000000
+360,4,TRANSITION,321,Historic Mosque City of Bagerhat,Cultural,"[""Bangladesh""]",89.800000000,22.666670000
+360,4,TRANSITION,246,"Sun Temple, Konârak",Cultural,"[""India""]",86.094720000,19.887500000

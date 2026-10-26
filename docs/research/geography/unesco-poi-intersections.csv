@@ -1,0 +1,3 @@
+vertex,status,id_no,name_en,category,states_names,matched_longitude,matched_latitude
+4,TRANSITION,798,The Sundarbans,Natural,"[""Bangladesh""]",89.472282667,21.839117667
+4,TRANSITION,452,Sundarbans National Park,Natural,"[""India""]",88.895833330,21.945000000
