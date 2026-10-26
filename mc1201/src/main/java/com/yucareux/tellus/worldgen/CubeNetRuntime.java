@@ -23,8 +23,6 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Semaphore;
-import java.util.concurrent.atomic.AtomicBoolean;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
@@ -75,9 +73,6 @@ public final class CubeNetRuntime {
    private static final long ESTIMATED_CHUNK_LOAD_BYTES = 8L * 1024L * 1024L;
    private static final long MAX_CHUNK_LOAD_BYTES =
       MAX_CONCURRENT_CHUNK_LOADS * ESTIMATED_CHUNK_LOAD_BYTES;
-   private static final Semaphore CHUNK_LOAD_BUDGET = new Semaphore(
-      Math.min(MAX_CONCURRENT_CHUNK_LOADS,
-         Math.toIntExact(MAX_CHUNK_LOAD_BYTES / ESTIMATED_CHUNK_LOAD_BYTES)));
    private static final int APRON_REBASE_DEPTH_BLOCKS = 24;
    private static final double SEAM_DESTINATION_INSET = 0.5;
    // Chunk loading and client-side interpolation can leave source-face
@@ -1518,35 +1513,41 @@ public final class CubeNetRuntime {
    }
 
    private static CompletableFuture<Void> loadTransferArea(ServerLevel level, ChunkPos center, int radius) {
-      List<CompletableFuture<?>> loads = new ArrayList<>();
+      List<ChunkPos> chunks = new ArrayList<>();
       for (int dz = -radius; dz <= radius; dz++)
          for (int dx = -radius; dx <= radius; dx++) {
-         int cx = center.x + dx, cz = center.z + dz;
-         AtomicBoolean permitAcquired = new AtomicBoolean();
+         chunks.add(new ChunkPos(center.x + dx, center.z + dz));
+      }
+      return loadTransferAreaBatch(level, chunks, 0);
+   }
+
+   static List<ChunkPos> chunkLoadBatch(List<ChunkPos> chunks, int start) {
+      if (start < 0 || start > chunks.size()) {
+         throw new IndexOutOfBoundsException("Invalid chunk batch start: " + start);
+      }
+      int end = Math.min(chunks.size(), start + MAX_CONCURRENT_CHUNK_LOADS);
+      return List.copyOf(chunks.subList(start, end));
+   }
+
+   private static CompletableFuture<Void> loadTransferAreaBatch(
+      ServerLevel level, List<ChunkPos> chunks, int start) {
+      if (start >= chunks.size()) return CompletableFuture.completedFuture(null);
+      List<ChunkPos> batch = chunkLoadBatch(chunks, start);
+      List<CompletableFuture<?>> loads = new ArrayList<>(batch.size());
+      for (ChunkPos chunk : batch) {
          loads.add(CompletableFuture.supplyAsync(
-            () -> {
-               try {
-                  CHUNK_LOAD_BUDGET.acquire();
-                  permitAcquired.set(true);
-               } catch (InterruptedException error) {
-                  Thread.currentThread().interrupt();
-                  throw new java.util.concurrent.CompletionException(error);
-               }
-               return level.getChunkSource().getChunkFuture(cx, cz, ChunkStatus.FULL, true);
-            },
+            () -> level.getChunkSource().getChunkFuture(chunk.x, chunk.z, ChunkStatus.FULL, true),
             Util.backgroundExecutor()).thenCompose(future -> future).thenAccept(result -> {
                if (result.left().isEmpty()) {
                   throw new IllegalStateException("destination chunk unavailable: " + result.right());
                }
-            }).whenComplete((ignored, error) -> {
-               if (permitAcquired.compareAndSet(true, false)) releaseChunkLoadBudget();
             }));
       }
-      return CompletableFuture.allOf(loads.toArray(CompletableFuture[]::new));
-   }
-
-   private static void releaseChunkLoadBudget() {
-      CHUNK_LOAD_BUDGET.release();
+      int next = start + batch.size();
+      CompletableFuture<Void> completedBatch = CompletableFuture.allOf(loads.toArray(CompletableFuture[]::new));
+      if (next >= chunks.size()) return completedBatch;
+      return completedBatch.thenComposeAsync(
+         ignored -> loadTransferAreaBatch(level, chunks, next), Util.backgroundExecutor());
    }
 
    /**

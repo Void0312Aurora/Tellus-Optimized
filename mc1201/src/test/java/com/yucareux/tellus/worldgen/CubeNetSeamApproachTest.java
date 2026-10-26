@@ -4,6 +4,7 @@ import com.yucareux.tellus.worldgen.global.CubeNetLayout;
 import com.yucareux.tellus.worldgen.global.CubeNetApronResolver;
 import com.yucareux.tellus.worldgen.global.CubeNetSeamApproach;
 import org.junit.jupiter.api.Test;
+import java.util.ArrayList;
 import java.util.concurrent.CompletableFuture;
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -74,6 +75,27 @@ class CubeNetSeamApproachTest {
       assertEquals(expectedChunks, chunksSent);
       int budget = CubeNetRuntime.MAX_CHUNK_PACKETS_PER_TICK;
       assertEquals((expectedChunks + budget - 1) / budget, batches);
+   }
+
+   @Test
+   void maximumViewChunkLoadsAreQueuedInBoundedBatches() {
+      int chunkCount = 67 * 67;
+      var chunks = new ArrayList<net.minecraft.world.level.ChunkPos>(chunkCount);
+      for (int i = 0; i < chunkCount; i++) {
+         chunks.add(new net.minecraft.world.level.ChunkPos(i, -i));
+      }
+      int loaded = 0;
+      int batches = 0;
+      while (loaded < chunks.size()) {
+         var batch = CubeNetRuntime.chunkLoadBatch(chunks, loaded);
+         assertFalse(batch.isEmpty());
+         assertTrue(batch.size() <= 8);
+         assertEquals(chunks.subList(loaded, loaded + batch.size()), batch);
+         loaded += batch.size();
+         batches++;
+      }
+      assertEquals(chunkCount, loaded);
+      assertEquals((chunkCount + 7) / 8, batches);
    }
 
    @Test
