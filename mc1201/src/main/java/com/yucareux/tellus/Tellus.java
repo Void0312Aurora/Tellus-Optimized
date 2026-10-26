@@ -3,6 +3,9 @@ package com.yucareux.tellus;
 import com.yucareux.tellus.compat.MinecraftRelease;
 import com.yucareux.tellus.network.GeoTpTeleportPayload;
 import com.yucareux.tellus.network.ManagedTerrainViewPayload;
+import com.yucareux.tellus.network.CubeNetTransitionReadyPayload;
+import com.yucareux.tellus.network.CubeNetTransitionChunksReceivedPayload;
+import com.yucareux.tellus.network.CubeNetTransitionMotionPayload;
 import com.yucareux.tellus.platform.FabricTellusRuntimePlatform;
 import com.yucareux.tellus.worldgen.EarthBiomeSource;
 import com.yucareux.tellus.worldgen.EarthChunkGenerator;
@@ -37,6 +40,18 @@ public final class Tellus extends TellusCommon implements ModInitializer {
       ServerPlayNetworking.registerGlobalReceiver(
          ManagedTerrainViewPayload.TYPE,
          (payload, player, responseSender) -> TellusCommon.handleManagedTerrainView(payload, player)
+      );
+      ServerPlayNetworking.registerGlobalReceiver(
+         CubeNetTransitionReadyPayload.TYPE,
+         (payload, player, responseSender) -> CubeNetRuntime.acceptClientReady(player, payload.transitionId())
+      );
+      ServerPlayNetworking.registerGlobalReceiver(
+         CubeNetTransitionChunksReceivedPayload.TYPE,
+         (payload, player, responseSender) -> CubeNetRuntime.acceptClientChunksReceived(player, payload.transitionId())
+      );
+      ServerPlayNetworking.registerGlobalReceiver(
+         CubeNetTransitionMotionPayload.TYPE,
+         (payload, player, responseSender) -> CubeNetRuntime.acceptClientMotion(player, payload)
       );
       TellusCommon.initializeRuntime(new FabricTellusRuntimePlatform());
       SphereFaceRuntime.register();

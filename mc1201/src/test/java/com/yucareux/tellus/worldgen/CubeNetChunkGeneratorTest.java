@@ -272,6 +272,27 @@ class CubeNetChunkGeneratorTest {
    }
 
    @Test
+   void boundaryVisualGateIncludesTheMovementChunkAllowanceAndIgnoresOrdinarySeams() {
+      var generator = new CubeNetChunkGenerator(new FixedBiomeSource(plains), 1000.0, 64, -64, 384,
+         (point, resolution) -> new SphereChunkSampler.SurfaceData(10.0, 30));
+      assertTrue(generator.admitsOrdinaryPlanarPoint(10848.5, -607.5));
+      assertFalse(generator.admitsBoundaryHintPoint(10848.5, -607.5),
+         "the visual wall must include the conservative chunk movement gate");
+      assertTrue(generator.admitsBoundaryHintPoint(10920.5, -679.5));
+      assertTrue(generator.nearOrdinaryBoundary(10920.5, -679.5, 96.0));
+      assertFalse(generator.nearOrdinaryBoundary(15360.0, -5120.0, 96.0));
+      assertFalse(generator.nearOrdinaryBoundary(15360.0, -1.0, 96.0),
+         "an ordinary cube seam must not display an exclusion wall");
+      var contact = CubeNetRuntime.findBoundaryHint(generator, 10848.004495571211, -619.5);
+      assertNotNull(contact);
+      assertEquals(0.0, contact.tangentX(), 0.0001,
+         "sub-block contact must retain the west wall direction");
+      assertEquals(1.0, Math.abs(contact.tangentZ()), 0.0001);
+      assertEquals(10847.5, contact.x(), 0.0001,
+         "the half-block visual inset must remain beyond the camera near plane");
+   }
+
+   @Test
    void codecPreservesTheSingleLevelCubeNetContract() {
       var generator = new CubeNetChunkGenerator(new FixedBiomeSource(plains), 1.0, 100, -128, 512);
       var ops = RegistryOps.create(JsonOps.INSTANCE,

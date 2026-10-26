@@ -7,7 +7,16 @@
 		"LevelLoadingScreenMixin",
 		"MinecraftScreenMixin",
 		"PresetEditorMixin",
-		"SphericalClientEntityMoveMixin"
+		"SphericalClientEntityMoveMixin",
+		"SeamTeleportInterpolationMixin",
+		"CubeNetChunkCacheMixin",
+		"CubeNetLevelRendererMixin",
+		"CubeNetRebuildCameraMixin",
+		"CubeNetClientPacketMixin",
+		"CubeNetClientMovementMixin",
+		"CubeNetBoatStagingMixin",
+		"CubeNetModelBlockRendererMixin",
+		"CubeNetClientLevelShadeMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1
