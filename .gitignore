@@ -48,6 +48,12 @@ mc*/usercache.json
 tools/__pycache__/
 tools/geography/__pycache__/
 
+# Local RFC server instances, saves, captures and runtime configuration
+/server-*/
+/eula.txt
+/ops.json
+/server.properties
+
 # java
 
 hs_err_*.log
