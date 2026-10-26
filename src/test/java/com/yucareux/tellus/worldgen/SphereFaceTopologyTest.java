@@ -48,8 +48,11 @@ class SphereFaceTopologyTest {
                   var mapped = frame.transport(velocity[0], velocity[1]);
                   var sourceStep = model.continuedSurfacePoint(face, p[0] - min + step * velocity[0], p[1] - min + step * velocity[1]);
                   var targetStep = model.continuedSurfacePoint(target.face(), target.x() - min + step * mapped.x(), target.z() - min + step * mapped.z());
-                  assertTrue(SphereWorldModel.greatCircleDistanceMeters(sourceStep, targetStep) < 1.0E-7,
-                     "analytic Jacobian must agree with spherical displacement to second order");
+                  double error = SphereWorldModel.greatCircleDistanceMeters(sourceStep, targetStep);
+                  assertTrue(error < 1.0E-7,
+                     () -> "analytic Jacobian must agree with spherical displacement to second order: "
+                        + error + " frame=" + frame + " source=" + java.util.Arrays.toString(p)
+                        + " velocity=" + java.util.Arrays.toString(velocity));
                }
                for (float yaw : new float[]{0, 90, -90, 179, 37}) {
                   var vector = frame.transport(-Math.sin(Math.toRadians(yaw)), Math.cos(Math.toRadians(yaw)));
@@ -61,6 +64,39 @@ class SphereFaceTopologyTest {
             }
          }
       }
+   }
+
+   @Test
+   void seamTransferBundlesPositionYawAndVelocityForOneSharedHandoffContract() {
+      var model = SphereWorldModel.forWorldScale(1.0);
+      var topology = new SphereFaceTopology(model);
+      double x = 0.0;
+      double z = topology.maxEngineBlock() + 0.375;
+      float yaw = 27.0F;
+      double velocityX = 0.07;
+      double velocityZ = 0.2;
+
+      var transfer = topology.transfer(0, x, z, yaw, velocityX, velocityZ);
+      var frame = topology.transition(0, x, z);
+      var expectedPoint = topology.enginePoint(frame.destination());
+      var expectedVelocity = frame.transport(velocityX, velocityZ);
+
+      assertEquals(expectedPoint, transfer.destination());
+      assertEquals(frame, transfer.frame());
+      assertEquals(frame.transportYaw(yaw), transfer.yaw(), 1.0E-6F);
+      assertEquals(expectedVelocity, transfer.velocity());
+      assertEquals(2, transfer.destination().face());
+   }
+
+   @Test
+   void exactFaceBoundaryHasNoCrossFaceDestinationAndMustBeHeldInSourceDomain() {
+      var model = SphereWorldModel.forWorldScale(1.0);
+      var topology = new SphereFaceTopology(model);
+      var transfer = topology.transfer(0, 0.0, topology.maxEngineBlock(), 0.0F, 0.0, 1.0);
+
+      assertFalse(topology.containsEnginePoint(0.0, topology.maxEngineBlock()));
+      assertEquals(0, transfer.destination().face());
+      assertEquals(model.config().faceBlocks(), transfer.frame().destination().blockZ(), 0.0);
    }
 
    @Test

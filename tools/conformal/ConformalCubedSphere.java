@@ -58,15 +58,24 @@ public final class ConformalCubedSphere implements ClosedQuadSphereEmbedding.Sur
     * |w'| <= 4/(3 sqrt(2)) |zeta|^(1/3) |P'| / |Q|^(2/3).
     */
    public double stereoDerivativeBound() {
+      return stereoDerivativeBound(1 / ROOT2);
+   }
+
+   /** Conservative derivative bound restricted to an octant radius. */
+   private double stereoDerivativeBound(double maxRadius) {
+      if (!(maxRadius >= 0.0) || maxRadius > 1 / ROOT2 + 1.0E-15
+         || !Double.isFinite(maxRadius)) throw new IllegalArgumentException("octant radius");
+      double zRadius = Math.pow(maxRadius, 4.0);
       double qLower = COEFFICIENTS[0], derivativeUpper = COEFFICIENTS[0];
       double power = 1;
       for (int i = 1; i < COEFFICIENTS.length; i++) {
-         power *= 0.25;
+         power *= zRadius;
          qLower -= Math.abs(COEFFICIENTS[i]) * power;
          derivativeUpper += (i + 1) * Math.abs(COEFFICIENTS[i]) * power;
       }
       if (!(qLower > 0)) throw new IllegalStateException("series lost its nonzero Q bound");
       return 4 / (3 * ROOT2) * Math.pow(1 / ROOT2, 1.0 / 3.0)
+         * Math.pow(maxRadius / (1 / ROOT2), 1.0 / 3.0)
          * derivativeUpper / Math.pow(qLower, 2.0 / 3.0);
    }
 
@@ -106,7 +115,8 @@ public final class ConformalCubedSphere implements ClosedQuadSphereEmbedding.Sur
                Vector anchor = global(face, octant(x, y, su, sv, swap));
                // Inverse stereographic differential is at most 2. Add a
                // 0.1 mm outward allowance for symmetry snaps and roundoff.
-               double bound = center.distance(anchor) + 2 * R * stereoDerivativeBound() * Math.hypot(dx, dy);
+               double maxRadius = Math.hypot(xs[1], ys[1]);
+               double bound = center.distance(anchor) + 2 * R * stereoDerivativeBound(maxRadius) * Math.hypot(dx, dy);
                radius = Math.max(radius, bound);
             }
          }

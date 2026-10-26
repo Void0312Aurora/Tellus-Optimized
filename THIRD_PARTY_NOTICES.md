@@ -55,3 +55,13 @@ Published tile compilation license: CC BY 4.0.
 Source: https://github.com/openwatersio/seascape
 
 Tiles: https://tiles.openwaters.io/seascape/
+
+## CCAM conformal cubed-sphere reference
+
+The RFC conformal runtime mapping `rancic-ccam30-double-v1` is adapted from the
+Rančić/Purser series in CSIRO CCAM (`csiro/ccam-ccam`, commit
+`02295ffb6decf764b7bf2ce518c412975ae68565`). The upstream source is licensed
+under GPL-3.0-or-later; the corresponding source notice and license are kept in
+`tools/conformal`. Distribution of a build containing the runtime adaptation
+requires reconciling that GPL component with the repository's LGPL-3.0-only
+metadata before release.

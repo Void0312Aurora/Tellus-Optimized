@@ -161,6 +161,21 @@ class SphereFaceChunkGeneratorTest {
    }
 
    @Test
+   void conformalCornerChunksFailClosedBeforeTerrainSampling() {
+      AtomicInteger calls = new AtomicInteger();
+      var generator = generator(0, (point, resolution) -> {
+         calls.incrementAndGet();
+         return new SphereChunkSampler.SurfaceData(10.0, 30);
+      });
+      int corner = Math.toIntExact(-(generator.model().chunksPerFace() / 2L));
+      var chunk = chunk(new ChunkPos(corner, corner));
+      assertThrows(CompletionException.class,
+         () -> generator.fillFromNoise(Runnable::run, null, null, null, chunk).join());
+      assertEquals(0, calls.get());
+      for (var section : chunk.getSections()) assertTrue(section.hasOnlyAir());
+   }
+
+   @Test
    void codecPreservesFaceScaleAndVerticalConfigurationAndRejectsUnknownGeometry() {
       var generator = new SphereFaceChunkGenerator(new FixedBiomeSource(plains), 5, 1.0, 100, -128, 512, "tellus:test_earth");
       var ops = RegistryOps.create(JsonOps.INSTANCE, HolderLookup.Provider.create(java.util.stream.Stream.of(registry.asLookup())));
@@ -172,11 +187,18 @@ class SphereFaceChunkGeneratorTest {
       assertEquals(512, restored.getGenDepth());
       assertEquals(100, restored.getSeaLevel());
       assertEquals("tellus:test_earth", restored.planet());
+      assertEquals(SphereWorldModel.MAPPING_ID, restored.model().mappingId());
+      assertEquals(300_000.0, restored.singularityPolicy().config().excludedRadiusMeters());
+      assertEquals(50_000.0, restored.singularityPolicy().config().transitionWidthMeters());
       encoded.remove("planet");
       assertEquals("", SphereFaceChunkGenerator.CODEC.parse(ops, encoded).getOrThrow(false, fail -> fail(fail)).planet());
       assertEquals(generator.address(new ChunkPos(-1, 4)), restored.address(new ChunkPos(-1, 4)));
-      encoded.addProperty("geometry_version", 2);
+      encoded.addProperty("geometry_version", 1);
       assertTrue(SphereFaceChunkGenerator.CODEC.parse(ops, encoded).error().isPresent());
+      encoded.addProperty("geometry_version", 2);
+      encoded.addProperty("mapping", "equiangular-cube");
+      assertThrows(IllegalArgumentException.class,
+         () -> SphereFaceChunkGenerator.CODEC.parse(ops, encoded));
       assertThrows(IllegalArgumentException.class,
          () -> new SphereFaceChunkGenerator(new FixedBiomeSource(plains), 0, 1.0, 64, -63, 384));
       assertThrows(IllegalArgumentException.class,
@@ -194,7 +216,9 @@ class SphereFaceChunkGeneratorTest {
          new SphereFaceChunkGenerator(new FixedBiomeSource(plains), 1, 30, 64, -64, 384, "tellus:a"),
          new SphereFaceChunkGenerator(new FixedBiomeSource(plains), 1, 1, 65, -64, 384, "tellus:a"),
          new SphereFaceChunkGenerator(new FixedBiomeSource(plains), 1, 1, 64, -128, 384, "tellus:a"),
-         new SphereFaceChunkGenerator(new FixedBiomeSource(plains), 1, 1, 64, -64, 512, "tellus:a")}) {
+         new SphereFaceChunkGenerator(new FixedBiomeSource(plains), 1, 1, 64, -64, 512, "tellus:a"),
+         new SphereFaceChunkGenerator(new FixedBiomeSource(plains), 1, 1, 64, -64, 384, "tellus:a",
+            new com.yucareux.tellus.worldgen.global.SphereSingularityPolicy.Config(0.0, 0.0))}) {
          assertFalse(SphereFaceRuntime.sameGeometry(first, other));
       }
    }

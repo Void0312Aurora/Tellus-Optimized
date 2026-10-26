@@ -89,6 +89,22 @@ class SphericalLatticePersistenceTest {
          List.of(higher.cellCenter(1, 1)), List.of(new SphericalLatticePersistence.CellEdit(partial, 1))));
    }
 
+   @Test
+   void persistenceRoundTripRetainsTheVersionedVerticalRange() throws IOException {
+      var grid = new SphericalLatticePrototype.GridVersion("tellus:custom", 7,
+         new SphericalLatticePrototype.VerticalRange(-12, 34));
+      var patch = new SphericalLatticePrototype.PatchDescriptor(grid,
+         new SphericalLatticePrototype.PatchKey(0, 0, 0), new SphereWorldModel.GeoPoint(0, 0, 0),
+         50_000, 4, SphericalLatticePrototype.ChartKind.STEREOGRAPHIC);
+      var atlas = new SphericalLatticePrototype.Atlas(List.of(patch), List.of());
+      var snapshot = SphericalLatticePersistence.capture(atlas, List.of(new SphereWorldModel.GeoPoint(0, 0, 0)),
+         List.of(new SphericalLatticePersistence.CellEdit(patch.cell(1, 1, 33), 9)));
+      var decoded = SphericalLatticePersistence.decode(SphericalLatticePersistence.encode(snapshot));
+
+      assertEquals(new SphericalLatticePrototype.VerticalRange(-12, 34), decoded.grid().verticalRange());
+      assertEquals(snapshot, decoded);
+   }
+
    private static SphericalLatticePrototype.Atlas atlas() {
       var west = patch(0, -25_000);
       var east = patch(1, 25_000);

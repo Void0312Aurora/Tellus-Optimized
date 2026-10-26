@@ -23,7 +23,9 @@ existing lattice, conformal candidate, rotated map and perimeter extraction,
 then writes two CSVs and grid metadata under
 `build/rfc-conformal/results`. Use `-JunitJar <path>` for a different jar path,
 or `-OutputDirectory docs/research` to regenerate the recorded experiment.
-It downloads no dependencies and aborts on a failed numerical gate.
+It downloads no dependencies and aborts on a failed numerical gate. The
+focused suite currently contains 49 tests, including the cell-local enclosure
+bound checks.
 
 `reference-fixtures.csv` contains independent 70-digit direct-power evaluations
 of the pinned source's coefficients, reduced to 35 printed digits. The Java

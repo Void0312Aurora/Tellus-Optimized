@@ -35,9 +35,27 @@ public final class SphericalLatticePrototype {
       }
    }
 
-   public record GridVersion(String planetId, int version) {
+   /** Signed one-metre radial interval carried by the grid manifest. */
+   public record VerticalRange(int minCellInclusive, int maxCellExclusive) {
+      public static final VerticalRange EARTH_PLAYABLE = new VerticalRange(-11_000, 8_000);
+
+      public VerticalRange {
+         if (minCellInclusive >= maxCellExclusive) throw new IllegalArgumentException("vertical range");
+      }
+
+      public boolean contains(int cell) {
+         return cell >= this.minCellInclusive && cell < this.maxCellExclusive;
+      }
+   }
+
+   public record GridVersion(String planetId, int version, VerticalRange verticalRange) {
+      public GridVersion(String planetId, int version) {
+         this(planetId, version, VerticalRange.EARTH_PLAYABLE);
+      }
+
       public GridVersion {
          if (planetId == null || planetId.isBlank() || version < 1) throw new IllegalArgumentException("grid version");
+         Objects.requireNonNull(verticalRange, "verticalRange");
       }
    }
 
@@ -60,6 +78,7 @@ public final class SphericalLatticePrototype {
          Objects.requireNonNull(grid, "grid");
          Objects.requireNonNull(patch, "patch");
          if (i < 0 || j < 0) throw new IllegalArgumentException("cell indices");
+         if (!grid.verticalRange().contains(k)) throw new IllegalArgumentException("vertical cell outside grid range");
       }
    }
 
@@ -278,7 +297,7 @@ public final class SphericalLatticePrototype {
       if (samplesPerAxis < 2) throw new IllegalArgumentException("samplesPerAxis");
       int faceBlocks = 4096;
       SphereWorldModel model = new SphereWorldModel(new SphereWorldModel.Config(
-         1.0, faceBlocks, 16, 3, 0.25));
+         1.0, faceBlocks, 16, 3, 0.25), new EquiangularCubedSphere());
       double nominal = Math.PI * SphereWorldModel.EARTH_RADIUS_METERS * 0.5 / faceBlocks;
       double minScale = Double.POSITIVE_INFINITY, maxScale = 0.0, maxCondition = 0.0;
       double minArea = Double.POSITIVE_INFINITY, maxArea = 0.0, maxAngle = 0.0;

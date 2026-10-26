@@ -31,7 +31,7 @@ import java.util.Set;
  */
 public final class SphericalLatticePersistence {
    private static final int MAGIC = 0x544C5332; // TLS2
-   private static final int FORMAT_VERSION = 1;
+   private static final int FORMAT_VERSION = 2;
    private static final int MAX_RECORDS = 1_000_000;
 
    private SphericalLatticePersistence() { }
@@ -140,10 +140,13 @@ public final class SphericalLatticePersistence {
    private static void writeGrid(DataOutputStream output, GridVersion grid) throws IOException {
       writeString(output, grid.planetId());
       output.writeInt(grid.version());
+      output.writeInt(grid.verticalRange().minCellInclusive());
+      output.writeInt(grid.verticalRange().maxCellExclusive());
    }
 
    private static GridVersion readGrid(DataInputStream input) throws IOException {
-      return new GridVersion(readString(input), input.readInt());
+      return new GridVersion(readString(input), input.readInt(),
+         new SphericalLatticePrototype.VerticalRange(input.readInt(), input.readInt()));
    }
 
    private static void writePatch(DataOutputStream output, PatchDescriptor patch) throws IOException {

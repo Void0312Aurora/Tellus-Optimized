@@ -145,6 +145,17 @@ class SphericalLatticePrototypeTest {
    }
 
    @Test
+   void gridVersionCarriesAndEnforcesTheGlobalEarthVerticalContract() {
+      assertEquals(-11_000, GRID.verticalRange().minCellInclusive());
+      assertEquals(8_000, GRID.verticalRange().maxCellExclusive());
+      var patch = patchAt(0, 0.0, 0.0, 50_000, 4);
+      assertEquals(-11_000, patch.cell(0, 0, -11_000).k());
+      assertEquals(7_999, patch.cell(0, 0, 7_999).k());
+      assertThrows(IllegalArgumentException.class, () -> patch.cell(0, 0, -11_001));
+      assertThrows(IllegalArgumentException.class, () -> patch.cell(0, 0, 8_000));
+   }
+
+   @Test
    void partiallyOverlappingFootprintIsRejectedAsOrdinaryMutableState() {
       var lowerKey = patchAt(0, Math.toDegrees(2.0 * Math.atan(20_000.0 / (2.0 * EARTH_R))), 0.0, 50_000, 4);
       var higherKey = patchAt(1, 0.0, 0.0, 50_000, 4);

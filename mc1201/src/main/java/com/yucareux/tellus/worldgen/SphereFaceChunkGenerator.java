@@ -6,8 +6,10 @@ import com.google.common.cache.CacheBuilder;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import com.yucareux.tellus.worldgen.global.SphereChunkSampler;
-import com.yucareux.tellus.worldgen.global.SphereWorldModel;
 import com.yucareux.tellus.worldgen.global.SphereFaceTopology;
+import com.yucareux.tellus.worldgen.global.SphereSingularityPolicy;
+import com.yucareux.tellus.worldgen.global.SphereSurfaceMotion;
+import com.yucareux.tellus.worldgen.global.SphereWorldModel;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -43,7 +45,14 @@ import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemp
  */
 public final class SphereFaceChunkGenerator extends ChunkGenerator {
    public static final Codec<SphereFaceChunkGenerator> CODEC = RecordCodecBuilder.create(instance -> instance.group(
-      Codec.intRange(1, 1).fieldOf("geometry_version").forGetter(generator -> 1),
+      Codec.intRange(2, 2).fieldOf("geometry_version").forGetter(generator -> 2),
+      Codec.STRING.fieldOf("mapping").forGetter(generator -> generator.model().mappingId()),
+      Codec.DOUBLE.optionalFieldOf("excluded_radius_meters",
+         SphereSingularityPolicy.DEFAULT_CONFIG.excludedRadiusMeters())
+         .forGetter(generator -> generator.singularityPolicy().config().excludedRadiusMeters()),
+      Codec.DOUBLE.optionalFieldOf("transition_width_meters",
+         SphereSingularityPolicy.DEFAULT_CONFIG.transitionWidthMeters())
+         .forGetter(generator -> generator.singularityPolicy().config().transitionWidthMeters()),
       FixedBiomeSource.CODEC.fieldOf("biome_source").forGetter(generator -> (FixedBiomeSource)generator.getBiomeSource()),
       Codec.intRange(0, 5).fieldOf("face").forGetter(SphereFaceChunkGenerator::face),
       Codec.DOUBLE.fieldOf("world_scale").forGetter(SphereFaceChunkGenerator::worldScale),
@@ -51,8 +60,13 @@ public final class SphereFaceChunkGenerator extends ChunkGenerator {
       Codec.intRange(-2032, 2016).fieldOf("min_y").forGetter(SphereFaceChunkGenerator::getMinY),
       Codec.intRange(16, 4064).fieldOf("height").forGetter(SphereFaceChunkGenerator::getGenDepth),
       Codec.STRING.optionalFieldOf("planet", "").forGetter(SphereFaceChunkGenerator::planet)
-   ).apply(instance, (version, biome, face, scale, sea, min, height, planet) ->
-      new SphereFaceChunkGenerator(biome, face, scale, sea, min, height, planet)));
+   ).apply(instance, (version, mapping, excludedRadius, transitionWidth, biome, face, scale, sea, min, height, planet) -> {
+      if (!SphereWorldModel.MAPPING_ID.equals(mapping)) {
+         throw new IllegalArgumentException("unsupported spherical mapping: " + mapping);
+      }
+      return new SphereFaceChunkGenerator(biome, face, scale, sea, min, height, planet,
+         new SphereSingularityPolicy.Config(excludedRadius, transitionWidth));
+   }));
 
    private final int face;
    private final int seaLevel;
@@ -61,29 +75,39 @@ public final class SphereFaceChunkGenerator extends ChunkGenerator {
    private final String planet;
    private final SphereWorldModel model;
    private final SphereFaceTopology topology;
+   private final SphereSingularityPolicy singularityPolicy;
+   private final SphereSurfaceMotion surfaceMotion;
    private final SphereTerrainMaterializer materializer;
    private final Supplier<SphereChunkSampler> sampler;
    private final Cache<Long, SphereChunkSampler.TerrainGrid> terrainCache = CacheBuilder.newBuilder()
       .maximumSize(128).build();
 
    public SphereFaceChunkGenerator(FixedBiomeSource biome, int face, double scale, int seaLevel, int minY, int height) {
-      this(biome, face, scale, seaLevel, minY, height, "", null);
+      this(biome, face, scale, seaLevel, minY, height, "", null,
+         SphereSingularityPolicy.DEFAULT_CONFIG);
    }
 
    public SphereFaceChunkGenerator(FixedBiomeSource biome, int face, double scale, int seaLevel, int minY, int height, String planet) {
-      this(biome, face, scale, seaLevel, minY, height, planet, null);
+      this(biome, face, scale, seaLevel, minY, height, planet, null,
+         SphereSingularityPolicy.DEFAULT_CONFIG);
+   }
+
+   SphereFaceChunkGenerator(FixedBiomeSource biome, int face, double scale, int seaLevel, int minY, int height,
+      String planet, SphereSingularityPolicy.Config singularityConfig) {
+      this(biome, face, scale, seaLevel, minY, height, planet, null, singularityConfig);
    }
 
    SphereFaceChunkGenerator(
       FixedBiomeSource biome, int face, double scale, int seaLevel, int minY, int height,
       SphereChunkSampler.PointSampler pointSampler
    ) {
-      this(biome, face, scale, seaLevel, minY, height, "", pointSampler);
+      this(biome, face, scale, seaLevel, minY, height, "", pointSampler,
+         SphereSingularityPolicy.DEFAULT_CONFIG);
    }
 
    private SphereFaceChunkGenerator(
       FixedBiomeSource biome, int face, double scale, int seaLevel, int minY, int height, String planet,
-      SphereChunkSampler.PointSampler pointSampler
+      SphereChunkSampler.PointSampler pointSampler, SphereSingularityPolicy.Config singularityConfig
    ) {
       super(biome, ignored -> BiomeGenerationSettings.EMPTY);
       if (face < 0 || face >= 6) throw new IllegalArgumentException("face");
@@ -101,6 +125,8 @@ public final class SphereFaceChunkGenerator extends ChunkGenerator {
       this.planet = planet;
       this.model = SphereWorldModel.forWorldScale(scale);
       this.topology = new SphereFaceTopology(this.model);
+      this.singularityPolicy = new SphereSingularityPolicy(this.model, singularityConfig);
+      this.surfaceMotion = new SphereSurfaceMotion(this.model, this.singularityPolicy);
       this.materializer = new SphereTerrainMaterializer(scale, seaLevel);
       // Codec decoding must not fetch datasets. Sources initialize on first use.
       this.sampler = pointSampler == null
@@ -113,6 +139,8 @@ public final class SphereFaceChunkGenerator extends ChunkGenerator {
    public double worldScale() { return this.model.config().worldScale(); }
    public SphereWorldModel model() { return this.model; }
    public SphereFaceTopology topology() { return this.topology; }
+   public SphereSingularityPolicy singularityPolicy() { return this.singularityPolicy; }
+   public SphereSurfaceMotion surfaceMotion() { return this.surfaceMotion; }
 
    /** Engine coordinates are centered on this face, not a Mercator plane. */
    public SphereWorldModel.SphereChunkAddress address(ChunkPos pos) {
@@ -143,8 +171,13 @@ public final class SphereFaceChunkGenerator extends ChunkGenerator {
       Executor executor, Blender blender, RandomState random, StructureManager structures, ChunkAccess chunk
    ) {
       if (!this.onFace(chunk.getPos().x, chunk.getPos().z)) return CompletableFuture.completedFuture(chunk);
+      return this.fillFromNoiseAt(executor, chunk, this.address(chunk.getPos()));
+   }
+
+   CompletableFuture<ChunkAccess> fillFromNoiseAt(Executor executor, ChunkAccess chunk,
+      SphereWorldModel.SphereChunkAddress address) {
       return CompletableFuture.supplyAsync(() -> {
-         var grid = this.terrainGrid(chunk.getPos());
+         var grid = this.terrainGrid(address);
          this.materializer.fill(chunk, grid);
          return chunk;
       }, executor);
@@ -156,11 +189,16 @@ public final class SphereFaceChunkGenerator extends ChunkGenerator {
    }
 
    private SphereChunkSampler.TerrainGrid terrainGrid(ChunkPos pos) {
+      return this.terrainGrid(this.address(pos));
+   }
+
+   SphereChunkSampler.TerrainGrid terrainGrid(SphereWorldModel.SphereChunkAddress address) {
       try {
-         return this.terrainCache.get(ChunkPos.asLong(pos.x, pos.z), () -> {
-            var grid = this.sampler.get().sampleTerrain(this.address(pos));
+         return this.terrainCache.get(ChunkPos.asLong((int)address.chunkX(), (int)address.chunkZ()), () -> {
+            this.singularityPolicy.requireOrdinary(address);
+            var grid = this.sampler.get().sampleTerrain(address);
             if (grid.columns().stream().anyMatch(column -> !column.data().elevationAvailable())) {
-               throw new IllegalStateException("spherical terrain elevation is unavailable for " + pos);
+               throw new IllegalStateException("spherical terrain elevation is unavailable for " + address);
             }
             return grid;
          });
@@ -172,14 +210,31 @@ public final class SphereFaceChunkGenerator extends ChunkGenerator {
       }
    }
 
-   @Override
-   public int getBaseHeight(int x, int z, Heightmap.Types type, LevelHeightAccessor accessor, RandomState random) {
-      if (!this.onFace(Math.floorDiv(x, 16), Math.floorDiv(z, 16))) return accessor.getMinBuildHeight();
-      var column = this.column(x, z, accessor);
+   int getBaseHeightAt(SphereWorldModel.SphereChunkAddress address, int x, int z,
+      Heightmap.Types type, LevelHeightAccessor accessor) {
+      var column = this.column(address, x, z, accessor);
       for (int y = column.topY(); y >= accessor.getMinBuildHeight(); y--) {
          if (type.isOpaque().test(column.stateAt(y, accessor.getMinBuildHeight()))) return y + 1;
       }
       return accessor.getMinBuildHeight();
+   }
+
+   NoiseColumn getBaseColumnAt(SphereWorldModel.SphereChunkAddress address, int x, int z,
+      LevelHeightAccessor accessor) {
+      BlockState[] states = new BlockState[accessor.getHeight()];
+      Arrays.fill(states, Blocks.AIR.defaultBlockState());
+      var column = this.column(address, x, z, accessor);
+      for (int i = 0; i < states.length; i++) {
+         states[i] = column.stateAt(accessor.getMinBuildHeight() + i, accessor.getMinBuildHeight());
+      }
+      return new NoiseColumn(accessor.getMinBuildHeight(), states);
+   }
+
+   @Override
+   public int getBaseHeight(int x, int z, Heightmap.Types type, LevelHeightAccessor accessor, RandomState random) {
+      if (!this.onFace(Math.floorDiv(x, 16), Math.floorDiv(z, 16))) return accessor.getMinBuildHeight();
+      return this.getBaseHeightAt(this.address(new ChunkPos(Math.floorDiv(x, 16), Math.floorDiv(z, 16))),
+         x, z, type, accessor);
    }
 
    @Override
@@ -187,8 +242,8 @@ public final class SphereFaceChunkGenerator extends ChunkGenerator {
       BlockState[] states = new BlockState[accessor.getHeight()];
       Arrays.fill(states, Blocks.AIR.defaultBlockState());
       if (this.onFace(Math.floorDiv(x, 16), Math.floorDiv(z, 16))) {
-         var column = this.column(x, z, accessor);
-         for (int i = 0; i < states.length; i++) states[i] = column.stateAt(accessor.getMinBuildHeight() + i, accessor.getMinBuildHeight());
+         var address = this.address(new ChunkPos(Math.floorDiv(x, 16), Math.floorDiv(z, 16)));
+         return this.getBaseColumnAt(address, x, z, accessor);
       }
       return new NoiseColumn(accessor.getMinBuildHeight(), states);
    }
@@ -212,5 +267,12 @@ public final class SphereFaceChunkGenerator extends ChunkGenerator {
          var point = this.geographicPoint(pos.getX(), pos.getZ());
          info.add("Sphere latitude/longitude: " + point.latitude() + ", " + point.longitude());
       }
+   }
+
+   private SphereTerrainMaterializer.ColumnPlan column(SphereWorldModel.SphereChunkAddress address,
+      int x, int z, LevelHeightAccessor accessor) {
+      var grid = this.terrainGrid(address);
+      return this.materializer.plan(grid.column(x & 15, z & 15).data(),
+         accessor.getMinBuildHeight(), accessor.getMaxBuildHeight());
    }
 }

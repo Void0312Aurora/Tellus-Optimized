@@ -154,8 +154,9 @@ is allocated and no geographic orientation is optimized.
 
 ## Results
 
-All 42 focused checks pass: 31 existing plus 11 candidate checks. A second
-fresh compilation and study reproduce both CSVs byte for byte. The Fabric
+All 49 focused tests pass. The study uses a cell-local derivative bound in its
+whole-cell enclosure; the public global bound remains available as a reference
+gate. The Fabric
 MC 1.20.1 `compileJava` task passes offline on Java 21. This is not a complete
 Gradle test run, a server/client playtest, or a collision acceptance result.
 
@@ -165,15 +166,17 @@ For the n=128 mesh and 300 km cap plus 50 km transition band:
 |---|---:|---:|---:|
 | Equiangular baseline | 99.2242% | 0.707125–1.000000 | 27.5074 degrees |
 | Spherified baseline | 99.1505% | 0.735115–1.263495 | 23.9801 degrees |
-| Conformal candidate | 99.0245% | 0.612457–1.035596 | 1.1399 degrees |
+| Conformal candidate | 99.2441% | 0.594445–1.035596 | 1.2078 degrees |
 
 The conformal candidate's finite corner polygons still have angle error;
 their edges represent roughly 78 km great-circle arcs. That metric is distinct
 from local differential orthogonality. Polygon areas use great-circle corner
 polygons, not integration over the mapped curved-cell boundaries. The
-candidate's looser whole-cell enclosure quarantines more area. Better local
-bounds may reduce this overhead; it should not be removed by weakening
-quarantine checks.
+The conformal candidate's enclosure now uses a cell-local derivative bound
+instead of applying one global octant bound to every cell. This reduces
+conservative padding while retaining the whole-cell quarantine rule. The
+remaining bound is still analytic with a floating-point allowance, not a
+machine-checked interval proof.
 
 For the local derivative study, the table gives the worse angular error over
 both difference steps, and scales rounded to six decimals:
@@ -193,7 +196,7 @@ still needs a gameplay distortion budget. A nominal 1 m coordinate step can
 represent approximately 0.587–1.036 m in these ordinary-region samples.
 
 The ideal eight 300 km caps occupy 0.4434% of the spherical area. Actual
-quarantined corner-polygon area at n=128 is 0.9755%, including the 50 km band
+quarantined corner-polygon area at n=128 is 0.7559%, including the 50 km band
 and conservative whole-cell padding. Neither percentage proves that the lost
 region is low-value or avoids land.
 

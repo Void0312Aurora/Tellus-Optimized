@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "grid_version": "tellus:earth-cubed-sphere-rfc-1",
+  "planet": "tellus:earth",
+  "embedding_scale": 1.0,
+  "earth_radius_m": 6371008.8,
+  "topology": {
+    "face_count": 6,
+    "ordinary_neighbor_count": 4,
+    "closed_surface": true,
+    "cell_family": "quadrilateral"
+  },
+  "subdivisions": [64, 128],
+  "cap_radii_km": [100.0, 150.0, 300.0, 360.0],
+  "transition_width_km": 50.0,
+  "mappings": [
+    "equiangular-cube",
+    "spherified-cube",
+    "conformal-cube-reference"
+  ],
+  "provisional_thresholds": {
+    "seam_vertex_mismatch_m_max": 1.0e-7,
+    "seam_interior_mismatch_m_max": 1.0e-7,
+    "local_angle_error_degrees_max": 1.0e-4,
+    "local_tangent_aspect_max": 1.00001,
+    "relative_analytic_scale_error_max": 1.0e-5,
+    "surface_inverse_error_m_max": 1.0e-6
+  },
+  "threshold_status": "provisional",
+  "measurement_contract": {
+    "finite_cell_metrics": [
+      "ordinary_polygon_fraction",
+      "ordinary_edge_scale",
+      "ordinary_area_scale",
+      "max_ordinary_angle_error_degrees",
+      "max_enclosure_radius_km"
+    ],
+    "local_differential_metrics": [
+      "local_scale",
+      "local_angle_error_degrees",
+      "local_aspect"
+    ],
+    "geographic_loss_is_separate": true
+  }
+}

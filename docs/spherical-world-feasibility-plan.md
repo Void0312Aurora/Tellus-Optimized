@@ -321,6 +321,15 @@ requests, concurrent generation, eviction, restart, and failed writes. Then map
 ordinary cells to chunk sections and prove that an edited physical block has one
 stable authority after reload.
 
+The first storage-layer subgate is now implemented in
+`SparseLatticeMaterializer`: explicit edits are a durable overlay over the
+demand-driven cache, eviction does not discard an edit, restored edits are
+validated as a batch, and `chunkOf`/`sectionOf` provide deterministic storage
+coordinates using floor division for negative radial indices. The focused tests
+cover concurrent first requests, edit eviction/reload, cross-seam neighbors,
+and chunk-section identity. This is still a standalone RFC layer; it is not yet
+the Fabric chunk or Anvil persistence path.
+
 ### R4 — Seam gameplay spike
 
 Build a small real Fabric test world with two ordinary patches and one transition
@@ -328,6 +337,24 @@ boundary. Test walking, sprinting, jumping, falling, riding, block placement,
 breaking, entity collision, chunk unload/reload, disconnect/reconnect, and
 server restart while crossing the boundary. Capture both server traces and a
 client video or frame dump. Headless transfer alone is insufficient.
+
+The Fabric 1.20.1 routing prototype now records the complete source state before
+holding a player at an edge. If destination chunk loading fails or times out, it
+restores source position, yaw/pitch, velocity, and fall distance before applying
+the retry cooldown. This closes the failure rollback subgate; it does not yet
+prove client-visible seamless collision or walking because the implementation
+still routes between face dimensions.
+
+The shared `SphereFaceTopology.transfer` contract now bundles destination
+position, destination face, yaw, and tangent velocity. The server route and the
+focused topology test use that same result. This is the first shared seam state
+contract for a future client/collision adapter; it remains a routing transport,
+not evidence of continuous client rendering or collision.
+
+Exact edge ties are now treated as a source-domain boundary hold instead of
+being silently accepted as an outside coordinate. This closes the half-open
+engine-domain gap at an exact face edge; corner collision and client rendering
+remain open.
 
 ### R5 — Global-content and scale-1 gate
 
@@ -386,8 +413,10 @@ The current RFC should proceed in this order:
    constraints, keeping the spherified cube as the baseline.
 6. Add singular-cap placement and geographic coverage scoring before any new
    player-facing runtime claim.
-7. Extend the identity tests to chunk-section persistence and concurrent request
-   order.
+7. Completed the standalone identity subgate: chunk/section mapping, explicit
+   edit overlay across eviction/reload, and concurrent request order are now
+   tested. The remaining part is wiring the same contract into real Fabric
+   chunk-section and restart persistence.
 8. Implement the smallest client-visible seam/collision spike, then repeat the
    geometry and performance measurements at scale 1.
 
