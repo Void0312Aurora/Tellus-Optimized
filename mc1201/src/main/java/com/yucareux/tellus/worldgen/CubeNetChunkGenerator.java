@@ -60,7 +60,7 @@ public final class CubeNetChunkGenerator extends ChunkGenerator {
       Codec.INT.fieldOf("sea_level").forGetter(CubeNetChunkGenerator::getSeaLevel),
       Codec.intRange(-2032, 2016).fieldOf("min_y").forGetter(CubeNetChunkGenerator::getMinY),
       Codec.intRange(16, 4064).fieldOf("height").forGetter(CubeNetChunkGenerator::getGenDepth),
-      Codec.intRange(0, 32).optionalFieldOf("experimental_apron_chunks", 2)
+      Codec.intRange(0, 35).optionalFieldOf("experimental_apron_chunks", CubeNetViewCoverage.DEFAULT_APRON_CHUNKS)
          .forGetter(generator -> generator.apronWidthChunks)
    ).apply(instance, (version, mapping, excludedRadius, transitionWidth, biome, scale, sea, min, height, apronChunks) -> {
       if (!SphereWorldModel.MAPPING_ID.equals(mapping)) {
@@ -83,12 +83,13 @@ public final class CubeNetChunkGenerator extends ChunkGenerator {
    private final SphereSingularityPolicy singularityPolicy;
 
    public CubeNetChunkGenerator(FixedBiomeSource biome, double scale, int seaLevel, int minY, int height) {
-      this(biome, scale, seaLevel, minY, height, SphereSingularityPolicy.DEFAULT_CONFIG, null, 2);
+      this(biome, scale, seaLevel, minY, height, SphereSingularityPolicy.DEFAULT_CONFIG, null,
+         CubeNetViewCoverage.DEFAULT_APRON_CHUNKS);
    }
 
    CubeNetChunkGenerator(FixedBiomeSource biome, double scale, int seaLevel, int minY, int height,
       SphereChunkSampler.PointSampler pointSampler) {
-      this(biome, scale, seaLevel, minY, height, pointSampler, 2);
+      this(biome, scale, seaLevel, minY, height, pointSampler, CubeNetViewCoverage.DEFAULT_APRON_CHUNKS);
    }
 
    CubeNetChunkGenerator(FixedBiomeSource biome, double scale, int seaLevel, int minY, int height,
@@ -107,7 +108,7 @@ public final class CubeNetChunkGenerator extends ChunkGenerator {
       this.height = height;
       this.model = SphereWorldModel.forWorldScale(scale);
       this.adapter = new CubeNetAddressAdapter(this.model);
-      Preconditions.checkArgument(apronChunks >= 0 && apronChunks <= 32
+      Preconditions.checkArgument(apronChunks >= 0 && apronChunks <= 35
          && apronChunks * 16 <= this.model.config().faceBlocks(), "apron width exceeds supported face size");
       this.apronWidthChunks = apronChunks;
       this.apronResolver = new CubeNetApronResolver(this.adapter.layout(), Math.max(16, apronChunks * 16));

@@ -10,6 +10,7 @@
 		"CubeNetApronMutationMixin",
 		"CubeNetApronBlockEntityMixin",
 		"CubeNetChunkPersistenceMixin",
+		"CubeNetPlayerOptionsMixin",
 		"DistantHorizonsChunkUpdateMixin",
 		"DimensionTypeHighYMixin",
 		"HeightRangePlacementMixin",
@@ -18,6 +19,10 @@
 		"OceanMonumentBuildingMixin",
 		"OceanMonumentStructureMixin",
 		"SphericalEntityMoveMixin",
+		"ServerMovePacketMixin",
+		"ServerPlayerTeleportMixin",
+		"ServerGamePacketListenerTeleportMixin",
+		"ServerVehicleMovePacketMixin",
 		"WaterSourceConversionMixin"
 	],
 	"injectors": {

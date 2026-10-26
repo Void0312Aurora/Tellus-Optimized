@@ -3,6 +3,8 @@ package com.yucareux.tellus;
 import com.yucareux.tellus.client.screen.EarthTeleportScreen;
 import com.yucareux.tellus.client.hud.ManagedTerrainDownloadOverlay;
 import com.yucareux.tellus.client.SphereClientState;
+import com.yucareux.tellus.client.CubeNetClientTransition;
+import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
 import com.yucareux.tellus.integration.distant_horizons.managed.ManagedTerrainClientState;
 import com.yucareux.tellus.integration.distant_horizons.managed.ManagedTerrainViewDistance;
 import com.yucareux.tellus.network.GeoTpOpenMapPayload;
@@ -11,6 +13,9 @@ import com.yucareux.tellus.network.ManagedTerrainStatusPayload;
 import com.yucareux.tellus.network.ManagedTerrainViewPayload;
 import com.yucareux.tellus.network.TellusWeatherPayload;
 import com.yucareux.tellus.network.SphereFramePayload;
+import com.yucareux.tellus.network.CubeNetTransitionPreparePayload;
+import com.yucareux.tellus.network.CubeNetTransitionCancelPayload;
+import com.yucareux.tellus.network.CubeNetTransitionCommitPayload;
 import com.yucareux.tellus.platform.TellusClientPlatform;
 import com.yucareux.tellus.world.realtime.SnowGrid;
 import com.yucareux.tellus.world.realtime.TemperatureGrid;
@@ -92,7 +97,22 @@ public class TellusClient implements ClientModInitializer {
             ));
          })
       );
+      ClientPlayNetworking.registerGlobalReceiver(
+         Objects.requireNonNull(CubeNetTransitionPreparePayload.TYPE, "CubeNetTransitionPreparePayload.TYPE"),
+         (payload, player, responseSender) -> Minecraft.getInstance().execute(
+            () -> CubeNetClientTransition.prepare(payload))
+      );
+      ClientPlayNetworking.registerGlobalReceiver(
+         Objects.requireNonNull(CubeNetTransitionCommitPayload.TYPE, "CubeNetTransitionCommitPayload.TYPE"),
+         (payload, player, responseSender) -> Minecraft.getInstance().execute(
+            () -> CubeNetClientTransition.commit(payload))
+      );
+      WorldRenderEvents.AFTER_SETUP.register(context -> CubeNetClientTransition.renderedFrame(Minecraft.getInstance()));
+      ClientPlayNetworking.registerGlobalReceiver(CubeNetTransitionCancelPayload.TYPE,
+         (payload, player, responseSender) -> Minecraft.getInstance().execute(
+            () -> CubeNetClientTransition.cancel(payload.transitionId())));
       ClientTickEvents.END_CLIENT_TICK.register(client -> {
+         CubeNetClientTransition.tick(client);
          if (client.player != null) {
             SphereClientState.updateLocalPose(client.player.getX(), client.player.getY(), client.player.getZ(), client.player.getYRot());
          }
@@ -113,6 +133,8 @@ public class TellusClient implements ClientModInitializer {
          TellusRealtimeState.reset();
          ManagedTerrainClientState.reset();
          SphereClientState.reset();
+         CubeNetClientTransition.reset();
+         CubeNetClientTransition.resetShadeOrientation();
          this.managedTerrainViewUpdateTicks = 0;
       });
    }

@@ -43,6 +43,7 @@ final class CubeNetRuntimeSmokeCheck {
    private final ServerLevel level;
    private final ServerPlayer player;
    private final CubeNetLayout layout;
+   private final boolean nativeApron;
    private final List<Case> cases = new ArrayList<>();
    private final List<ChunkPos> tickets = new ArrayList<>();
    private final JsonObject result = new JsonObject();
@@ -68,6 +69,7 @@ final class CubeNetRuntimeSmokeCheck {
       this.level = level;
       var generator = (CubeNetChunkGenerator)level.getChunkSource().getGenerator();
       this.layout = generator.adapter().layout();
+      this.nativeApron = generator.nativeApronEnabled();
       this.y = Math.min(generator.getSeaLevel() + 136, level.getMaxBuildHeight() - 8);
       this.player = new ServerPlayer(server, server.overworld(), new GameProfile(UUID.randomUUID(), "CubeNetProbe"));
       this.player.setServerLevel(level);
@@ -116,7 +118,7 @@ final class CubeNetRuntimeSmokeCheck {
       this.destination = this.layout.toPlanar(this.transfer.destination());
       double[] planarMovement = this.layout.planarVector(test.face(), du, dv);
       this.movement = new Vec3(planarMovement[0], 0.125, planarMovement[1]);
-      this.expectedPlanar = this.layout.arePlanarNeighbors(test.face(), test.side())
+      this.expectedPlanar = (this.nativeApron || this.layout.arePlanarNeighbors(test.face(), test.side()))
          ? new CubeNetLayout.PlanarPoint(this.source.x() + this.movement.x, this.source.z() + this.movement.z)
          : this.destination;
       this.player.moveTo(this.source.x(), this.y, this.source.z(), this.yaw, this.pitch);
@@ -157,8 +159,9 @@ final class CubeNetRuntimeSmokeCheck {
                require(this.level.setBlock(this.obstacle, Blocks.STONE.defaultBlockState(), 3), "obstacle not placed");
             }
             this.player.move(MoverType.SELF, this.movement);
-            require(pending.test(this.player.getUUID()) == cut, "movement hook did not select the expected direct/seam path");
-            if (cut) {
+            require(pending.test(this.player.getUUID()) == (cut && !this.nativeApron),
+               "movement hook did not select the expected direct/apron/seam path");
+            if (cut && !this.nativeApron) {
                require(this.player.position().distanceTo(new Vec3(this.source.x(), this.y, this.source.z())) < 1E-6,
                   "pending transfer committed movement early");
                // Simulate an intervening position update while the load waits.
@@ -196,7 +199,7 @@ final class CubeNetRuntimeSmokeCheck {
             require(distance < 1E-6, "destination fractional position or vertical displacement changed");
             Vec3 expectedVelocity = this.velocity;
             float expectedYaw = this.yaw;
-            if (cut) {
+            if (cut && !this.nativeApron) {
                double[] local = this.layout.localVector(test.face(), this.velocity.x, this.velocity.z);
                double[] mapped = this.layout.transportVector(test.face(), test.side(), local[0], local[1]);
                double[] planar = this.layout.planarVector(this.transfer.destination().face(), mapped[0], mapped[1]);
