@@ -1,23 +1,33 @@
 package com.yucareux.tellus.worldgen.global;
 
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Predicate;
 
 /**
  * Canonical shared-geometry audit for the closed quadrilateral prototype.
  * Every cube vertex is assigned one spherical position, and edge interiors
  * are compared using the exact same cubed-sphere map on both incident cells.
- * This provides a watertight surface embedding; radial block volumes and
- * Minecraft collision are intentionally outside this class.
+ * The resulting reports measure shared-boundary consistency. Radial block
+ * volumes and Minecraft collision are outside this class.
  */
 public final class ClosedQuadSphereEmbedding {
    public enum Mapping { EQUANGULAR_CUBE, SPHERIFIED_CUBE }
 
+   /** Research maps must provide a conservative bound for their entire cell footprint. */
+   public interface SurfaceMapping {
+      String id();
+      SphereWorldModel.GeoPoint point(int face, double u, double v);
+      CellEnclosure enclosure(int face, double uLow, double uHigh, double vLow, double vHigh);
+   }
+
    private final ClosedQuadSphereTopology topology;
    private final SphereWorldModel model;
    private final Mapping mapping;
+   private final SurfaceMapping externalMapping;
 
    public ClosedQuadSphereEmbedding(ClosedQuadSphereTopology topology, SphereWorldModel model) {
       this(topology, model, Mapping.EQUANGULAR_CUBE);
@@ -28,20 +38,129 @@ public final class ClosedQuadSphereEmbedding {
       this.topology = Objects.requireNonNull(topology, "topology");
       this.model = Objects.requireNonNull(model, "model");
       this.mapping = Objects.requireNonNull(mapping, "mapping");
+      this.externalMapping = null;
+   }
+
+   public ClosedQuadSphereEmbedding(ClosedQuadSphereTopology topology, SphereWorldModel model,
+      SurfaceMapping mapping) {
+      this.topology = Objects.requireNonNull(topology, "topology");
+      this.model = Objects.requireNonNull(model, "model");
+      this.externalMapping = Objects.requireNonNull(mapping, "mapping");
+      if (mapping.id() == null || mapping.id().isBlank()) throw new IllegalArgumentException("mapping ID");
+      this.mapping = null;
    }
 
    public ClosedQuadSphereTopology topology() { return this.topology; }
    public SphereWorldModel model() { return this.model; }
-   public Mapping mapping() { return this.mapping; }
+   /** Built-in mapping only; external experiments identify themselves with mappingId(). */
+   public Mapping mapping() {
+      if (this.externalMapping != null) throw new IllegalStateException("external mapping has no built-in enum");
+      return this.mapping;
+   }
+   public String mappingId() { return externalMapping == null ? mapping.name() : externalMapping.id(); }
 
    public SphereWorldModel.GeoPoint vertex(ClosedQuadSphereTopology.VertexKey key) {
       List<ClosedQuadSphereTopology.FaceVertex> uses = this.topology.uses(Objects.requireNonNull(key, "key"));
       if (uses.isEmpty()) throw new IllegalArgumentException("unknown vertex");
-      return point(uses.get(0));
+      // Selecting the first inserted use made tiny floating-point differences
+      // (and exact-distance ties) depend on topology generation order.
+      var canonicalUse = uses.stream().min(Comparator
+         .comparingInt(ClosedQuadSphereTopology.FaceVertex::face)
+         .thenComparingInt(ClosedQuadSphereTopology.FaceVertex::i)
+         .thenComparingInt(ClosedQuadSphereTopology.FaceVertex::j)).orElseThrow();
+      return point(canonicalUse);
    }
 
    public List<SphereWorldModel.GeoPoint> cellFootprint(ClosedQuadSphereTopology.CellId cell) {
+      requireCell(cell);
       return this.topology.faceVertices(cell).stream().map(this::point).toList();
+   }
+
+   /** Continuous cell coordinates, where both fractions lie in [0, 1]. */
+   public SphereWorldModel.GeoPoint cellPoint(ClosedQuadSphereTopology.CellId cell,
+      double fractionI, double fractionJ) {
+      requireCell(cell);
+      if (!Double.isFinite(fractionI) || !Double.isFinite(fractionJ)
+         || fractionI < 0.0 || fractionI > 1.0 || fractionJ < 0.0 || fractionJ > 1.0) {
+         throw new IllegalArgumentException("cell fractions");
+      }
+      double scale = this.model.config().faceBlocks() / (double)this.topology.subdivision();
+      return surfacePoint(cell.face(), (cell.i() + fractionI) * scale, (cell.j() + fractionJ) * scale);
+   }
+
+   /**
+    * A cap enclosing the entire mapped cell, including curved edge interiors.
+    * For equiangular faces, all rays are positive combinations of corner rays,
+    * so the convex cap containing the corners also contains the cell.
+    * For spherified faces, interval bounds enclose all three Cartesian
+    * coordinates before deriving a maximum chord distance to the center.
+    * The bound is specific to these maps; a new map needs its own enclosure.
+    */
+   public CellEnclosure cellEnclosure(ClosedQuadSphereTopology.CellId cell) {
+      requireCell(cell);
+      if (externalMapping != null) {
+         double n = topology.subdivision();
+         return Objects.requireNonNull(externalMapping.enclosure(cell.face(),
+            2.0 * cell.i() / n - 1.0, 2.0 * (cell.i() + 1) / n - 1.0,
+            2.0 * cell.j() / n - 1.0, 2.0 * (cell.j() + 1) / n - 1.0), "external enclosure");
+      }
+      SphereWorldModel.GeoPoint center = cellPoint(cell, 0.5, 0.5);
+      double radius;
+      if (this.mapping == Mapping.EQUANGULAR_CUBE) {
+         radius = 0.0;
+         for (var corner : cellFootprint(cell)) {
+            radius = Math.max(radius, SphereWorldModel.greatCircleDistanceMeters(center, corner));
+         }
+      } else {
+         double n = this.topology.subdivision();
+         Interval u = new Interval(2.0 * cell.i() / n - 1.0, 2.0 * (cell.i() + 1) / n - 1.0);
+         Interval v = new Interval(2.0 * cell.j() / n - 1.0, 2.0 * (cell.j() + 1) / n - 1.0);
+         Interval positive = new Interval(1.0, 1.0);
+         Interval negative = new Interval(-1.0, -1.0);
+         Interval[] cube = switch (cell.face()) {
+            case 0 -> new Interval[]{positive, v, u.negated()};
+            case 1 -> new Interval[]{negative, v, u};
+            case 2 -> new Interval[]{u, positive, v.negated()};
+            case 3 -> new Interval[]{u, negative, v};
+            case 4 -> new Interval[]{u, v, positive};
+            case 5 -> new Interval[]{u.negated(), v, negative};
+            default -> throw new AssertionError();
+         };
+         Vec3 c = unit(center);
+         double[] components = {c.x, c.y, c.z};
+         double chordSquared = 0.0;
+         for (int axis = 0; axis < 3; axis++) {
+            Interval a = cube[(axis + 1) % 3].squared();
+            Interval b = cube[(axis + 2) % 3].squared();
+            // 1-a/2-b/2+ab/3 decreases in a and b throughout [0,1].
+            Interval factor = new Interval(Math.sqrt(spherifiedFactor(a.high, b.high)),
+               Math.sqrt(spherifiedFactor(a.low, b.low)));
+            Interval coordinate = cube[axis].multiplied(factor);
+            double bound = Math.max(Math.abs(coordinate.low - components[axis]),
+               Math.abs(coordinate.high - components[axis]));
+            chordSquared += bound * bound;
+         }
+         radius = 2.0 * SphereWorldModel.EARTH_RADIUS_METERS
+            * Math.asin(Math.min(1.0, Math.sqrt(chordSquared) * 0.5));
+      }
+      // Outward margin for floating-point roundoff, also at exact vertices.
+      return new CellEnclosure(center, Math.min(Math.PI * SphereWorldModel.EARTH_RADIUS_METERS,
+         radius + 1.0E-5));
+   }
+
+   /** Corner polygon area using great-circle edges, not a curved-map area integral. */
+   public double cellAreaMetersSquared(ClosedQuadSphereTopology.CellId cell) {
+      return sphericalQuadrilateralArea(cellFootprint(cell));
+   }
+
+   private void requireCell(ClosedQuadSphereTopology.CellId cell) {
+      if (this.topology.vertices(Objects.requireNonNull(cell, "cell")) == null) {
+         throw new IllegalArgumentException("unknown cell: " + cell);
+      }
+   }
+
+   private static double spherifiedFactor(double a, double b) {
+      return 1.0 - a * 0.5 - b * 0.5 + a * b / 3.0;
    }
 
    /**
@@ -55,11 +174,26 @@ public final class ClosedQuadSphereEmbedding {
     * extraordinary region cannot disappear into an all-cell average.</p>
     */
    public MetricReport measureMetrics() {
+      return measureMetrics(cell -> true);
+   }
+
+   /** Metrics for a nonempty cell subset, including each incident edge once. */
+   public MetricReport measureMetrics(Predicate<ClosedQuadSphereTopology.CellId> include) {
+      Objects.requireNonNull(include, "include");
+      List<ClosedQuadSphereTopology.CellId> cells = this.topology.cells().stream().filter(include).toList();
+      if (cells.isEmpty()) throw new IllegalArgumentException("metric cell subset is empty");
+      Set<ClosedQuadSphereTopology.EdgeKey> edges = new HashSet<>();
+      for (var cell : cells) {
+         var keys = this.topology.vertices(cell);
+         for (int index = 0; index < 4; index++) {
+            edges.add(new ClosedQuadSphereTopology.EdgeKey(keys.get(index), keys.get((index + 1) % 4)));
+         }
+      }
       double nominalEdgeMeters = this.model.nominalBlockScaleMeters()
          * this.model.config().faceBlocks() / (double)this.topology.subdivision();
       double minEdgeScale = Double.POSITIVE_INFINITY;
       double maxEdgeScale = 0.0;
-      for (var edge : this.topology.edges()) {
+      for (var edge : edges) {
          double scale = SphereWorldModel.greatCircleDistanceMeters(
             this.vertex(edge.first()), this.vertex(edge.second())) / nominalEdgeMeters;
          minEdgeScale = Math.min(minEdgeScale, scale);
@@ -77,7 +211,7 @@ public final class ClosedQuadSphereEmbedding {
       int exceptionalCells = 0;
       double nominalArea = nominalEdgeMeters * nominalEdgeMeters;
 
-      for (var cell : this.topology.cells()) {
+      for (var cell : cells) {
          List<ClosedQuadSphereTopology.VertexKey> keys = this.topology.vertices(cell);
          boolean exceptional = keys.stream().anyMatch(key -> this.topology.vertexDegree(key) == 3);
          if (exceptional) exceptionalCells++;
@@ -114,7 +248,7 @@ public final class ClosedQuadSphereEmbedding {
          }
       }
 
-      return new MetricReport(this.topology.cells().size(), this.topology.edges().size(),
+      return new MetricReport(cells.size(), edges.size(),
          nominalEdgeMeters, minEdgeScale, maxEdgeScale, maxAngleError,
          minAreaScale, maxAreaScale, exceptionalCells, exceptionalMinEdgeScale,
          exceptionalMaxEdgeScale, exceptionalMaxAngleError, exceptionalMinAreaScale,
@@ -186,6 +320,11 @@ public final class ClosedQuadSphereEmbedding {
    }
 
    private SphereWorldModel.GeoPoint surfacePoint(int face, double blockX, double blockZ) {
+      if (externalMapping != null) {
+         double size = this.model.config().faceBlocks();
+         return Objects.requireNonNull(externalMapping.point(face,
+            blockX / size * 2.0 - 1.0, blockZ / size * 2.0 - 1.0), "external point");
+      }
       if (this.mapping == Mapping.EQUANGULAR_CUBE) {
          return this.model.exactSurfacePoint(face, blockX, blockZ);
       }
@@ -268,6 +407,30 @@ public final class ClosedQuadSphereEmbedding {
 
    public record SeamReport(int samplesPerEdge, int edges, double maxVertexMismatchMeters,
       double maxInteriorMismatchMeters) { }
+
+   public record CellEnclosure(SphereWorldModel.GeoPoint center, double radiusMeters) {
+      public CellEnclosure {
+         Objects.requireNonNull(center, "center");
+         if (radiusMeters < 0 || !Double.isFinite(radiusMeters)
+            || radiusMeters > Math.PI * SphereWorldModel.EARTH_RADIUS_METERS) {
+            throw new IllegalArgumentException("enclosure radius");
+         }
+      }
+   }
+
+   private record Interval(double low, double high) {
+      private Interval negated() { return new Interval(-high, -low); }
+      private Interval squared() {
+         return new Interval(low <= 0.0 && high >= 0.0 ? 0.0 : Math.min(low * low, high * high),
+            Math.max(low * low, high * high));
+      }
+      private Interval multiplied(Interval other) {
+         double first = low * other.low, second = low * other.high;
+         double third = high * other.low, fourth = high * other.high;
+         return new Interval(Math.min(Math.min(first, second), Math.min(third, fourth)),
+            Math.max(Math.max(first, second), Math.max(third, fourth)));
+      }
+   }
 
    public record MetricReport(int cells, int edges, double nominalEdgeMeters,
       double minEdgeScale, double maxEdgeScale, double maxAngleErrorRadians,

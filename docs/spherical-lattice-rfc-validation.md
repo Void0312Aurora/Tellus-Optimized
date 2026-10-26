@@ -221,6 +221,64 @@ current prototype contract, while the continuous clipped-region boundary and
 transition-cell geometry remain open. A scalable coarse atlas locator and
 1 m/16x16 chunk persistence also remain open before Fabric seam integration.
 
+## Review follow-up: singular-incision quarantine policy
+
+The next executable gate is now present in `SphericalIncisionPolicy`. It is a
+research-only runtime boundary for the eight degree-three vertices; it does
+not claim to implement the Rančić/McGregor conformal map. Given a connected
+embedding and `(excludedRadiusMeters, transitionWidthMeters)`, each cell is
+classified as `ORDINARY`, `TRANSITION`, or `EXCLUDED`.
+
+Classification uses the nearest extraordinary vertex and the lower distance
+bound `max(0, centerDistance - enclosureRadius)`. The enclosure covers the
+entire mapped cell: equiangular rays lie in a convex cap containing their
+corners; spherified cells use Cartesian interval bounds and a chord-distance
+bound. Both include an outward floating-point margin. A new mapping must
+implement its own valid enclosure before reusing the policy. The policy can
+quarantine more cells than the exact cap boundary, but an ordinary cell cannot
+intersect the cap or transition band under these bounds.
+
+At subdivision 5 and zero cap/transition width, the 24 cells incident to the
+eight singular vertices are transition cells. With a positive cap, all incident
+cells become excluded. `requireOrdinary` and `ordinaryNeighbor` reject
+exceptional sources and destinations, while retaining reciprocal ordinary
+face-seam neighbors. The classification retains existing topology cell IDs;
+it does not implement an overset alias registry, a versioned block store, or
+a Fabric materializer integration.
+
+Shared vertex geometry now selects the lowest face-local use rather than the
+first inserted use. This fixes order-dependent floating-point ties in the
+nearest-corner evidence. The topology's immutable maps now wrap `HashMap`
+copies: a thread dump of the first subdivision-128 study showed the main
+thread still constructing `ImmutableCollections.MapN` at `Map.copyOf` after
+roughly 197 seconds; coordinate-record hashes occupy a narrow range. Keeping
+hash-map collision handling makes this bounded sweep executable; this is not
+a proof of full-Earth indexing scalability.
+
+The new test class covers ten checks: singular quarantine, positive-cap
+classification, monotonic transition widths, exact insertion-order evidence,
+invalid configuration, enclosing curved edges/interiors, ordinary footprint
+clearance, traversal rejection and reciprocal seams, status partition and
+empty-subset rejection, and ordinary-only metric reporting. The fresh standalone
+suite contains 31 checks including the existing topology, seam and lattice
+regressions. See [the study record](research/spherical-incision-baseline.md) and
+[raw CSV](research/cap-radius-baseline.csv) for the resolution/radius results.
+These checks do not establish real land coverage, a conformal map, transition
+collision, or client rendering.
+
+### Conformal reference follow-up
+
+A separate source-traceable CCAM-series candidate now implements forward and
+inverse surface lookup, local scale, and curved-cell enclosures under
+`tools/conformal`. The generic `ClosedQuadSphereEmbedding.SurfaceMapping`
+interface lets it use the same seam, metric, and incision-policy harness without
+adding the GPL reference implementation to Fabric source sets. See
+[the conformal experiment](research/conformal-cube-validation.md) for 42 focused
+checks, cap sweeps, metre derivative results, license/source metadata, and the
+remaining geographic, persistence, elevation, and collision gates. The earlier
+baseline record remains a nonconformal baseline; the new candidate is research
+code, not a runtime mapping selection.
+
 ## Review follow-up: coarse atlas lookup
 
 `Atlas.owner` now uses a 2-degree latitude/longitude coarse locator, a
