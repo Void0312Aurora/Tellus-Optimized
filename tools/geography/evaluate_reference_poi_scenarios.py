@@ -5,11 +5,14 @@ import argparse
 import json
 from pathlib import Path
 
-from shapely.geometry import Point
-
 from gshhg_geometry import equal_area_transformers
 from run_coverage import projected_perimeters, write_csv
-from score_reference_pois import iter_records, parse_points, validate_boundary_parameters
+from score_reference_pois import (
+    classify_record_points,
+    iter_records,
+    parse_points,
+    validate_boundary_parameters,
+)
 
 
 DEFAULT_CAPS = (50, 100, 150, 175, 200, 250, 300, 360)
@@ -36,36 +39,21 @@ def evaluate(output: Path, unesco_csv: Path, caps: tuple[int, ...], transition_w
         hits: dict[str, dict[str, object]] = {}
         for record in records:
             record_id = record.get("id_no", "")
-            for vertex_index, context in enumerate(contexts):
-                excluded = regions[(cap, "excluded", vertex_index)]
-                quarantined = regions[(cap, "quarantined", vertex_index)]
-                hit: tuple[str, float, float] | None = None
-                for longitude, latitude in parse_points(record):
-                    x, y = context["forward"].transform(longitude, latitude)
-                    point = Point(x, y)
-                    if excluded.covers(point):
-                        hit = ("EXCLUDED", longitude, latitude)
-                        break
-                    if quarantined.covers(point):
-                        hit = ("TRANSITION", longitude, latitude)
-                        break
-                if hit is None:
-                    continue
-                status, longitude, latitude = hit
-                previous = hits.get(record_id)
-                priority = {"TRANSITION": 1, "EXCLUDED": 2}
-                if previous is None or priority[status] > priority[previous["status"]]:
-                    hits[record_id] = {
-                        "cap": cap,
-                        "vertex": vertex_index + 1,
-                        "status": status,
-                        "id_no": record_id,
-                        "name_en": record.get("name_en", ""),
-                        "category": record.get("category", ""),
-                        "states_names": record.get("states_names", ""),
-                        "matched_longitude": longitude,
-                        "matched_latitude": latitude,
-                    }
+            hit = classify_record_points(parse_points(record), contexts, regions, cap)
+            if hit is None:
+                continue
+            vertex_index, status, longitude, latitude = hit
+            hits[record_id] = {
+                "cap": cap,
+                "vertex": vertex_index + 1,
+                "status": status,
+                "id_no": record_id,
+                "name_en": record.get("name_en", ""),
+                "category": record.get("category", ""),
+                "states_names": record.get("states_names", ""),
+                "matched_longitude": longitude,
+                "matched_latitude": latitude,
+            }
         excluded_count = sum(item["status"] == "EXCLUDED" for item in hits.values())
         transition_count = sum(item["status"] == "TRANSITION" for item in hits.values())
         summary.append(

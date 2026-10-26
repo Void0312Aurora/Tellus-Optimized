@@ -65,6 +65,34 @@ def validate_boundary_parameters(
         )
 
 
+def classify_record_points(
+    points: list[tuple[float, float]], contexts: list[dict[str, object]],
+    regions: dict[tuple[int, str, int], object], cap_radius_km: int,
+) -> tuple[int, str, float, float] | None:
+    """Choose a record's highest-severity hit across every point and vertex.
+
+    Return ``(vertex_index, status, longitude, latitude)``. Iteration order is
+    stable, so equal-severity hits retain the first point/vertex encountered.
+    """
+    best: tuple[int, str, float, float] | None = None
+    priority = {"TRANSITION": 1, "EXCLUDED": 2}
+    for vertex_index, context in enumerate(contexts):
+        excluded = regions[(cap_radius_km, "excluded", vertex_index)]
+        quarantined = regions[(cap_radius_km, "quarantined", vertex_index)]
+        forward = context["forward"]
+        for longitude, latitude in points:
+            x, y = forward.transform(longitude, latitude)
+            projected_point = Point(x, y)
+            status = None
+            if excluded.covers(projected_point):
+                status = "EXCLUDED"
+            elif quarantined.covers(projected_point):
+                status = "TRANSITION"
+            if status is not None and (best is None or priority[status] > priority[best[1]]):
+                best = (vertex_index, status, longitude, latitude)
+    return best
+
+
 def score(output: Path, unesco_csv: Path, cap_radius_km: int, transition_width_km: int) -> None:
     metadata = json.loads((output / "candidate-cube-orientation.json").read_text(encoding="utf-8"))
     contexts = []
@@ -84,37 +112,22 @@ def score(output: Path, unesco_csv: Path, cap_radius_km: int, transition_width_k
         points = parse_points(record)
         if not points:
             continue
-        for vertex_index, context in enumerate(contexts):
-            excluded = regions[(cap_radius_km, "excluded", vertex_index)]
-            quarantined = regions[(cap_radius_km, "quarantined", vertex_index)]
-            status = None
-            matched = None
-            for longitude, latitude in points:
-                x, y = context["forward"].transform(longitude, latitude)
-                point = Point(x, y)
-                if excluded.covers(point):
-                    status = "EXCLUDED"
-                    matched = (longitude, latitude)
-                    break
-                if quarantined.covers(point):
-                    status = "TRANSITION"
-                    matched = (longitude, latitude)
-                    break
-            if status is None or matched is None:
-                continue
-            rows.append(
-                {
-                    "vertex": vertex_index + 1,
-                    "status": status,
-                    "id_no": record.get("id_no", ""),
-                    "name_en": record.get("name_en", ""),
-                    "category": record.get("category", ""),
-                    "states_names": record.get("states_names", ""),
-                    "matched_longitude": matched[0],
-                    "matched_latitude": matched[1],
-                }
-            )
-            break
+        hit = classify_record_points(points, contexts, regions, cap_radius_km)
+        if hit is None:
+            continue
+        vertex_index, status, longitude, latitude = hit
+        rows.append(
+            {
+                "vertex": vertex_index + 1,
+                "status": status,
+                "id_no": record.get("id_no", ""),
+                "name_en": record.get("name_en", ""),
+                "category": record.get("category", ""),
+                "states_names": record.get("states_names", ""),
+                "matched_longitude": longitude,
+                "matched_latitude": latitude,
+            }
+        )
 
     fields = [
         "vertex",
