@@ -108,6 +108,12 @@ public final class SphereFaceRuntime {
       return runtime != null && runtime.interceptBoundaryMove0(player, movement);
    }
 
+   public static boolean admitsPlayerDestination(ServerLevel level, double x, double z) {
+      if (!(level.getChunkSource().getGenerator() instanceof SphereFaceChunkGenerator generator)) return true;
+      return generator.topology().containsEnginePoint(x, z)
+         && generator.singularityPolicy().admitsOrdinaryEnginePoint(generator.face(), x, z);
+   }
+
    private boolean interceptBoundaryMove0(ServerPlayer player, Vec3 movement) {
       if (this.pending.containsKey(player.getUUID())) return true;
       if (movement.x == 0.0 && movement.z == 0.0
