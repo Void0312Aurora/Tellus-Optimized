@@ -14,7 +14,8 @@ try {
    $incisionClasses = Join-Path 'build/rfc-incision' ([Guid]::NewGuid().ToString('N'))
    New-Item -ItemType Directory -Force -Path $incisionClasses | Out-Null
    $incisionSources = @('SphereWorldModel', 'ClosedQuadSphereTopology',
-      'ClosedQuadSphereEmbedding', 'SphericalLatticePrototype', 'SphericalIncisionPolicy') |
+      'ClosedQuadSphereEmbedding', 'SphericalLatticePrototype', 'SphericalIncisionPolicy',
+      'SphereSurfaceMapping', 'ConformalCubedSphere', 'EquiangularCubedSphere') |
       ForEach-Object { "src/main/java/com/yucareux/tellus/worldgen/global/$_.java" }
    $incisionTests = @('ClosedQuadSphereTopologyTest', 'SeamGeometryRegressionTest',
       'SphericalLatticePrototypeTest', 'SphericalIncisionPolicyTest') |

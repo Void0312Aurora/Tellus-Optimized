@@ -17,7 +17,8 @@ try {
    if($LASTEXITCODE -ne 0){throw 'Cube fit failed'}
    $geographicClasses=Join-Path 'build/geography/classes' ([Guid]::NewGuid().ToString('N'))
    New-Item -ItemType Directory -Force $geographicClasses | Out-Null
-   $geographicSources=@('SphereWorldModel','ClosedQuadSphereTopology','ClosedQuadSphereEmbedding','SphericalLatticePrototype','SphericalIncisionPolicy') |
+   $geographicSources=@('SphereWorldModel','ClosedQuadSphereTopology','ClosedQuadSphereEmbedding','SphericalLatticePrototype','SphericalIncisionPolicy',
+      'SphereSurfaceMapping','ConformalCubedSphere','EquiangularCubedSphere') |
       ForEach-Object {"src/main/java/com/yucareux/tellus/worldgen/global/$_.java"}
    $geographicTests=@('ClosedQuadSphereTopologyTest','SeamGeometryRegressionTest','SphericalLatticePrototypeTest','SphericalIncisionPolicyTest') |
       ForEach-Object {"src/test/java/com/yucareux/tellus/worldgen/$_.java"}

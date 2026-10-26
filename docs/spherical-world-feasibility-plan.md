@@ -393,32 +393,45 @@ available.
 The standalone conformal candidate and its capped-mesh/local-derivative
 experiments are now available. See
 [the conformal validation record](research/conformal-cube-validation.md).
-This completes the numerical reference stage below; the eight-point geographic
-rotation, loss budget, versioned persistence, and Fabric collision gates remain
-open. The recorded thresholds are provisional numerical checks, not agreed
-gameplay acceptance thresholds.
+This completes the numerical reference stage below. The Fabric
+`tellus:sphere_face` entry point now selects the versioned conformal mapping;
+the eight-corner runtime quarantine is now fail-closed, while the eight-point
+geographic rotation, loss budget, exceptional-region handler, and Fabric
+collision gates remain open. The recorded thresholds are provisional numerical
+checks, not agreed gameplay acceptance thresholds.
 
 The current RFC should proceed in this order:
 
-1. Add the acceptance-threshold table and grid-version metadata to the standalone
-   metric harness.
+1. Completed for the common mapping harness: the provisional acceptance
+   thresholds and `tellus:earth-cubed-sphere-rfc-1` metadata are emitted beside
+   every regenerated CSV. These thresholds remain reproducibility gates, not
+   player-facing budgets.
 2. Completed as a standalone reference: reproduce the conformal expanded-cube map from the Rancic/McGregor family in
    a standalone evaluator, with a hard shared-boundary map and a separate
    singular-corner report.
-3. Reproduce the incision/overset construction as a second candidate, including
-   canonical-owner and read-only-alias tests.
+3. Completed the first runtime incision gate: `SphereSingularityPolicy` discovers
+   eight unique conformal corners, classifies conservative block/chunk
+   footprints, and blocks quarantined generation and face transfer.
 4. Sweep finite exclusion/transition cap radii around the eight-point rotation
-   and compare them with the current equiangular and spherified candidates.
+   and compare geographic loss against the actual land and settlement data.
 5. Add an optimized quasi-orthogonal candidate with hard shared-boundary
    constraints, keeping the spherified cube as the baseline.
-6. Add singular-cap placement and geographic coverage scoring before any new
-   player-facing runtime claim.
+6. Complete singular-cap placement and geographic coverage scoring before any
+   new player-facing runtime claim.
 7. Completed the standalone identity subgate: chunk/section mapping, explicit
    edit overlay across eviction/reload, and concurrent request order are now
    tested. The remaining part is wiring the same contract into real Fabric
    chunk-section and restart persistence.
-8. Implement the smallest client-visible seam/collision spike, then repeat the
-   geometry and performance measurements at scale 1.
+8. The common geometry kernel now provides and tests a right-handed
+   east/north/up tangent-frame conversion contract, and
+   `SphereSurfaceMotion` provides a tested horizontal seam/collision-probe
+   adapter. The 1.20.1 Fabric target now has a server-side entity move guard
+   that prevents a player from being committed outside the continued face chart
+   before routing or holding at the boundary. This does not yet make the adapter
+   authoritative for within-face body collision or the client movement path;
+   the loaded-destination path now performs a target-level bounding-box probe
+   and rolls back blocked landings. Full within-face spherical body collision,
+   client movement, and repeated scale-1 measurements remain open gates.
 
 Until those gates pass, the correct status is **research prototype with a
 plausible architecture**, not “requirements fulfilled.”

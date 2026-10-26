@@ -34,6 +34,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--chunk-x", type=int, help="Center chunk X coordinate (required for chunk benchmarks).")
     parser.add_argument("--chunk-z", type=int, help="Center chunk Z coordinate (required for chunk benchmarks).")
     parser.add_argument("--sphere-check-planet", help="Run the opt-in two-way spherical ServerPlayer routing check instead of a chunk benchmark.")
+    parser.add_argument("--cube-net-check", action="store_true", help="Check all cube-net directed edges through the installed movement hook.")
     parser.add_argument("--radius", type=int, default=0, choices=range(0, 33),
                         help="Square radius in chunks around the center (default: 0).")
     parser.add_argument("--workers", type=int, default=1,
@@ -103,6 +104,7 @@ def write_server_config(run_dir: Path, world_type: str = "minecraft:normal") -> 
                     "structure_overrides": [],
                 }, separators=(",", ":"))] if world_type == "minecraft:flat" else []),
                 "online-mode=false",
+                "server-ip=127.0.0.1",
                 "enable-command-block=true",
                 "spawn-protection=0",
                 "enable-rcon=false",
@@ -197,7 +199,9 @@ def main() -> int:
     args = parse_args()
     if args.workers < 1:
         raise SystemExit("--workers must be at least 1")
-    if args.sphere_check_planet is None and (args.chunk_x is None or args.chunk_z is None):
+    if args.sphere_check_planet is not None and args.cube_net_check:
+        raise SystemExit("choose only one runtime check")
+    if args.sphere_check_planet is None and not args.cube_net_check and (args.chunk_x is None or args.chunk_z is None):
         raise SystemExit("--chunk-x and --chunk-z are required for chunk benchmarks")
     if args.sphere_check_planet is not None and not re.fullmatch(r"[a-z0-9_.-]+:[a-z0-9_./-]+", args.sphere_check_planet):
         raise SystemExit("--sphere-check-planet must be a namespace:path identifier")
@@ -226,11 +230,13 @@ def main() -> int:
             shutil.copytree(cache_template, tellus_dir / "cache")
     write_server_config(run_dir, args.world_type)
     result_dir = run_dir / "tellus" / "benchmarks"
-    pattern = "sphere-runtime-check-*.json" if args.sphere_check_planet else "chunk-benchmark-*.json"
+    pattern = ("cube-net-runtime-check-*.json" if args.cube_net_check else
+               "sphere-runtime-check-*.json" if args.sphere_check_planet else "chunk-benchmark-*.json")
     before = set(result_dir.glob(pattern)) if result_dir.exists() else set()
 
+    gradle_launcher = "gradlew.bat" if os.name == "nt" else "./gradlew"
     command = [
-        "./gradlew",
+        gradle_launcher,
         f"-PtellusTargets={args.module}",
         f"-PtellusBenchmarkHeap={args.heap}",
         f":{args.module}:runServer",
@@ -261,7 +267,8 @@ def main() -> int:
         for line in iter_output(process, log_path):
             if not sent and any(marker in line for marker in READY_MARKERS):
                 assert process.stdin is not None
-                command_line = (f"tellus sphere verify {args.sphere_check_planet}\n" if args.sphere_check_planet
+                command_line = ("tellus cube_net verify\n" if args.cube_net_check else
+                                f"tellus sphere verify {args.sphere_check_planet}\n" if args.sphere_check_planet
                                 else f"execute in {args.dimension} run tellus benchmark {args.chunk_x} {args.chunk_z} {args.radius}\n")
                 process.stdin.write(command_line)
                 process.stdin.flush()
@@ -296,6 +303,7 @@ def main() -> int:
             "runnerLabel": label,
             "runnerDimension": args.dimension,
             "runnerSphereCheckPlanet": args.sphere_check_planet,
+            "runnerCubeNetCheck": args.cube_net_check,
             "runnerRunDir": str(run_dir),
             "runnerRevision": start_revision,
             "runnerWorktreeDirtyAtStart": start_dirty,

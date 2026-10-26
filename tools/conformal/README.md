@@ -7,10 +7,11 @@ at commit `02295ffb6decf764b7bf2ce518c412975ae68565`.
 
 The upstream copyright is 2015–2026 Commonwealth Scientific Industrial Research
 Organisation; the adaptation and these research tools are GPL-3.0-or-later.
-See [COPYING](COPYING). The main-source change is a generic `SurfaceMapping`
-interface; it contains no CCAM coefficients or implementation. The GPL
-candidate is neither compiled by the Fabric source sets nor selected by the
-game runtime. Integrating a candidate into the packaged mod is a separate task.
+See [COPYING](COPYING). This directory remains the standalone research harness.
+A separate runtime adaptation now lives under `src/main` and is selected by
+the Fabric spherical prototype. Its GPL component and the repository's LGPL
+metadata must be reconciled before distributing a build that contains it; see
+[THIRD_PARTY_NOTICES.md](../../THIRD_PARTY_NOTICES.md).
 
 From the repository root, with JDK 21 and a local JUnit Console Standalone 1.10.2:
 

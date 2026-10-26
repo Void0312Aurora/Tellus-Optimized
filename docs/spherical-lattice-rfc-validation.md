@@ -268,16 +268,16 @@ collision, or client rendering.
 
 ### Conformal reference follow-up
 
-A separate source-traceable CCAM-series candidate now implements forward and
-inverse surface lookup, local scale, and curved-cell enclosures under
-`tools/conformal`. The generic `ClosedQuadSphereEmbedding.SurfaceMapping`
-interface lets it use the same seam, metric, and incision-policy harness without
-adding the GPL reference implementation to Fabric source sets. See
-[the conformal experiment](research/conformal-cube-validation.md) for 42 focused
-checks, cap sweeps, metre derivative results, license/source metadata, and the
-remaining geographic, persistence, elevation, and collision gates. The earlier
-baseline record remains a nonconformal baseline; the new candidate is research
-code, not a runtime mapping selection.
+The source-traceable CCAM-series candidate now also implements the versioned
+runtime `SphereSurfaceMapping` contract under `src/main`. `SphereWorldModel`
+and the Fabric generator default to `rancic-ccam30-double-v1`; the old
+equiangular map remains an explicit research comparison through
+`EquiangularCubedSphere`. See [the conformal experiment](research/conformal-cube-validation.md)
+for the 42 focused checks, cap sweeps, metre derivative results, and the
+remaining geographic, persistence, elevation, and collision gates. The runtime
+switch is implemented, but distribution is still gated on resolving the
+upstream GPL license of the CCAM-derived class against this repository's LGPL
+metadata.
 
 ## Review follow-up: coarse atlas lookup
 
