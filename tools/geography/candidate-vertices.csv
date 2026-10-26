@@ -1,0 +1,9 @@
+vertex,label,latitude_deg,longitude_deg,supplied_nearest_land_km
+1,Tropical Atlantic,2.6,-21.7,1117
+2,Southwest Indian Ocean,-35.9,41.9,1185
+3,Norwegian Sea,70.6,6.8,360
+4,Bay of Bengal,18.2,89.8,386
+5,Southeast Pacific,-18.2,-90.2,1553
+6,Southern Ocean,-70.6,-173.2,580
+7,Northeast Pacific,35.9,-138.1,1293
+8,Western Pacific,-2.6,158.3,488

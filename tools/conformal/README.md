@@ -18,8 +18,9 @@ From the repository root, with JDK 21 and a local JUnit Console Standalone 1.10.
 ./tools/conformal/run-conformal-study.ps1
 ```
 
-The runner compiles into a new GUID directory, runs the 31 existing checks and
-11 candidate checks, then writes two CSVs and grid metadata under
+The runner compiles into a new GUID directory, runs 48 checks covering the
+existing lattice, conformal candidate, rotated map and perimeter extraction,
+then writes two CSVs and grid metadata under
 `build/rfc-conformal/results`. Use `-JunitJar <path>` for a different jar path,
 or `-OutputDirectory docs/research` to regenerate the recorded experiment.
 It downloads no dependencies and aborts on a failed numerical gate.
@@ -41,3 +42,7 @@ Fortran model.
 
 See [the experiment record](../../docs/research/conformal-cube-validation.md)
 for equations, numerical thresholds, measured results, and remaining gates.
+
+The rotated candidate and its geographic coverage study are documented in
+[tools/geography](../geography/README.md). That study uses its own offline runner
+and records actual land overlap rather than inferring it from spherical area.

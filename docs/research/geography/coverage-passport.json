@@ -1,0 +1,75 @@
+{
+  "study_id": "eight-candidate-gshhg-coverage-v1",
+  "data_version": "GSHHG 2.3.7 (2017-06-15)",
+  "official_page": "https://www.soest.hawaii.edu/pwessel/gshhg/",
+  "source_file_sha256": {
+    "f": "af9215d58ebc525b2d09654a89959829f09e6edc457f3666759cded37be4ecf6",
+    "h": "380f585415006f2b648a1a99383f50bf06518728d62991d98d48e7c2de48ec8f"
+  },
+  "orientation_id": "candidate-eight-kabsch-sphere-v1",
+  "earth_radius_m": 6371008.8,
+  "projection": "spherical Lambert azimuthal equal area centered on each fitted vertex",
+  "land_definition": "level-1 coastal envelopes union selected Antarctic level 5/6; inland water not subtracted",
+  "nearest_definition": "minimum to every native minor great-circle shoreline arc; no dateline splitting edges",
+  "circle_vertices": 2048,
+  "boundary_edge_samples": [
+    8,
+    32
+  ],
+  "subdivision": 128,
+  "local_mask_window_radius_km": 1000,
+  "geometry_repairs": {
+    "f": {
+      "selected_polygons": 19476,
+      "repaired_polygon_ids_per_vertex": [
+        [],
+        [],
+        [],
+        [],
+        [],
+        [
+          4,
+          5
+        ],
+        [],
+        []
+      ],
+      "source_segments_scanned": 9866862
+    },
+    "h": {
+      "selected_polygons": 15981,
+      "repaired_polygon_ids_per_vertex": [
+        [],
+        [],
+        [],
+        [],
+        [],
+        [
+          4,
+          5
+        ],
+        [],
+        []
+      ],
+      "source_segments_scanned": 1563715
+    }
+  },
+  "population": "not measured",
+  "roads": "bounded observed OSM probe only; global loss not measured",
+  "buildings": "bounded observed OSM probe only; global loss not measured",
+  "shipping_and_air_routes": "not measured",
+  "modern_coastline_completeness": "not certified",
+  "runtime": {
+    "python": "3.12.4",
+    "numpy": "1.26.4",
+    "shapely": "2.1.2",
+    "pyproj": "3.7.2"
+  },
+  "input_hash_convention": "UTF-8 text with LF newlines and no BOM",
+  "inputs_sha256": {
+    "candidate-cube-orientation.json": "d7babe2e40b2b6d2a1a2728c82e4c0a37a40433d069ac6171820e49c9d0865da",
+    "quarantine-boundaries-8.geojson": "82061ef5974a920ad770a655117e56fcdb8636cb4386d6b385128cfdc54b31a3",
+    "quarantine-boundaries-32.geojson": "615ed8deb3b2512dcf48d848e25ddf1052212e1c337c8697165ca3219b9d135c"
+  },
+  "osm_probe_passport": "osm-probe-passport.json"
+}

@@ -1,0 +1,161 @@
+{
+  "orientation_id": "candidate-eight-kabsch-sphere-v1",
+  "earth_radius_m": 6371008.8,
+  "cartesian_axes": [
+    "greenwich_equator",
+    "north_pole",
+    "90E_equator"
+  ],
+  "rotation_convention": "column_world_vector = rotation @ column_unrotated_vector",
+  "inverse_convention": "column_unrotated_vector = rotation.T @ column_world_vector",
+  "rotation_matrix": [
+    [
+      -0.5187679068420676,
+      -0.807114107659033,
+      -0.28186286745235056
+    ],
+    [
+      0.7781588802211578,
+      -0.3092525966192103,
+      -0.5466549081616554
+    ],
+    [
+      0.35404606474815076,
+      -0.5029211157846107,
+      0.788493332460275
+    ]
+  ],
+  "determinant": 0.999999999999998,
+  "max_orthogonality_error": 1.887379141862766e-15,
+  "fit_method": "all 40320 correspondences; proper Kabsch least squares of unit vectors",
+  "symmetry_tie_break": "first lexicographic correspondence within 1e-14 squared chord cost",
+  "input_sha256": "0283fc8ac13647c6408cfb090b4dfa5fe8bcdad5e6f824e31f3c14b9327f33f4",
+  "input_hash_convention": "UTF-8 text with LF newlines and no BOM",
+  "source_precision_degrees": 0.1,
+  "max_residual_m": 4327.429186541357,
+  "rms_residual_m": 3139.6583950584713,
+  "within_nearest_0_1_degree_rounding_cells": true,
+  "squared_chord_cost": 1.942845927766365e-06,
+  "vertices": [
+    {
+      "vertex": 1,
+      "label": "Tropical Atlantic",
+      "input_latitude_deg": 2.6,
+      "input_longitude_deg": -21.7,
+      "supplied_nearest_land_km": 1117.0,
+      "canonical_signs": [
+        -1,
+        -1,
+        -1
+      ],
+      "fitted_latitude_deg": 2.5727682914294054,
+      "fitted_longitude_deg": -21.694427791658224,
+      "residual_m": 3090.6476627645748
+    },
+    {
+      "vertex": 2,
+      "label": "Southwest Indian Ocean",
+      "input_latitude_deg": -35.9,
+      "input_longitude_deg": 41.9,
+      "supplied_nearest_land_km": 1185.0,
+      "canonical_signs": [
+        -1,
+        -1,
+        1
+      ],
+      "fitted_latitude_deg": -35.89732430771203,
+      "fitted_longitude_deg": 41.918953316680614,
+      "residual_m": 1732.9358539084208
+    },
+    {
+      "vertex": 3,
+      "label": "Norwegian Sea",
+      "input_latitude_deg": 70.6,
+      "input_longitude_deg": 6.8,
+      "supplied_nearest_land_km": 360.0,
+      "canonical_signs": [
+        1,
+        -1,
+        -1
+      ],
+      "fitted_latitude_deg": 70.63556670486223,
+      "fitted_longitude_deg": 6.847603305606905,
+      "residual_m": 4327.429186541357
+    },
+    {
+      "vertex": 4,
+      "label": "Bay of Bengal",
+      "input_latitude_deg": 18.2,
+      "input_longitude_deg": 89.8,
+      "supplied_nearest_land_km": 386.0,
+      "canonical_signs": [
+        1,
+        -1,
+        1
+      ],
+      "fitted_latitude_deg": 18.192221709769715,
+      "fitted_longitude_deg": 89.77424817323056,
+      "residual_m": 2854.4712885232743
+    },
+    {
+      "vertex": 5,
+      "label": "Southeast Pacific",
+      "input_latitude_deg": -18.2,
+      "input_longitude_deg": -90.2,
+      "supplied_nearest_land_km": 1553.0,
+      "canonical_signs": [
+        -1,
+        1,
+        -1
+      ],
+      "fitted_latitude_deg": -18.192221709769715,
+      "fitted_longitude_deg": -90.22575182676945,
+      "residual_m": 2854.471288523984
+    },
+    {
+      "vertex": 6,
+      "label": "Southern Ocean",
+      "input_latitude_deg": -70.6,
+      "input_longitude_deg": -173.2,
+      "supplied_nearest_land_km": 580.0,
+      "canonical_signs": [
+        -1,
+        1,
+        1
+      ],
+      "fitted_latitude_deg": -70.63556670486223,
+      "fitted_longitude_deg": -173.1523966943931,
+      "residual_m": 4327.429186541188
+    },
+    {
+      "vertex": 7,
+      "label": "Northeast Pacific",
+      "input_latitude_deg": 35.9,
+      "input_longitude_deg": -138.1,
+      "supplied_nearest_land_km": 1293.0,
+      "canonical_signs": [
+        1,
+        1,
+        -1
+      ],
+      "fitted_latitude_deg": 35.89732430771203,
+      "fitted_longitude_deg": -138.0810466833194,
+      "residual_m": 1732.9358539068155
+    },
+    {
+      "vertex": 8,
+      "label": "Western Pacific",
+      "input_latitude_deg": -2.6,
+      "input_longitude_deg": 158.3,
+      "supplied_nearest_land_km": 488.0,
+      "canonical_signs": [
+        1,
+        1,
+        1
+      ],
+      "fitted_latitude_deg": -2.5727682914294054,
+      "fitted_longitude_deg": 158.30557220834177,
+      "residual_m": 3090.6476627642114
+    }
+  ]
+}

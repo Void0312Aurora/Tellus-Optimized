@@ -300,6 +300,15 @@ The result must be reproducible from a grid version and a fixed seed.
 
 ### R2 — Coverage placement study
 
+The first fixed-orientation study is executable; see
+[the eight-vertex geographic validation](research/eight-vertex-geographic-validation.md).
+It checks GSHHG full/high coastlines, ideal caps, actual n=128 quarantine, and a
+bounded OSM probe. The fitted western-Pacific vertex is only about 238 km from
+represented land. The 300+50 km configuration affects observed settlements,
+and the conservative coarse-cell mask also produces disconnected exclusion
+fragments. A rotation search, tighter cell bounds, current global feature
+coverage, and approved loss/scale budgets remain required for R2 acceptance.
+
 Use the real geographic masks already used by Tellus to place exceptional caps.
 Compute loss over land area, population, roads, buildings, and high-value
 terrain. Test multiple cube orientations and rotations. The output is a

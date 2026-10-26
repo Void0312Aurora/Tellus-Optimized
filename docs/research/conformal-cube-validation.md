@@ -199,7 +199,15 @@ region is low-value or avoids land.
 
 ## Next gates
 
-1. Fit one rigid cube rotation to the eight proposed geographic vertices,
+The first geographic follow-up is now available in
+[the eight-vertex validation record](eight-vertex-geographic-validation.md).
+It fits the proposed rotation, checks full/high GSHHG coastlines, measures actual
+coarse-cell quarantine, and scores a bounded OSM probe. The 300+50 km setting
+affects represented islands and observed settlements, so its low-value loss
+assumption has not passed. Tight cell bounds, geographic loss budgets, and real
+gameplay acceptance remain open.
+
+1. Completed as a first bounded study: fit one rigid cube rotation to the eight proposed geographic vertices,
    report fit residuals and pairwise cube constraints, then measure cap/band
    overlap with actual coastline and high-value geographic data. The proposed
    nearest-land distances alone do not certify whole-cell exclusion clearance.
