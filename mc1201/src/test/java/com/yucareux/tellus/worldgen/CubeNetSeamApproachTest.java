@@ -57,6 +57,37 @@ class CubeNetSeamApproachTest {
    }
 
    @Test
+   void maximumViewStagingNeverExceedsThePerTickChunkPacketBudget() {
+      var delivery = new CubeNetRuntime.ClientChunkDelivery();
+      assertEquals(1, delivery.beginAttempt(100, true, new net.minecraft.world.level.ChunkPos(0, 0), 33));
+      assertTrue(delivery.consumeCenterPacket());
+      int expectedChunks = 67 * 67;
+      int chunksSent = 0;
+      int batches = 0;
+      while (!delivery.finishedAttempt()) {
+         var batch = delivery.takeNext(CubeNetRuntime.MAX_CHUNK_PACKETS_PER_TICK);
+         assertTrue(batch.size() <= CubeNetRuntime.MAX_CHUNK_PACKETS_PER_TICK);
+         assertFalse(batch.isEmpty());
+         chunksSent += batch.size();
+         batches++;
+      }
+      assertEquals(expectedChunks, chunksSent);
+      int budget = CubeNetRuntime.MAX_CHUNK_PACKETS_PER_TICK;
+      assertEquals((expectedChunks + budget - 1) / budget, batches);
+   }
+
+   @Test
+   void runtimeMetricsSampleAtMostOncePerTickAndRetainTheWorstObservations() {
+      var delivery = new CubeNetRuntime.ClientChunkDelivery();
+      delivery.sampleRuntime(10, 50.0F);
+      delivery.sampleRuntime(10, 100.0F);
+      delivery.sampleRuntime(11, 80.0F);
+      assertEquals(2, delivery.metricSamples());
+      assertEquals(12.5, delivery.observedMinTps(), 1E-6);
+      assertTrue(delivery.sampledPeakHeapBytes() > 0);
+   }
+
+   @Test
    void everyCutApproachPredictsTheSameChunkBeforeAndAfterThePhysicalEdge() {
       var layout = CubeNetLayout.standard(10240);
       var resolver = new CubeNetApronResolver(layout, 128);

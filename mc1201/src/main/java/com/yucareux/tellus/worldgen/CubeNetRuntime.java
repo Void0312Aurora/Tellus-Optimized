@@ -70,7 +70,7 @@ public final class CubeNetRuntime {
    private static final int LOAD_TIMEOUT_TICKS = 1200;
    private static final int CLIENT_CHUNK_RETRY_TICKS = 160;
    private static final int MAX_CLIENT_CHUNK_SENDS = 2;
-   private static final int MAX_CHUNK_PACKETS_PER_TICK = 8;
+   static final int MAX_CHUNK_PACKETS_PER_TICK = 8;
    private static final int MAX_CONCURRENT_CHUNK_LOADS = 8;
    private static final long ESTIMATED_CHUNK_LOAD_BYTES = 8L * 1024L * 1024L;
    private static final long MAX_CHUNK_LOAD_BYTES =
@@ -804,6 +804,14 @@ public final class CubeNetRuntime {
 
    private void tick(MinecraftServer server) {
       for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+         Preparation preparation = this.preparations.get(player.getUUID());
+         if (preparation != null) {
+            preparation.clientChunks().sampleRuntime(server.getTickCount(), server.getAverageTickTime());
+         }
+         Transfer activeTransfer = this.pending.get(player.getUUID());
+         if (activeTransfer != null) {
+            activeTransfer.clientChunks().sampleRuntime(server.getTickCount(), server.getAverageTickTime());
+         }
          if (player.serverLevel() == this.level
             && server.getTickCount() >= this.nextBoundaryRibbonTick.getOrDefault(player.getUUID(), 0)
             && player.serverLevel().getChunkSource().getGenerator() instanceof CubeNetChunkGenerator generator) {
@@ -1514,10 +1522,12 @@ public final class CubeNetRuntime {
       for (int dz = -radius; dz <= radius; dz++)
          for (int dx = -radius; dx <= radius; dx++) {
          int cx = center.x + dx, cz = center.z + dz;
+         AtomicBoolean permitAcquired = new AtomicBoolean();
          loads.add(CompletableFuture.supplyAsync(
             () -> {
                try {
                   CHUNK_LOAD_BUDGET.acquire();
+                  permitAcquired.set(true);
                } catch (InterruptedException error) {
                   Thread.currentThread().interrupt();
                   throw new java.util.concurrent.CompletionException(error);
@@ -1528,7 +1538,9 @@ public final class CubeNetRuntime {
                if (result.left().isEmpty()) {
                   throw new IllegalStateException("destination chunk unavailable: " + result.right());
                }
-            }).whenComplete((ignored, error) -> releaseChunkLoadBudget()));
+            }).whenComplete((ignored, error) -> {
+               if (permitAcquired.compareAndSet(true, false)) releaseChunkLoadBudget();
+            }));
       }
       return CompletableFuture.allOf(loads.toArray(CompletableFuture[]::new));
    }
@@ -1552,21 +1564,20 @@ public final class CubeNetRuntime {
       if (delivery.consumeCenterPacket()) {
          player.connection.send(new ClientboundSetChunkCacheCenterPacket(center.x, center.z));
       }
-      int packetsSent = 0;
-      while (packetsSent < MAX_CHUNK_PACKETS_PER_TICK) {
-         ChunkPos next = delivery.nextChunk();
-         if (next == null) break;
+      List<ChunkPos> batch = delivery.takeNext(MAX_CHUNK_PACKETS_PER_TICK);
+      for (ChunkPos next : batch) {
          LevelChunk chunk = (LevelChunk) level.getChunkSource().getChunk(next.x, next.z, true);
          player.connection.send(new ClientboundLevelChunkWithLightPacket(
             chunk, level.getChunkSource().getLightEngine(), null, null));
-         delivery.advance();
-         packetsSent++;
       }
       if (delivery.finishedAttempt()) {
          TellusCommon.LOGGER.info("Cube-net client destination chunks staged for {} center=({}, {}) radius={} "
-               + "attempt={} packetsThisTick={} packetBudget={} loadTaskBudget={} estimatedLoadBytes={}",
-            player.getGameProfile().getName(), center.x, center.z, radius, attempt, packetsSent,
-            MAX_CHUNK_PACKETS_PER_TICK, MAX_CONCURRENT_CHUNK_LOADS, MAX_CHUNK_LOAD_BYTES);
+               + "attempt={} packetsThisTick={} packetBudget={} loadTaskBudget={} estimatedLoadBytes={} "
+               + "observedMinTps={} sampledPeakHeapBytes={} metricSamples={}",
+            player.getGameProfile().getName(), center.x, center.z, radius, attempt, batch.size(),
+            MAX_CHUNK_PACKETS_PER_TICK, MAX_CONCURRENT_CHUNK_LOADS, MAX_CHUNK_LOAD_BYTES,
+            String.format(java.util.Locale.ROOT, "%.2f", delivery.observedMinTps()),
+            delivery.sampledPeakHeapBytes(), delivery.metricSamples());
       }
    }
 
@@ -1924,6 +1935,27 @@ public final class CubeNetRuntime {
       private List<ChunkPos> chunks = List.of();
       private int nextChunk;
       private boolean centerPacketPending;
+      private int lastMetricTick = Integer.MIN_VALUE;
+      private int metricSamples;
+      private double observedMinTps = 20.0;
+      private long sampledPeakHeapBytes;
+
+      void sampleRuntime(int tick, float averageTickTimeMs) {
+         if (tick == this.lastMetricTick) return;
+         this.lastMetricTick = tick;
+         this.metricSamples++;
+         if (averageTickTimeMs > 0.0F && Float.isFinite(averageTickTimeMs)) {
+            this.observedMinTps = Math.min(this.observedMinTps,
+               Math.min(20.0, 1000.0 / averageTickTimeMs));
+         }
+         Runtime runtime = Runtime.getRuntime();
+         long usedHeap = runtime.totalMemory() - runtime.freeMemory();
+         this.sampledPeakHeapBytes = Math.max(this.sampledPeakHeapBytes, usedHeap);
+      }
+
+      double observedMinTps() { return this.observedMinTps; }
+      long sampledPeakHeapBytes() { return this.sampledPeakHeapBytes; }
+      int metricSamples() { return this.metricSamples; }
 
       boolean isDue(int tick, boolean retrySupported) {
          int maxAttempts = retrySupported ? MAX_CLIENT_CHUNK_SENDS : 1;
@@ -1971,12 +2003,13 @@ public final class CubeNetRuntime {
          return pending;
       }
 
-      ChunkPos nextChunk() {
-         return this.nextChunk < this.chunks.size() ? this.chunks.get(this.nextChunk) : null;
-      }
-
-      void advance() {
-         if (this.nextChunk < this.chunks.size()) this.nextChunk++;
+      List<ChunkPos> takeNext(int budget) {
+         if (budget <= 0) throw new IllegalArgumentException("Chunk packet budget must be positive");
+         List<ChunkPos> batch = new ArrayList<>(Math.min(budget, this.chunks.size() - this.nextChunk));
+         while (batch.size() < budget && this.nextChunk < this.chunks.size()) {
+            batch.add(this.chunks.get(this.nextChunk++));
+         }
+         return List.copyOf(batch);
       }
 
       boolean finishedAttempt() {
