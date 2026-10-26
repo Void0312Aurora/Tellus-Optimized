@@ -87,8 +87,8 @@ This is an edge-routing guard, not a replacement for spherical body collision,
 client movement validation or globe rendering. Vertical storage covering the
 complete scale-1 elevation range also remains open. The conformal runtime now
 fails closed around the eight corner singularities using the configured excluded
-cap and transition band; those transition regions remain unavailable until their
-exceptional terrain and collision handler exists. `SphereSurfaceMotion` is now
+cap. The transition band is generated with ordinary terrain but remains
+unavailable to players behind the hard ordinary-area boundary. `SphereSurfaceMotion` is now
 the shared server seam decision and Jacobian path and is covered by geometry
 tests; it is not yet the authority for all Fabric entity collision. The current
 runtime can pause at an edge while a cold destination loads. After the target
