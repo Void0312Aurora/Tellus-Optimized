@@ -1,0 +1,383 @@
+{
+  "fixture": "ServerPlayer.move through installed Entity mixin; spectator packet sink; no client",
+  "dimension": "tellus:earth_cube_net",
+  "worldScale": 1000.0,
+  "faceSize": 10240,
+  "syntheticSampler": false,
+  "crossings": [
+    {
+      "sourceFace": "POS_X",
+      "side": "WEST",
+      "destinationFace": "POS_Z",
+      "seam": true,
+      "startsExactlyOnEdge": false,
+      "ticks": 312,
+      "fullChunkLoaded": true
+    },
+    {
+      "sourceFace": "POS_X",
+      "side": "EAST",
+      "destinationFace": "NEG_Z",
+      "seam": true,
+      "startsExactlyOnEdge": false,
+      "ticks": 1,
+      "fullChunkLoaded": true
+    },
+    {
+      "sourceFace": "POS_X",
+      "side": "NORTH",
+      "destinationFace": "NEG_Y",
+      "seam": true,
+      "startsExactlyOnEdge": false,
+      "ticks": 285,
+      "fullChunkLoaded": true
+    },
+    {
+      "sourceFace": "POS_X",
+      "side": "SOUTH",
+      "destinationFace": "POS_Y",
+      "seam": false,
+      "startsExactlyOnEdge": false,
+      "ticks": 193,
+      "fullChunkLoaded": true
+    },
+    {
+      "sourceFace": "NEG_X",
+      "side": "WEST",
+      "destinationFace": "NEG_Z",
+      "seam": true,
+      "startsExactlyOnEdge": false,
+      "ticks": 177,
+      "fullChunkLoaded": true
+    },
+    {
+      "sourceFace": "NEG_X",
+      "side": "EAST",
+      "destinationFace": "POS_Z",
+      "seam": true,
+      "startsExactlyOnEdge": false,
+      "ticks": 218,
+      "fullChunkLoaded": true
+    },
+    {
+      "sourceFace": "NEG_X",
+      "side": "NORTH",
+      "destinationFace": "NEG_Y",
+      "seam": true,
+      "startsExactlyOnEdge": false,
+      "ticks": 167,
+      "fullChunkLoaded": true
+    },
+    {
+      "sourceFace": "NEG_X",
+      "side": "SOUTH",
+      "destinationFace": "POS_Y",
+      "seam": false,
+      "startsExactlyOnEdge": false,
+      "ticks": 168,
+      "fullChunkLoaded": true
+    },
+    {
+      "sourceFace": "POS_Y",
+      "side": "WEST",
+      "destinationFace": "NEG_X",
+      "seam": false,
+      "startsExactlyOnEdge": false,
+      "ticks": 5,
+      "fullChunkLoaded": true
+    },
+    {
+      "sourceFace": "POS_Y",
+      "side": "EAST",
+      "destinationFace": "POS_X",
+      "seam": false,
+      "startsExactlyOnEdge": false,
+      "ticks": 13,
+      "fullChunkLoaded": true
+    },
+    {
+      "sourceFace": "POS_Y",
+      "side": "NORTH",
+      "destinationFace": "POS_Z",
+      "seam": false,
+      "startsExactlyOnEdge": false,
+      "ticks": 196,
+      "fullChunkLoaded": true
+    },
+    {
+      "sourceFace": "POS_Y",
+      "side": "SOUTH",
+      "destinationFace": "NEG_Z",
+      "seam": false,
+      "startsExactlyOnEdge": false,
+      "ticks": 162,
+      "fullChunkLoaded": true
+    },
+    {
+      "sourceFace": "NEG_Y",
+      "side": "WEST",
+      "destinationFace": "NEG_X",
+      "seam": true,
+      "startsExactlyOnEdge": false,
+      "ticks": 25,
+      "fullChunkLoaded": true
+    },
+    {
+      "sourceFace": "NEG_Y",
+      "side": "EAST",
+      "destinationFace": "POS_X",
+      "seam": true,
+      "startsExactlyOnEdge": false,
+      "ticks": 14,
+      "fullChunkLoaded": true
+    },
+    {
+      "sourceFace": "NEG_Y",
+      "side": "NORTH",
+      "destinationFace": "NEG_Z",
+      "seam": false,
+      "startsExactlyOnEdge": false,
+      "ticks": 166,
+      "fullChunkLoaded": true
+    },
+    {
+      "sourceFace": "NEG_Y",
+      "side": "SOUTH",
+      "destinationFace": "POS_Z",
+      "seam": true,
+      "startsExactlyOnEdge": false,
+      "ticks": 173,
+      "fullChunkLoaded": true
+    },
+    {
+      "sourceFace": "POS_Z",
+      "side": "WEST",
+      "destinationFace": "NEG_X",
+      "seam": true,
+      "startsExactlyOnEdge": false,
+      "ticks": 16,
+      "fullChunkLoaded": true
+    },
+    {
+      "sourceFace": "POS_Z",
+      "side": "EAST",
+      "destinationFace": "POS_X",
+      "seam": true,
+      "startsExactlyOnEdge": false,
+      "ticks": 16,
+      "fullChunkLoaded": true
+    },
+    {
+      "sourceFace": "POS_Z",
+      "side": "NORTH",
+      "destinationFace": "NEG_Y",
+      "seam": true,
+      "startsExactlyOnEdge": false,
+      "ticks": 14,
+      "fullChunkLoaded": true
+    },
+    {
+      "sourceFace": "POS_Z",
+      "side": "SOUTH",
+      "destinationFace": "POS_Y",
+      "seam": false,
+      "startsExactlyOnEdge": false,
+      "ticks": 9,
+      "fullChunkLoaded": true
+    },
+    {
+      "sourceFace": "NEG_Z",
+      "side": "WEST",
+      "destinationFace": "POS_X",
+      "seam": true,
+      "startsExactlyOnEdge": false,
+      "ticks": 1,
+      "fullChunkLoaded": true
+    },
+    {
+      "sourceFace": "NEG_Z",
+      "side": "EAST",
+      "destinationFace": "NEG_X",
+      "seam": true,
+      "startsExactlyOnEdge": false,
+      "ticks": 14,
+      "fullChunkLoaded": true
+    },
+    {
+      "sourceFace": "NEG_Z",
+      "side": "NORTH",
+      "destinationFace": "NEG_Y",
+      "seam": false,
+      "startsExactlyOnEdge": false,
+      "ticks": 10,
+      "fullChunkLoaded": true
+    },
+    {
+      "sourceFace": "NEG_Z",
+      "side": "SOUTH",
+      "destinationFace": "POS_Y",
+      "seam": false,
+      "startsExactlyOnEdge": false,
+      "ticks": 7,
+      "fullChunkLoaded": true
+    },
+    {
+      "sourceFace": "POS_X",
+      "side": "WEST",
+      "destinationFace": "POS_Z",
+      "seam": true,
+      "startsExactlyOnEdge": true,
+      "ticks": 11,
+      "fullChunkLoaded": true
+    },
+    {
+      "sourceFace": "POS_X",
+      "side": "EAST",
+      "destinationFace": "NEG_Z",
+      "seam": true,
+      "startsExactlyOnEdge": true,
+      "ticks": 1,
+      "fullChunkLoaded": true
+    },
+    {
+      "sourceFace": "POS_X",
+      "side": "NORTH",
+      "destinationFace": "NEG_Y",
+      "seam": true,
+      "startsExactlyOnEdge": true,
+      "ticks": 12,
+      "fullChunkLoaded": true
+    },
+    {
+      "sourceFace": "NEG_X",
+      "side": "WEST",
+      "destinationFace": "NEG_Z",
+      "seam": true,
+      "startsExactlyOnEdge": true,
+      "ticks": 14,
+      "fullChunkLoaded": true
+    },
+    {
+      "sourceFace": "NEG_X",
+      "side": "EAST",
+      "destinationFace": "POS_Z",
+      "seam": true,
+      "startsExactlyOnEdge": true,
+      "ticks": 12,
+      "fullChunkLoaded": true
+    },
+    {
+      "sourceFace": "NEG_X",
+      "side": "NORTH",
+      "destinationFace": "NEG_Y",
+      "seam": true,
+      "startsExactlyOnEdge": true,
+      "ticks": 14,
+      "fullChunkLoaded": true
+    },
+    {
+      "sourceFace": "NEG_Y",
+      "side": "WEST",
+      "destinationFace": "NEG_X",
+      "seam": true,
+      "startsExactlyOnEdge": true,
+      "ticks": 1,
+      "fullChunkLoaded": true
+    },
+    {
+      "sourceFace": "NEG_Y",
+      "side": "EAST",
+      "destinationFace": "POS_X",
+      "seam": true,
+      "startsExactlyOnEdge": true,
+      "ticks": 12,
+      "fullChunkLoaded": true
+    },
+    {
+      "sourceFace": "NEG_Y",
+      "side": "SOUTH",
+      "destinationFace": "POS_Z",
+      "seam": true,
+      "startsExactlyOnEdge": true,
+      "ticks": 13,
+      "fullChunkLoaded": true
+    },
+    {
+      "sourceFace": "POS_Z",
+      "side": "WEST",
+      "destinationFace": "NEG_X",
+      "seam": true,
+      "startsExactlyOnEdge": true,
+      "ticks": 11,
+      "fullChunkLoaded": true
+    },
+    {
+      "sourceFace": "POS_Z",
+      "side": "EAST",
+      "destinationFace": "POS_X",
+      "seam": true,
+      "startsExactlyOnEdge": true,
+      "ticks": 14,
+      "fullChunkLoaded": true
+    },
+    {
+      "sourceFace": "POS_Z",
+      "side": "NORTH",
+      "destinationFace": "NEG_Y",
+      "seam": true,
+      "startsExactlyOnEdge": true,
+      "ticks": 12,
+      "fullChunkLoaded": true
+    },
+    {
+      "sourceFace": "NEG_Z",
+      "side": "WEST",
+      "destinationFace": "POS_X",
+      "seam": true,
+      "startsExactlyOnEdge": true,
+      "ticks": 1,
+      "fullChunkLoaded": true
+    },
+    {
+      "sourceFace": "NEG_Z",
+      "side": "EAST",
+      "destinationFace": "NEG_X",
+      "seam": true,
+      "startsExactlyOnEdge": true,
+      "ticks": 12,
+      "fullChunkLoaded": true
+    }
+  ],
+  "collisionRollbackPassed": true,
+  "directedEdgesPassed": 24,
+  "exactCutEdgeStartsPassed": 14,
+  "passed": true,
+  "runnerLabel": "cube-net-dh-no-core2",
+  "runnerDimension": "minecraft:overworld",
+  "runnerSphereCheckPlanet": null,
+  "runnerCubeNetCheck": true,
+  "runnerRunDir": "/tmp/tellus-dh-cube-no-core-run2",
+  "runnerRevision": "488baee839b20c0096c4b265914fcd4fddc2f1ef",
+  "runnerWorktreeDirtyAtStart": true,
+  "runnerWorktreeDirtyAtEnd": true,
+  "runnerWorkers": 1,
+  "runnerParallel": false,
+  "runnerParallelWater": false,
+  "runnerConcurrentRequests": false,
+  "runnerAreaPrefetch": false,
+  "runnerStateHash": false,
+  "runnerChartProbe": false,
+  "runnerJvmProperties": [],
+  "runnerCacheMode": "cold",
+  "runnerLog": "/tmp/tellus-dh-cube-no-core-results2/cube-net-dh-no-core2.server.log",
+  "runnerCommand": [
+    "./gradlew",
+    "-PtellusRunDir=/tmp/tellus-dh-cube-no-core-run2",
+    "-PtellusTargets=mc1201",
+    "-PtellusBenchmarkHeap=4g",
+    ":mc1201:runServer",
+    "--args=--nogui",
+    "--no-daemon",
+    "--max-workers=2"
+  ]
+}

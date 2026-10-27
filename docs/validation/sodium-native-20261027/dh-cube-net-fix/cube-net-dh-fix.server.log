@@ -1,0 +1,259 @@
+Picked up JAVA_TOOL_OPTIONS: -Dtellus.benchmark.enabled=true -Dtellus.benchmark.exit=true -Dtellus.chunkgen.parallelSolidSections=false -Dtellus.water.parallelRegionBuild=false -Dtellus.benchmark.concurrentRequests=false -Dtellus.benchmark.areaPrefetch=false -Dtellus.benchmark.stateHash=false -Dtellus.benchmark.chartProbe=false -Dtellus.chunkgen.threads.max=1 -Dtellus.gameDir=/tmp/tellus-dh-cube-no-core-run2 -Dtellus.configDir=/tmp/tellus-dh-cube-no-core-run2/config
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.4.0/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+
+> Configure project :mc1201
+Fabric Loom: 1.14.10
+
+> Task :mc1201:compileJava UP-TO-DATE
+> Task :mc1201:processResources UP-TO-DATE
+> Task :mc1201:classes UP-TO-DATE
+> Task :mc1201:generateLog4jConfig UP-TO-DATE
+> Task :mc1201:generateRemapClasspath UP-TO-DATE
+> Task :mc1201:generateDLIConfig UP-TO-DATE
+> Task :mc1201:configureLaunch UP-TO-DATE
+
+> Task :mc1201:runServer
+Picked up JAVA_TOOL_OPTIONS: -Dtellus.benchmark.enabled=true -Dtellus.benchmark.exit=true -Dtellus.chunkgen.parallelSolidSections=false -Dtellus.water.parallelRegionBuild=false -Dtellus.benchmark.concurrentRequests=false -Dtellus.benchmark.areaPrefetch=false -Dtellus.benchmark.stateHash=false -Dtellus.benchmark.chartProbe=false -Dtellus.chunkgen.threads.max=1 -Dtellus.gameDir=/tmp/tellus-dh-cube-no-core-run2 -Dtellus.configDir=/tmp/tellus-dh-cube-no-core-run2/config
+[19:30:26] [main/INFO] (FabricLoader/GameProvider) Loading Minecraft 1.20.1 with Fabric Loader 0.16.10
+[19:30:27] [main/INFO] (FabricLoader) Loading 47 mods:
+	- distanthorizons 3.3.1-tellus.1
+	- fabric-api 0.92.8+1.20.1
+	- fabric-api-base 0.4.32+1802ada577
+	- fabric-api-lookup-api-v1 1.6.37+1802ada577
+	- fabric-biome-api-v1 13.0.15+93aa238b77
+	- fabric-block-api-v1 1.0.12+1802ada577
+	- fabric-block-view-api-v2 1.0.3+924f046a77
+	- fabric-command-api-v1 1.2.35+f71b366f77
+	- fabric-command-api-v2 2.2.14+1802ada577
+	- fabric-commands-v0 0.2.52+df3654b377
+	- fabric-containers-v0 0.1.67+df3654b377
+	- fabric-content-registries-v0 4.0.13+1802ada577
+	- fabric-convention-tags-v1 1.5.6+1802ada577
+	- fabric-crash-report-info-v1 0.2.20+1802ada577
+	- fabric-data-attachment-api-v1 1.0.2+de0fd6d177
+	- fabric-data-generation-api-v1 12.3.8+1802ada577
+	- fabric-dimensions-v1 2.1.55+1802ada577
+	- fabric-entity-events-v1 1.6.1+1c78457f77
+	- fabric-events-interaction-v0 0.6.5+13a40c6677
+	- fabric-events-lifecycle-v0 0.2.64+df3654b377
+	- fabric-game-rule-api-v1 1.0.41+1802ada577
+	- fabric-gametest-api-v1 1.2.15+1802ada577
+	- fabric-item-api-v1 2.1.29+1802ada577
+	- fabric-item-group-api-v1 4.0.14+1802ada577
+	- fabric-lifecycle-events-v1 2.2.23+1802ada577
+	- fabric-loot-api-v2 1.2.3+1802ada577
+	- fabric-loot-tables-v1 1.1.47+9e7660c677
+	- fabric-message-api-v1 5.1.10+1802ada577
+	- fabric-mining-level-api-v1 2.1.52+1802ada577
+	- fabric-networking-api-v1 1.3.14+a158aa0477
+	- fabric-networking-v0 0.3.54+df3654b377
+	- fabric-object-builder-api-v1 11.1.5+e35120df77
+	- fabric-particles-v1 1.1.3+1802ada577
+	- fabric-recipe-api-v1 1.0.24+1802ada577
+	- fabric-registry-sync-v0 2.4.0+4c0a70e677
+	- fabric-rendering-data-attachment-v1 0.3.39+92a0d36777
+	- fabric-rendering-fluids-v1 3.0.29+1802ada577
+	- fabric-resource-conditions-api-v1 2.3.9+1802ada577
+	- fabric-resource-loader-v0 0.11.12+fb82e9d777
+	- fabric-screen-handler-api-v1 1.3.33+1802ada577
+	- fabric-transfer-api-v1 3.3.6+8dd72ea377
+	- fabric-transitive-access-wideners-v1 4.3.2+1802ada577
+	- fabricloader 0.16.10
+	- java 17
+	- minecraft 1.20.1
+	- mixinextras 0.4.1
+	- tellus 0.8.4
+[19:30:27] [main/INFO] (FabricLoader/Mixin) SpongePowered MIXIN Subsystem Version=0.8.7 Source=file:/home/void0312/.gradle/caches/modules-2/files-2.1/net.fabricmc/sponge-mixin/0.15.4+mixin.0.8.7/6a12aacc794f1078458433116e9ed42c1cc98096/sponge-mixin-0.15.4+mixin.0.8.7.jar Service=Knot/Fabric Env=SERVER
+[19:30:27] [main/INFO] (FabricLoader/Mixin) Loaded Fabric development mappings for mixin remapper!
+[19:30:27] [main/INFO] (FabricLoader/Mixin) Compatibility level set to JAVA_17
+[19:30:28] [main/INFO] (AbstractDhMixinPlugin) Apply DH mixin [com.seibel.distanthorizons.fabric.mixins.server.MixinChunkGenerator] -> [net.minecraft.world.level.chunk.ChunkGenerator]...
+[19:30:28] [main/INFO] (AbstractDhMixinPlugin) Apply DH mixin [com.seibel.distanthorizons.fabric.mixins.server.MixinChunkMap] -> [net.minecraft.server.level.ChunkMap]...
+[19:30:28] [main/INFO] (AbstractDhMixinPlugin) Apply DH mixin [com.seibel.distanthorizons.fabric.mixins.server.MixinEntity] -> [net.minecraft.world.entity.Entity]...
+[19:30:28] [main/INFO] (AbstractDhMixinPlugin) Apply DH mixin [com.seibel.distanthorizons.fabric.mixins.server.MixinServerPlayer] -> [net.minecraft.server.level.ServerPlayer]...
+[19:30:28] [main/INFO] (AbstractDhMixinPlugin) Apply DH mixin [com.seibel.distanthorizons.fabric.mixins.server.MixinTracingExecutor] -> [net.minecraft.Util]...
+[19:30:28] [main/INFO] (AbstractDhMixinPlugin) Apply DH mixin [com.seibel.distanthorizons.fabric.mixins.server.MixinUtilBackgroundThread] -> [net.minecraft.Util]...
+[19:30:28] [main/INFO] (AbstractDhMixinPlugin) Apply DH mixin [com.seibel.distanthorizons.fabric.mixins.server.MixinLevelTicks] -> [net.minecraft.world.entity.Entity]...
+[19:30:28] [main/INFO] (FabricLoader/MixinExtras|Service) Initializing MixinExtras via com.llamalad7.mixinextras.service.MixinExtrasServiceImpl(version=0.4.1).
+[19:30:36] [main/INFO] (tellus) Loaded Mapterhorn 0.0.11 source-resolution catalog (134 sources).
+[19:30:36] [main/INFO] (DistantHorizonsIntegration) Detected Distant Horizons 3.3.1-tellus.1 (API 7.1.0), enabling integration with Tellus
+[19:30:36] [main/INFO] (tellus) Tellus worldgen initialized with the dense global packed-coordinate profile
+[19:30:36] [main/INFO] (AbstractModInitializer) Initializing Distant Horizons server, firing DhApiBeforeDhInitEvent event...
+[19:30:36] [main/INFO] (Initializer) Running library validation...
+[19:30:37] [main/INFO] (AbstractModInitializer) Distant Horizons, Version: 3.3.1-tellus.1
+[19:30:37] [main/INFO] (FabricServerProxy) Registering Fabric Server Events
+[19:30:37] [main/INFO] (AbstractModInitializer) Skipping mod compatibility accessor for: [starlight]
+[19:30:37] [main/INFO] (AbstractModInitializer) Skipping mod compatibility accessor for: [optifine]
+[19:30:37] [main/INFO] (AbstractModInitializer) Skipping mod compatibility accessor for: [bclib]
+[19:30:37] [main/INFO] (AbstractModInitializer) Skipping mod compatibility accessor for: [c2me]
+[19:30:37] [main/INFO] (AbstractModInitializer) Skipping mod compatibility accessor for: [imm_ptl_core, immersive_portals, immersive_portals_core]
+[19:30:37] [main/INFO] (AbstractModInitializer) Skipping mod compatibility accessor for: [iris]
+[19:30:37] [main/INFO] (AbstractModInitializer) Distant Horizons server Initialized, adding event subscribers...
+[19:30:37] [main/INFO] (Minecraft) Environment: authHost='https://authserver.mojang.com', accountsHost='https://api.mojang.com', sessionHost='https://sessionserver.mojang.com', servicesHost='https://api.minecraftservices.com', name='PROD'
+[19:30:37] [main/INFO] (tellus) EarthChunkGenerator init: scale=30.0, minAltitude=-64, maxAltitude=-2147483648, heightOffset=64, limits=[minY=-64, height=528, logicalHeight=528], seaLevel=64
+[19:30:38] [main/INFO] (Minecraft) Loaded 7 recipes
+[19:30:38] [main/INFO] (Minecraft) Loaded 1271 advancements
+[19:30:39] [main/INFO] (BiomeModificationImpl) Applied 0 biome modifications to 0 of 64 new biomes in 1.532 ms
+[19:30:39] [Server thread/INFO] (ConfigHandler) Initialising config for [DistantHorizons]
+[19:30:39] [Server thread/INFO] (ConfigHandler) [DistantHorizons] Config initialised
+[19:30:39] [Server thread/INFO] (IgnoredDimensionCsvHandler) Dimension ignoring disabled, DH will render all dimensions.
+[19:30:39] [Server thread/INFO] (DhLogger) Applying config to loggers
+[19:30:39] [Server thread/INFO] (Initializer) Garbage collectors: [G1 Young Generation, G1 Old Generation]
+[19:30:39] [Server thread/WARN] (Initializer) Distant Horizons: G1 Garbage collector detected.
+This can cause FPS stuttering. 
+It's recommended to use a concurrent garbage collector 
+like ZGC (Java 21+) or Shenandoah (Java 8 through 17) 
+for a smoother experience. 
+This warning can be disabled in the DH config.
+[19:30:39] [Server thread/INFO] (Initializer) Explicit Garbage Collection: [Enabled]
+[19:30:39] [Server thread/INFO] (AbstractModInitializer) Running Delayed setup...
+[19:30:39] [Server thread/INFO] (AbstractModInitializer) Delayed setup complete, firing DhApiAfterDhInitEvent event...
+[19:30:39] [Server thread/INFO] (AbstractModInitializer) Distant Horizons server Initialized at .
+[19:30:39] [Server thread/INFO] (AbstractDhWorld) Started [DhServerWorld] of type [SERVER_ONLY].
+[19:30:39] [Server thread/INFO] (Minecraft) Starting minecraft server version 1.20.1
+[19:30:39] [Server thread/INFO] (Minecraft) Loading properties
+[19:30:39] [Server thread/INFO] (Minecraft) Default game type: SURVIVAL
+[19:30:39] [Server thread/INFO] (Minecraft) Generating keypair
+[19:30:39] [Server thread/INFO] (Minecraft) Starting Minecraft server on 127.0.0.1:25565
+[19:30:39] [Server thread/INFO] (Minecraft) Using epoll channel type
+[19:30:39] [Server thread/WARN] (Minecraft) **** SERVER IS RUNNING IN OFFLINE/INSECURE MODE!
+[19:30:39] [Server thread/WARN] (Minecraft) The server will make no attempt to authenticate usernames. Beware.
+[19:30:39] [Server thread/WARN] (Minecraft) While this makes the game possible to play without internet access, it also opens up the ability for hackers to connect with any username they choose.
+[19:30:39] [Server thread/WARN] (Minecraft) To change this, set "online-mode" to "true" in the server.properties file.
+[19:30:39] [Server thread/INFO] (Minecraft) Preparing level "world"
+[19:30:40] [Server thread/INFO] (DatabaseUpdater) Running SQL update script: [sqlScripts/0010-sqlite-createInitialDataTables.sql], for repo: [./world/data/DistantHorizons.sqlite]
+[19:30:40] [Server thread/INFO] (DatabaseUpdater) Running SQL update script: [sqlScripts/0020-sqlite-createFullDataSourceV2Tables.sql], for repo: [./world/data/DistantHorizons.sqlite]
+[19:30:40] [Server thread/INFO] (DatabaseUpdater) Running SQL update script: [sqlScripts/0030-sqlite-changeTableJournaling.sql], for repo: [./world/data/DistantHorizons.sqlite]
+[19:30:40] [Server thread/INFO] (DatabaseUpdater) Running SQL update script: [sqlScripts/0031-sqlite-useSqliteWalJournaling.sql], for repo: [./world/data/DistantHorizons.sqlite]
+[19:30:40] [Server thread/INFO] (DatabaseUpdater) Running SQL update script: [sqlScripts/0040-sqlite-removeRenderCache.sql], for repo: [./world/data/DistantHorizons.sqlite]
+[19:30:40] [Server thread/INFO] (DatabaseUpdater) Running SQL update script: [sqlScripts/0050-sqlite-addApplyToParentIndex.sql], for repo: [./world/data/DistantHorizons.sqlite]
+[19:30:40] [Server thread/INFO] (DatabaseUpdater) Running SQL update script: [sqlScripts/0060-sqlite-createChunkHashTable.sql], for repo: [./world/data/DistantHorizons.sqlite]
+[19:30:40] [Server thread/INFO] (DatabaseUpdater) Running SQL update script: [sqlScripts/0070-sqlite-createBeaconBeamTable.sql], for repo: [./world/data/DistantHorizons.sqlite]
+[19:30:40] [Server thread/INFO] (DatabaseUpdater) Running SQL update script: [sqlScripts/0080-sqlite-addApplyToChildrenColumn.sql], for repo: [./world/data/DistantHorizons.sqlite]
+[19:30:40] [Server thread/INFO] (DatabaseUpdater) Running SQL update script: [sqlScripts/0090-sqlite-addAdjacentFullDataColumns.sql], for repo: [./world/data/DistantHorizons.sqlite]
+[19:30:40] [Server thread/INFO] (DatabaseUpdater) Running SQL update script: [sqlScripts/0100-sqlite-deleteLowDetailDataForRegen.sql], for repo: [./world/data/DistantHorizons.sqlite]
+[19:30:40] [Server thread/INFO] (DatabaseUpdater) Running SQL update script: [sqlScripts/0110-sqlite-addApplyToParentIndex.sql], for repo: [./world/data/DistantHorizons.sqlite]
+[19:30:40] [DH-Full Data Migration Thread[0]/INFO] (DataMigratorV1) No migration necessary.
+[19:30:40] [Server thread/INFO] (AbstractDhServerLevel) Started DhServerLevel for [Wrapped{ServerLevel[world-native]@minecraft:overworld}] at [[LocalSaveStructure@(./world/data)]].
+[19:30:40] [Server thread/INFO] (DatabaseUpdater) Running SQL update script: [sqlScripts/0010-sqlite-createInitialDataTables.sql], for repo: [./world/DIM1/data/DistantHorizons.sqlite]
+[19:30:40] [Server thread/INFO] (DatabaseUpdater) Running SQL update script: [sqlScripts/0020-sqlite-createFullDataSourceV2Tables.sql], for repo: [./world/DIM1/data/DistantHorizons.sqlite]
+[19:30:40] [Server thread/INFO] (DatabaseUpdater) Running SQL update script: [sqlScripts/0030-sqlite-changeTableJournaling.sql], for repo: [./world/DIM1/data/DistantHorizons.sqlite]
+[19:30:40] [Server thread/INFO] (DatabaseUpdater) Running SQL update script: [sqlScripts/0031-sqlite-useSqliteWalJournaling.sql], for repo: [./world/DIM1/data/DistantHorizons.sqlite]
+[19:30:40] [Server thread/INFO] (DatabaseUpdater) Running SQL update script: [sqlScripts/0040-sqlite-removeRenderCache.sql], for repo: [./world/DIM1/data/DistantHorizons.sqlite]
+[19:30:40] [Server thread/INFO] (DatabaseUpdater) Running SQL update script: [sqlScripts/0050-sqlite-addApplyToParentIndex.sql], for repo: [./world/DIM1/data/DistantHorizons.sqlite]
+[19:30:40] [Server thread/INFO] (DatabaseUpdater) Running SQL update script: [sqlScripts/0060-sqlite-createChunkHashTable.sql], for repo: [./world/DIM1/data/DistantHorizons.sqlite]
+[19:30:40] [Server thread/INFO] (DatabaseUpdater) Running SQL update script: [sqlScripts/0070-sqlite-createBeaconBeamTable.sql], for repo: [./world/DIM1/data/DistantHorizons.sqlite]
+[19:30:40] [Server thread/INFO] (DatabaseUpdater) Running SQL update script: [sqlScripts/0080-sqlite-addApplyToChildrenColumn.sql], for repo: [./world/DIM1/data/DistantHorizons.sqlite]
+[19:30:40] [Server thread/INFO] (DatabaseUpdater) Running SQL update script: [sqlScripts/0090-sqlite-addAdjacentFullDataColumns.sql], for repo: [./world/DIM1/data/DistantHorizons.sqlite]
+[19:30:40] [Server thread/INFO] (DatabaseUpdater) Running SQL update script: [sqlScripts/0100-sqlite-deleteLowDetailDataForRegen.sql], for repo: [./world/DIM1/data/DistantHorizons.sqlite]
+[19:30:40] [Server thread/INFO] (DatabaseUpdater) Running SQL update script: [sqlScripts/0110-sqlite-addApplyToParentIndex.sql], for repo: [./world/DIM1/data/DistantHorizons.sqlite]
+[19:30:40] [DH-Full Data Migration Thread[0]/INFO] (DataMigratorV1) No migration necessary.
+[19:30:40] [Server thread/INFO] (AbstractDhServerLevel) Started DhServerLevel for [Wrapped{ServerLevel[world-native]@minecraft:the_end}] at [[LocalSaveStructure@(./world/DIM1/data;./world/data)]].
+[19:30:40] [Server thread/INFO] (DatabaseUpdater) Running SQL update script: [sqlScripts/0010-sqlite-createInitialDataTables.sql], for repo: [./world/dimensions/tellus/earth_cube_net/data/DistantHorizons.sqlite]
+[19:30:40] [Server thread/INFO] (DatabaseUpdater) Running SQL update script: [sqlScripts/0020-sqlite-createFullDataSourceV2Tables.sql], for repo: [./world/dimensions/tellus/earth_cube_net/data/DistantHorizons.sqlite]
+[19:30:40] [Server thread/INFO] (DatabaseUpdater) Running SQL update script: [sqlScripts/0030-sqlite-changeTableJournaling.sql], for repo: [./world/dimensions/tellus/earth_cube_net/data/DistantHorizons.sqlite]
+[19:30:40] [Server thread/INFO] (DatabaseUpdater) Running SQL update script: [sqlScripts/0031-sqlite-useSqliteWalJournaling.sql], for repo: [./world/dimensions/tellus/earth_cube_net/data/DistantHorizons.sqlite]
+[19:30:40] [Server thread/INFO] (DatabaseUpdater) Running SQL update script: [sqlScripts/0040-sqlite-removeRenderCache.sql], for repo: [./world/dimensions/tellus/earth_cube_net/data/DistantHorizons.sqlite]
+[19:30:40] [Server thread/INFO] (DatabaseUpdater) Running SQL update script: [sqlScripts/0050-sqlite-addApplyToParentIndex.sql], for repo: [./world/dimensions/tellus/earth_cube_net/data/DistantHorizons.sqlite]
+[19:30:40] [Server thread/INFO] (DatabaseUpdater) Running SQL update script: [sqlScripts/0060-sqlite-createChunkHashTable.sql], for repo: [./world/dimensions/tellus/earth_cube_net/data/DistantHorizons.sqlite]
+[19:30:40] [Server thread/INFO] (DatabaseUpdater) Running SQL update script: [sqlScripts/0070-sqlite-createBeaconBeamTable.sql], for repo: [./world/dimensions/tellus/earth_cube_net/data/DistantHorizons.sqlite]
+[19:30:40] [Server thread/INFO] (DatabaseUpdater) Running SQL update script: [sqlScripts/0080-sqlite-addApplyToChildrenColumn.sql], for repo: [./world/dimensions/tellus/earth_cube_net/data/DistantHorizons.sqlite]
+[19:30:40] [Server thread/INFO] (DatabaseUpdater) Running SQL update script: [sqlScripts/0090-sqlite-addAdjacentFullDataColumns.sql], for repo: [./world/dimensions/tellus/earth_cube_net/data/DistantHorizons.sqlite]
+[19:30:40] [Server thread/INFO] (DatabaseUpdater) Running SQL update script: [sqlScripts/0100-sqlite-deleteLowDetailDataForRegen.sql], for repo: [./world/dimensions/tellus/earth_cube_net/data/DistantHorizons.sqlite]
+[19:30:40] [Server thread/INFO] (DatabaseUpdater) Running SQL update script: [sqlScripts/0110-sqlite-addApplyToParentIndex.sql], for repo: [./world/dimensions/tellus/earth_cube_net/data/DistantHorizons.sqlite]
+[19:30:40] [DH-Full Data Migration Thread[0]/INFO] (DataMigratorV1) No migration necessary.
+[19:30:40] [Server thread/INFO] (AbstractDhServerLevel) Started DhServerLevel for [Wrapped{ServerLevel[world-native]@tellus:earth_cube_net}] at [[LocalSaveStructure@(./world/DIM1/data;./world/dimensions/tellus/earth_cube_net/data;./world/data)]].
+[19:30:40] [Server thread/INFO] (DistantHorizonsIntegration) Tellus DH LOD setup dimension=tellus:earth_cube_net generator=CubeNetChunkGenerator generatorMode=FEATURES path=chunk
+[19:30:40] [Server thread/INFO] (DistantHorizonsIntegration) Registered Tellus Cube-Net DH LOD generator path=chunk timingEnabled=false
+[19:30:40] [Server thread/INFO] (DatabaseUpdater) Running SQL update script: [sqlScripts/0010-sqlite-createInitialDataTables.sql], for repo: [./world/DIM-1/data/DistantHorizons.sqlite]
+[19:30:40] [Server thread/INFO] (DatabaseUpdater) Running SQL update script: [sqlScripts/0020-sqlite-createFullDataSourceV2Tables.sql], for repo: [./world/DIM-1/data/DistantHorizons.sqlite]
+[19:30:40] [Server thread/INFO] (DatabaseUpdater) Running SQL update script: [sqlScripts/0030-sqlite-changeTableJournaling.sql], for repo: [./world/DIM-1/data/DistantHorizons.sqlite]
+[19:30:40] [Server thread/INFO] (DatabaseUpdater) Running SQL update script: [sqlScripts/0031-sqlite-useSqliteWalJournaling.sql], for repo: [./world/DIM-1/data/DistantHorizons.sqlite]
+[19:30:40] [Server thread/INFO] (DatabaseUpdater) Running SQL update script: [sqlScripts/0040-sqlite-removeRenderCache.sql], for repo: [./world/DIM-1/data/DistantHorizons.sqlite]
+[19:30:40] [Server thread/INFO] (DatabaseUpdater) Running SQL update script: [sqlScripts/0050-sqlite-addApplyToParentIndex.sql], for repo: [./world/DIM-1/data/DistantHorizons.sqlite]
+[19:30:40] [Server thread/INFO] (DatabaseUpdater) Running SQL update script: [sqlScripts/0060-sqlite-createChunkHashTable.sql], for repo: [./world/DIM-1/data/DistantHorizons.sqlite]
+[19:30:40] [Server thread/INFO] (DatabaseUpdater) Running SQL update script: [sqlScripts/0070-sqlite-createBeaconBeamTable.sql], for repo: [./world/DIM-1/data/DistantHorizons.sqlite]
+[19:30:40] [Server thread/INFO] (DatabaseUpdater) Running SQL update script: [sqlScripts/0080-sqlite-addApplyToChildrenColumn.sql], for repo: [./world/DIM-1/data/DistantHorizons.sqlite]
+[19:30:40] [Server thread/INFO] (DatabaseUpdater) Running SQL update script: [sqlScripts/0090-sqlite-addAdjacentFullDataColumns.sql], for repo: [./world/DIM-1/data/DistantHorizons.sqlite]
+[19:30:40] [Server thread/INFO] (DatabaseUpdater) Running SQL update script: [sqlScripts/0100-sqlite-deleteLowDetailDataForRegen.sql], for repo: [./world/DIM-1/data/DistantHorizons.sqlite]
+[19:30:40] [Server thread/INFO] (DatabaseUpdater) Running SQL update script: [sqlScripts/0110-sqlite-addApplyToParentIndex.sql], for repo: [./world/DIM-1/data/DistantHorizons.sqlite]
+[19:30:40] [DH-Full Data Migration Thread[0]/INFO] (DataMigratorV1) No migration necessary.
+[19:30:40] [Server thread/INFO] (AbstractDhServerLevel) Started DhServerLevel for [Wrapped{ServerLevel[world-native]@minecraft:the_nether}] at [[LocalSaveStructure@(./world/DIM1/data;./world/dimensions/tellus/earth_cube_net/data;./world/data;./world/DIM-1/data)]].
+[19:30:40] [Server thread/INFO] (Minecraft) Preparing start region for dimension minecraft:overworld
+[19:30:40] [DH-Request Module Ticker [minecraft:overworld] Thread[0]/INFO] (WorldGenerationQueue) Creating world gen queue
+[19:30:40] [DH-Request Module Ticker [minecraft:overworld] Thread[0]/INFO] (WorldGenerationQueue) Created world gen queue
+[19:30:40] [DH-Request Module Ticker [minecraft:overworld] Thread[0]/INFO] (GeneratedFullDataSourceProvider) Set world gen queue for level [minecraft:overworld].
+[19:30:41] [DH-Request Module Ticker [minecraft:the_end] Thread[0]/INFO] (WorldGenerationQueue) Creating world gen queue
+[19:30:41] [DH-Request Module Ticker [minecraft:the_end] Thread[0]/INFO] (WorldGenerationQueue) Created world gen queue
+[19:30:41] [DH-Request Module Ticker [minecraft:the_end] Thread[0]/INFO] (GeneratedFullDataSourceProvider) Set world gen queue for level [minecraft:the_end].
+[19:30:41] [DH-Request Module Ticker [tellus:earth_cube_net] Thread[0]/INFO] (WorldGenerationQueue) Creating world gen queue
+[19:30:41] [DH-Request Module Ticker [tellus:earth_cube_net] Thread[0]/INFO] (WorldGenerationQueue) Created world gen queue
+[19:30:41] [DH-Request Module Ticker [tellus:earth_cube_net] Thread[0]/INFO] (GeneratedFullDataSourceProvider) Set world gen queue for level [tellus:earth_cube_net].
+[19:30:41] [DH-Request Module Ticker [minecraft:the_nether] Thread[0]/INFO] (WorldGenerationQueue) Creating world gen queue
+[19:30:41] [DH-Request Module Ticker [minecraft:the_nether] Thread[0]/INFO] (WorldGenerationQueue) Created world gen queue
+[19:30:41] [DH-Request Module Ticker [minecraft:the_nether] Thread[0]/INFO] (GeneratedFullDataSourceProvider) Set world gen queue for level [minecraft:the_nether].
+[19:30:42] [Worker-Main-14/INFO] (Minecraft) Preparing spawn area: 0%
+[19:30:42] [Worker-Main-33/INFO] (Minecraft) Preparing spawn area: 0%
+[19:30:42] [Worker-Main-33/INFO] (Minecraft) Preparing spawn area: 0%
+[19:30:42] [Worker-Main-33/INFO] (Minecraft) Preparing spawn area: 0%
+[19:30:42] [Worker-Main-23/INFO] (Minecraft) Preparing spawn area: 0%
+[19:30:43] [Worker-Main-84/INFO] (Minecraft) Preparing spawn area: 0%
+[19:30:43] [Worker-Main-33/INFO] (Minecraft) Preparing spawn area: 16%
+[19:30:44] [Worker-Main-34/INFO] (Minecraft) Preparing spawn area: 55%
+[19:30:44] [Worker-Main-23/INFO] (Minecraft) Preparing spawn area: 88%
+[19:30:44] [Server thread/INFO] (Minecraft) Time elapsed: 4115 ms
+[19:30:44] [Server thread/INFO] (Minecraft) Done (4.954s)! For help, type "help"
+[19:30:44] [Server thread/INFO] (tellus) Overworld dimension type: minY=-64,height=384,logicalHeight=384
+[19:30:44] [Server thread/INFO] (tellus) Overworld generator: type=NoiseBasedChunkGenerator, minY=-64, height=384
+[19:30:44] [Server thread/INFO] (tellus) Overworld level stem: dimensionType=minY=-64,height=384,logicalHeight=384, generatorType=NoiseBasedChunkGenerator
+[19:30:44] [Server thread/INFO] (tellus) Enabled single-Level cube-net seam routing for tellus:earth_cube_net
+[19:31:06] [Server thread/WARN] (Minecraft) Can't keep up! Is the server overloaded? Running 6751ms or 135 ticks behind
+[19:32:57] [Server thread/INFO] (tellus) Cube-net apron rebase deferred for CubeNetProbe source=(15359.5, -10265.25) target=(10214.75, -15359.5)
+[19:32:57] [Server thread/INFO] (tellus) Cube-net seam starting deferred transfer for CubeNetProbe
+[19:32:57] [Server thread/INFO] (tellus) Cube-net runtime result: /tmp/tellus-dh-cube-no-core-run2/tellus/benchmarks/cube-net-runtime-check-1793100777454.json
+[19:32:57] [Server thread/INFO] (Minecraft) Stopping server
+[19:32:57] [Server thread/INFO] (Minecraft) Saving players
+[19:32:57] [Server thread/INFO] (Minecraft) Saving worlds
+[19:32:58] [Server thread/INFO] (Minecraft) Saving chunks for level 'ServerLevel[world-native]'/minecraft:overworld
+[19:32:58] [Server thread/INFO] (Minecraft) Saving chunks for level 'ServerLevel[world-native]'/minecraft:the_end
+[19:32:58] [Server thread/INFO] (Minecraft) Saving chunks for level 'ServerLevel[world-native]'/tellus:earth_cube_net
+[19:32:58] [Server thread/INFO] (Minecraft) Saving chunks for level 'ServerLevel[world-native]'/minecraft:the_nether
+[19:32:58] [Server thread/INFO] (Minecraft) ThreadedAnvilChunkStorage (world): All chunks are saved
+[19:32:58] [Server thread/INFO] (Minecraft) ThreadedAnvilChunkStorage (DIM1): All chunks are saved
+[19:32:58] [Server thread/INFO] (Minecraft) ThreadedAnvilChunkStorage (earth_cube_net): All chunks are saved
+[19:32:58] [Server thread/INFO] (Minecraft) ThreadedAnvilChunkStorage (DIM-1): All chunks are saved
+[19:32:58] [Server thread/INFO] (Minecraft) ThreadedAnvilChunkStorage: All dimensions are saved
+[19:32:58] [Server thread/INFO] (WorldGenerationQueue) Closing world gen queue
+[19:32:58] [Server thread/INFO] (WorldGenerationQueue) Closing WorldGenerationQueue...
+[19:32:58] [Server thread/INFO] (WorldGenerationQueue) Shutting down world generator thread pool...
+[19:32:58] [Server thread/INFO] (WorldGenerationQueue) World generator thread pool shutdown with [0] incomplete tasks.
+[19:32:58] [Server thread/INFO] (DistantHorizons-LOD World Gen) Closing [DhChunkGenerator]
+[19:32:58] [Server thread/INFO] (WorldGenerationQueue) Finished closing WorldGenerationQueue
+[19:32:58] [Server thread/INFO] (AbstractDhServerLevel) Closed DHLevel for [Wrapped{ServerLevel[world-native]@minecraft:overworld}].
+[19:32:58] [Server thread/INFO] (WorldGenerationQueue) Closing world gen queue
+[19:32:58] [Server thread/INFO] (WorldGenerationQueue) Closing WorldGenerationQueue...
+[19:32:58] [Server thread/INFO] (WorldGenerationQueue) Shutting down world generator thread pool...
+[19:32:58] [Server thread/INFO] (WorldGenerationQueue) World generator thread pool shutdown with [0] incomplete tasks.
+[19:32:58] [Server thread/INFO] (DistantHorizons-LOD World Gen) Closing [DhChunkGenerator]
+[19:32:58] [Server thread/INFO] (WorldGenerationQueue) Finished closing WorldGenerationQueue
+[19:32:58] [Server thread/INFO] (AbstractDhServerLevel) Closed DHLevel for [Wrapped{ServerLevel[world-native]@minecraft:the_end}].
+[19:32:58] [Server thread/INFO] (WorldGenerationQueue) Closing world gen queue
+[19:32:58] [Server thread/INFO] (WorldGenerationQueue) Closing WorldGenerationQueue...
+[19:32:58] [Server thread/INFO] (WorldGenerationQueue) Shutting down world generator thread pool...
+[19:32:58] [Server thread/INFO] (WorldGenerationQueue) World generator thread pool shutdown with [0] incomplete tasks.
+[19:32:58] [Server thread/INFO] (WorldGenerationQueue) Finished closing WorldGenerationQueue
+[19:32:58] [Server thread/INFO] (AbstractDhServerLevel) Closed DHLevel for [Wrapped{ServerLevel[world-native]@tellus:earth_cube_net}].
+[19:32:58] [Server thread/INFO] (WorldGenerationQueue) Closing world gen queue
+[19:32:58] [Server thread/INFO] (WorldGenerationQueue) Closing WorldGenerationQueue...
+[19:32:58] [Server thread/INFO] (WorldGenerationQueue) Shutting down world generator thread pool...
+[19:32:58] [Server thread/INFO] (WorldGenerationQueue) World generator thread pool shutdown with [0] incomplete tasks.
+[19:32:58] [Server thread/INFO] (DistantHorizons-LOD World Gen) Closing [DhChunkGenerator]
+[19:32:58] [Server thread/INFO] (WorldGenerationQueue) Finished closing WorldGenerationQueue
+[19:32:58] [Server thread/INFO] (AbstractDhServerLevel) Closed DHLevel for [Wrapped{ServerLevel[world-native]@minecraft:the_nether}].
+[19:32:58] [Server thread/INFO] (AbstractDhWorld) Closed DhWorld of type [SERVER_ONLY].
+[19:32:58] [Server thread/INFO] (AbstractDhWorld) Closed DhWorld of type [SERVER_ONLY].
+[19:32:58] [Server thread/INFO] (PriorityTaskPicker) Shutting down PriorityTaskPicker thread pool...
+[19:32:58] [Server thread/INFO] (AbstractDhRepo) Closing all [4] databases...
+
+BUILD SUCCESSFUL in 2m 43s
+6 actionable tasks: 1 executed, 5 up-to-date

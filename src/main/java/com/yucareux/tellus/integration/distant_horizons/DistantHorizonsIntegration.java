@@ -37,6 +37,7 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.world.level.chunk.ChunkGenerator;
 import org.slf4j.Logger;
 
 public final class DistantHorizonsIntegration {
@@ -153,55 +154,99 @@ public final class DistantHorizonsIntegration {
    }
 
    private static void onLevelLoad(IDhApiLevelWrapper levelWrapper) {
-      if (levelWrapper.getWrappedMcObject() instanceof ServerLevel level && level.getChunkSource().getGenerator() instanceof EarthChunkGenerator generator) {
-         EarthGeneratorSettings settings = generator.settings();
-         TELLUS_GENERATORS_BY_DIMENSION.put(levelWrapper.getDimensionName(), generator);
-         if (settings.voxyChunkPregenEnabled() && TellusPlatform.isModLoaded(VOXY_MOD_ID)) {
-            LOGGER.info("Voxy pregen enabled; skipping Tellus Distant Horizons integration override");
-            return;
-         }
-
-         EDhApiDistantGeneratorMode dhGeneratorMode = currentDistantGeneratorMode();
-         LOGGER.info(
-            "Tellus DH LOD setup dimension={} renderMode={} generatorMode={}",
-            levelWrapper.getDimensionName(),
-            settings.distantHorizonsRenderMode().id(),
-            dhGeneratorMode
-         );
-         if (dhGeneratorMode == EDhApiDistantGeneratorMode.PRE_EXISTING_ONLY) {
-            LOGGER.info("Distant Horizons generator mode set to pre-existing only; skipping Tellus generator override");
-            return;
-         }
-
-         if (shouldUseChunkLodGenerator(generator, dhGeneratorMode)) {
-            if (settings.distantHorizonsRenderMode() == EarthGeneratorSettings.DistantHorizonsRenderMode.DETAILED) {
-               LOGGER.info("Distant Horizons render mode set to detailed; using chunk-based generator");
-            } else {
-               LOGGER.info("Distant Horizons generator mode set to internal server; using chunk-based generator");
-            }
-
-            TellusChunkLodGenerator chunkGenerator = new TellusChunkLodGenerator(level);
-            DhApiResult<Void> result = DhApi.worldGenOverrides.registerWorldGeneratorOverride(levelWrapper, chunkGenerator);
-            if (!result.success) {
-               LOGGER.warn("Failed to register Tellus chunk LOD generator: {}", result.message);
-            } else {
-               LOGGER.info("Registered Tellus DH LOD generator path=chunk timingEnabled={}", TellusChunkLodGenerator.isTimingEnabled());
-            }
-
-            return;
-         }
-
-         // DH 3.3 supports N-sized requests directly; the old experimental override no longer exists.
-         TellusLodGenerator lodGenerator = new TellusLodGenerator(levelWrapper, generator);
-         DhApiResult<Void> result = DhApi.worldGenOverrides.registerWorldGeneratorOverride(levelWrapper, lodGenerator);
-         if (!result.success) {
-            lodGenerator.close();
-            LOGGER.warn("Failed to register Tellus LOD generator: {}", result.message);
-         } else {
-            LOGGER.info("Registered Tellus DH LOD generator path=direct timingEnabled={}", TellusLodGenerator.isTimingEnabled());
-            acquireDirectLodOverrides(levelWrapper.getDimensionName());
-         }
+      if (!(levelWrapper.getWrappedMcObject() instanceof ServerLevel level)) {
+         return;
       }
+
+      ChunkGenerator generator = level.getChunkSource().getGenerator();
+      if (generator instanceof EarthChunkGenerator earthGenerator) {
+         onEarthLevelLoad(levelWrapper, level, earthGenerator);
+      } else if (isCubeNetGenerator(generator)) {
+         onCubeNetLevelLoad(levelWrapper, level);
+      }
+   }
+
+   private static void onEarthLevelLoad(
+      IDhApiLevelWrapper levelWrapper, ServerLevel level, EarthChunkGenerator generator
+   ) {
+      EarthGeneratorSettings settings = generator.settings();
+      TELLUS_GENERATORS_BY_DIMENSION.put(levelWrapper.getDimensionName(), generator);
+      if (settings.voxyChunkPregenEnabled() && TellusPlatform.isModLoaded(VOXY_MOD_ID)) {
+         LOGGER.info("Voxy pregen enabled; skipping Tellus Distant Horizons integration override");
+         return;
+      }
+
+      EDhApiDistantGeneratorMode dhGeneratorMode = currentDistantGeneratorMode();
+      LOGGER.info(
+         "Tellus DH LOD setup dimension={} renderMode={} generatorMode={}",
+         levelWrapper.getDimensionName(),
+         settings.distantHorizonsRenderMode().id(),
+         dhGeneratorMode
+      );
+      if (dhGeneratorMode == EDhApiDistantGeneratorMode.PRE_EXISTING_ONLY) {
+         LOGGER.info("Distant Horizons generator mode set to pre-existing only; skipping Tellus generator override");
+         return;
+      }
+
+      if (shouldUseChunkLodGenerator(generator, dhGeneratorMode)) {
+         if (settings.distantHorizonsRenderMode() == EarthGeneratorSettings.DistantHorizonsRenderMode.DETAILED) {
+            LOGGER.info("Distant Horizons render mode set to detailed; using chunk-based generator");
+         } else {
+            LOGGER.info("Distant Horizons generator mode set to internal server; using chunk-based generator");
+         }
+
+         TellusChunkLodGenerator chunkGenerator = new TellusChunkLodGenerator(level);
+         DhApiResult<Void> result = DhApi.worldGenOverrides.registerWorldGeneratorOverride(levelWrapper, chunkGenerator);
+         if (!result.success) {
+            LOGGER.warn("Failed to register Tellus chunk LOD generator: {}", result.message);
+         } else {
+            LOGGER.info("Registered Tellus DH LOD generator path=chunk timingEnabled={}", TellusChunkLodGenerator.isTimingEnabled());
+         }
+
+         return;
+      }
+
+      // DH 3.3 supports N-sized requests directly; the old experimental override no longer exists.
+      TellusLodGenerator lodGenerator = new TellusLodGenerator(levelWrapper, generator);
+      DhApiResult<Void> result = DhApi.worldGenOverrides.registerWorldGeneratorOverride(levelWrapper, lodGenerator);
+      if (!result.success) {
+         lodGenerator.close();
+         LOGGER.warn("Failed to register Tellus LOD generator: {}", result.message);
+      } else {
+         LOGGER.info("Registered Tellus DH LOD generator path=direct timingEnabled={}", TellusLodGenerator.isTimingEnabled());
+         acquireDirectLodOverrides(levelWrapper.getDimensionName());
+      }
+   }
+
+   /**
+    * Cube-Net is a custom planar view over the six canonical face samplers. The
+    * generic DH generator cannot infer that mapping, but the vanilla-chunk API
+    * can safely consume the already routed LevelChunk path, including native
+    * seam aprons. Keep this path explicit instead of sending Cube-Net through
+    * DH's generic generator steps.
+    */
+   private static void onCubeNetLevelLoad(IDhApiLevelWrapper levelWrapper, ServerLevel level) {
+      EDhApiDistantGeneratorMode dhGeneratorMode = currentDistantGeneratorMode();
+      LOGGER.info(
+         "Tellus DH LOD setup dimension={} generator=CubeNetChunkGenerator generatorMode={} path=chunk",
+         levelWrapper.getDimensionName(), dhGeneratorMode
+      );
+      if (dhGeneratorMode == EDhApiDistantGeneratorMode.PRE_EXISTING_ONLY) {
+         LOGGER.info("Distant Horizons generator mode set to pre-existing only; skipping Cube-Net generator override");
+         return;
+      }
+
+      TellusChunkLodGenerator chunkGenerator = new TellusChunkLodGenerator(level);
+      DhApiResult<Void> result = DhApi.worldGenOverrides.registerWorldGeneratorOverride(levelWrapper, chunkGenerator);
+      if (!result.success) {
+         LOGGER.warn("Failed to register Tellus Cube-Net chunk LOD generator: {}", result.message);
+      } else {
+         LOGGER.info("Registered Tellus Cube-Net DH LOD generator path=chunk timingEnabled={}", TellusChunkLodGenerator.isTimingEnabled());
+      }
+   }
+
+   static boolean isCubeNetGenerator(ChunkGenerator generator) {
+      return DistantHorizonsGeneratorSupport.isCubeNetGenerator(generator);
    }
 
    private static void onLevelUnload(IDhApiLevelWrapper levelWrapper) {

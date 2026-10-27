@@ -12,6 +12,7 @@ import com.yucareux.tellus.worldgen.EarthChunkGenerator;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.level.chunk.LevelChunk;
 import org.slf4j.Logger;
 
@@ -24,13 +25,14 @@ public final class TellusChunkLodGenerator extends AbstractDhApiChunkWorldGenera
       Math.max(0L, Long.getLong("tellus.dhLodTimingThresholdMs", 0L))
    );
    private final ServerLevel level;
-   private final EarthChunkGenerator generator;
+   private final EarthChunkGenerator earthGenerator;
    private final String managedTerrainKey;
 
    public TellusChunkLodGenerator(ServerLevel level) {
       this.level = Objects.requireNonNull(level, "level");
-      this.generator = (EarthChunkGenerator)level.getChunkSource().getGenerator();
-      this.managedTerrainKey = ManagedTerrainAvailability.key(this.generator);
+      ChunkGenerator generator = Objects.requireNonNull(level.getChunkSource().getGenerator(), "level generator");
+      this.earthGenerator = generator instanceof EarthChunkGenerator earth ? earth : null;
+      this.managedTerrainKey = this.earthGenerator == null ? null : ManagedTerrainAvailability.key(this.earthGenerator);
    }
 
    public static boolean isTimingEnabled() {
@@ -51,7 +53,9 @@ public final class TellusChunkLodGenerator extends AbstractDhApiChunkWorldGenera
    }
 
    private boolean managedDownloadsActive() {
-      return this.generator.settings().tellusManagedTerrainDownloads() && ManagedTerrainCompatibility.isGenerationGateAvailable();
+      return this.earthGenerator != null
+         && this.earthGenerator.settings().tellusManagedTerrainDownloads()
+         && ManagedTerrainCompatibility.isGenerationGateAvailable();
    }
 
    public Object[] generateChunk(int chunkPosX, int chunkPosZ, EDhApiDistantGeneratorMode generatorMode) {
