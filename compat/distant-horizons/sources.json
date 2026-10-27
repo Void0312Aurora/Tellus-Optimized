@@ -12,5 +12,13 @@
     "sha256": "620699df32a9a20c2086e79602665d3517a450debbb8fbad32a13cf02c95c517",
     "files": 17,
     "replay_verified": true
+  },
+  "core_render_order": {
+    "upstream": "b0a5f3506364485eb9e4cd94b5343304adb6c88c",
+    "patch": "core-render-order.patch",
+    "sha256": "e3b91a7f92a45cce6bc426fff5fb7da62b1dce20aae11e5cdbef520a9afe4c73",
+    "files": 1,
+    "replay_verified": true,
+    "purpose": "recompute DH render pass after Iris before-render callback while preserving initialized event context"
   }
 }

@@ -1,8 +1,9 @@
 # Tellus fork of Distant Horizons 3.3.1
 
 This directory keeps the fork changes reviewable and reproducible even though
-`third_party/` is excluded from the Tellus repository. The two patches contain the
-loader/rendering changes and the separate core/API changes, including tests.
+`third_party/` is excluded from the Tellus repository. The loader patch and two
+core patches contain the loader/rendering changes and the separate core/API
+changes, including tests.
 Their code is covered by Distant Horizons' LGPL-3.0 license.
 
 Pinned upstream sources:
@@ -13,9 +14,17 @@ Pinned upstream sources:
 
 Use a fresh upstream checkout at the pinned revision, initialize its submodules,
 then apply `patches/loader.patch` at the loader repository root and
-`patches/core.patch` inside `coreSubProjects`. Use absolute patch paths when
-invoking `git apply` from those directories. The existing local fork already has
-these changes; do not apply them twice.
+`patches/core.patch` followed by `patches/core-render-order.patch` inside
+`coreSubProjects`. Use absolute patch paths when invoking `git apply` from those
+directories. The existing local fork already has these changes; do not apply
+them twice.
+
+`core-render-order.patch` fixes the Iris/DH first-frame ordering bug. DH first
+fills `DhApiRenderParam` so its normal event handlers receive a valid client
+level, lets Iris update `deferTransparentRendering`, then recomputes the render
+pass before calling the LOD renderer. This removes the stale
+`OPAQUE_AND_TRANSPARENT` pass without moving the event before DH's parameter
+initialization.
 
 From the Tellus root, with `JAVA_HOME` pointing to JDK 25:
 

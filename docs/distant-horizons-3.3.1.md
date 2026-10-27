@@ -3,7 +3,7 @@
 The Tellus fork is now based on upstream **3.3.1**, with release version
 `3.3.1-tellus.1` and API **7.1.0**. It supports Fabric on Minecraft 1.20.1, 1.21.1,
 1.21.11, 26.2, and 26.3; Forge on 1.20.1; and NeoForge on the other four versions.
-Use the updated Tellus 0.8.3 companion jar with the matching DH jar.
+Use the updated Tellus 0.8.4 companion jar with the matching DH jar.
 
 ## Upstream improvements retained
 
@@ -36,6 +36,10 @@ Sources: [3.3.0 release](https://gitlab.com/distant-horizons-team/distant-horizo
   preserve GL texture/pixel state; the API exposes the current atlas ID. Iris gets
   a neutral atlas even when textured LODs are disabled, and retains control of its
   texture units. The new mipmap filter remains enabled.
+- **Iris/DH render-pass ordering is corrected.** The fork lets DH populate the
+  render-event context first, applies Iris's transparent-layer decision, then
+  recomputes the pass before LOD rendering. This removes the stale first-frame
+  `OPAQUE_AND_TRANSPARENT` path while keeping DH event handlers' level context.
 - **The fork cannot replace itself with stock DH.** The updater guard also applies
   when an existing configuration had enabled automatic updates. Stock DH's
   vertical packing still cannot represent the full Tellus extended-height range.
