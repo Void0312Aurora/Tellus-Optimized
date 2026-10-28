@@ -70,8 +70,16 @@ public final class SphereChunkSampler {
    }
 
    public SurfaceData samplePoint(SphereWorldModel.GeoPoint point) {
+      return this.samplePoint(point, this.model.config().worldScale());
+   }
+
+   /** A distant LOD cell may use a coarser source resolution than a native block. */
+   public SurfaceData samplePoint(SphereWorldModel.GeoPoint point, double resolutionMeters) {
+      if (!(resolutionMeters > 0.0) || !Double.isFinite(resolutionMeters)) {
+         throw new IllegalArgumentException("resolutionMeters");
+      }
       return Objects.requireNonNull(this.sampler.sample(Objects.requireNonNull(point, "point"),
-         this.model.config().worldScale()), "surfaceData");
+         resolutionMeters), "surfaceData");
    }
 
    /**

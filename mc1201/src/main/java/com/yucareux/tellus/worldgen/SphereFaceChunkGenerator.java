@@ -210,6 +210,14 @@ public final class SphereFaceChunkGenerator extends ChunkGenerator {
       }
    }
 
+   /** A distant cell samples one canonical point instead of generating 256 columns. */
+   SphereChunkSampler.SurfaceData terrainPoint(SphereWorldModel.SphereBlockAddress address, int cellSize) {
+      var chunk = new SphereWorldModel.SphereChunkAddress(address.face(),
+         Math.floorDiv(address.blockX(), 16L), Math.floorDiv(address.blockZ(), 16L));
+      this.singularityPolicy.requireTerrainMaterialization(chunk);
+      return this.sampler.get().samplePoint(this.model.surfacePoint(address), this.worldScale() * cellSize);
+   }
+
    int getBaseHeightAt(SphereWorldModel.SphereChunkAddress address, int x, int z,
       Heightmap.Types type, LevelHeightAccessor accessor) {
       var column = this.column(address, x, z, accessor);

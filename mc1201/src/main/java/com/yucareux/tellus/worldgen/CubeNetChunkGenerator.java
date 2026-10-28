@@ -6,6 +6,7 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import com.yucareux.tellus.worldgen.global.CubeNetAddressAdapter;
 import com.yucareux.tellus.worldgen.global.CubeNetApronResolver;
 import com.yucareux.tellus.worldgen.global.CubeNetLayout;
+import com.yucareux.tellus.worldgen.global.CubeNetRemoteProjection;
 import com.yucareux.tellus.worldgen.global.SphereChunkSampler;
 import com.yucareux.tellus.worldgen.global.SphereSingularityPolicy;
 import com.yucareux.tellus.worldgen.global.SphereWorldModel;
@@ -44,7 +45,7 @@ import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemp
  * chunks both read canonical face columns. Movement ownership is handled by
  * CubeNetRuntime.
  */
-public final class CubeNetChunkGenerator extends ChunkGenerator {
+public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeNetLodSurface {
    public static final int GEOMETRY_VERSION = 3;
    public static final Codec<CubeNetChunkGenerator> CODEC = RecordCodecBuilder.create(instance -> instance.group(
       Codec.intRange(GEOMETRY_VERSION, GEOMETRY_VERSION).fieldOf("geometry_version").forGetter(generator -> GEOMETRY_VERSION),
@@ -75,6 +76,7 @@ public final class CubeNetChunkGenerator extends ChunkGenerator {
    private final int height;
    private final SphereWorldModel model;
    private final CubeNetAddressAdapter adapter;
+   private final CubeNetRemoteProjection remoteProjection;
    private final CubeNetApronResolver apronResolver;
    private final int apronWidthChunks;
    private final SphereFaceChunkGenerator[] faces;
@@ -111,6 +113,7 @@ public final class CubeNetChunkGenerator extends ChunkGenerator {
       Preconditions.checkArgument(apronChunks >= 0 && apronChunks <= 35
          && apronChunks * 16 <= this.model.config().faceBlocks(), "apron width exceeds supported face size");
       this.apronWidthChunks = apronChunks;
+      this.remoteProjection = new CubeNetRemoteProjection(this.adapter.layout(), apronChunks * 16.0);
       this.apronResolver = new CubeNetApronResolver(this.adapter.layout(), Math.max(16, apronChunks * 16));
       this.materializer = new SphereTerrainMaterializer(scale, seaLevel);
       this.singularityConfig = singularityConfig;
@@ -130,6 +133,8 @@ public final class CubeNetChunkGenerator extends ChunkGenerator {
    public boolean nativeApronEnabled() { return this.apronWidthChunks > 0; }
    public int apronWidthChunks() { return this.apronWidthChunks; }
    public double worldScale() { return this.model.config().worldScale(); }
+   @Override public int minY() { return this.minY; }
+   @Override public int maxY() { return this.minY + this.height; }
    SphereSingularityPolicy.Config singularityConfig() { return this.singularityConfig; }
 
    boolean admitsOrdinaryMaterialization(SphereWorldModel.SphereChunkAddress address) {
@@ -180,6 +185,40 @@ public final class CubeNetChunkGenerator extends ChunkGenerator {
 
    public Optional<SphereWorldModel.SphereChunkAddress> address(ChunkPos pos) {
       return this.adapter.chunkAddress(pos.x, pos.z);
+   }
+
+   /** Surface preview independent of native chunk persistence, bounded by the configured apron. */
+   @Override
+   public Optional<List<CubeNetLodSurface.Layer>> sampleLodColumn(long minBlockX, long minBlockZ, int cellSize) {
+      if (cellSize < 1 || Integer.bitCount(cellSize) != 1) throw new IllegalArgumentException("cellSize");
+      if (cellSize > 1 && !this.remoteProjection.isUniformArea(minBlockX, minBlockZ, cellSize)) {
+         return Optional.empty();
+      }
+      double x = minBlockX + (cellSize >> 1) + 0.5;
+      double z = minBlockZ + (cellSize >> 1) + 0.5;
+      var resolved = this.remoteProjection.resolve(x, z).orElse(null);
+      if (resolved == null) return Optional.empty();
+      var point = resolved.point();
+      long blockX = (long)Math.floor(point.u());
+      long blockZ = (long)Math.floor(point.v());
+      var address = new SphereWorldModel.SphereChunkAddress(point.face().index(),
+         Math.floorDiv(blockX, 16L), Math.floorDiv(blockZ, 16L));
+      if (!this.singularityPolicy.admitsTerrainMaterialization(address)) return Optional.empty();
+      // The fine path shares the exact cached columns used by native chunk
+      // filling. Coarse LODs sample only their representative point.
+      var data = cellSize == 1
+         ? this.faces[address.face()].terrainGrid(address).column((int)(blockX & 15), (int)(blockZ & 15)).data()
+         : this.faces[address.face()].terrainPoint(new SphereWorldModel.SphereBlockAddress(
+            address.face(), blockX, blockZ), cellSize);
+      // Missing elevation and unsupported vertical ranges must fail the
+      // future, never turn into a successful all-air DH cache entry.
+      var plan = this.materializer.plan(data, this.minY, this.maxY());
+      return Optional.of(this.materializer.lodLayers(plan, this.minY, this.maxY()));
+   }
+
+   @Override
+   public boolean isUniformArea(long minX, long minZ, long width) {
+      return this.remoteProjection.isUniformArea(minX, minZ, width);
    }
 
    public Optional<CubeNetLayout.Face> faceAt(double x, double z) {

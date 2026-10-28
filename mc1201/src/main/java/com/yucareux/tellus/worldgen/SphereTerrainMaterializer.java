@@ -3,6 +3,8 @@ package com.yucareux.tellus.worldgen;
 import com.yucareux.tellus.worldgen.global.SphereChunkSampler;
 import java.util.EnumSet;
 import java.util.Objects;
+import java.util.ArrayList;
+import java.util.List;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.ChunkAccess;
@@ -70,6 +72,28 @@ public final class SphereTerrainMaterializer {
       }
       Palette palette = palette(data.coverClass());
       return new ColumnPlan(surfaceY, waterY, palette.top(), palette.filler());
+   }
+
+   /** Exact run lengths of the native column, including bedrock and sky air. */
+   List<CubeNetLodSurface.Layer> lodLayers(ColumnPlan plan, int minY, int maxY) {
+      List<CubeNetLodSurface.Layer> layers = new ArrayList<>(6);
+      int start = minY;
+      BlockState state = plan.stateAt(minY, minY);
+      // There are at most six changes; visit only their boundary positions.
+      var boundaries = new java.util.TreeSet<Integer>();
+      for (int boundary : new int[]{minY + 1, plan.surfaceY() - 3, plan.surfaceY(),
+         plan.surfaceY() + 1, plan.waterY() + 1, maxY}) {
+         if (boundary > minY && boundary <= maxY) boundaries.add(boundary);
+      }
+      for (int boundary : boundaries) {
+         BlockState next = boundary == maxY ? null : plan.stateAt(boundary, minY);
+         if (next != state) {
+            layers.add(new CubeNetLodSurface.Layer(start, boundary, state));
+            start = boundary;
+            state = next;
+         }
+      }
+      return List.copyOf(layers);
    }
 
    /** No Mercator sec(latitude) correction: these are radial physical metres. */

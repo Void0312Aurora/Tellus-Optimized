@@ -22,6 +22,8 @@ import com.yucareux.tellus.worldgen.EarthBiomeSource;
 import com.yucareux.tellus.integration.distant_horizons.managed.ManagedTerrainCompatibility;
 import com.yucareux.tellus.worldgen.EarthChunkGenerator;
 import com.yucareux.tellus.worldgen.EarthGeneratorSettings;
+import com.yucareux.tellus.worldgen.CubeNetLodSurface;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -219,29 +221,35 @@ public final class DistantHorizonsIntegration {
    }
 
    /**
-    * Cube-Net is a custom planar view over the six canonical face samplers. The
-    * generic DH generator cannot infer that mapping, but the vanilla-chunk API
-    * can safely consume the already routed LevelChunk path, including native
-    * seam aprons. Keep this path explicit instead of sending Cube-Net through
-    * DH's generic generator steps.
+    * Cube-Net needs an explicit adapter instead of DH's generic generator.
+    * Distant single-edge previews are opt-in until chart cache migration and
+    * overlapping multi-face views have their own acceptance coverage.
     */
    private static void onCubeNetLevelLoad(IDhApiLevelWrapper levelWrapper, ServerLevel level) {
       EDhApiDistantGeneratorMode dhGeneratorMode = currentDistantGeneratorMode();
+      boolean direct = Boolean.getBoolean("tellus.dhCubeNetSeamLod") && generationGateAvailable()
+         && level.getChunkSource().getGenerator() instanceof CubeNetLodSurface;
       LOGGER.info(
-         "Tellus DH LOD setup dimension={} generator=CubeNetChunkGenerator generatorMode={} path=chunk",
-         levelWrapper.getDimensionName(), dhGeneratorMode
+         "Tellus DH LOD setup dimension={} generator=CubeNetChunkGenerator generatorMode={} path={}",
+         levelWrapper.getDimensionName(), dhGeneratorMode, direct ? "direct" : "chunk"
       );
       if (dhGeneratorMode == EDhApiDistantGeneratorMode.PRE_EXISTING_ONLY) {
          LOGGER.info("Distant Horizons generator mode set to pre-existing only; skipping Cube-Net generator override");
          return;
       }
 
-      TellusChunkLodGenerator chunkGenerator = new TellusChunkLodGenerator(level);
-      DhApiResult<Void> result = DhApi.worldGenOverrides.registerWorldGeneratorOverride(levelWrapper, chunkGenerator);
+      IDhApiWorldGenerator lodGenerator = direct
+         ? new CubeNetLodGenerator(levelWrapper, (CubeNetLodSurface)level.getChunkSource().getGenerator())
+         : new TellusChunkLodGenerator(level);
+      DhApiResult<Void> result = DhApi.worldGenOverrides.registerWorldGeneratorOverride(levelWrapper, lodGenerator);
       if (!result.success) {
-         LOGGER.warn("Failed to register Tellus Cube-Net chunk LOD generator: {}", result.message);
+         lodGenerator.close();
+         LOGGER.warn("Failed to register Tellus Cube-Net LOD generator: {}", result.message);
       } else {
-         LOGGER.info("Registered Tellus Cube-Net DH LOD generator path=chunk timingEnabled={}", TellusChunkLodGenerator.isTimingEnabled());
+         if (direct) {
+            acquireDirectLodOverrides(levelWrapper.getDimensionName());
+         }
+         LOGGER.info("Registered Tellus Cube-Net DH LOD generator path={} seamAware={}", direct ? "direct" : "chunk", direct);
       }
    }
 
@@ -347,7 +355,7 @@ public final class DistantHorizonsIntegration {
             Class<?> entryClass = configEntry.getClass();
             if (this.expectedValue.equals(entryClass.getMethod("getTrueValue").invoke(configEntry))
                && entryClass.getMethod("getApiValue").invoke(configEntry) == null) {
-               setApiValue(configEntry, this.overrideValue);
+               setApiValue(configEntry, this.field, this.overrideValue);
                this.entry = configEntry;
                LOGGER.info("Distant Horizons: {} while Tellus generates LODs (runtime only; config unchanged)", this.description);
                return true;
@@ -367,7 +375,7 @@ public final class DistantHorizonsIntegration {
          try {
             Class<?> entryClass = configEntry.getClass();
             if (this.overrideValue.equals(entryClass.getMethod("getApiValue").invoke(configEntry))) {
-               setApiValue(configEntry, null);
+               setApiValue(configEntry, this.field, null);
             }
          } catch (ReflectiveOperationException | RuntimeException | LinkageError error) {
             LOGGER.warn("Failed to restore Distant Horizons setting {}", this.field, error);
@@ -378,8 +386,18 @@ public final class DistantHorizonsIntegration {
        * DH 3.3.2 added the name of the mod setting an API value (its config screen shows it) and dropped the
        * value-only setter, which older releases still need.
        */
-      private static void setApiValue(Object configEntry, Object value) throws ReflectiveOperationException {
+      private static void setApiValue(Object configEntry, String field, Object value) throws ReflectiveOperationException {
          Class<?> entryClass = configEntry.getClass();
+         if ("generatorPlan".equals(field)) {
+            // The Tellus DH fork's generator-plan listener calls ConfigEntry.set
+            // from its own callback and recurses when the public API setter fires
+            // listeners. The apiValue field is the value read by ConfigEntry.get
+            // and keeps this override runtime-only without entering that callback.
+            Field apiValue = entryClass.getDeclaredField("apiValue");
+            apiValue.setAccessible(true);
+            apiValue.set(configEntry, value);
+            return;
+         }
          Method setter;
          try {
             setter = entryClass.getMethod("setApiValue", Object.class, String.class);
