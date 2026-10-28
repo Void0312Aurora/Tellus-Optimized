@@ -1,0 +1,35 @@
+190:[22:42:05] [Render thread/INFO]: Detected Distant Horizons 3.3.1-tellus.1 (API 7.1.0), enabling integration with Tellus
+192:[22:42:05] [Render thread/INFO]: Initializing Distant Horizons client, firing DhApiBeforeDhInitEvent...
+194:[22:42:05] [Render thread/INFO]: Java.awt.headless set to true. Distant Horizons can correctly display error and info dialog windows.
+195:[22:42:05] [Render thread/INFO]: Distant Horizons, Version: 3.3.1-tellus.1
+210:[22:42:05] [Render thread/WARN]: Distant Horizons: G1 Garbage collector detected.
+217:[22:42:05] [Render thread/INFO]: Distant Horizons client Initialized.
+266:[22:42:12] [Render thread/WARN]: Failed to resolve uniform inPaleGarden, reason: Unknown variable: BIOME_PALE_GARDEN ( = FunctionCall{smooth {[Number{54}, FunctionCall{if {[FunctionCall{in {[Id{biome}, Id{BIOME_PALE_GARDEN}]} }, Number{1}, Number{0}]} }, Number{15}, Number{15}]} })
+267:java.lang.RuntimeException: Unknown variable: BIOME_PALE_GARDEN
+351:[22:42:17] [Render thread/INFO]: Cube-net client preparing d63fa877-99e4-4369-b6a4-e264c384cfdc source=[960, -2] target=(638, 320)
+375:[22:42:18] [Render thread/INFO]: Iris detected, Distant Horizons OpenGL error logging won't be sent in the chat due to Iris throwing known (harmless) OpenGL errors. This is a bug with Iris, not Distant Horizons.
+393:[22:42:18] [Render thread/INFO]: Overriding vanilla MC settings to better fit Distant Horizons... This behavior can be disabled in the Distant Horizons config.
+394:[22:42:18] [Render thread/INFO]: Disabling vanilla clouds... This is done to prevent vanilla clouds from rendering on top of Distant Horizons LODs.
+395:[22:42:18] [Render thread/INFO]: Disabling fabulous graphics... This is done to fix vanilla chunks (specifically water blocks) not fading into Distant Horizons LODs when DH's 'Vanilla Fade' option is enabled.
+407:[22:42:20] [Render thread/INFO]: [System] [CHAT] §6Distant Horizons: G1 Garbage collector detected.§r\nThis can cause FPS stuttering. \nIt's recommended to use a concurrent garbage collector \nlike ZGC (Java 21+) or Shenandoah (Java 8 through 17) \nfor a smoother experience. \nThis warning can be disabled in the DH config.
+408:[22:42:21] [Render thread/INFO]: Cube-net client received all destination chunks d63fa877-99e4-4369-b6a4-e264c384cfdc count=121
+410:[22:42:21] [Render thread/INFO]: Cube-net Sodium client compiling d63fa877-99e4-4369-b6a4-e264c384cfdc backend=sodium-0.5.13+mc1.20.1
+411:[22:42:27] [Render thread/INFO]: Cube-net Sodium client waiting for native mesh uploads d63fa877-99e4-4369-b6a4-e264c384cfdc
+412:[22:42:33] [Render thread/INFO]: Cube-net client render staging ready d63fa877-99e4-4369-b6a4-e264c384cfdc backend=sodium-0.5.13+mc1.20.1 sections=1296 elapsedMs=15636
+423:[23:02:59] [Render thread/WARN]: Failed to resolve uniform inPaleGarden, reason: Unknown variable: BIOME_PALE_GARDEN ( = FunctionCall{smooth {[Number{54}, FunctionCall{if {[FunctionCall{in {[Id{biome}, Id{BIOME_PALE_GARDEN}]} }, Number{1}, Number{0}]} }, Number{15}, Number{15}]} })
+424:java.lang.RuntimeException: Unknown variable: BIOME_PALE_GARDEN
+519:[23:03:30] [Render thread/WARN]: Failed to resolve uniform inPaleGarden, reason: Unknown variable: BIOME_PALE_GARDEN ( = FunctionCall{smooth {[Number{54}, FunctionCall{if {[FunctionCall{in {[Id{biome}, Id{BIOME_PALE_GARDEN}]} }, Number{1}, Number{0}]} }, Number{15}, Number{15}]} })
+520:java.lang.RuntimeException: Unknown variable: BIOME_PALE_GARDEN
+634:[23:03:32] [Render thread/INFO]: Cube-net client preparing a65cf7af-6a7d-4fe0-baff-6fde7862d1de source=[960, -4] target=(638, 320)
+656:[23:03:39] [Render thread/INFO]: Cube-net client received all destination chunks a65cf7af-6a7d-4fe0-baff-6fde7862d1de count=121
+658:[23:03:39] [Render thread/INFO]: Cube-net Sodium client compiling a65cf7af-6a7d-4fe0-baff-6fde7862d1de backend=sodium-0.5.13+mc1.20.1
+659:[23:03:42] [Render thread/INFO]: Cube-net Sodium client waiting for native mesh uploads a65cf7af-6a7d-4fe0-baff-6fde7862d1de
+660:[23:03:50] [Render thread/INFO]: Cube-net client render staging ready a65cf7af-6a7d-4fe0-baff-6fde7862d1de backend=sodium-0.5.13+mc1.20.1 sections=1296 elapsedMs=18331
+687:[23:05:27] [Render thread/INFO]: Cube-net client committed frame=1 camera=(10215.5, 101.61999988555908, 5120.5) chunks=C: 163/1344 D: 4
+688:[23:05:27] [Render thread/INFO]: Cube-net client committed frame=2 camera=(10215.5, 101.61999988555908, 5120.5) chunks=C: 55/1344 D: 4
+704:[23:05:27] [Render thread/INFO]: Cube-net client committed frame=3 camera=(10215.5, 101.61999988555908, 5120.5) chunks=C: 163/1296 D: 4
+705:[23:05:27] [Render thread/INFO]: Cube-net client committed frame=4 camera=(10215.5, 101.61999988555908, 5120.5) chunks=C: 55/1296 D: 4
+709:[23:05:27] [Render thread/INFO]: Cube-net client committed frame=5 camera=(10215.5, 101.61999988555908, 5120.5) chunks=C: 163/1296 D: 4
+710:[23:05:27] [Render thread/INFO]: Cube-net client committed frame=6 camera=(10215.5, 101.61999988555908, 5120.5) chunks=C: 55/1296 D: 4
+711:[23:05:27] [Render thread/INFO]: Cube-net client committed frame=7 camera=(10215.5, 101.61999988555908, 5120.5) chunks=C: 163/1296 D: 4
+712:[23:05:27] [Render thread/INFO]: Cube-net client committed frame=8 camera=(10215.5, 101.61999988555908, 5120.5) chunks=C: 55/1296 D: 4

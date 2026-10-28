@@ -1,0 +1,82 @@
+{
+  "date": "2026-10-27",
+  "instance": "tellus-native-shader-test",
+  "minecraft": "1.20.1",
+  "tellus": "0.8.4",
+  "sodium": "0.5.13+mc1.20.1",
+  "iris": "1.7.6+mc1.20.1",
+  "shaderpack_policy": "retain ComplementaryReimagined_r5.5.1; Pale Garden uniform warning is a known local fallback; keep r5.2.2 as a clean-warning baseline",
+  "iris_latest_20_1_check": {
+    "version": "1.7.6+mc1.20.1",
+    "source": "Iris official Modrinth project version list",
+    "jar_sha256": "9eb15e563e0c9ae6eff15b7863f8432dd290cf9f724c7373e9b15b14aa829ed5",
+    "upgrade_available_for_1_20_1": false,
+    "r55_1_pipeline": "reproduced Unknown variable BIOME_PALE_GARDEN in Iris CustomUniforms/IrisRenderingPipeline",
+    "seam": "forward and reverse native promotion passed; F3+A and F3+T completed",
+    "log": "r55-iris-1.7.6-latest-cube-net.log"
+  },
+  "indium": "1.0.36+mc1.20.1",
+  "display": ":104 Xvfb",
+  "opengl": "Mesa llvmpipe LLVM 21.1.8 OpenGL 4.5",
+  "packs": {
+    "ComplementaryReimagined_r5.5.1.zip": {
+      "sha256": "20897248a5fe91b33bf7fd4b75959c30aa2003df195297979a410ee37d3bb62f",
+      "startup": "loaded",
+      "pipeline": "Iris logged RuntimeException Unknown variable BIOME_PALE_GARDEN; continued rendering",
+      "seam": "forward and reverse native promotion passed; F3+A and F3+T completed"
+    },
+    "ComplementaryReimagined_r5.2.2.zip": {
+      "sha256": "3b0cd5c36afebdcd74521a447ca5f2b0d6f9c1c8c8416a9f20d9bedc271a8e1c",
+      "startup": "loaded",
+      "pipeline": "no Unknown variable exception observed",
+      "seam": "forward native promotion passed; F3+T resource reload completed"
+    }
+  },
+  "expected_non_product_errors": [
+    "offline authentication 401",
+    "profile key pair retrieval failure"
+  ],
+  "software_renderer_limit": "No RTX performance or driver-specific shader stability claim; this run validates exception/reload/seam control flow under llvmpipe.",
+  "distant_horizons": {
+    "version": "3.3.3-1.20.1",
+    "source": "Modrinth version 6UnEfsRQ",
+    "jar_sha256": "a537a71171d935540b56b7598d0de2c106f6f5026336c713d89a1d9ea0ea14e3",
+    "instance": "tellus-native-shader-dh-5.5.1-test",
+    "integration": "DH API 7.2.0 detected; Tellus integration enabled; Tellus-managed terrain downloads unavailable, legacy path warning",
+    "opengl": "Mesa llvmpipe LLVM 21.1.8 OpenGL 4.5",
+    "lod_renderer": "initialized; F3 showed DH 3.3.3 and Rendering API OpenGL; SQLite FullData=77, ChunkHash=334",
+    "combined_seam": "forward and reverse sections=1296 native promotion passed; shadingTurns 0->3->0",
+    "reload": "F3+A and F3+T completed after both seams",
+    "known_warning": "Iris 1.7.6 LodRendererEvents sees DH OPAQUE_AND_TRANSPARENT while shader override is active; DH computes renderPass before firing Iris defer-transparent event; one startup occurrence, no seam failure",
+    "not_validated": "long-distance DH generation, sustained flight, RTX performance, Tellus-managed terrain download protocol",
+    "log": "dh-iris-tellus-latest.log",
+    "server_log": "dh-tellus-server.log",
+    "screenshots": [
+      "dh-debug-before-reload.png",
+      "dh-after-reload.png",
+      "dh-reverse.png"
+    ],
+    "managed_download_root_cause": "Official DH 3.3.3 API 7.2.0 lacks Tellus extension IDhApiWorldGenerator.getGenerationAvailability(int,int,int,byte); Tellus intentionally falls back to legacy path. Tellus fork patch is 3.3.1-tellus.1."
+  },
+  "distant_horizons_fork": {
+    "version": "3.3.1-tellus.1-1.20.1-fabric",
+    "upstream_loader_commit": "f0cefb7a994a670ca653e3dd52ff345275018724",
+    "upstream_core_commit": "b0a5f3506364485eb9e4cd94b5343304adb6c88c",
+    "patches": [
+      "compat/distant-horizons/patches/loader.patch",
+      "compat/distant-horizons/patches/core.patch",
+      "compat/distant-horizons/patches/core-render-order.patch"
+    ],
+    "jar_sha256": "3ac76b11c9395601240b6d38c41e18b524e4efe19cf4d2bd72097b65607029c9",
+    "instance": "tellus-native-shader-dh-fork-3.3.1-test",
+    "integration": "DH API 7.1.0 detected; Tellus generation-availability extension detected; managed-download warning absent",
+    "render_order_fix": "DH fills render event context, fires Iris-compatible before-render event, then recomputes render pass before LOD rendering; no OPAQUE_AND_TRANSPARENT startup error observed",
+    "combined_seam": "forward and reverse sections=1296 native promotion passed; shadingTurns 0->3->0",
+    "reload": "F3+A and F3+T completed after both seams",
+    "build": "api:test, core:test and fabric:remapJar passed",
+    "known_remaining": "Complementary r5.5.1 BIOME_PALE_GARDEN uniform warning remains; offline auth/profile-key warnings remain",
+    "not_validated": "long-distance DH generation, RTX performance, multi-loader fork jars"
+  },
+  "rtx_long_dh_supplement": "rtx-long/dh-rtx-long-20261027.md",
+  "rtx_long_scope": "RTX 3090 native OpenGL; bounded DH generation on minecraft:overworld; Tellus cube-net/sphere long-distance remains separate"
+}

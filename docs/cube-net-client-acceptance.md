@@ -21,13 +21,14 @@ and [saved-chunk inspection](validation/terrain-stability-20261026/saved-terrain
 accompany this record. Initial region entry still produces loading spikes.
 The detailed dated sections below describe the observations and their limits.
 
-Next work is renderer integration and compatibility. Sodium, Distant Horizons
-and shader combinations have not passed live cube-net acceptance. This local
-machine has no such validated renderer stack; run those checks on a suitable
-host. Review native/apron chunk ownership, staging and camera/shading hooks,
-then inspect near/far terrain alignment, cut-seam visibility and LOD refresh
-with the actual target renderer. The existing ordinary-renderer results remain
-the applicable evidence until those runs are available.
+Sodium 0.5.13 on Fabric 1.20.1 now has a version-pinned native staging
+backend. Bounded local Prism runs cover native mesh preparation, forward and
+reverse commits, cancellation, renderer reload, and promoted sign/chest object
+references. Iris 1.7.6 and Indium 1.0.36 were installed with shaders disabled.
+See [the native renderer report](sodium-native-seam-rendering.md) for exact
+versions, fixture bounds, evidence, and remaining gates. Distant Horizons,
+active shader packs, other Sodium versions, and broader entity/visual coverage
+remain separate acceptance work.
 
 Configuration follow-up: the geographic study selected 250 km + 50 km, while
 the tested default and datapack helper still use 300 km + 50 km. Normal movement

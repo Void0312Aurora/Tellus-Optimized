@@ -1,0 +1,11 @@
+[23:41:15] [Render thread/WARN]: Unsupported Sodium version 0.5.12-beta.2+mc1.20.1; Cube-net transitions will fail closed
+[23:41:22] [Render thread/INFO]: Started 10 worker threads
+[23:41:47] [Render thread/WARN]: Cube-net transition 0f166f35-71c5-4bc4-8cf8-9f026c23f93c rejected by client renderer backend sodium-unsupported
+[23:41:57] [Render thread/WARN]: Cube-net transition 564cba8b-ee5c-4994-9494-130178596824 rejected by client renderer backend sodium-unsupported
+[23:42:07] [Render thread/WARN]: Cube-net transition 39ebeab8-218f-4d9d-8c0a-d37d38f1c94c rejected by client renderer backend sodium-unsupported
+[23:42:17] [Render thread/WARN]: Cube-net transition d55f8e81-e8bf-4d8a-96af-1bc0958fdea2 rejected by client renderer backend sodium-unsupported
+[23:42:18] [Render thread/INFO]: [System] [CHAT] Cube-net seam rendering is unavailable with sodium-unsupported
+[23:42:28] [Render thread/WARN]: Cube-net transition db8f0506-2853-487f-86fd-7f80835b65ac rejected by client renderer backend sodium-unsupported
+[23:42:28] [Render thread/INFO]: [System] [CHAT] Cube-net seam rendering is unavailable with sodium-unsupported
+[23:42:38] [Render thread/WARN]: Cube-net transition 08293152-2588-4ad4-874d-a3da228e5d39 rejected by client renderer backend sodium-unsupported
+[23:42:38] [Render thread/INFO]: [System] [CHAT] Cube-net seam rendering is unavailable with sodium-unsupported

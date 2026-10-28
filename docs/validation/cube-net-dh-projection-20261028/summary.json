@@ -1,0 +1,153 @@
+{
+  "date": "2026-10-28",
+  "scope": "Historical cold-copy graphical Cube-Net DH long-distance request plus current native-apron restriction validation",
+  "minecraft": "1.20.1",
+  "tellus": "0.8.4",
+  "sodium": "0.5.13+mc1.20.1",
+  "iris": "1.7.6",
+  "shader": "ComplementaryReimagined r5.5.1",
+  "distant_horizons": "3.3.1-tellus.1",
+  "server_config": {
+    "realTimeUpdateDistanceRadiusInChunks": 512,
+    "maxSyncOnLoadRequestDistance": 8192,
+    "maxGenerationRequestDistance": 8192,
+    "generationMaxChunkRadius": 512,
+    "lodChunkRenderDistanceRadius": 512,
+    "generatorPlan": "SURFACE_THEN_CHUNKS"
+  },
+  "direct_lod": {
+    "availabilityReadyEvents": 25,
+    "starts": 16,
+    "completed": 15,
+    "cancelledOnShutdown": 1,
+    "tiles": [
+      {
+        "chunk": "512, 0",
+        "terrainColumns": 3628,
+        "excludedColumns": 468,
+        "elapsedMs": 44868
+      },
+      {
+        "chunk": "512, 256",
+        "terrainColumns": 4096,
+        "excludedColumns": 0,
+        "elapsedMs": 51066
+      },
+      {
+        "chunk": "512, 128",
+        "terrainColumns": 4096,
+        "excludedColumns": 0,
+        "elapsedMs": 61477
+      },
+      {
+        "chunk": "384, 128",
+        "terrainColumns": 4096,
+        "excludedColumns": 0,
+        "elapsedMs": 61965
+      },
+      {
+        "chunk": "384, 256",
+        "terrainColumns": 4096,
+        "excludedColumns": 0,
+        "elapsedMs": 62238
+      },
+      {
+        "chunk": "512, 384",
+        "terrainColumns": 4096,
+        "excludedColumns": 0,
+        "elapsedMs": 64548
+      },
+      {
+        "chunk": "512, -128",
+        "terrainColumns": 3617,
+        "excludedColumns": 479,
+        "elapsedMs": 69739
+      },
+      {
+        "chunk": "384, 384",
+        "terrainColumns": 4096,
+        "excludedColumns": 0,
+        "elapsedMs": 75463
+      },
+      {
+        "chunk": "384, 0",
+        "terrainColumns": 4096,
+        "excludedColumns": 0,
+        "elapsedMs": 88721
+      },
+      {
+        "chunk": "384, -128",
+        "terrainColumns": 4096,
+        "excludedColumns": 0,
+        "elapsedMs": 114886
+      },
+      {
+        "chunk": "512, -512",
+        "terrainColumns": 4096,
+        "excludedColumns": 0,
+        "elapsedMs": 123798
+      },
+      {
+        "chunk": "512, -256",
+        "terrainColumns": 4096,
+        "excludedColumns": 0,
+        "elapsedMs": 127837
+      },
+      {
+        "chunk": "512, -384",
+        "terrainColumns": 4096,
+        "excludedColumns": 0,
+        "elapsedMs": 168756
+      },
+      {
+        "chunk": "384, -512",
+        "terrainColumns": 4096,
+        "excludedColumns": 0,
+        "elapsedMs": 257611
+      },
+      {
+        "chunk": "384, -256",
+        "terrainColumns": 4096,
+        "excludedColumns": 0,
+        "elapsedMs": 263989
+      }
+    ],
+    "excludedColumnsMeaning": "Historical pre-restriction run: unsupported chart/apron cells were emitted as air; current code rejects non-canonical cut regions beyond the configured native apron before sampling and does not cache them as air."
+  },
+  "client": {
+    "connectionConfigSeen": "generation.maxRequestDistance=8192; generation.bounds.radiusInChunks=512; realTimeUpdates.playerDistance=512; syncOnLoad.maxRequestDistance=8192",
+    "lodQueueAtStart": 1061632,
+    "cubeNetLoaded": true,
+    "rendererSetupComplete": true,
+    "glProxySuccess": true,
+    "shaderLoads": 6,
+    "knownWarnings": [
+      "auth/profile-key failures in offline test",
+      "Complementary BIOME_PALE_GARDEN uniform",
+      "DH OpenGL 3.3 capability probe",
+      "G1 garbage collector"
+    ],
+    "noCrash": true
+  },
+  "scope_note": "The graphical long-distance queue was still draining when the deliberate shutdown occurred, and that run predates the native-apron restriction. It proves historical enqueue and direct generation only, not current full-radius completion.",
+  "follow_up_latest_build": {
+    "jarSha256": "db894f64ac244333b4fce39589626f6e781a13602c5c819922fae9995ccd0417",
+    "startupOverrideCheck": "passed",
+    "runtimeOverrides": [
+      "grass LOD sides render as grass",
+      "world generation no longer pauses for a busy integrated server",
+      "world generation no longer pauses for fast camera movement",
+      "generatorPlan set to SURFACE_ONLY"
+    ],
+    "fullLongDistanceRerunAfterOverride": "not run; prior graphical evidence remains valid for direct sampler, while this follow-up covers registration and scheduling override",
+    "generatorPlanOverride": "passed without listener recursion",
+    "apronRestriction": "automated tests passed; non-canonical cut projection is limited to native apron width and unsupported columns fail closed",
+    "fullLongDistanceRerunAfterApronRestriction": "not run"
+  },
+  "automatedTests": {
+    "tests": 978,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 12
+  }
+}

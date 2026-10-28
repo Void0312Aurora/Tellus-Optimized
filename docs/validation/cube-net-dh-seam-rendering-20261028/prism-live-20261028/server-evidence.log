@@ -1,0 +1,14 @@
+90:[21:07:43] [Server thread/INFO] (Minecraft) SeamTester joined the game
+98:[21:10:17] [Server thread/INFO] (tellus) Cube-net approach preparing 9da617f2-9955-4090-a06e-ad0b06096219 source=(15360.5, 100.0, -29.5) distance=29.5 center=[638, 320] radius=5
+99:[21:10:18] [Server thread/INFO] (tellus) Cube-net approach loaded 9da617f2-9955-4090-a06e-ad0b06096219 elapsedMs=1005
+103:[21:10:39] [Server thread/INFO] (tellus) Cube-net approach ready 9da617f2-9955-4090-a06e-ad0b06096219 source=(15360.5, 100.0, -29.5) elapsedMs=21392
+108:[21:12:33] [Server thread/INFO] (tellus) Cube-net approach preparing 7e071ae2-adce-47cf-bef3-b234f6b21f19 source=(15360.5, 100.0, -29.5) distance=29.5 center=[638, 320] radius=5
+113:[21:12:33] [Server thread/INFO] (tellus) Cube-net approach loaded 7e071ae2-adce-47cf-bef3-b234f6b21f19 elapsedMs=45
+116:[21:12:46] [Server thread/INFO] (tellus) Cube-net approach ready 7e071ae2-adce-47cf-bef3-b234f6b21f19 source=(15360.5, 100.0, -29.5) elapsedMs=12449
+117:[21:15:23] [Server thread/INFO] (tellus) Cube-net apron rebase deferred for SeamTester source=(15360.5, 24.202529746928082) target=(10215.797470253072, 5120.5)
+118:[21:15:23] [Server thread/INFO] (tellus) Cube-net seam starting deferred transfer for SeamTester
+119:[21:15:23] [Server thread/INFO] (tellus) Cube-net approach consumed 7e071ae2-adce-47cf-bef3-b234f6b21f19 ready=true source=(15360.5, 100.0, 24.202529746928082)
+120:[21:15:23] [Server thread/INFO] (tellus) Cube-net seam correction armed player=SeamTester tick=14939 mechanism=atomic-custom teleportId=-1 vanillaWaitReleased=true awaitingPositionAfterRelease=null target=(10215.797470253072, 100.0, 5120.5)
+121:[21:15:23] [Server thread/INFO] (tellus) Cube-net seam transfer complete for SeamTester target=(10215.797470253072, 100.0, 5120.5)
+122:[21:15:23] [Server thread/INFO] (tellus) Cube-net first custom motion accepted player=SeamTester tick=14940 id=7e071ae2-adce-47cf-bef3-b234f6b21f19 position=(10215.797470253072, 100.0, 5120.5)
+125:[21:22:07] [Server thread/INFO] (Minecraft) Stopping the server

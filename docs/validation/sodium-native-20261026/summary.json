@@ -1,0 +1,58 @@
+{
+  "date": "2026-10-26",
+  "minecraft": "1.20.1",
+  "sodium": "0.5.13+mc1.20.1",
+  "iris": "1.7.6+mc1.20.1",
+  "indium": "1.0.36+mc1.20.1",
+  "shaderpack": null,
+  "jar_sha256": "5bd5ef02553b96597635335ed2545f82607f4223f86e8431c8b6d658df688f9d",
+  "fixture": {
+    "world_scale": 1000,
+    "min_y": 0,
+    "height": 256,
+    "render_distance": 4,
+    "apron_chunks": 7,
+    "destination_chunks": 121,
+    "staged_sections": 1296
+  },
+  "tests": {
+    "test": {
+      "tests": 960,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 11
+    },
+    "testParallelChunkgen": {
+      "tests": 7,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 1
+    }
+  },
+  "native_object_check_jar_sha256": "435d4c44648c0e2d1a10302301ab708144cca4b1cd90fa074b9e002dfc35d38e",
+  "sodium_source_revision": "1bcd392f241a44bc454582dad97e7f2a6c1ad01b",
+  "runtime_checks": {
+    "native_forward_reverse": true,
+    "ready_cancel": true,
+    "ready_renderer_reload": true,
+    "live_sign_update_after_commit": true,
+    "unsupported_sodium": "0.5.12-beta.2+mc1.20.1",
+    "vanilla_direct_apron_login_after_retry_fix": true,
+    "vanilla_first_attempt_time": "23:49:04",
+    "vanilla_second_attempt_time": "23:49:12",
+    "vanilla_commit_time": "23:49:14",
+    "runtime_timezone": "Asia/Shanghai",
+    "first_native_gpu": "NVIDIA RTX 3090",
+    "deterministic_display_gpu": "Mesa llvmpipe",
+    "unvalidated": [
+      "active shader packs",
+      "Distant Horizons",
+      "4064-block dimension height",
+      "larger view distances",
+      "all entity and block-entity families",
+      "long-duration memory stability"
+    ],
+    "final_artifact_native_recheck": true,
+    "final_artifact_native_ready_elapsed_ms": 19586
+  }
+}

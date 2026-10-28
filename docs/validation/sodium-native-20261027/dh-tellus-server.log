@@ -1,0 +1,115 @@
+[09:16:34] [main/INFO] (FabricLoader/GameProvider) Loading Minecraft 1.20.1 with Fabric Loader 0.16.10
+[09:16:34] [main/INFO] (FabricLoader) Loading 46 mods:
+	- fabric-api 0.92.8+1.20.1
+	- fabric-api-base 0.4.32+1802ada577
+	- fabric-api-lookup-api-v1 1.6.37+1802ada577
+	- fabric-biome-api-v1 13.0.15+93aa238b77
+	- fabric-block-api-v1 1.0.12+1802ada577
+	- fabric-block-view-api-v2 1.0.3+924f046a77
+	- fabric-command-api-v1 1.2.35+f71b366f77
+	- fabric-command-api-v2 2.2.14+1802ada577
+	- fabric-commands-v0 0.2.52+df3654b377
+	- fabric-containers-v0 0.1.67+df3654b377
+	- fabric-content-registries-v0 4.0.13+1802ada577
+	- fabric-convention-tags-v1 1.5.6+1802ada577
+	- fabric-crash-report-info-v1 0.2.20+1802ada577
+	- fabric-data-attachment-api-v1 1.0.2+de0fd6d177
+	- fabric-data-generation-api-v1 12.3.8+1802ada577
+	- fabric-dimensions-v1 2.1.55+1802ada577
+	- fabric-entity-events-v1 1.6.1+1c78457f77
+	- fabric-events-interaction-v0 0.6.5+13a40c6677
+	- fabric-events-lifecycle-v0 0.2.64+df3654b377
+	- fabric-game-rule-api-v1 1.0.41+1802ada577
+	- fabric-gametest-api-v1 1.2.15+1802ada577
+	- fabric-item-api-v1 2.1.29+1802ada577
+	- fabric-item-group-api-v1 4.0.14+1802ada577
+	- fabric-lifecycle-events-v1 2.2.23+1802ada577
+	- fabric-loot-api-v2 1.2.3+1802ada577
+	- fabric-loot-tables-v1 1.1.47+9e7660c677
+	- fabric-message-api-v1 5.1.10+1802ada577
+	- fabric-mining-level-api-v1 2.1.52+1802ada577
+	- fabric-networking-api-v1 1.3.14+a158aa0477
+	- fabric-networking-v0 0.3.54+df3654b377
+	- fabric-object-builder-api-v1 11.1.5+e35120df77
+	- fabric-particles-v1 1.1.3+1802ada577
+	- fabric-recipe-api-v1 1.0.24+1802ada577
+	- fabric-registry-sync-v0 2.4.0+4c0a70e677
+	- fabric-rendering-data-attachment-v1 0.3.39+92a0d36777
+	- fabric-rendering-fluids-v1 3.0.29+1802ada577
+	- fabric-resource-conditions-api-v1 2.3.9+1802ada577
+	- fabric-resource-loader-v0 0.11.12+fb82e9d777
+	- fabric-screen-handler-api-v1 1.3.33+1802ada577
+	- fabric-transfer-api-v1 3.3.6+8dd72ea377
+	- fabric-transitive-access-wideners-v1 4.3.2+1802ada577
+	- fabricloader 0.16.10
+	- java 17
+	- minecraft 1.20.1
+	- mixinextras 0.4.1
+	- tellus 0.8.4
+[09:16:34] [main/INFO] (FabricLoader/Mixin) SpongePowered MIXIN Subsystem Version=0.8.7 Source=file:/home/void0312/.gradle/caches/modules-2/files-2.1/net.fabricmc/sponge-mixin/0.15.4+mixin.0.8.7/6a12aacc794f1078458433116e9ed42c1cc98096/sponge-mixin-0.15.4+mixin.0.8.7.jar Service=Knot/Fabric Env=SERVER
+[09:16:35] [main/INFO] (FabricLoader/Mixin) Loaded Fabric development mappings for mixin remapper!
+[09:16:35] [main/INFO] (FabricLoader/Mixin) Compatibility level set to JAVA_16
+[09:16:35] [main/INFO] (FabricLoader/Mixin) Compatibility level set to JAVA_17
+[09:16:35] [main/WARN] (FabricLoader/Mixin) Error loading class: com/seibel/distanthorizons/core/level/AbstractDhLevel (java.lang.ClassNotFoundException: com/seibel/distanthorizons/core/level/AbstractDhLevel)
+[09:16:35] [main/INFO] (FabricLoader/MixinExtras|Service) Initializing MixinExtras via com.llamalad7.mixinextras.service.MixinExtrasServiceImpl(version=0.4.1).
+[09:16:46] [main/INFO] (tellus) Loaded Mapterhorn 0.0.11 source-resolution catalog (134 sources).
+[09:16:46] [main/INFO] (tellus) Tellus worldgen initialized with the dense global packed-coordinate profile
+[09:16:46] [main/INFO] (Minecraft) Environment: authHost='https://authserver.mojang.com', accountsHost='https://api.mojang.com', sessionHost='https://sessionserver.mojang.com', servicesHost='https://api.minecraftservices.com', name='PROD'
+[09:16:47] [main/INFO] (tellus) EarthChunkGenerator init: scale=30.0, minAltitude=-64, maxAltitude=-2147483648, heightOffset=64, limits=[minY=-64, height=528, logicalHeight=528], seaLevel=64
+[09:16:48] [main/INFO] (Minecraft) Loaded 7 recipes
+[09:16:48] [main/INFO] (Minecraft) Loaded 1271 advancements
+[09:16:49] [main/INFO] (BiomeModificationImpl) Applied 0 biome modifications to 0 of 64 new biomes in 1.626 ms
+[09:16:49] [Server thread/INFO] (Minecraft) Starting minecraft server version 1.20.1
+[09:16:49] [Server thread/INFO] (Minecraft) Loading properties
+[09:16:49] [Server thread/INFO] (Minecraft) Default game type: CREATIVE
+[09:16:49] [Server thread/INFO] (Minecraft) Generating keypair
+[09:16:49] [Server thread/INFO] (Minecraft) Starting Minecraft server on 127.0.0.1:25576
+[09:16:49] [Server thread/INFO] (Minecraft) Using epoll channel type
+[09:16:49] [Server thread/WARN] (Minecraft) **** SERVER IS RUNNING IN OFFLINE/INSECURE MODE!
+[09:16:49] [Server thread/WARN] (Minecraft) The server will make no attempt to authenticate usernames. Beware.
+[09:16:49] [Server thread/WARN] (Minecraft) While this makes the game possible to play without internet access, it also opens up the ability for hackers to connect with any username they choose.
+[09:16:49] [Server thread/WARN] (Minecraft) To change this, set "online-mode" to "true" in the server.properties file.
+[09:16:49] [Server thread/INFO] (Minecraft) Preparing level "world-native"
+[09:16:50] [Server thread/INFO] (Minecraft) Preparing start region for dimension minecraft:overworld
+[09:16:52] [Worker-Main-31/INFO] (Minecraft) Preparing spawn area: 0%
+[09:16:52] [Worker-Main-84/INFO] (Minecraft) Preparing spawn area: 0%
+[09:16:52] [Worker-Main-31/INFO] (Minecraft) Preparing spawn area: 0%
+[09:16:52] [Worker-Main-68/INFO] (Minecraft) Preparing spawn area: 0%
+[09:16:52] [Worker-Main-18/INFO] (Minecraft) Preparing spawn area: 0%
+[09:16:53] [Worker-Main-31/INFO] (Minecraft) Preparing spawn area: 0%
+[09:16:53] [Worker-Main-21/INFO] (Minecraft) Preparing spawn area: 18%
+[09:16:54] [Worker-Main-52/INFO] (Minecraft) Preparing spawn area: 67%
+[09:16:54] [Server thread/INFO] (Minecraft) Time elapsed: 3931 ms
+[09:16:54] [Server thread/INFO] (Minecraft) Done (4.767s)! For help, type "help"
+[09:16:54] [Server thread/INFO] (tellus) Overworld dimension type: minY=-64,height=384,logicalHeight=384
+[09:16:54] [Server thread/INFO] (tellus) Overworld generator: type=NoiseBasedChunkGenerator, minY=-64, height=384
+[09:16:54] [Server thread/INFO] (tellus) Overworld level stem: dimensionType=minY=-64,height=384,logicalHeight=384, generatorType=NoiseBasedChunkGenerator
+[09:16:54] [Server thread/INFO] (tellus) Enabled single-Level cube-net seam routing for tellus:earth_cube_net
+[09:18:12] [Server thread/INFO] (Minecraft) TellusTester[/127.0.0.1:39726] logged in with entity id 237 at (15360.5, 100.0, -43.277371052610604)
+[09:18:13] [Server thread/INFO] (Minecraft) TellusTester joined the game
+[09:21:42] [Server thread/INFO] (Minecraft) [TellusTester: Executed 7 command(s) from function 'tellus_test:cut']
+[09:21:42] [Server thread/INFO] (tellus) Cube-net approach preparing 2d37f1c6-be96-4f64-939c-18041f0d5fee source=(15360.5, 100.0, -5.5) distance=5.5 center=[638, 320] radius=5
+[09:21:42] [Server thread/INFO] (tellus) Cube-net approach loaded 2d37f1c6-be96-4f64-939c-18041f0d5fee elapsedMs=196
+[09:21:43] [Server thread/INFO] (tellus) Cube-net client destination chunks staged for TellusTester center=(638, 320) radius=5 attempt=1 packetsThisTick=2 packetBudget=8 loadTaskBudget=8 estimatedLoadBytes=67108864 observedMinTps=20.00 sampledPeakHeapBytes=2336675072 metricSamples=20
+[09:21:44] [Server thread/INFO] (tellus) Cube-net client confirmed destination chunks 2d37f1c6-be96-4f64-939c-18041f0d5fee player=TellusTester
+[09:22:00] [Server thread/INFO] (tellus) Cube-net approach ready 2d37f1c6-be96-4f64-939c-18041f0d5fee source=(15360.5, 100.0, -5.5) elapsedMs=18168
+[09:22:29] [Server thread/INFO] (tellus) Cube-net apron rebase deferred for TellusTester source=(15360.5, 24.676527144439177) target=(10215.323472855562, 5120.5)
+[09:22:29] [Server thread/INFO] (tellus) Cube-net seam starting deferred transfer for TellusTester
+[09:22:29] [Server thread/INFO] (tellus) Cube-net approach consumed 2d37f1c6-be96-4f64-939c-18041f0d5fee ready=true source=(15360.5, 100.0, 24.676527144439177)
+[09:22:29] [Server thread/INFO] (tellus) Cube-net seam correction armed player=TellusTester tick=6697 mechanism=atomic-custom teleportId=-1 vanillaWaitReleased=true awaitingPositionAfterRelease=null target=(10215.323472855562, 100.0, 5120.5)
+[09:22:29] [Server thread/INFO] (tellus) Cube-net seam transfer complete for TellusTester target=(10215.323472855562, 100.0, 5120.5)
+[09:22:29] [Server thread/INFO] (tellus) Cube-net first custom motion accepted player=TellusTester tick=6699 id=2d37f1c6-be96-4f64-939c-18041f0d5fee position=(10215.323472855562, 100.0, 5120.5)
+[09:25:51] [Server thread/INFO] (Minecraft) [TellusTester: Executed 3 command(s) from function 'tellus_test:return']
+[09:25:51] [Server thread/INFO] (tellus) Cube-net approach preparing 489f15aa-0982-44a7-9c38-19849b7a5a41 source=(10215.5, 100.0, 5120.5) distance=24.5 center=[960, -2] radius=5
+[09:25:51] [Server thread/INFO] (tellus) Cube-net approach loaded 489f15aa-0982-44a7-9c38-19849b7a5a41 elapsedMs=47
+[09:25:52] [Server thread/INFO] (tellus) Cube-net client destination chunks staged for TellusTester center=(960, -2) radius=5 attempt=1 packetsThisTick=2 packetBudget=8 loadTaskBudget=8 estimatedLoadBytes=67108864 observedMinTps=20.00 sampledPeakHeapBytes=1053588600 metricSamples=16
+[09:26:00] [Server thread/INFO] (tellus) Cube-net client confirmed destination chunks 489f15aa-0982-44a7-9c38-19849b7a5a41 player=TellusTester
+[09:26:15] [Server thread/INFO] (tellus) Cube-net approach ready 489f15aa-0982-44a7-9c38-19849b7a5a41 source=(10215.5, 100.0, 5120.5) elapsedMs=23946
+[09:32:49] [Server thread/INFO] (Minecraft) TellusTester has the following entity data: [10221.909199981439d, 100.0d, 5120.5d]
+[09:33:50] [Server thread/INFO] (tellus) Cube-net apron rebase deferred for TellusTester source=(10264.028658128322, 5120.5) target=(15360.5, -24.028658128321695)
+[09:33:50] [Server thread/INFO] (tellus) Cube-net seam starting deferred transfer for TellusTester
+[09:33:50] [Server thread/INFO] (tellus) Cube-net approach consumed 489f15aa-0982-44a7-9c38-19849b7a5a41 ready=true source=(10264.028658128322, 100.0, 5120.5)
+[09:33:50] [Server thread/INFO] (tellus) Cube-net seam correction armed player=TellusTester tick=20318 mechanism=atomic-custom teleportId=-1 vanillaWaitReleased=true awaitingPositionAfterRelease=null target=(15360.5, 100.0, -24.028658128321695)
+[09:33:50] [Server thread/INFO] (tellus) Cube-net seam transfer complete for TellusTester target=(15360.5, 100.0, -24.028658128321695)
+[09:33:50] [Server thread/INFO] (tellus) Cube-net first custom motion accepted player=TellusTester tick=20320 id=489f15aa-0982-44a7-9c38-19849b7a5a41 position=(15360.5, 100.0, -24.028658128321695)
+[09:35:20] [Server thread/INFO] (Minecraft) TellusTester has the following entity data: [15360.5d, 64.0d, -91.91520458165168d]

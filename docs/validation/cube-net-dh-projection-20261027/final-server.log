@@ -1,0 +1,165 @@
+[22:22:50] [main/INFO] (FabricLoader/GameProvider) Loading Minecraft 1.20.1 with Fabric Loader 0.16.10
+[22:22:51] [main/INFO] (FabricLoader) Loading 47 mods:
+	- distanthorizons 3.3.1-tellus.1
+	- fabric-api 0.92.8+1.20.1
+	- fabric-api-base 0.4.32+1802ada577
+	- fabric-api-lookup-api-v1 1.6.37+1802ada577
+	- fabric-biome-api-v1 13.0.15+93aa238b77
+	- fabric-block-api-v1 1.0.12+1802ada577
+	- fabric-block-view-api-v2 1.0.3+924f046a77
+	- fabric-command-api-v1 1.2.35+f71b366f77
+	- fabric-command-api-v2 2.2.14+1802ada577
+	- fabric-commands-v0 0.2.52+df3654b377
+	- fabric-containers-v0 0.1.67+df3654b377
+	- fabric-content-registries-v0 4.0.13+1802ada577
+	- fabric-convention-tags-v1 1.5.6+1802ada577
+	- fabric-crash-report-info-v1 0.2.20+1802ada577
+	- fabric-data-attachment-api-v1 1.0.2+de0fd6d177
+	- fabric-data-generation-api-v1 12.3.8+1802ada577
+	- fabric-dimensions-v1 2.1.55+1802ada577
+	- fabric-entity-events-v1 1.6.1+1c78457f77
+	- fabric-events-interaction-v0 0.6.5+13a40c6677
+	- fabric-events-lifecycle-v0 0.2.64+df3654b377
+	- fabric-game-rule-api-v1 1.0.41+1802ada577
+	- fabric-gametest-api-v1 1.2.15+1802ada577
+	- fabric-item-api-v1 2.1.29+1802ada577
+	- fabric-item-group-api-v1 4.0.14+1802ada577
+	- fabric-lifecycle-events-v1 2.2.23+1802ada577
+	- fabric-loot-api-v2 1.2.3+1802ada577
+	- fabric-loot-tables-v1 1.1.47+9e7660c677
+	- fabric-message-api-v1 5.1.10+1802ada577
+	- fabric-mining-level-api-v1 2.1.52+1802ada577
+	- fabric-networking-api-v1 1.3.14+a158aa0477
+	- fabric-networking-v0 0.3.54+df3654b377
+	- fabric-object-builder-api-v1 11.1.5+e35120df77
+	- fabric-particles-v1 1.1.3+1802ada577
+	- fabric-recipe-api-v1 1.0.24+1802ada577
+	- fabric-registry-sync-v0 2.4.0+4c0a70e677
+	- fabric-rendering-data-attachment-v1 0.3.39+92a0d36777
+	- fabric-rendering-fluids-v1 3.0.29+1802ada577
+	- fabric-resource-conditions-api-v1 2.3.9+1802ada577
+	- fabric-resource-loader-v0 0.11.12+fb82e9d777
+	- fabric-screen-handler-api-v1 1.3.33+1802ada577
+	- fabric-transfer-api-v1 3.3.6+8dd72ea377
+	- fabric-transitive-access-wideners-v1 4.3.2+1802ada577
+	- fabricloader 0.16.10
+	- java 17
+	- minecraft 1.20.1
+	- mixinextras 0.4.1
+	- tellus 0.8.4
+[22:22:51] [main/INFO] (FabricLoader/Mixin) SpongePowered MIXIN Subsystem Version=0.8.7 Source=file:/home/void0312/.gradle/caches/modules-2/files-2.1/net.fabricmc/sponge-mixin/0.15.4+mixin.0.8.7/6a12aacc794f1078458433116e9ed42c1cc98096/sponge-mixin-0.15.4+mixin.0.8.7.jar Service=Knot/Fabric Env=SERVER
+[22:22:51] [main/INFO] (FabricLoader/Mixin) Loaded Fabric development mappings for mixin remapper!
+[22:22:51] [main/INFO] (FabricLoader/Mixin) Compatibility level set to JAVA_16
+[22:22:51] [main/INFO] (FabricLoader/Mixin) Compatibility level set to JAVA_17
+[22:22:52] [main/INFO] (AbstractDhMixinPlugin) Apply DH mixin [com.seibel.distanthorizons.fabric.mixins.server.MixinChunkGenerator] -> [net.minecraft.world.level.chunk.ChunkGenerator]...
+[22:22:52] [main/INFO] (AbstractDhMixinPlugin) Apply DH mixin [com.seibel.distanthorizons.fabric.mixins.server.MixinChunkMap] -> [net.minecraft.server.level.ChunkMap]...
+[22:22:52] [main/INFO] (AbstractDhMixinPlugin) Apply DH mixin [com.seibel.distanthorizons.fabric.mixins.server.MixinEntity] -> [net.minecraft.world.entity.Entity]...
+[22:22:52] [main/INFO] (AbstractDhMixinPlugin) Apply DH mixin [com.seibel.distanthorizons.fabric.mixins.server.MixinServerPlayer] -> [net.minecraft.server.level.ServerPlayer]...
+[22:22:52] [main/INFO] (AbstractDhMixinPlugin) Apply DH mixin [com.seibel.distanthorizons.fabric.mixins.server.MixinTracingExecutor] -> [net.minecraft.Util]...
+[22:22:52] [main/INFO] (AbstractDhMixinPlugin) Apply DH mixin [com.seibel.distanthorizons.fabric.mixins.server.MixinUtilBackgroundThread] -> [net.minecraft.Util]...
+[22:22:52] [main/INFO] (AbstractDhMixinPlugin) Apply DH mixin [com.seibel.distanthorizons.fabric.mixins.server.MixinLevelTicks] -> [net.minecraft.world.entity.Entity]...
+[22:22:52] [main/INFO] (FabricLoader/MixinExtras|Service) Initializing MixinExtras via com.llamalad7.mixinextras.service.MixinExtrasServiceImpl(version=0.4.1).
+[22:23:01] [main/INFO] (tellus) Loaded Mapterhorn 0.0.11 source-resolution catalog (134 sources).
+[22:23:01] [main/INFO] (DistantHorizonsIntegration) Detected Distant Horizons 3.3.1-tellus.1 (API 7.1.0), enabling integration with Tellus
+[22:23:01] [main/INFO] (tellus) Tellus worldgen initialized with the dense global packed-coordinate profile
+[22:23:01] [main/INFO] (AbstractModInitializer) Initializing Distant Horizons server, firing DhApiBeforeDhInitEvent event...
+[22:23:01] [main/INFO] (Initializer) Running library validation...
+[22:23:01] [main/INFO] (AbstractModInitializer) Distant Horizons, Version: 3.3.1-tellus.1
+[22:23:01] [main/INFO] (FabricServerProxy) Registering Fabric Server Events
+[22:23:01] [main/INFO] (AbstractModInitializer) Skipping mod compatibility accessor for: [starlight]
+[22:23:01] [main/INFO] (AbstractModInitializer) Skipping mod compatibility accessor for: [optifine]
+[22:23:01] [main/INFO] (AbstractModInitializer) Skipping mod compatibility accessor for: [bclib]
+[22:23:01] [main/INFO] (AbstractModInitializer) Skipping mod compatibility accessor for: [c2me]
+[22:23:01] [main/INFO] (AbstractModInitializer) Skipping mod compatibility accessor for: [imm_ptl_core, immersive_portals, immersive_portals_core]
+[22:23:01] [main/INFO] (AbstractModInitializer) Skipping mod compatibility accessor for: [iris]
+[22:23:01] [main/INFO] (AbstractModInitializer) Distant Horizons server Initialized, adding event subscribers...
+[22:23:01] [main/INFO] (Minecraft) Environment: authHost='https://authserver.mojang.com', accountsHost='https://api.mojang.com', sessionHost='https://sessionserver.mojang.com', servicesHost='https://api.minecraftservices.com', name='PROD'
+[22:23:02] [main/INFO] (tellus) EarthChunkGenerator init: scale=30.0, minAltitude=-64, maxAltitude=-2147483648, heightOffset=64, limits=[minY=-64, height=528, logicalHeight=528], seaLevel=64
+[22:23:03] [main/INFO] (Minecraft) Loaded 7 recipes
+[22:23:03] [main/INFO] (Minecraft) Loaded 1271 advancements
+[22:23:04] [main/INFO] (BiomeModificationImpl) Applied 0 biome modifications to 0 of 64 new biomes in 1.739 ms
+[22:23:04] [Server thread/INFO] (ConfigHandler) Initialising config for [DistantHorizons]
+[22:23:04] [Server thread/INFO] (ConfigHandler) [DistantHorizons] Config initialised
+[22:23:04] [Server thread/INFO] (IgnoredDimensionCsvHandler) Dimension ignoring disabled, DH will render all dimensions.
+[22:23:04] [Server thread/INFO] (DhLogger) Applying config to loggers
+[22:23:04] [Server thread/INFO] (Initializer) Garbage collectors: [G1 Young Generation, G1 Old Generation]
+[22:23:04] [Server thread/WARN] (Initializer) Distant Horizons: G1 Garbage collector detected.
+This can cause FPS stuttering. 
+It's recommended to use a concurrent garbage collector 
+like ZGC (Java 21+) or Shenandoah (Java 8 through 17) 
+for a smoother experience. 
+This warning can be disabled in the DH config.
+[22:23:04] [Server thread/INFO] (Initializer) Explicit Garbage Collection: [Enabled]
+[22:23:04] [Server thread/INFO] (AbstractModInitializer) Running Delayed setup...
+[22:23:04] [Server thread/INFO] (AbstractModInitializer) Delayed setup complete, firing DhApiAfterDhInitEvent event...
+[22:23:04] [Server thread/INFO] (AbstractModInitializer) Distant Horizons server Initialized at .
+[22:23:04] [Server thread/INFO] (AbstractDhWorld) Started [DhServerWorld] of type [SERVER_ONLY].
+[22:23:04] [Server thread/INFO] (Minecraft) Starting minecraft server version 1.20.1
+[22:23:04] [Server thread/INFO] (Minecraft) Loading properties
+[22:23:04] [Server thread/INFO] (Minecraft) Default game type: SURVIVAL
+[22:23:04] [Server thread/INFO] (Minecraft) Generating keypair
+[22:23:04] [Server thread/INFO] (Minecraft) Starting Minecraft server on 127.0.0.1:25582
+[22:23:04] [Server thread/INFO] (Minecraft) Using epoll channel type
+[22:23:05] [Server thread/WARN] (Minecraft) **** SERVER IS RUNNING IN OFFLINE/INSECURE MODE!
+[22:23:05] [Server thread/WARN] (Minecraft) The server will make no attempt to authenticate usernames. Beware.
+[22:23:05] [Server thread/WARN] (Minecraft) While this makes the game possible to play without internet access, it also opens up the ability for hackers to connect with any username they choose.
+[22:23:05] [Server thread/WARN] (Minecraft) To change this, set "online-mode" to "true" in the server.properties file.
+[22:23:05] [Server thread/INFO] (Minecraft) Preparing level "world-native"
+[22:23:05] [DH-Full Data Migration Thread[0]/INFO] (DataMigratorV1) No migration necessary.
+[22:23:05] [Server thread/INFO] (AbstractDhServerLevel) Started DhServerLevel for [Wrapped{ServerLevel[world-native]@minecraft:overworld}] at [[LocalSaveStructure@(./world-native/data)]].
+[22:23:05] [DH-Full Data Migration Thread[0]/INFO] (DataMigratorV1) No migration necessary.
+[22:23:05] [Server thread/INFO] (AbstractDhServerLevel) Started DhServerLevel for [Wrapped{ServerLevel[world-native]@minecraft:the_nether}] at [[LocalSaveStructure@(./world-native/data;./world-native/DIM-1/data)]].
+[22:23:05] [DH-Full Data Migration Thread[0]/INFO] (DataMigratorV1) No migration necessary.
+[22:23:05] [Server thread/INFO] (AbstractDhServerLevel) Started DhServerLevel for [Wrapped{ServerLevel[world-native]@tellus:earth_cube_net}] at [[LocalSaveStructure@(./world-native/data;./world-native/DIM-1/data;./world-native/dimensions/tellus/earth_cube_net/data)]].
+[22:23:05] [Server thread/INFO] (DistantHorizonsIntegration) Tellus DH LOD setup dimension=tellus:earth_cube_net generator=CubeNetChunkGenerator generatorMode=FEATURES path=direct
+[22:23:05] [Server thread/INFO] (DistantHorizonsIntegration) Registered Tellus Cube-Net DH LOD generator path=direct seamAware=true
+[22:23:05] [DH-Full Data Migration Thread[0]/INFO] (DataMigratorV1) No migration necessary.
+[22:23:05] [Server thread/INFO] (AbstractDhServerLevel) Started DhServerLevel for [Wrapped{ServerLevel[world-native]@minecraft:the_end}] at [[LocalSaveStructure@(./world-native/DIM1/data;./world-native/data;./world-native/DIM-1/data;./world-native/dimensions/tellus/earth_cube_net/data)]].
+[22:23:05] [Server thread/INFO] (Minecraft) Preparing start region for dimension minecraft:overworld
+[22:23:06] [DH-Request Module Ticker [minecraft:overworld] Thread[0]/INFO] (WorldGenerationQueue) Creating world gen queue
+[22:23:06] [DH-Request Module Ticker [minecraft:overworld] Thread[0]/INFO] (WorldGenerationQueue) Created world gen queue
+[22:23:06] [DH-Request Module Ticker [minecraft:overworld] Thread[0]/INFO] (GeneratedFullDataSourceProvider) Set world gen queue for level [minecraft:overworld].
+[22:23:06] [DH-Request Module Ticker [minecraft:the_nether] Thread[0]/INFO] (WorldGenerationQueue) Creating world gen queue
+[22:23:06] [DH-Request Module Ticker [minecraft:the_nether] Thread[0]/INFO] (WorldGenerationQueue) Created world gen queue
+[22:23:06] [DH-Request Module Ticker [minecraft:the_nether] Thread[0]/INFO] (GeneratedFullDataSourceProvider) Set world gen queue for level [minecraft:the_nether].
+[22:23:06] [DH-Request Module Ticker [tellus:earth_cube_net] Thread[0]/INFO] (WorldGenerationQueue) Creating world gen queue
+[22:23:06] [DH-Request Module Ticker [tellus:earth_cube_net] Thread[0]/INFO] (WorldGenerationQueue) Created world gen queue
+[22:23:06] [DH-Request Module Ticker [tellus:earth_cube_net] Thread[0]/INFO] (GeneratedFullDataSourceProvider) Set world gen queue for level [tellus:earth_cube_net].
+[22:23:06] [DH-Request Module Ticker [minecraft:the_end] Thread[0]/INFO] (WorldGenerationQueue) Creating world gen queue
+[22:23:06] [DH-Request Module Ticker [minecraft:the_end] Thread[0]/INFO] (WorldGenerationQueue) Created world gen queue
+[22:23:06] [DH-Request Module Ticker [minecraft:the_end] Thread[0]/INFO] (GeneratedFullDataSourceProvider) Set world gen queue for level [minecraft:the_end].
+[22:23:09] [Worker-Main-15/INFO] (Minecraft) Preparing spawn area: 0%
+[22:23:09] [Worker-Main-10/INFO] (Minecraft) Preparing spawn area: 0%
+[22:23:09] [Worker-Main-1/INFO] (Minecraft) Preparing spawn area: 0%
+[22:23:09] [Worker-Main-15/INFO] (Minecraft) Preparing spawn area: 0%
+[22:23:09] [Worker-Main-1/INFO] (Minecraft) Preparing spawn area: 0%
+[22:23:09] [Worker-Main-1/INFO] (Minecraft) Preparing spawn area: 0%
+[22:23:09] [Worker-Main-10/INFO] (Minecraft) Preparing spawn area: 0%
+[22:23:09] [Worker-Main-15/INFO] (Minecraft) Preparing spawn area: 0%
+[22:23:09] [Worker-Main-51/INFO] (Minecraft) Preparing spawn area: 0%
+[22:23:10] [Worker-Main-26/INFO] (Minecraft) Preparing spawn area: 21%
+[22:23:10] [Worker-Main-49/INFO] (Minecraft) Preparing spawn area: 54%
+[22:23:11] [Worker-Main-2/INFO] (Minecraft) Preparing spawn area: 85%
+[22:23:11] [Server thread/INFO] (Minecraft) Time elapsed: 5711 ms
+[22:23:11] [Server thread/INFO] (Minecraft) Done (6.532s)! For help, type "help"
+[22:23:11] [Server thread/INFO] (tellus) Overworld dimension type: minY=-64,height=384,logicalHeight=384
+[22:23:11] [Server thread/INFO] (tellus) Overworld generator: type=NoiseBasedChunkGenerator, minY=-64, height=384
+[22:23:11] [Server thread/INFO] (tellus) Overworld level stem: dimensionType=minY=-64,height=384,logicalHeight=384, generatorType=NoiseBasedChunkGenerator
+[22:23:11] [Server thread/INFO] (tellus) Enabled single-Level cube-net seam routing for tellus:earth_cube_net
+[22:23:46] [Server thread/INFO] (Minecraft) TellusTester[/127.0.0.1:47552] logged in with entity id 271 at (15360.5, 64.0, -29.5)
+[22:23:46] [Server thread/INFO] (DistantHorizonsIntegration) Released Tellus DH generation after initial player position became available
+[22:23:46] [Server thread/INFO] (ServerApi) Player [TellusTester] joined.
+[22:23:46] [Server thread/INFO] (Minecraft) TellusTester joined the game
+[22:23:46] [Server thread/INFO] (tellus) Cube-net approach preparing aa12a597-dec3-41d4-baca-586dd05a9a54 source=(15360.5, 64.0, -29.5) distance=29.5 center=[638, 320] radius=5
+[22:23:50] [Server thread/WARN] (Minecraft) Can't keep up! Is the server overloaded? Running 4007ms or 80 ticks behind
+[22:23:50] [Server thread/INFO] (tellus) Cube-net approach loaded aa12a597-dec3-41d4-baca-586dd05a9a54 elapsedMs=4609
+[22:23:51] [Server thread/INFO] (tellus) Cube-net client destination chunks staged for TellusTester center=(638, 320) radius=5 attempt=1 packetsThisTick=2 packetBudget=8 loadTaskBudget=8 estimatedLoadBytes=67108864 observedMinTps=1.30 sampledPeakHeapBytes=799678688 metricSamples=30
+[22:23:57] [DH-World Gen Thread[3]/INFO] (CubeNetLodGenerator) Cube-Net DH direct tile chunk=[512, 384] detail=5 width=64 terrainColumns=4096 excludedColumns=0 elapsedMs=4566
+[22:23:59] [Server thread/INFO] (tellus) Cube-net client confirmed destination chunks aa12a597-dec3-41d4-baca-586dd05a9a54 player=TellusTester
+[22:24:03] [DH-World Gen Thread[9]/INFO] (CubeNetLodGenerator) Cube-Net DH direct tile chunk=[384, 384] detail=5 width=64 terrainColumns=4096 excludedColumns=0 elapsedMs=10101
+[22:24:09] [Server thread/INFO] (tellus) Cube-net approach ready aa12a597-dec3-41d4-baca-586dd05a9a54 source=(15360.5, 64.0, -29.5) elapsedMs=23051
+[22:24:14] [DH-World Gen Thread[8]/INFO] (CubeNetLodGenerator) Cube-Net DH direct tile chunk=[384, 0] detail=5 width=64 terrainColumns=4096 excludedColumns=0 elapsedMs=21356
+[22:24:44] [DH-World Gen Thread[4]/INFO] (CubeNetLodGenerator) Cube-Net DH direct tile chunk=[384, -128] detail=5 width=64 terrainColumns=4096 excludedColumns=0 elapsedMs=50939
+[22:24:53] [DH-World Gen Thread[2]/INFO] (CubeNetLodGenerator) Cube-Net DH direct tile chunk=[512, -512] detail=5 width=64 terrainColumns=4096 excludedColumns=0 elapsedMs=60827
+[22:24:57] [DH-World Gen Thread[0]/INFO] (CubeNetLodGenerator) Cube-Net DH direct tile chunk=[512, -256] detail=5 width=64 terrainColumns=4096 excludedColumns=0 elapsedMs=64030
+[22:25:51] [DH-World Gen Thread[1]/INFO] (CubeNetLodGenerator) Cube-Net DH direct tile chunk=[512, -384] detail=5 width=64 terrainColumns=4096 excludedColumns=0 elapsedMs=118074

@@ -1,0 +1,27 @@
+190:[21:07:36] [Render thread/INFO]: Detected Distant Horizons 3.3.1-tellus.1 (API 7.1.0), enabling integration with Tellus
+195:[21:07:36] [Render thread/INFO]: Distant Horizons, Version: 3.3.1-tellus.1
+224:[21:07:37] [Render thread/INFO]: OpenGL Vendor: NVIDIA Corporation
+225:[21:07:37] [Render thread/INFO]: OpenGL Renderer: NVIDIA GeForce RTX 3090/PCIe/SSE2
+226:[21:07:37] [Render thread/INFO]: OpenGL Version: 3.2.0 NVIDIA 580.178.04
+237:[21:07:39] [Render thread/INFO]: DH Ready, binding Iris event handlers...
+261:[21:07:42] [Render thread/INFO]: Connecting to 127.0.0.1, 25580
+264:[21:07:44] [Render thread/WARN]: Failed to resolve uniform inPaleGarden, reason: Unknown variable: BIOME_PALE_GARDEN ( = FunctionCall{smooth {[Number{54}, FunctionCall{if {[FunctionCall{in {[Id{biome}, Id{BIOME_PALE_GARDEN}]} }, Number{1}, Number{0}]} }, Number{15}, Number{15}]} })
+265:java.lang.RuntimeException: Unknown variable: BIOME_PALE_GARDEN
+374:[21:10:17] [Render thread/WARN]: Failed to resolve uniform inPaleGarden, reason: Unknown variable: BIOME_PALE_GARDEN ( = FunctionCall{smooth {[Number{54}, FunctionCall{if {[FunctionCall{in {[Id{biome}, Id{BIOME_PALE_GARDEN}]} }, Number{1}, Number{0}]} }, Number{15}, Number{15}]} })
+375:java.lang.RuntimeException: Unknown variable: BIOME_PALE_GARDEN
+491:[21:10:39] [Render thread/INFO]: Cube-net client render staging ready 9da617f2-9955-4090-a06e-ad0b06096219 backend=sodium-0.5.13+mc1.20.1 sections=1296 elapsedMs=18853
+497:[21:12:33] [Render thread/INFO]: Cube-net DH render envelope preparing 7e071ae2-adce-47cf-bef3-b234f6b21f19 target=(638, 320)
+503:[21:12:46] [Render thread/INFO]: Cube-net client render staging ready 7e071ae2-adce-47cf-bef3-b234f6b21f19 backend=sodium-0.5.13+mc1.20.1 sections=1296 elapsedMs=12433
+504:[21:15:23] [Render thread/INFO]: Cube-net DH render envelope committed 7e071ae2-adce-47cf-bef3-b234f6b21f19
+506:[21:15:23] [Render thread/INFO]: Cube-net Sodium renderer promoted sections=1296 liveBlockEntities=2
+507:[21:15:23] [Render thread/INFO]: Cube-net client render chart committed 7e071ae2-adce-47cf-bef3-b234f6b21f19 player=(10215.797470253072, 100.0, 5120.5) vehicle=null shadingTurns=3 previous=0
+508:[21:15:23] [Render thread/INFO]: Cube-net client pose commit 7e071ae2-adce-47cf-bef3-b234f6b21f19 mode=custom pose=(10215.797470253072, 100.0, 5120.5) yaw=90.0 pitch=0.0 velocity=(0.0, -0.0784000015258789, 0.0)
+509:[21:15:23] [Render thread/INFO]: Cube-net client sent first custom motion at commit 7e071ae2-adce-47cf-bef3-b234f6b21f19 gameTime=298604 position=(10215.797470253072, 100.0, 5120.5) velocity=(0.0, -0.0784000015258789, 0.0)
+510:[21:15:23] [Render thread/INFO]: Cube-net client committed frame=1 camera=(10215.797470253072, 101.61999988555908, 5120.5) chunks=C: 161/1296 D: 4
+511:[21:15:24] [Render thread/INFO]: Cube-net client committed frame=2 camera=(10215.797470253072, 101.61999988555908, 5120.5) chunks=C: 53/1296 D: 4
+530:[21:15:24] [Render thread/INFO]: Cube-net client committed frame=3 camera=(10215.08618638139, 101.61999988555908, 5120.5) chunks=C: 165/1296 D: 4
+531:[21:15:24] [Render thread/INFO]: Cube-net client committed frame=4 camera=(10215.08618638139, 101.61999988555908, 5120.5) chunks=C: 56/1296 D: 4
+535:[21:15:24] [Render thread/INFO]: Cube-net client committed frame=5 camera=(10214.84911077638, 101.61999988555908, 5120.5) chunks=C: 165/1296 D: 4
+536:[21:15:24] [Render thread/INFO]: Cube-net client committed frame=6 camera=(10214.84911077638, 101.61999988555908, 5120.5) chunks=C: 56/1296 D: 4
+537:[21:15:24] [Render thread/INFO]: Cube-net client committed frame=7 camera=(10214.773148803288, 101.61999988555908, 5120.5) chunks=C: 165/1296 D: 4
+538:[21:15:24] [Render thread/INFO]: Cube-net client committed frame=8 camera=(10214.773148803288, 101.61999988555908, 5120.5) chunks=C: 56/1296 D: 4

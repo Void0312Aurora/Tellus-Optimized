@@ -1,0 +1,51 @@
+{
+  "date": "2026-10-27",
+  "scope": "Prism graphical Cube-Net seam plus Distant Horizons long-distance sample",
+  "result": "partial_pass",
+  "client": {
+    "minecraft": "1.20.1",
+    "tellus": "0.8.4",
+    "sodium": "0.5.13+mc1.20.1",
+    "iris": "1.7.6",
+    "shader": "ComplementaryReimagined r5.5.1",
+    "distant_horizons": "3.3.1-tellus.1"
+  },
+  "server": {
+    "port": 25579,
+    "view_distance": 4,
+    "simulation_distance": 4,
+    "apron_chunks": 7,
+    "dimension": "tellus:earth_cube_net"
+  },
+  "seam": {
+    "status": "passed",
+    "source": [15360.5, 100.0, 32.5],
+    "canonical_target": [10207.5, 100.0, 5120.5],
+    "destination_chunks": 121,
+    "native_sections": 1296,
+    "server_evidence": "Cube-net seam correction armed; Cube-net seam transfer complete",
+    "client_evidence": "Cube-net client post-commit motion; Cube-net client committed frame"
+  },
+  "distant_horizons": {
+    "status": "active_but_incomplete",
+    "pending_lods_before_rebase": 67072,
+    "pending_lods_after_rebase": 20992,
+    "pending_lods_stable_in_sample": true,
+    "sqlite_full_data_rows_after_run": 8639,
+    "sqlite_chunk_hash_rows_after_run": 603
+  },
+  "errors": {
+    "client_crash": false,
+    "renderer_exception": false,
+    "known_warnings": ["Iris shader uniform lookup", "DH OpenGL 3.3 capability probe", "G1 garbage collector"],
+    "server_apron_refresh_timeout": true
+  },
+  "artifacts": [
+    "cube-net-cut-ready.png",
+    "cube-net-rebased.png",
+    "client-key-events-20261027.log",
+    "server-key-events-20261027.log",
+    "client-latest-20261027.log",
+    "server-latest-20261027.log"
+  ]
+}

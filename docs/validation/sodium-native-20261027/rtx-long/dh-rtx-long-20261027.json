@@ -1,0 +1,231 @@
+{
+  "date": "2026-10-27",
+  "scope": "bounded long-distance DH generation plus RTX 3090 render comparison",
+  "instance": "tellus-native-shader-dh-fork-rtx-long-20261027",
+  "minecraft": "1.20.1",
+  "tellus": "0.8.4",
+  "sodium": "0.5.13+mc1.20.1",
+  "iris": "1.7.6+mc1.20.1",
+  "distant_horizons": "3.3.1-tellus.1 (API 7.1.0)",
+  "shaderpack": "ComplementaryReimagined_r5.5.1.zip",
+  "gpu": "NVIDIA GeForce RTX 3090; driver 580.178.04; OpenGL 3.2.0 NVIDIA",
+  "dh_config": {
+    "realTimeUpdateDistanceRadiusInChunks": 512,
+    "maxSyncOnLoadRequestDistance": 8192,
+    "maxGenerationRequestDistance": 8192,
+    "generationMaxChunkRadius": 512,
+    "lodChunkRenderDistanceRadius": 512,
+    "generationRequestRateLimit": 20,
+    "vanilla_render_distance": 4
+  },
+  "long_distance_actions": [
+    "Fresh active DH cache; preserved previous cache as backup",
+    "Teleport to 8192,8192 then 4096,4096 in minecraft:overworld",
+    "Rejoined with generated cache, then returned to origin for stable fixed-view sampling"
+  ],
+  "final_databases": {
+    "server": {
+      "bytes": 130539520,
+      "full_data": 105144,
+      "chunk_hash": 867,
+      "pos_extent": [
+        -128,
+        159,
+        -128,
+        159
+      ],
+      "detail_levels": [
+        [
+          0,
+          78848
+        ],
+        [
+          1,
+          19712
+        ],
+        [
+          2,
+          4928
+        ],
+        [
+          3,
+          1232
+        ],
+        [
+          4,
+          308
+        ],
+        [
+          5,
+          79
+        ],
+        [
+          6,
+          24
+        ],
+        [
+          7,
+          9
+        ],
+        [
+          8,
+          4
+        ]
+      ]
+    },
+    "client": {
+      "bytes": 83857408,
+      "full_data": 61580,
+      "chunk_hash": 317,
+      "pos_extent": [
+        -64,
+        159,
+        -64,
+        159
+      ],
+      "detail_levels": [
+        [
+          0,
+          46160
+        ],
+        [
+          1,
+          11540
+        ],
+        [
+          2,
+          2892
+        ],
+        [
+          3,
+          728
+        ],
+        [
+          4,
+          182
+        ],
+        [
+          5,
+          49
+        ],
+        [
+          6,
+          16
+        ],
+        [
+          7,
+          9
+        ],
+        [
+          8,
+          4
+        ]
+      ]
+    }
+  },
+  "rtx_fps_comparison": {
+    "dh_off": {
+      "fps": {
+        "n": 16,
+        "min": 281,
+        "mean": 300.56,
+        "median": 303.0,
+        "max": 308
+      },
+      "gpu": {
+        "power_w": {
+          "n": 16,
+          "min": 212.0,
+          "avg": 215.31,
+          "max": 217.0
+        },
+        "temperature_c": {
+          "n": 16,
+          "min": 66.0,
+          "avg": 66.0,
+          "max": 66.0
+        },
+        "sm_pct": {
+          "n": 16,
+          "min": 44.0,
+          "avg": 50.5,
+          "max": 53.0
+        },
+        "memory_pct": {
+          "n": 16,
+          "min": 5.0,
+          "avg": 5.94,
+          "max": 6.0
+        },
+        "vram_mib": {
+          "n": 16,
+          "min": 6416.0,
+          "avg": 6421.62,
+          "max": 6426.0
+        }
+      }
+    },
+    "dh_on": {
+      "fps": {
+        "n": 21,
+        "min": 172,
+        "mean": 185.76,
+        "median": 185,
+        "max": 196
+      },
+      "gpu": {
+        "power_w": {
+          "n": 21,
+          "min": 219.0,
+          "avg": 223.19,
+          "max": 227.0
+        },
+        "temperature_c": {
+          "n": 21,
+          "min": 66.0,
+          "avg": 66.52,
+          "max": 67.0
+        },
+        "sm_pct": {
+          "n": 21,
+          "min": 40.0,
+          "avg": 46.76,
+          "max": 50.0
+        },
+        "memory_pct": {
+          "n": 21,
+          "min": 5.0,
+          "avg": 6.29,
+          "max": 7.0
+        },
+        "vram_mib": {
+          "n": 21,
+          "min": 6440.0,
+          "avg": 6445.24,
+          "max": 6450.0
+        }
+      }
+    }
+  },
+  "f3_evidence": "phase2-dh-on.png shows 188 FPS, NVIDIA GeForce RTX 3090 display, Sodium renderer 0.5.13, Distant Horizons 3.3.1-tellus.1, Rendering API OpenGL, and World Remote Generation queue with Failed: 0.",
+  "observed_errors": [
+    "One server tick warning: 2665 ms / 53 ticks behind after the 4096 teleport",
+    "Iris 1.7.6 logs Unknown variable BIOME_PALE_GARDEN when r5.5.1 reloads; rendering continues",
+    "Sodium reports NVIDIA_THREADED_OPTIMIZATIONS_BROKEN workaround",
+    "Offline 401/profile-key errors from the test account"
+  ],
+  "not_validated": [
+    "Tellus cube-net/sphere dimension long-distance generation; this fixture loaded minecraft:overworld only",
+    "A formal benchmark suite with fixed camera path and percentile frametime capture"
+  ],
+  "clean_shutdown": true,
+  "evidence_sha256": {
+    "phase1-server.log": "ceedb00f4a287c0b87ff2247a339df37185ecee58dc6cd48d9092b7ed829ddce",
+    "phase1-client.log": "4fc9d259fdcdd0ccabbda14efbd052586089b3bee7f65a0b3a4e2d47954a2df8",
+    "phase1-server-debug.log": "03dd2e19ad830d938f2f172d9bf55a242f4f6972a4b8d16f174be7acba71ae37",
+    "phase1-gpu.log": "60bcb7c1294b80dd28275eadb1937a8e299f075973181fc6baf3d6b1eb416d0e",
+    "phase2-fps.csv": "3151c9faca311f58d5c2e728ced58413356f6f7e9de37aa36461087c0f6b9429",
+    "phase2-dmon-controlled.log": "d93bf2045fbd82353df2f99b03901cf68cc5fafc2620c5c621c74afdd8c84d00",
+    "phase2-dh-on.png": "a9ef12fb1549f3f4ee3da319f8a5e501b53c1f0beeaffbcd93d385862bf35f1b"
+  }
+}

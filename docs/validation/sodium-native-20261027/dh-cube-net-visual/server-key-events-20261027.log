@@ -1,0 +1,22 @@
+86:[20:51:13] [Server thread/WARN] (Initializer) Distant Horizons: G1 Garbage collector detected.
+103:[20:51:14] [Server thread/WARN] (Minecraft) **** SERVER IS RUNNING IN OFFLINE/INSECURE MODE!
+104:[20:51:14] [Server thread/WARN] (Minecraft) The server will make no attempt to authenticate usernames. Beware.
+105:[20:51:14] [Server thread/WARN] (Minecraft) While this makes the game possible to play without internet access, it also opens up the ability for hackers to connect with any username they choose.
+106:[20:51:14] [Server thread/WARN] (Minecraft) To change this, set "online-mode" to "true" in the server.properties file.
+150:[20:52:16] [Server thread/INFO] (tellus) Cube-net approach preparing 865434bb-081c-42ee-b498-d3d8d53591e0 source=(15360.497542281588, 100.0, -29.38242568317049) distance=29.382425683170368 center=[638, 320] radius=5
+151:[20:52:17] [Server thread/INFO] (tellus) Cube-net approach loaded 865434bb-081c-42ee-b498-d3d8d53591e0 elapsedMs=285
+152:[20:52:17] [Server thread/INFO] (tellus) Cube-net client destination chunks staged for TellusTester center=(638, 320) radius=5 attempt=1 packetsThisTick=2 packetBudget=8 loadTaskBudget=8 estimatedLoadBytes=67108864 observedMinTps=18.35 sampledPeakHeapBytes=1378470728 metricSamples=26
+153:[20:52:24] [Server thread/WARN] (tellus) Cube-net apron edit refresh timed out for [646, 320]
+154:[20:52:24] [Server thread/WARN] (tellus) Cube-net apron edit refresh timed out for [646, 319]
+155:[20:52:25] [Server thread/INFO] (tellus) Cube-net client destination chunks staged for TellusTester center=(638, 320) radius=5 attempt=2 packetsThisTick=2 packetBudget=8 loadTaskBudget=8 estimatedLoadBytes=67108864 observedMinTps=18.35 sampledPeakHeapBytes=1466578608 metricSamples=186
+156:[20:52:25] [Server thread/INFO] (tellus) Cube-net client confirmed destination chunks 865434bb-081c-42ee-b498-d3d8d53591e0 player=TellusTester
+157:[20:52:37] [Server thread/INFO] (tellus) Cube-net approach ready 865434bb-081c-42ee-b498-d3d8d53591e0 source=(15360.497542281588, 100.0, -29.38242568317049) elapsedMs=20683
+159:[20:53:38] [Server thread/INFO] (tellus) Cube-net approach cancelled 865434bb-081c-42ee-b498-d3d8d53591e0
+160:[20:53:38] [Server thread/INFO] (tellus) Cube-net apron rebase deferred for TellusTester source=(15360.5, 32.5) target=(10207.5, 5120.5)
+161:[20:53:38] [Server thread/WARN] (Minecraft) TellusTester moved too quickly! 0.0024577184121881146,0.0,61.88242568317049
+162:[20:53:38] [Server thread/INFO] (tellus) Cube-net seam starting deferred transfer for TellusTester
+163:[20:53:39] [Server thread/INFO] (tellus) Cube-net client destination chunks staged for TellusTester center=(637, 320) radius=5 attempt=1 packetsThisTick=2 packetBudget=8 loadTaskBudget=8 estimatedLoadBytes=67108864 observedMinTps=20.00 sampledPeakHeapBytes=1211791920 metricSamples=17
+164:[20:53:39] [Server thread/INFO] (tellus) Cube-net client confirmed destination chunks d58a892a-148c-4b4a-a578-c240a96d0e5d player=TellusTester
+165:[20:53:50] [Server thread/INFO] (tellus) Cube-net seam correction armed player=TellusTester tick=3035 mechanism=atomic-custom teleportId=-1 vanillaWaitReleased=true awaitingPositionAfterRelease=null target=(10207.5, 100.0, 5120.5)
+166:[20:53:50] [Server thread/INFO] (tellus) Cube-net seam transfer complete for TellusTester target=(10207.5, 100.0, 5120.5)
+167:[20:53:50] [Server thread/INFO] (tellus) Cube-net first custom motion accepted player=TellusTester tick=3035 id=d58a892a-148c-4b4a-a578-c240a96d0e5d position=(10207.5, 100.0, 5120.5)

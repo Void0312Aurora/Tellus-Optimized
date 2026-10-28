@@ -1,0 +1,2 @@
+eefb199ed0b1309d020913848a3df04a6c8b713bda7a3ba43ee132490cab5c71  /home/void0312/Workshop/distant-horizons-tellus/fabric/build/libs/DistantHorizons-fabric-3.3.1-tellus.1-1.20.1.jar
+44d771c56578b6c1fa0194de0f2b02357941c2a65e179aa12b32022e3c09ff75  /home/void0312/Workshop/tellus-optimized/mc1201/build/libs/Tellus-fabric-1.20.1-0.8.4.jar

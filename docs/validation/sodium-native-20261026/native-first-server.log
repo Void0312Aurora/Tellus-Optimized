@@ -1,0 +1,71 @@
+[23:15:51] [Server thread/INFO] (tellus) Cube-net approach preparing 6ba59cc7-1d3e-4b46-a085-dbf17d0fa048 source=(15360.5, 100.0, -5.5) distance=5.5 center=[638, 320] radius=5
+[23:15:54] [Server thread/INFO] (tellus) Cube-net approach loaded 6ba59cc7-1d3e-4b46-a085-dbf17d0fa048 elapsedMs=3191
+[23:15:54] [Server thread/INFO] (tellus) Cube-net client destination chunks staged for TellusTester center=(638, 320) radius=5 attempt=1 packetsThisTick=2 packetBudget=8 loadTaskBudget=8 estimatedLoadBytes=67108864 observedMinTps=1.75 sampledPeakHeapBytes=1401619976 metricSamples=16
+[23:15:55] [Server thread/INFO] (tellus) Cube-net client confirmed destination chunks 6ba59cc7-1d3e-4b46-a085-dbf17d0fa048 player=TellusTester
+[23:16:18] [Server thread/INFO] (tellus) Cube-net approach ready 6ba59cc7-1d3e-4b46-a085-dbf17d0fa048 source=(15360.5, 64.0, -5.5) elapsedMs=27891
+[23:17:11] [Server thread/INFO] (tellus) Cube-net approach cancelled 6ba59cc7-1d3e-4b46-a085-dbf17d0fa048
+[23:17:49] [Server thread/INFO] (tellus) Cube-net approach preparing 612720d3-32af-4054-95d9-9feb7b387628 source=(15360.5, 100.0, -5.5) distance=5.5 center=[638, 320] radius=5
+[23:17:51] [Server thread/INFO] (tellus) Cube-net approach loaded 612720d3-32af-4054-95d9-9feb7b387628 elapsedMs=1650
+[23:17:52] [Server thread/INFO] (tellus) Cube-net client destination chunks staged for TellusTester center=(638, 320) radius=5 attempt=1 packetsThisTick=2 packetBudget=8 loadTaskBudget=8 estimatedLoadBytes=67108864 observedMinTps=20.00 sampledPeakHeapBytes=1274712392 metricSamples=48
+[23:17:52] [Server thread/INFO] (tellus) Cube-net client confirmed destination chunks 612720d3-32af-4054-95d9-9feb7b387628 player=TellusTester
+[23:18:09] [Server thread/INFO] (tellus) Cube-net approach ready 612720d3-32af-4054-95d9-9feb7b387628 source=(15360.5, 100.0, -5.5) elapsedMs=19380
+[23:19:21] [Server thread/INFO] (tellus) Cube-net apron rebase deferred for TellusTester source=(15360.502922795904, 24.00600884322983) target=(10215.99399115677, 5120.502922795904)
+[23:19:21] [Server thread/INFO] (tellus) Cube-net seam starting deferred transfer for TellusTester
+[23:19:21] [Server thread/INFO] (tellus) Cube-net approach consumed 612720d3-32af-4054-95d9-9feb7b387628 ready=true source=(15360.502922795904, 64.0, 24.00600884322983)
+[23:19:21] [Server thread/INFO] (tellus) Cube-net seam correction armed player=TellusTester tick=7070 mechanism=atomic-custom teleportId=-1 vanillaWaitReleased=true awaitingPositionAfterRelease=null target=(10215.99399115677, 64.0, 5120.502922795904)
+[23:19:21] [Server thread/INFO] (tellus) Cube-net seam transfer complete for TellusTester target=(10215.99399115677, 64.0, 5120.502922795904)
+[23:19:21] [Server thread/INFO] (tellus) Cube-net first custom motion accepted player=TellusTester tick=7071 id=612720d3-32af-4054-95d9-9feb7b387628 position=(10215.99399115677, 64.0, 5120.502922795904)
+[23:19:38] [Server thread/INFO] (tellus) Cube-net approach preparing 05d018d1-e0d0-48e6-b64e-43d167f02817 source=(10212.214351608976, 64.0, 5119.83377792007) distance=27.785648391023642 center=[959, -2] radius=5
+[23:19:40] [Server thread/INFO] (tellus) Cube-net approach loaded 05d018d1-e0d0-48e6-b64e-43d167f02817 elapsedMs=1613
+[23:19:40] [Server thread/INFO] (tellus) Cube-net client destination chunks staged for TellusTester center=(959, -2) radius=5 attempt=1 packetsThisTick=2 packetBudget=8 loadTaskBudget=8 estimatedLoadBytes=67108864 observedMinTps=20.00 sampledPeakHeapBytes=1113572056 metricSamples=47
+[23:19:40] [Server thread/INFO] (tellus) Cube-net client confirmed destination chunks 05d018d1-e0d0-48e6-b64e-43d167f02817 player=TellusTester
+[23:19:42] [Server thread/INFO] (tellus) Cube-net approach cancelled 05d018d1-e0d0-48e6-b64e-43d167f02817
+[23:19:45] [Server thread/INFO] (tellus) Cube-net approach preparing b7a24c6a-03b4-47ff-858d-772d29e664ab source=(10212.214351608976, 64.0, 5119.83377792007) distance=27.785648391023642 center=[959, -2] radius=5
+[23:19:46] [Server thread/INFO] (tellus) Cube-net approach loaded b7a24c6a-03b4-47ff-858d-772d29e664ab elapsedMs=1262
+[23:19:47] [Server thread/INFO] (tellus) Cube-net client destination chunks staged for TellusTester center=(959, -2) radius=5 attempt=1 packetsThisTick=2 packetBudget=8 loadTaskBudget=8 estimatedLoadBytes=67108864 observedMinTps=20.00 sampledPeakHeapBytes=1847201680 metricSamples=40
+[23:19:47] [Server thread/INFO] (tellus) Cube-net client confirmed destination chunks b7a24c6a-03b4-47ff-858d-772d29e664ab player=TellusTester
+[23:19:49] [Server thread/INFO] (tellus) Cube-net approach ready b7a24c6a-03b4-47ff-858d-772d29e664ab source=(10212.214351608976, 64.0, 5119.83377792007) elapsedMs=4132
+[23:20:12] [Server thread/INFO] (tellus) Cube-net approach cancelled b7a24c6a-03b4-47ff-858d-772d29e664ab
+[23:20:12] [Server thread/INFO] (tellus) Cube-net approach preparing 653ed645-df56-42b6-8784-84528858e226 source=(10215.5, 100.0, 5120.5) distance=24.5 center=[960, -2] radius=5
+[23:20:12] [Server thread/INFO] (tellus) Cube-net approach loaded 653ed645-df56-42b6-8784-84528858e226 elapsedMs=102
+[23:20:13] [Server thread/INFO] (tellus) Cube-net client destination chunks staged for TellusTester center=(960, -2) radius=5 attempt=1 packetsThisTick=2 packetBudget=8 loadTaskBudget=8 estimatedLoadBytes=67108864 observedMinTps=20.00 sampledPeakHeapBytes=1985987288 metricSamples=17
+[23:20:13] [Server thread/INFO] (tellus) Cube-net client confirmed destination chunks 653ed645-df56-42b6-8784-84528858e226 player=TellusTester
+[23:20:15] [Server thread/INFO] (tellus) Cube-net approach ready 653ed645-df56-42b6-8784-84528858e226 source=(10215.5, 64.0, 5120.5) elapsedMs=2977
+[23:25:16] [Netty Epoll Server IO #1/INFO] (tellus) Cube-net approach cancelled 653ed645-df56-42b6-8784-84528858e226
+[23:26:12] [Server thread/INFO] (tellus) Cube-net approach preparing 82ff6e30-bbea-4996-90e3-3eed32e05955 source=(10262.5, 64.0, 5120.5) distance=-22.5 center=[960, -2] radius=5
+[23:26:13] [Server thread/INFO] (tellus) Cube-net approach loaded 82ff6e30-bbea-4996-90e3-3eed32e05955 elapsedMs=1727
+[23:26:13] [Server thread/INFO] (tellus) Cube-net approach loaded 82ff6e30-bbea-4996-90e3-3eed32e05955 elapsedMs=1730
+[23:26:13] [Server thread/INFO] (tellus) Cube-net approach loaded 82ff6e30-bbea-4996-90e3-3eed32e05955 elapsedMs=1732
+[23:26:14] [Server thread/INFO] (tellus) Cube-net client destination chunks staged for TellusTester center=(960, -2) radius=5 attempt=1 packetsThisTick=2 packetBudget=8 loadTaskBudget=8 estimatedLoadBytes=67108864 observedMinTps=4.68 sampledPeakHeapBytes=1363461000 metricSamples=48
+[23:26:14] [Server thread/INFO] (tellus) Cube-net client confirmed destination chunks 82ff6e30-bbea-4996-90e3-3eed32e05955 player=TellusTester
+[23:26:25] [Server thread/INFO] (tellus) Cube-net approach ready 82ff6e30-bbea-4996-90e3-3eed32e05955 source=(10262.5, 64.0, 5120.5) elapsedMs=13546
+[23:26:46] [Server thread/WARN] (tellus) Cube-net approach rejected by client backend player=TellusTester backend=sodium-0.5.13+mc1.20.1 id=82ff6e30-bbea-4996-90e3-3eed32e05955
+[23:26:46] [Server thread/INFO] (tellus) Cube-net approach cancelled 82ff6e30-bbea-4996-90e3-3eed32e05955
+[23:26:46] [Server thread/INFO] (tellus) Cube-net approach preparing 365d29c2-0885-4b34-b599-04da83000565 source=(10262.5, 64.0, 5120.5) distance=-22.5 center=[960, -2] radius=5
+[23:26:46] [Server thread/INFO] (tellus) Cube-net approach loaded 365d29c2-0885-4b34-b599-04da83000565 elapsedMs=169
+[23:26:47] [Server thread/INFO] (tellus) Cube-net client destination chunks staged for TellusTester center=(960, -2) radius=5 attempt=1 packetsThisTick=2 packetBudget=8 loadTaskBudget=8 estimatedLoadBytes=67108864 observedMinTps=20.00 sampledPeakHeapBytes=1995412736 metricSamples=19
+[23:26:47] [Server thread/INFO] (tellus) Cube-net client confirmed destination chunks 365d29c2-0885-4b34-b599-04da83000565 player=TellusTester
+[23:26:58] [Server thread/INFO] (tellus) Cube-net approach ready 365d29c2-0885-4b34-b599-04da83000565 source=(10262.5, 64.0, 5120.5) elapsedMs=12504
+[23:28:21] [Server thread/INFO] (tellus) Cube-net apron rebase deferred for TellusTester source=(10264.072519513957, 5120.5) target=(15360.5, -24.07251951395665)
+[23:28:21] [Server thread/INFO] (tellus) Cube-net seam starting deferred transfer for TellusTester
+[23:28:21] [Server thread/INFO] (tellus) Cube-net approach consumed 365d29c2-0885-4b34-b599-04da83000565 ready=true source=(10264.072519513957, 64.0, 5120.5)
+[23:28:21] [Server thread/INFO] (tellus) Cube-net seam correction armed player=TellusTester tick=17799 mechanism=atomic-custom teleportId=-1 vanillaWaitReleased=true awaitingPositionAfterRelease=null target=(15360.5, 64.0, -24.07251951395665)
+[23:28:21] [Server thread/INFO] (tellus) Cube-net seam transfer complete for TellusTester target=(15360.5, 64.0, -24.07251951395665)
+[23:28:21] [Server thread/INFO] (tellus) Cube-net first custom motion accepted player=TellusTester tick=17800 id=365d29c2-0885-4b34-b599-04da83000565 position=(15360.5, 64.0, -24.07251951395665)
+[23:29:38] [Server thread/INFO] (tellus) Cube-net approach preparing 0965e2fa-e55c-4378-b81d-51d2dc43ac92 source=(15360.5, 100.0, -5.5) distance=5.5 center=[638, 320] radius=5
+[23:29:39] [Server thread/INFO] (tellus) Cube-net approach loaded 0965e2fa-e55c-4378-b81d-51d2dc43ac92 elapsedMs=1677
+[23:29:39] [Server thread/INFO] (tellus) Cube-net client destination chunks staged for TellusTester center=(638, 320) radius=5 attempt=1 packetsThisTick=2 packetBudget=8 loadTaskBudget=8 estimatedLoadBytes=67108864 observedMinTps=6.94 sampledPeakHeapBytes=2200146696 metricSamples=34
+[23:29:39] [Server thread/INFO] (tellus) Cube-net client confirmed destination chunks 0965e2fa-e55c-4378-b81d-51d2dc43ac92 player=TellusTester
+[23:29:52] [Server thread/INFO] (tellus) Cube-net approach ready 0965e2fa-e55c-4378-b81d-51d2dc43ac92 source=(15360.5, 100.0, -5.5) elapsedMs=13987
+[23:30:36] [Server thread/INFO] (tellus) Cube-net approach cancelled 0965e2fa-e55c-4378-b81d-51d2dc43ac92
+[23:31:13] [Server thread/INFO] (tellus) Cube-net approach preparing bd7b67b6-b8be-4451-9f76-78a3cccd9480 source=(15360.5, 100.0, 22.5) distance=-22.5 center=[638, 320] radius=5
+[23:31:13] [Server thread/INFO] (tellus) Cube-net approach loaded bd7b67b6-b8be-4451-9f76-78a3cccd9480 elapsedMs=47
+[23:31:14] [Server thread/INFO] (tellus) Cube-net client destination chunks staged for TellusTester center=(638, 320) radius=5 attempt=1 packetsThisTick=2 packetBudget=8 loadTaskBudget=8 estimatedLoadBytes=67108864 observedMinTps=20.00 sampledPeakHeapBytes=1231789944 metricSamples=16
+[23:31:14] [Server thread/INFO] (tellus) Cube-net client confirmed destination chunks bd7b67b6-b8be-4451-9f76-78a3cccd9480 player=TellusTester
+[23:31:25] [Server thread/INFO] (tellus) Cube-net approach ready bd7b67b6-b8be-4451-9f76-78a3cccd9480 source=(15360.5, 100.0, 22.5) elapsedMs=12447
+[23:32:24] [Server thread/INFO] (tellus) Cube-net apron rebase deferred for TellusTester source=(15360.5, 24.18424965926121) target=(10215.815750340738, 5120.5)
+[23:32:24] [Server thread/INFO] (tellus) Cube-net seam starting deferred transfer for TellusTester
+[23:32:24] [Server thread/INFO] (tellus) Cube-net approach consumed bd7b67b6-b8be-4451-9f76-78a3cccd9480 ready=true source=(15360.5, 100.0, 24.18424965926121)
+[23:32:24] [Server thread/INFO] (tellus) Cube-net seam correction armed player=TellusTester tick=22650 mechanism=atomic-custom teleportId=-1 vanillaWaitReleased=true awaitingPositionAfterRelease=null target=(10215.815750340738, 100.0, 5120.5)
+[23:32:24] [Server thread/INFO] (tellus) Cube-net seam transfer complete for TellusTester target=(10215.815750340738, 100.0, 5120.5)
+[23:32:24] [Server thread/INFO] (tellus) Cube-net first custom motion accepted player=TellusTester tick=22651 id=bd7b67b6-b8be-4451-9f76-78a3cccd9480 position=(10215.815750340738, 100.0, 5120.5)

@@ -1,0 +1,36 @@
+[08:16:01] [Render thread/INFO]: OpenGL Vendor: Mesa
+[08:16:01] [Render thread/INFO]: OpenGL Renderer: llvmpipe (LLVM 21.1.8, 256 bits)
+[08:16:01] [Render thread/INFO]: OpenGL Version: 4.5 (Core Profile) Mesa 26.0.8-1ubuntu0.3
+[08:16:02] [Render thread/INFO]: Using shaderpack: ComplementaryReimagined_r5.2.2.zip
+[08:16:03] [Render thread/INFO]: Reloading ResourceManager: vanilla, fabric (fabric-api, fabric-api-base, fabric-api-lookup-api-v1, fabric-biome-api-v1, fabric-block-api-v1, fabric-block-view-api-v2, fabric-blockrenderlayer-v1, fabric-client-tags-api-v1, fabric-command-api-v1, fabric-command-api-v2, fabric-commands-v0, fabric-containers-v0, fabric-content-registries-v0, fabric-convention-tags-v1, fabric-crash-report-info-v1, fabric-data-attachment-api-v1, fabric-data-generation-api-v1, fabric-dimensions-v1, fabric-entity-events-v1, fabric-events-interaction-v0, fabric-events-lifecycle-v0, fabric-game-rule-api-v1, fabric-item-api-v1, fabric-item-group-api-v1, fabric-key-binding-api-v1, fabric-keybindings-v0, fabric-lifecycle-events-v1, fabric-loot-api-v2, fabric-loot-tables-v1, fabric-message-api-v1, fabric-mining-level-api-v1, fabric-model-loading-api-v1, fabric-models-v0, fabric-networking-api-v1, fabric-networking-v0, fabric-object-builder-api-v1, fabric-particles-v1, fabric-recipe-api-v1, fabric-registry-sync-v0, fabric-renderer-api-v1, fabric-renderer-indigo, fabric-renderer-registries-v1, fabric-rendering-data-attachment-v1, fabric-rendering-fluids-v1, fabric-rendering-v0, fabric-rendering-v1, fabric-resource-conditions-api-v1, fabric-resource-loader-v0, fabric-screen-api-v1, fabric-screen-handler-api-v1, fabric-sound-api-v1, fabric-tag-api-v1, fabric-transfer-api-v1, fabric-transitive-access-wideners-v1, fabricloader, indium, iris, sodium, tellus)
+[08:16:09] [Render thread/INFO]: Reloading pipeline on dimension change: null => tellus:earth_cube_net
+[08:16:09] [Render thread/INFO]: Creating pipeline for dimension tellus:earth_cube_net
+[08:16:10] [Render thread/WARN]: Shader compilation log for deferred1.fsh: 0:749(29): warning: `tracePosM' used uninitialized
+[08:16:17] [Render thread/INFO]: Started 2 worker threads
+[08:16:17] [Render thread/INFO]: Stopping worker threads
+[08:16:17] [Render thread/INFO]: Started 2 worker threads
+[08:16:18] [Render thread/WARN]: Shader compilation log for iris:sodium-terrain-shadow.vsh: 0:429(15): warning: `lmCoord' used uninitialized
+[08:16:18] [Render thread/WARN]: Shader compilation log for iris:sodium-terrain-gbuffer_solid.vsh: 0:436(15): warning: `lmCoord' used uninitialized
+[08:16:18] [Render thread/WARN]: Shader compilation log for iris:sodium-terrain-gbuffer_translucent.vsh: 0:439(15): warning: `lmCoord' used uninitialized
+[08:17:19] [Render thread/INFO]: Cube-net client preparing dc951ce8-c417-48c3-a836-e756d9fab7ee source=[960, -1] target=(638, 320)
+[08:17:28] [Render thread/INFO]: Cube-net client received all destination chunks dc951ce8-c417-48c3-a836-e756d9fab7ee count=121
+[08:17:31] [Render thread/INFO]: Started 2 worker threads
+[08:17:31] [Render thread/INFO]: Cube-net Sodium client compiling dc951ce8-c417-48c3-a836-e756d9fab7ee backend=sodium-0.5.13+mc1.20.1
+[08:17:40] [Render thread/INFO]: Cube-net Sodium client waiting for native mesh uploads dc951ce8-c417-48c3-a836-e756d9fab7ee
+[08:17:45] [Render thread/INFO]: Cube-net client render staging ready dc951ce8-c417-48c3-a836-e756d9fab7ee backend=sodium-0.5.13+mc1.20.1 sections=1296 elapsedMs=25799
+[08:18:46] [Render thread/INFO]: Stopping worker threads
+[08:18:46] [Render thread/INFO]: Cube-net Sodium renderer promoted sections=1296 liveBlockEntities=2
+[08:18:46] [Render thread/INFO]: Cube-net client render chart committed dc951ce8-c417-48c3-a836-e756d9fab7ee player=(10215.330983652704, 100.0, 5120.5) vehicle=null shadingTurns=3 previous=0
+[08:18:46] [Render thread/INFO]: Cube-net client pose commit dc951ce8-c417-48c3-a836-e756d9fab7ee mode=custom pose=(10215.330983652704, 100.0, 5120.5) yaw=90.0 pitch=10.0 velocity=(0.0, -0.0784000015258789, 0.0)
+[08:18:46] [Render thread/INFO]: Cube-net client committed frame=1 camera=(10213.910439711482, 101.61999988555908, 5120.5) chunks=C: 187/1296 D: 4
+[08:18:47] [Render thread/INFO]: Cube-net client committed frame=2 camera=(10213.910439711482, 101.61999988555908, 5120.5) chunks=C: 70/1296 D: 4
+[08:18:47] [Render thread/INFO]: Cube-net client committed frame=3 camera=(10213.506055798513, 101.61999988555908, 5120.5) chunks=C: 187/1296 D: 4
+[08:18:48] [Render thread/INFO]: Cube-net client committed frame=4 camera=(10213.506055798513, 101.61999988555908, 5120.5) chunks=C: 70/1296 D: 4
+[08:18:48] [Render thread/INFO]: Cube-net client committed frame=5 camera=(10213.506055798513, 101.61999988555908, 5120.5) chunks=C: 187/1296 D: 4
+[08:18:48] [Render thread/INFO]: Cube-net client committed frame=6 camera=(10213.506055798513, 101.61999988555908, 5120.5) chunks=C: 70/1296 D: 4
+[08:18:49] [Render thread/INFO]: Cube-net client committed frame=7 camera=(10213.506055798513, 101.61999988555908, 5120.5) chunks=C: 187/1296 D: 4
+[08:18:49] [Render thread/INFO]: Cube-net client committed frame=8 camera=(10213.506055798513, 101.61999988555908, 5120.5) chunks=C: 70/1296 D: 4
+[08:19:17] [Render thread/INFO]: [System] [CHAT] [Debug]: Reloaded resource packs
+[08:19:17] [Render thread/INFO]: Reloading ResourceManager: vanilla, fabric (fabric-api, fabric-api-base, fabric-api-lookup-api-v1, fabric-biome-api-v1, fabric-block-api-v1, fabric-block-view-api-v2, fabric-blockrenderlayer-v1, fabric-client-tags-api-v1, fabric-command-api-v1, fabric-command-api-v2, fabric-commands-v0, fabric-containers-v0, fabric-content-registries-v0, fabric-convention-tags-v1, fabric-crash-report-info-v1, fabric-data-attachment-api-v1, fabric-data-generation-api-v1, fabric-dimensions-v1, fabric-entity-events-v1, fabric-events-interaction-v0, fabric-events-lifecycle-v0, fabric-game-rule-api-v1, fabric-item-api-v1, fabric-item-group-api-v1, fabric-key-binding-api-v1, fabric-keybindings-v0, fabric-lifecycle-events-v1, fabric-loot-api-v2, fabric-loot-tables-v1, fabric-message-api-v1, fabric-mining-level-api-v1, fabric-model-loading-api-v1, fabric-models-v0, fabric-networking-api-v1, fabric-networking-v0, fabric-object-builder-api-v1, fabric-particles-v1, fabric-recipe-api-v1, fabric-registry-sync-v0, fabric-renderer-api-v1, fabric-renderer-indigo, fabric-renderer-registries-v1, fabric-rendering-data-attachment-v1, fabric-rendering-fluids-v1, fabric-rendering-v0, fabric-rendering-v1, fabric-resource-conditions-api-v1, fabric-resource-loader-v0, fabric-screen-api-v1, fabric-screen-handler-api-v1, fabric-sound-api-v1, fabric-tag-api-v1, fabric-transfer-api-v1, fabric-transitive-access-wideners-v1, fabricloader, indium, iris, sodium, tellus)
+[08:19:20] [Render thread/INFO]: Stopping worker threads
+[08:19:20] [Render thread/INFO]: Started 2 worker threads
