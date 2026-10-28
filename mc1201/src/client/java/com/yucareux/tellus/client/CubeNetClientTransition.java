@@ -7,6 +7,7 @@ import com.yucareux.tellus.network.CubeNetTransitionCommitPayload;
 import com.yucareux.tellus.network.CubeNetTransitionMotionPayload;
 import com.yucareux.tellus.network.CubeNetTransitionUnsupportedPayload;
 import com.yucareux.tellus.compat.TellusRenderCompatibility;
+import com.yucareux.tellus.worldgen.CubeNetShadeTransform;
 import com.yucareux.tellus.TellusCommon;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
@@ -65,8 +66,26 @@ public final class CubeNetClientTransition {
          && current.renderContains(position.getX() >> 4, position.getZ() >> 4)) {
          turns = current.targetShadeQuarterTurns;
       }
-      for (int i = 0; i < Math.floorMod(turns, 4); i++) direction = clockwise(direction);
-      return direction;
+      return CubeNetShadeTransform.rotate(direction, turns);
+   }
+
+   /** Chart-relative direction used by Sodium's native block-light pipeline. */
+   public static Direction sodiumShadeDirection(Direction direction, BlockPos position) {
+      return sodiumShadeDirection(direction, position.getX() >> 4, position.getZ() >> 4);
+   }
+
+   public static Direction sodiumShadeDirection(Direction direction, int chunkX, int chunkZ) {
+      Pending current = pending;
+      int turns = current != null && current.renderContains(chunkX, chunkZ)
+         ? current.targetShadeQuarterTurns : shadeQuarterTurns;
+      return CubeNetShadeTransform.rotate(direction, turns);
+   }
+
+   /** Sodium's fluid renderer bakes horizontal face brightness as a separate axis factor. */
+   public static float sodiumFluidBrightness(Direction face, BlockPos position, float brightness) {
+      Direction mapped = sodiumShadeDirection(face, position);
+      return brightness * CubeNetShadeTransform.fluidHorizontalBrightness(mapped)
+         / CubeNetShadeTransform.fluidHorizontalBrightness(face);
    }
 
    /** Marks the block position currently being tessellated on this worker thread. */
@@ -82,16 +101,6 @@ public final class CubeNetClientTransition {
    public static void resetShadeOrientation() {
       shadeQuarterTurns = 0;
       shadeRenderPosition.remove();
-   }
-
-   private static Direction clockwise(Direction direction) {
-      return switch (direction) {
-         case NORTH -> Direction.EAST;
-         case EAST -> Direction.SOUTH;
-         case SOUTH -> Direction.WEST;
-         case WEST -> Direction.NORTH;
-         default -> direction;
-      };
    }
 
    public static void prepare(CubeNetTransitionPreparePayload payload) {
@@ -117,6 +126,7 @@ public final class CubeNetClientTransition {
       ClientChunkCache cache = client.level.getChunkSource();
       ChunkPos source = client.player.chunkPosition();
       pending = new Pending(payload, cache, client.options.getEffectiveRenderDistance());
+      pending.dhTransitionActive = DistantHorizonsSeamClient.begin(payload);
       TellusCommon.LOGGER.info("Cube-net client preparing {} source={} target=({}, {})",
          payload.transitionId(), source, payload.centerChunkX(), payload.centerChunkZ());
    }
@@ -183,6 +193,14 @@ public final class CubeNetClientTransition {
       if (pending != null && pending.area.transitionId().equals(id)) reset();
    }
 
+   /** A renderer reload invalidates its off-screen native resources as well. */
+   public static void rendererInvalidated() {
+      Pending current = pending;
+      if (current == null || current.stagedSodium == null) return;
+      rejectUnsupported(Minecraft.getInstance(), current.area.transitionId());
+      reset();
+   }
+
    public static void tick(Minecraft client) {
       tracePostCommitMotion(client);
       Pending current = pending;
@@ -232,19 +250,51 @@ public final class CubeNetClientTransition {
       // Light packet work is queued by vanilla after the chunk data. Allow a
       // complete client tick, then build with the normal region/light sampler.
       if (++current.dataReadyTicks < 2 || !client.level.isLightUpdateQueueEmpty()) return;
-      if (current.staged == null) {
+      if (current.staged == null && current.stagedSodium == null) {
          current.dataReadyNanos = System.nanoTime();
-         current.staged = new ViewArea(client.levelRenderer.getChunkRenderDispatcher(), client.level,
-            current.viewDistance, client.levelRenderer);
-         current.staged.repositionCamera(current.area.centerChunkX() * 16.0 + 8,
-            current.area.centerChunkZ() * 16.0 + 8);
-         for (var section : current.staged.chunks) {
-            if (current.renderContains(section.getOrigin().getX() >> 4, section.getOrigin().getZ() >> 4)) {
-               current.sections.add(section);
+         if (TellusRenderCompatibility.sodiumLoaded()) {
+            try {
+               current.stagedSodium = CubeNetSodiumStaging.begin(
+                  current.area.centerChunkX(), current.area.centerChunkZ());
+               TellusCommon.LOGGER.info("Cube-net Sodium client compiling {} backend={}",
+                  current.area.transitionId(), TellusRenderCompatibility.backendId());
+            } catch (RuntimeException error) {
+               TellusCommon.LOGGER.error("Cube-net Sodium staging initialization failed {}",
+                  current.area.transitionId(), error);
+               rejectUnsupported(client, current.area.transitionId());
+               reset();
+               return;
             }
+         } else {
+            current.staged = new ViewArea(client.levelRenderer.getChunkRenderDispatcher(), client.level,
+               current.viewDistance, client.levelRenderer);
+            current.staged.repositionCamera(current.area.centerChunkX() * 16.0 + 8,
+               current.area.centerChunkZ() * 16.0 + 8);
+            for (var section : current.staged.chunks) {
+               if (current.renderContains(section.getOrigin().getX() >> 4, section.getOrigin().getZ() >> 4)) {
+                  current.sections.add(section);
+               }
+            }
+            TellusCommon.LOGGER.info("Cube-net client compiling {} sections={}",
+               current.area.transitionId(), current.sections.size());
          }
-         TellusCommon.LOGGER.info("Cube-net client compiling {} sections={}",
-            current.area.transitionId(), current.sections.size());
+      }
+      if (current.stagedSodium != null) {
+         try {
+            CubeNetSodiumStaging.tick(current.stagedSodium);
+            if (!CubeNetSodiumStaging.ready(current.stagedSodium)) {
+               if (current.remainingTicks % 200 == 0) TellusCommon.LOGGER.info(
+                  "Cube-net Sodium client waiting for native mesh uploads {}", current.area.transitionId());
+               return;
+            }
+            markReady(current);
+         } catch (RuntimeException error) {
+            TellusCommon.LOGGER.error("Cube-net Sodium staging failed during mesh build {}",
+               current.area.transitionId(), error);
+            rejectUnsupported(client, current.area.transitionId());
+            reset();
+         }
+         return;
       }
       // Keep native workers busy without putting thousands of rebuild tasks
       // ahead of the source chart. Region snapshot creation stays on this thread.
@@ -291,15 +341,29 @@ public final class CubeNetClientTransition {
          return;
       }
       if (ClientPlayNetworking.canSend(CubeNetTransitionReadyPayload.TYPE)) {
-         ClientPlayNetworking.send(new CubeNetTransitionReadyPayload(current.area.transitionId()));
-         current.readySent = true;
-         TellusCommon.LOGGER.info("Cube-net client render staging ready {} sections={} elapsedMs={}",
-            current.area.transitionId(), current.sections.size(), (System.nanoTime() - current.startedNanos) / 1_000_000L);
-         TellusCommon.LOGGER.info("Cube-net client staging phases {} dataLightMs={} compileWallMs={} compileCpuMs={} uploadWaitMs={} batches={}",
-            current.area.transitionId(), (current.dataReadyNanos - current.startedNanos) / 1_000_000L,
-            (current.compileFinishedNanos - current.dataReadyNanos) / 1_000_000L, current.compileNanos / 1_000_000L,
-            (System.nanoTime() - current.compileFinishedNanos) / 1_000_000L, current.compileBatches);
+         markReady(current);
       }
+   }
+
+   private static void markReady(Pending current) {
+      if (current.readySent || !ClientPlayNetworking.canSend(CubeNetTransitionReadyPayload.TYPE)) return;
+      if (current.dhTransitionActive && !DistantHorizonsSeamClient.ready(current.area.transitionId())) {
+         if (current.remainingTicks % 200 == 0) TellusCommon.LOGGER.info(
+            "Cube-net client waiting for DH render envelope {}", current.area.transitionId());
+         return;
+      }
+      ClientPlayNetworking.send(new CubeNetTransitionReadyPayload(current.area.transitionId()));
+      current.readySent = true;
+      TellusCommon.LOGGER.info("Cube-net client render staging ready {} backend={} sections={} elapsedMs={}",
+         current.area.transitionId(), TellusRenderCompatibility.backendId(),
+         current.stagedSodium == null ? current.sections.size() : CubeNetSodiumStaging.sectionCount(current.stagedSodium),
+         (System.nanoTime() - current.startedNanos) / 1_000_000L);
+      if (current.stagedSodium == null) TellusCommon.LOGGER.info(
+         "Cube-net client staging phases {} dataLightMs={} compileWallMs={} compileCpuMs={} uploadWaitMs={} batches={}",
+         current.area.transitionId(), (current.dataReadyNanos - current.startedNanos) / 1_000_000L,
+         (current.compileFinishedNanos - current.dataReadyNanos) / 1_000_000L,
+         current.compileNanos / 1_000_000L,
+         (System.nanoTime() - current.compileFinishedNanos) / 1_000_000L, current.compileBatches);
    }
 
    /** Vanilla workers must sort translucent target geometry in its own chart. */
@@ -313,7 +377,7 @@ public final class CubeNetClientTransition {
    /** Called in the player position packet's main-thread handler, before a frame can render. */
    public static void playerPositionApplied(Minecraft client) {
       Pending current = pending;
-      if (current == null || !current.readySent || current.staged == null || client.player == null
+      if (current == null || !current.readySent || !current.hasPreparedRenderer() || client.player == null
          || client.level == null || client.level.getChunkSource() != current.cache
          || !current.contains(client.player.chunkPosition().x, client.player.chunkPosition().z)) return;
       commitPrepared(client, current, client.player.position(), client.player.getYRot(),
@@ -328,7 +392,7 @@ public final class CubeNetClientTransition {
    public static void commit(CubeNetTransitionCommitPayload payload) {
       Minecraft client = Minecraft.getInstance();
       Pending current = pending;
-      if (current == null || !current.readySent || current.staged == null || client.player == null
+      if (current == null || !current.readySent || !current.hasPreparedRenderer() || client.player == null
          || client.level == null || client.level.getChunkSource() != current.cache
          || !current.area.transitionId().equals(payload.transitionId())
          || !current.contains((int)Math.floor(payload.x() / 16.0), (int)Math.floor(payload.z() / 16.0))) {
@@ -354,11 +418,17 @@ public final class CubeNetClientTransition {
       float yaw, float pitch, Vec3 velocity, float fallDistance, boolean customCommit) {
       // Promote through the ordinary packet path so the native cache owns all
       // data after commit. Source reception stayed active until this point.
+      DistantHorizonsSeamClient.end(current.area.transitionId(), true);
       pending = null;
       current.cache.updateViewCenter(current.area.centerChunkX(), current.area.centerChunkZ());
       for (var packet : current.packets.values()) client.getConnection().handleLevelChunkWithLight(packet);
-      ((CubeNetRenderStaging)client.levelRenderer).tellus$installStagedView(current.staged);
-      current.staged = null; // ownership passes to LevelRenderer
+      if (current.stagedSodium != null) {
+         CubeNetSodiumStaging.commit(current.stagedSodium);
+         current.stagedSodium = null;
+      } else {
+         ((CubeNetRenderStaging)client.levelRenderer).tellus$installStagedView(current.staged);
+         current.staged = null; // ownership passes to LevelRenderer
+      }
       int previousShade = shadeQuarterTurns;
       shadeQuarterTurns = current.targetShadeQuarterTurns;
       traceFrames = 8;
@@ -555,13 +625,17 @@ public final class CubeNetClientTransition {
    public static void reset() {
       Pending old = pending;
       Minecraft client = Minecraft.getInstance();
+      // Stop native workers while their staged chunks and shade frame still
+      // exist, then let the world unload the remote data.
+      if (old != null) DistantHorizonsSeamClient.end(old.area.transitionId(), false);
+      if (old != null) CubeNetSodiumStaging.discard(old.stagedSodium);
+      if (old != null && old.staged != null) old.staged.releaseAllBuffers();
+      pending = null;
       if (old != null && client.level != null && client.level.getChunkSource() == old.cache) {
          for (LevelChunk chunk : old.remote.values()) client.level.unload(chunk);
       }
-      pending = null;
       traceFrames = 0;
       outboundMotionTrace = null;
-      if (old != null && old.staged != null) old.staged.releaseAllBuffers();
    }
 
    private static final class Pending {
@@ -585,8 +659,10 @@ public final class CubeNetClientTransition {
       private long compileNanos;
       private int compileBatches;
       private boolean readySent;
+      private boolean dhTransitionActive;
       private boolean chunksReceivedSent;
       private ViewArea staged;
+      private CubeNetSodiumStaging.StagedRenderer stagedSodium;
       private Entity movingRoot;
       private float rootYaw;
       private Vec3 rootVelocity = Vec3.ZERO;
@@ -620,6 +696,10 @@ public final class CubeNetClientTransition {
          int radius = viewDistance;
          return Math.abs((long)x - area.centerChunkX()) <= radius
             && Math.abs((long)z - area.centerChunkZ()) <= radius;
+      }
+
+      private boolean hasPreparedRenderer() {
+         return this.staged != null || this.stagedSodium != null;
       }
    }
 

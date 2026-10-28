@@ -47,10 +47,12 @@ public class TellusClient implements ClientModInitializer {
 
    @Override
    public void onInitializeClient() {
-      if (TellusRenderCompatibility.sodiumLoaded()) {
-         TellusCommon.LOGGER.warn(
-            "Sodium detected ({}); vanilla Cube-net staged rendering is disabled until a native adapter is available",
+      if (TellusRenderCompatibility.sodiumLoaded() && TellusRenderCompatibility.sodiumStagingSupported()) {
+         TellusCommon.LOGGER.info("Sodium native Cube-net staging enabled for {}",
             TellusRenderCompatibility.backendId());
+      } else if (TellusRenderCompatibility.sodiumLoaded()) {
+         TellusCommon.LOGGER.warn("Unsupported Sodium version {}; Cube-net transitions will fail closed",
+            TellusRenderCompatibility.sodiumVersion());
       }
       TellusClientPlatform.configureGeoTeleport(
          () -> ClientPlayNetworking.canSend(GeoTpTeleportPayload.TYPE),

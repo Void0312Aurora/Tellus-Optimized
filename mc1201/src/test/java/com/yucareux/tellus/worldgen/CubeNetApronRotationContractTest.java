@@ -47,6 +47,15 @@ class CubeNetApronRotationContractTest {
                .targetToSourceClockwiseQuarterTurns().orElseThrow();
             Rotation targetToSource = CubeNetApronChunkSync.rotation(clockwiseTargetToSource);
             Rotation sourceToTarget = CubeNetApronChunkSync.rotation(-clockwiseTargetToSource);
+            for (Direction faceDirection : Direction.values()) {
+               // A canonical model face and its source-apron copy must sample
+               // the same directional shade, including the two vertical faces.
+               Direction proxyDirection = targetToSource.rotate(faceDirection);
+               assertEquals(proxyDirection,
+                  CubeNetShadeTransform.rotate(faceDirection, clockwiseTargetToSource), seam.toString());
+               assertEquals(faceDirection,
+                  CubeNetShadeTransform.rotate(proxyDirection, -clockwiseTargetToSource), seam.toString());
+            }
             for (BlockState canonical : states) {
                BlockState proxy = canonical.rotate(targetToSource);
                BlockState restored = proxy.rotate(sourceToTarget);

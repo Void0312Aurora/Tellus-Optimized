@@ -140,6 +140,11 @@ dependencies {
 	}
 	add(config.fabricDependencyConfiguration, "net.fabricmc:fabric-loader:${config.loaderVersion}")
 	add(config.fabricDependencyConfiguration, "net.fabricmc.fabric-api:fabric-api:${config.fabricVersion}")
+	if (project.name == 'mc1201') {
+		// The Sodium adapter is optional at runtime and remains isolated behind
+		// the exact-version client mixin gate.
+		modCompileOnly 'maven.modrinth:sodium:mc1.20.1-0.5.13-fabric'
+	}
 
 	bundledLibrary 'org.tukaani:xz:1.10'
 	implementation 'org.tukaani:xz:1.10'

@@ -17,6 +17,20 @@ public final class TellusClientMixinPlugin implements IMixinConfigPlugin {
       "com.yucareux.tellus.mixin.client.CubeNetLevelRendererMixin";
    private static final String VANILLA_REBUILD_MIXIN =
       "com.yucareux.tellus.mixin.client.CubeNetRebuildCameraMixin";
+   private static final String SODIUM_RENDERER_MIXIN =
+      "com.yucareux.tellus.mixin.client.CubeNetSodiumWorldRendererMixin";
+   private static final String SODIUM_SECTION_MIXIN =
+      "com.yucareux.tellus.mixin.client.CubeNetSodiumRenderSectionManagerMixin";
+   private static final String SODIUM_ENTITY_MIXIN =
+      "com.yucareux.tellus.mixin.client.CubeNetSodiumRenderSectionMixin";
+   private static final String SODIUM_BLOCK_LIGHT_MIXIN =
+      "com.yucareux.tellus.mixin.client.CubeNetSodiumBlockLightMixin";
+   private static final String SODIUM_FLUID_LIGHT_MIXIN =
+      "com.yucareux.tellus.mixin.client.CubeNetSodiumFluidLightMixin";
+   private static final String VANILLA_MODEL_LIGHT_MIXIN =
+      "com.yucareux.tellus.mixin.client.CubeNetModelBlockRendererMixin";
+   private static final String VANILLA_LEVEL_LIGHT_MIXIN =
+      "com.yucareux.tellus.mixin.client.CubeNetClientLevelShadeMixin";
 
    @Override
    public void onLoad(String mixinPackage) { }
@@ -28,9 +42,20 @@ public final class TellusClientMixinPlugin implements IMixinConfigPlugin {
 
    @Override
    public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
-      if (TellusRenderCompatibility.vanillaStagedMixinsEnabled()) return true;
-      return !VANILLA_RENDERER_MIXIN.equals(mixinClassName)
-         && !VANILLA_REBUILD_MIXIN.equals(mixinClassName);
+      if (VANILLA_RENDERER_MIXIN.equals(mixinClassName)
+         || VANILLA_REBUILD_MIXIN.equals(mixinClassName)
+         || VANILLA_MODEL_LIGHT_MIXIN.equals(mixinClassName)
+         || VANILLA_LEVEL_LIGHT_MIXIN.equals(mixinClassName)) {
+         return TellusRenderCompatibility.vanillaStagedMixinsEnabled();
+      }
+      if (SODIUM_RENDERER_MIXIN.equals(mixinClassName)
+         || SODIUM_SECTION_MIXIN.equals(mixinClassName)
+         || SODIUM_ENTITY_MIXIN.equals(mixinClassName)
+         || SODIUM_BLOCK_LIGHT_MIXIN.equals(mixinClassName)
+         || SODIUM_FLUID_LIGHT_MIXIN.equals(mixinClassName)) {
+         return TellusRenderCompatibility.sodiumStagingSupported();
+      }
+      return true;
    }
 
    @Override

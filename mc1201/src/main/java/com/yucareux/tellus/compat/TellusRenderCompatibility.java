@@ -10,6 +10,7 @@ import net.fabricmc.loader.api.FabricLoader;
  */
 public final class TellusRenderCompatibility {
    private static final String SODIUM_MOD_ID = "sodium";
+   private static final String SUPPORTED_SODIUM_VERSION = "0.5.13+mc1.20.1";
 
    private TellusRenderCompatibility() { }
 
@@ -17,20 +18,36 @@ public final class TellusRenderCompatibility {
       return FabricLoader.getInstance().isModLoaded(SODIUM_MOD_ID);
    }
 
+   public static String sodiumVersion() {
+      return FabricLoader.getInstance().getModContainer(SODIUM_MOD_ID)
+         .map(container -> container.getMetadata().getVersion().getFriendlyString())
+         .orElse("");
+   }
+
+   public static boolean sodiumStagingSupported() {
+      return sodiumLoaded() && supportsSodiumVersion(sodiumVersion());
+   }
+
+   static boolean supportsSodiumVersion(String version) {
+      return SUPPORTED_SODIUM_VERSION.equals(version);
+   }
+
    /**
     * The existing staged-view implementation owns vanilla's ViewArea and
     * ChunkRenderDispatcher.  Sodium replaces that renderer path, so it must
-    * not receive the vanilla backend mixins until a native adapter exists.
+    * not receive the vanilla backend mixins even when a native adapter is enabled.
     */
    public static boolean vanillaStagedMixinsEnabled() {
       return !sodiumLoaded();
    }
 
    public static boolean cubeNetStagingSupported() {
-      return vanillaStagedMixinsEnabled();
+      return vanillaStagedMixinsEnabled() || sodiumStagingSupported();
    }
 
    public static String backendId() {
-      return sodiumLoaded() ? SODIUM_MOD_ID : "vanilla";
+      if (!sodiumLoaded()) return "vanilla";
+      return sodiumStagingSupported() ? SODIUM_MOD_ID + "-" + sodiumVersion()
+         : SODIUM_MOD_ID + "-unsupported";
    }
 }

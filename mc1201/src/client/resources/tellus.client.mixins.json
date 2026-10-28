@@ -18,7 +18,12 @@
 		"CubeNetClientMovementMixin",
 		"CubeNetBoatStagingMixin",
 		"CubeNetModelBlockRendererMixin",
-		"CubeNetClientLevelShadeMixin"
+		"CubeNetClientLevelShadeMixin",
+		"CubeNetSodiumWorldRendererMixin",
+		"CubeNetSodiumRenderSectionManagerMixin",
+		"CubeNetSodiumRenderSectionMixin",
+		"CubeNetSodiumBlockLightMixin",
+		"CubeNetSodiumFluidLightMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1
