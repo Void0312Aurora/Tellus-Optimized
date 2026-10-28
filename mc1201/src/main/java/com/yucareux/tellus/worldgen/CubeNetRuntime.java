@@ -335,6 +335,7 @@ public final class CubeNetRuntime {
          TellusCommon.LOGGER.warn("Cube-net approach rejected by client backend player={} backend={} id={}",
             player.getGameProfile().getName(), backend, transitionId);
          this.cancelPreparation(player.getUUID(), player);
+         this.retryAfter.put(player.getUUID(), player.server.getTickCount() + 200);
          return;
       }
       Transfer transfer = this.pending.get(player.getUUID());
@@ -859,7 +860,8 @@ public final class CubeNetRuntime {
          // The smoke fixture observes the one-tick deferred handoff as part
          // of the same transfer gate as the async chunk load.
          this.startDeferred(this.smoke.player());
-         this.smoke.tick(this::route, this.pending::containsKey, this.deferred::containsKey);
+         this.smoke.tick(this::route, this::maybeRebaseApron,
+            this.pending::containsKey, this.deferred::containsKey);
          if (this.smoke.finished()) {
             this.cancel(this.smoke.player());
             this.smoke.finish();
@@ -1630,7 +1632,10 @@ public final class CubeNetRuntime {
    }
 
    private static boolean supportsChunkReceipt(ServerPlayer player) {
-      return player != null && ServerPlayNetworking.canSend(player, CubeNetTransitionChunksReceivedPayload.TYPE);
+      // canSend checks the remote S2C receiver set. ChunksReceived is C2S,
+      // so querying it here always disables retries even for current clients.
+      // Atomic-commit clients implement the chunk-receipt protocol as well.
+      return player != null && ServerPlayNetworking.canSend(player, CubeNetTransitionCommitPayload.TYPE);
    }
 
    private int transferRadius(ServerPlayer player, CubeNetChunkGenerator generator) {

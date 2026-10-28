@@ -113,11 +113,35 @@ final class CubeNetRuntimeSmokeCheck {
          case NORTH -> { v = inset; dv = -0.75; }
          case SOUTH -> { v = this.layout.faceSize() - inset; dv = 0.75; }
       }
+      // The native-apron blocked case must exercise the later canonical
+      // rebase collision query. Its engine position starts just beyond the
+      // configured 24-block rebase depth, while the seam point used for the
+      // mapping itself remains on the face edge.
+      boolean blockedNative = test.blocked() && this.nativeApron;
+      double rebaseDepth = 24.5;
+      double sourceU = u, sourceV = v;
+      if (test.blocked() && this.nativeApron) {
+         switch (test.side()) {
+            case WEST -> { u = 0; sourceU = -rebaseDepth; }
+            case EAST -> { u = this.layout.faceSize(); sourceU = this.layout.faceSize() + rebaseDepth; }
+            case NORTH -> { v = 0; sourceV = -rebaseDepth; }
+            case SOUTH -> { v = this.layout.faceSize(); sourceV = this.layout.faceSize() + rebaseDepth; }
+         }
+      }
       var point = new CubeNetLayout.FacePoint(test.face(), u, v);
-      this.source = this.layout.toPlanar(point);
+      var sourcePoint = blockedNative
+         ? new CubeNetLayout.FacePoint(test.face(), sourceU, sourceV) : point;
+      this.source = this.layout.toPlanarUnbounded(sourcePoint);
       this.transfer = this.layout.crossSeam(point, du, dv);
       var destinationPoint = this.transfer.destination();
       boolean cut = !this.layout.arePlanarNeighbors(test.face(), test.side());
+      if (blockedNative) {
+         double edgeCoordinate = switch (test.side()) {
+            case WEST, EAST -> v;
+            case NORTH, SOUTH -> u;
+         };
+         destinationPoint = this.layout.mapAcross(test.face(), test.side(), edgeCoordinate, rebaseDepth + 0.75);
+      }
       if (cut && !this.nativeApron) {
          double insetU = destinationPoint.u(), insetV = destinationPoint.v();
          switch (this.transfer.seam().targetSide()) {
@@ -158,7 +182,8 @@ final class CubeNetRuntimeSmokeCheck {
       return CompletableFuture.allOf(loads.toArray(CompletableFuture[]::new));
    }
 
-   void tick(Consumer<ServerPlayer> route, Predicate<UUID> pending, Predicate<UUID> deferred) {
+   void tick(Consumer<ServerPlayer> route, Consumer<ServerPlayer> rebase,
+      Predicate<UUID> pending, Predicate<UUID> deferred) {
       try {
          require(this.server.getTickCount() - this.stageTick < 1200, "fixture stage timed out");
          if (!this.ready.isDone()) return;
@@ -182,8 +207,15 @@ final class CubeNetRuntimeSmokeCheck {
             this.requested = true;
          }
          route.accept(this.player);
+         // With a native apron, the seam collision is reached through the
+         // ordinary apron-rebase stage rather than the immediate transfer
+         // path used when no apron is configured.
+         if (!pending.test(this.player.getUUID()) && !deferred.test(this.player.getUUID())) {
+            rebase.accept(this.player);
+         }
+         route.accept(this.player);
          if (deferred.test(this.player.getUUID())) {
-            require(this.player.position().distanceTo(new Vec3(this.source.x(), this.y, this.source.z())) < 1E-6,
+            require(this.player.position().distanceTo(this.rollbackAnchor()) < 1E-6,
                "deferred transfer changed its source anchor");
             return;
          }
@@ -196,7 +228,7 @@ final class CubeNetRuntimeSmokeCheck {
                this.interveningPositionUpdate = true;
             }
             if (pending.test(this.player.getUUID())) {
-               require(this.player.position().distanceTo(new Vec3(this.source.x(), this.y, this.source.z())) < 1E-6,
+               require(this.player.position().distanceTo(this.rollbackAnchor()) < 1E-6,
                   "waiting transfer did not restore its source anchor");
                require(this.player.fallDistance == 7.5F, "waiting transfer lost fall distance");
                return;
@@ -204,7 +236,7 @@ final class CubeNetRuntimeSmokeCheck {
          }
          require(this.player.serverLevel() == this.level, "transfer changed Level");
          if (test.blocked()) {
-            require(this.player.position().distanceTo(new Vec3(this.source.x(), this.y, this.source.z())) < 1E-6,
+            require(this.player.position().distanceTo(this.rollbackAnchor()) < 1E-6,
                "blocked landing did not restore source position");
             require(this.player.getDeltaMovement().distanceTo(this.velocity) < 1E-10, "rollback lost velocity");
             require(this.player.getYRot() == this.yaw && this.player.getXRot() == this.pitch, "rollback lost orientation");
@@ -264,6 +296,15 @@ final class CubeNetRuntimeSmokeCheck {
 
    private static void require(boolean condition, String message) {
       if (!condition) throw new IllegalStateException(message);
+   }
+
+   private Vec3 rollbackAnchor() {
+      Case test = this.cases.get(this.stage);
+      if (this.nativeApron && test.blocked()) {
+         return new Vec3(this.source.x() + this.movement.x, this.y + this.movement.y,
+            this.source.z() + this.movement.z);
+      }
+      return new Vec3(this.source.x(), this.y, this.source.z());
    }
 
    void cleanup() {
