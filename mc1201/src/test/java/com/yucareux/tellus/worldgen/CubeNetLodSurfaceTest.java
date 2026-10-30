@@ -130,4 +130,10 @@ class CubeNetLodSurfaceTest {
       assertFalse(generator.isUniformArea(2L * faceSize - width,
          -width, width));
    }
+
+   @Test void finestTileMayStraddleTwoOrdinaryCharts() {
+      var generator = generator((point, resolution) -> new SphereChunkSampler.SurfaceData(0, 30));
+      int faceSize = generator.model().config().faceBlocks();
+      assertTrue(generator.isUniformArea(faceSize / 2L, -faceSize - 8L, 16L));
+   }
 }

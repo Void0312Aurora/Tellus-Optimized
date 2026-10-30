@@ -218,7 +218,18 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
 
    @Override
    public boolean isUniformArea(long minX, long minZ, long width) {
-      if (!this.remoteProjection.isUniformArea(minX, minZ, width)) return false;
+      if (!this.remoteProjection.isUniformArea(minX, minZ, width)) {
+         // DH's finest request is still one 16x16 block tile. It may straddle
+         // two ordinary net charts, which is safe when every column has a
+         // canonical/apron owner. Only split larger requests; otherwise a
+         // legal chart boundary would remain WAIT forever.
+         if (width > 16L) return false;
+         for (int z = 0; z < width; z++) for (int x = 0; x < width; x++) {
+            var resolved = this.remoteProjection.resolve(minX + x + 0.5, minZ + z + 0.5).orElse(null);
+            if (resolved == null || !this.admitsTerrainSample(resolved)) return false;
+         }
+         return true;
+      }
       // A chart can still contain one of the excluded cubed-sphere corner caps.
       // DH asks this method before allocating a coarse tile; if the cap is not
       // checked here, buildLod reaches an empty column and fails the whole tile.
@@ -235,6 +246,15 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
          }
       }
       return true;
+   }
+
+   private boolean admitsTerrainSample(CubeNetRemoteProjection.ResolvedPoint resolved) {
+      var point = resolved.point();
+      long blockX = (long)Math.floor(point.u());
+      long blockZ = (long)Math.floor(point.v());
+      var address = new SphereWorldModel.SphereChunkAddress(point.face().index(),
+         Math.floorDiv(blockX, 16L), Math.floorDiv(blockZ, 16L));
+      return this.singularityPolicy.admitsTerrainMaterialization(address);
    }
 
    public Optional<CubeNetLayout.Face> faceAt(double x, double z) {

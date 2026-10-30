@@ -59,21 +59,25 @@ its columns.
 
 `CubeNetChunkGenerator.isUniformArea` now checks the same corner samples for
 `SphereSingularityPolicy.admitsTerrainMaterialization` after the chart check.
-An area touching an excluded corner is now reported as non-uniform before DH
-allocates a coarse tile. DH can split the request while it is coarse and wait
-at the smallest detail instead of receiving a failed future that wedges the
-seam envelope.
+An area touching an excluded corner is reported as non-uniform before DH
+allocates a coarse tile. For a finest 16x16 tile, the method checks every
+column, so a legal seam tile can still be generated when its columns have
+canonical or apron owners.
 
-The regression test
-`coarseAreaTouchingExcludedCornerIsQuarantinedBeforeDhGeneration` covers this
-case. The targeted Cube-Net tests pass: 15 tests, 0 failures, 0 errors. The
-full `mc1201:test` and `testParallelChunkgen` suites also pass: 971 and 7
-tests respectively, with no failures or errors.
+The regression tests
+`coarseAreaTouchingExcludedCornerIsQuarantinedBeforeDhGeneration` and
+`finestTileMayStraddleTwoOrdinaryCharts` cover both cases. The final targeted
+Cube-Net tests pass: 16 tests, 0 failures, 0 errors. The full `mc1201:test` and
+`testParallelChunkgen` suites pass: 973 and 7 tests respectively, with no
+failures or errors.
 
-The repaired jar has not been installed into the already-running Prism/server
-process. The current runtime logs therefore remain evidence of the pre-repair
-failure and of the successful earlier crossing; a fresh process is required to
-claim a post-repair graphical pass.
+A fresh Prism client and production-style server were then run with the rebuilt
+jar (SHA-256 `d0673659d5baff575e0765b246dc7b63072b49413d7504a05325b1e32e8e2238`).
+At 15:48:56 the server recorded `seam transfer complete` and `first custom
+motion accepted`; the client recorded renderer promotion, pose commit, and
+post-commit movement at the target coordinates. The run produced no
+`outside canonical/apron coverage` exception and no DH envelope timeout. This
+validates the corner-request repair and the boundary handoff for this fixture.
 
 ## Rendering diagnosis boundary
 
