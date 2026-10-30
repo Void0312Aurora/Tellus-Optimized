@@ -218,7 +218,23 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
 
    @Override
    public boolean isUniformArea(long minX, long minZ, long width) {
-      return this.remoteProjection.isUniformArea(minX, minZ, width);
+      if (!this.remoteProjection.isUniformArea(minX, minZ, width)) return false;
+      // A chart can still contain one of the excluded cubed-sphere corner caps.
+      // DH asks this method before allocating a coarse tile; if the cap is not
+      // checked here, buildLod reaches an empty column and fails the whole tile.
+      for (double dz : new double[]{0.5, width * 0.5, width - 0.5}) {
+         for (double dx : new double[]{0.5, width * 0.5, width - 0.5}) {
+            var resolved = this.remoteProjection.resolve(minX + dx, minZ + dz).orElse(null);
+            if (resolved == null) return false;
+            var point = resolved.point();
+            long blockX = (long)Math.floor(point.u());
+            long blockZ = (long)Math.floor(point.v());
+            var address = new SphereWorldModel.SphereChunkAddress(point.face().index(),
+               Math.floorDiv(blockX, 16L), Math.floorDiv(blockZ, 16L));
+            if (!this.singularityPolicy.admitsTerrainMaterialization(address)) return false;
+         }
+      }
+      return true;
    }
 
    public Optional<CubeNetLayout.Face> faceAt(double x, double z) {

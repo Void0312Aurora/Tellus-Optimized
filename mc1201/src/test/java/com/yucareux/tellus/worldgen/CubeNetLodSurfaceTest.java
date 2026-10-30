@@ -122,4 +122,12 @@ class CubeNetLodSurfaceTest {
       assertTrue(generator.sampleLodColumn(1000000, 1000000, 16).isEmpty());
       assertEquals(0, calls.get());
    }
+
+   @Test void coarseAreaTouchingExcludedCornerIsQuarantinedBeforeDhGeneration() {
+      var generator = generator((point, resolution) -> new SphereChunkSampler.SurfaceData(0, 30));
+      int faceSize = generator.model().config().faceBlocks();
+      long width = faceSize / 10L;
+      assertFalse(generator.isUniformArea(2L * faceSize - width,
+         -width, width));
+   }
 }
