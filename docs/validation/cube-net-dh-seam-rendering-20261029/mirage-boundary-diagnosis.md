@@ -19,8 +19,10 @@ With the original client settings (`renderDistance=4`,
 crossing configuration because it requires at least 15 chunks. This is a
 deliberate apron guard, not a deadlock.
 
-After lowering the isolated test client to `simulationDistance=4`, the direct
-DH path was enabled. The client log records destination chunk receipt,
+The isolated test server used `view-distance=4` and `simulation-distance=4`,
+which satisfied the apron guard. The Minecraft client rejected `simulationDistance:4`
+as below its own 5-chunk UI minimum and clamped that option; this did not block
+the server-side handoff test. The client log records destination chunk receipt,
 Sodium staging, DH readiness, renderer promotion, and the first custom motion
 at 14:12:23--14:21:33. The server log then records the deferred apron rebase,
 seam transfer completion, and acceptance of the first custom motion at
