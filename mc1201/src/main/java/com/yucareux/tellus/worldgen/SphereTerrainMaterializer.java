@@ -1,6 +1,7 @@
 package com.yucareux.tellus.worldgen;
 
 import com.yucareux.tellus.worldgen.global.SphereChunkSampler;
+import com.yucareux.tellus.worldgen.global.SphereColumnContext;
 import java.util.EnumSet;
 import java.util.Objects;
 import java.util.ArrayList;
@@ -33,7 +34,7 @@ public final class SphereTerrainMaterializer {
       ColumnPlan[] plans = new ColumnPlan[256];
       int lowest = Integer.MAX_VALUE, highest = Integer.MIN_VALUE, wet = 0;
       for (int i = 0; i < plans.length; i++) {
-         ColumnPlan plan = this.plan(terrain.columns().get(i).data(), minY, maxY);
+         ColumnPlan plan = this.plan(terrain.columns().get(i).context(), minY, maxY);
          plans[i] = plan;
          lowest = Math.min(lowest, plan.surfaceY());
          highest = Math.max(highest, plan.topY());
@@ -72,6 +73,11 @@ public final class SphereTerrainMaterializer {
       }
       Palette palette = palette(data.coverClass());
       return new ColumnPlan(surfaceY, waterY, palette.top(), palette.filler());
+   }
+
+   ColumnPlan plan(SphereColumnContext column, int minY, int maxY) {
+      Objects.requireNonNull(column, "column");
+      return this.plan(column.surface(), minY, maxY);
    }
 
    /** Exact run lengths of the native column, including bedrock and sky air. */

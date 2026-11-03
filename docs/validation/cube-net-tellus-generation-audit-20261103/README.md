@@ -37,6 +37,12 @@ CubeNetAddressAdapter
 和覆盖物方块。这证明默认 Cube-Net 构造路径会延迟调用 Tellus 球面数据源工厂，
 并把结果写入 Minecraft 方块和高度图。
 
+第一阶段的坐标基础也已经落地：`SphereChunkSampler.TerrainGrid.Column` 现在
+携带 canonical `SphereBlockAddress`、采样得到的 `GeoPoint` 和
+`SurfaceData`，`SphereTerrainMaterializer` 通过这个完整上下文完成列计划。
+后续 biome、水面和特性阶段可以沿用同一列上下文，不需要再次从 Cube-Net
+平面坐标反推地理位置。
+
 另外，真实数据的服务器验证记录在
 `docs/validation/terrain-stability-20261026/summary.json`：
 `syntheticSampler=false`，Swiss 和 Chengdu 各生成 25 个 Cube-Net chunks，

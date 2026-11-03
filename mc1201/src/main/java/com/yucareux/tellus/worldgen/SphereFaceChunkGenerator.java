@@ -185,7 +185,7 @@ public final class SphereFaceChunkGenerator extends ChunkGenerator {
 
    private SphereTerrainMaterializer.ColumnPlan column(int x, int z, LevelHeightAccessor accessor) {
       var grid = this.terrainGrid(new ChunkPos(Math.floorDiv(x, 16), Math.floorDiv(z, 16)));
-      return this.materializer.plan(grid.column(x & 15, z & 15).data(), accessor.getMinBuildHeight(), accessor.getMaxBuildHeight());
+      return this.materializer.plan(grid.column(x & 15, z & 15).context(), accessor.getMinBuildHeight(), accessor.getMaxBuildHeight());
    }
 
    private SphereChunkSampler.TerrainGrid terrainGrid(ChunkPos pos) {
@@ -280,7 +280,7 @@ public final class SphereFaceChunkGenerator extends ChunkGenerator {
    private SphereTerrainMaterializer.ColumnPlan column(SphereWorldModel.SphereChunkAddress address,
       int x, int z, LevelHeightAccessor accessor) {
       var grid = this.terrainGrid(address);
-      return this.materializer.plan(grid.column(x & 15, z & 15).data(),
+      return this.materializer.plan(grid.column(x & 15, z & 15).context(),
          accessor.getMinBuildHeight(), accessor.getMaxBuildHeight());
    }
 }

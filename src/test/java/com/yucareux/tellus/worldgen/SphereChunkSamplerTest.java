@@ -27,6 +27,10 @@ class SphereChunkSamplerTest {
          for (int z = 0; z < 16; z++) {
             for (int x = 0; x < 16; x++) {
                var column = grid.column(x, z);
+               assertEquals(new SphereWorldModel.SphereBlockAddress(
+                  address.face(), address.blockX() + x, address.blockZ() + z), column.address());
+               assertSame(column.point(), column.context().point());
+               assertSame(column.data(), column.context().surface());
                var exact = this.model.exactSurfacePoint(address.face(), address.blockX() + x + 0.5, address.blockZ() + z + 0.5);
                assertTrue(SphereWorldModel.greatCircleDistanceMeters(column.point(), exact) < 0.001);
                assertEquals(column.point().latitude() * 10.0 + column.point().longitude(), column.data().elevationMeters());

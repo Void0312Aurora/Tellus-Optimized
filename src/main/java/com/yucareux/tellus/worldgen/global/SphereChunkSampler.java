@@ -63,7 +63,8 @@ public final class SphereChunkSampler {
             SurfaceData data = Objects.requireNonNull(
                this.sampler.sample(point, this.model.config().worldScale()), "surfaceData"
             );
-            columns.add(new Column(point, data));
+            columns.add(new Column(new SphereWorldModel.SphereBlockAddress(
+               address.face(), address.blockX() + x, address.blockZ() + z), point, data));
          }
       }
       return new TerrainGrid(address, columns);
@@ -130,7 +131,18 @@ public final class SphereChunkSampler {
       public boolean waterAvailable() { return Double.isFinite(this.waterSurfaceMeters); }
    }
 
-   public record Column(SphereWorldModel.GeoPoint point, SurfaceData data) { }
+   public record Column(SphereWorldModel.SphereBlockAddress address,
+      SphereWorldModel.GeoPoint point, SurfaceData data) {
+      public Column {
+         Objects.requireNonNull(address, "address");
+         Objects.requireNonNull(point, "point");
+         Objects.requireNonNull(data, "data");
+      }
+
+      public SphereColumnContext context() {
+         return new SphereColumnContext(this.address, this.point, this.data);
+      }
+   }
 
    public record TerrainGrid(SphereWorldModel.SphereChunkAddress address, List<Column> columns) {
       public TerrainGrid {
