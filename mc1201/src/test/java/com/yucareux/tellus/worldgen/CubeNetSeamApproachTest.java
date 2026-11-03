@@ -24,6 +24,18 @@ class CubeNetSeamApproachTest {
    }
 
    @Test
+   void adjacentTargetChunksReuseAwarmPreparation() {
+      var prepared = new net.minecraft.world.level.ChunkPos(638, 319);
+      assertTrue(CubeNetRuntime.preparationCenterReusable(prepared,
+         new net.minecraft.world.level.ChunkPos(638, 320), 5));
+      assertTrue(CubeNetRuntime.preparationCenterReusable(prepared, prepared, 5));
+      assertFalse(CubeNetRuntime.preparationCenterReusable(prepared,
+         new net.minecraft.world.level.ChunkPos(640, 319), 5));
+      assertFalse(CubeNetRuntime.preparationCenterReusable(prepared,
+         new net.minecraft.world.level.ChunkPos(638, 320), 0));
+   }
+
+   @Test
    void failedOrCancelledPreparationCannotBecomeAnUnlimitedReadyChart() {
       CompletableFuture<Void> failed = new CompletableFuture<>();
       failed.completeExceptionally(new IllegalStateException("renderer failed"));
@@ -147,7 +159,14 @@ class CubeNetSeamApproachTest {
             assertEquals(seam, found.seam());
             assertEquals((int)Math.floor(landing.x() / 16), found.chunkX());
             assertEquals((int)Math.floor(landing.z() / 16), found.chunkZ());
+            var explicitFound = CubeNetSeamApproach.find(layout, resolver, source.x(), source.z(),
+               direction[0], direction[1], 192, 24).orElseThrow();
+            assertEquals(found, explicitFound);
+            assertEquals(seam, CubeNetSeamApproach.findNearest(layout, resolver, source.x(), source.z(),
+               192, 24).orElseThrow().seam());
             assertTrue(CubeNetSeamApproach.find(layout, resolver, source.x(), source.z(), yaw + 180, 192, 24).isEmpty());
+            assertTrue(CubeNetSeamApproach.find(layout, resolver, source.x(), source.z(),
+               -direction[0], -direction[1], 192, 24).isEmpty());
          }
       }
       assertEquals(14, cuts);

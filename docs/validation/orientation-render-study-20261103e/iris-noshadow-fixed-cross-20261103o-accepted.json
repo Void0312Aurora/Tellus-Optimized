@@ -1,0 +1,12 @@
+{
+  "id": "iris-noshadow-fixed-cross-20261103o",
+  "yaw": 90,
+  "pitch": 0,
+  "flying": false,
+  "move": "backward",
+  "ticks": 300,
+  "waitMillis": 15000,
+  "waitFrames": 5,
+  "timingFrames": 240,
+  "resetTiming": true
+}

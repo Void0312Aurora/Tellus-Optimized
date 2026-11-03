@@ -1,0 +1,10 @@
+{
+  "id": "iris-vector-reverse-time3000-20261103w",
+  "yaw": 90,
+  "pitch": 10,
+  "move": "backward",
+  "ticks": 600,
+  "waitMillis": 30000,
+  "waitFrames": 5,
+  "timingFrames": 720
+}

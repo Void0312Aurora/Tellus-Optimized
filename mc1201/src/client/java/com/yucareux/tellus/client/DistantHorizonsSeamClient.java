@@ -25,6 +25,9 @@ public final class DistantHorizonsSeamClient {
     * active, so the existing native transition remains fail-open for stock DH.
     */
    public static boolean begin(CubeNetTransitionPreparePayload payload) {
+      // The unfolded far view already draws the target face; recentring DH's
+      // tree on the target planar chart would fight the unfold trees.
+      if (CubeNetUnfoldClient.active()) return false;
       Access api = api();
       if (api == null) return false;
       IDhApiLevelWrapper level = currentLevel();
@@ -91,7 +94,7 @@ public final class DistantHorizonsSeamClient {
       return current;
    }
 
-   private static IDhApiLevelWrapper currentLevel() {
+   static IDhApiLevelWrapper currentLevel() {
       Minecraft client = Minecraft.getInstance();
       if (client.level == null || DhApi.Delayed.worldProxy == null) return null;
       String dimension = client.level.dimension().location().toString();

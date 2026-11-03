@@ -23,7 +23,10 @@
 		"CubeNetSodiumRenderSectionManagerMixin",
 		"CubeNetSodiumRenderSectionMixin",
 		"CubeNetSodiumBlockLightMixin",
-		"CubeNetSodiumFluidLightMixin"
+		"CubeNetSodiumFluidLightMixin",
+		"CubeNetIrisCameraPositionTrackerMixin",
+		"CubeNetIrisCelestialLightingMixin",
+		"CubeNetIrisShadowMatricesMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

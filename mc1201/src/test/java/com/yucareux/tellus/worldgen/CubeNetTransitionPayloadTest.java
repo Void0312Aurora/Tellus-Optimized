@@ -1,5 +1,6 @@
 package com.yucareux.tellus.worldgen;
 
+import com.yucareux.tellus.network.CubeNetLayoutPayload;
 import com.yucareux.tellus.network.CubeNetTransitionPreparePayload;
 import com.yucareux.tellus.network.CubeNetTransitionReadyPayload;
 import com.yucareux.tellus.network.CubeNetTransitionCancelPayload;
@@ -36,6 +37,21 @@ class CubeNetTransitionPayloadTest {
       var buffer = new FriendlyByteBuf(Unpooled.buffer());
       original.write(buffer);
       assertEquals(original, new CubeNetTransitionPreparePayload(buffer));
+   }
+
+   @Test
+   void layoutPayloadRoundTripsAndRejectsUnalignedFaces() {
+      var original = new CubeNetLayoutPayload(10240, 112);
+      var buffer = new FriendlyByteBuf(Unpooled.buffer());
+      original.write(buffer);
+      var decoded = new CubeNetLayoutPayload(buffer);
+      assertEquals(original, decoded);
+      assertTrue(decoded.cubeNet());
+      assertFalse(CubeNetLayoutPayload.none().cubeNet());
+      buffer.release();
+      assertThrows(IllegalArgumentException.class, () -> new CubeNetLayoutPayload(10250, 0));
+      assertThrows(IllegalArgumentException.class, () -> new CubeNetLayoutPayload(256, 512));
+      assertThrows(IllegalArgumentException.class, () -> new CubeNetLayoutPayload(-16, 0));
    }
 
    @Test

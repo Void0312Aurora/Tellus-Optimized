@@ -29,8 +29,20 @@ public abstract class CubeNetSodiumFluidLightMixin {
       if (rotated == brightness || brightness == 0.0F) return;
       float ratio = rotated / brightness;
       for (int i = 0; i < this.quadColors.length; i++) {
-         float alpha = ColorABGR.unpackAlpha(this.quadColors[i]) / 255.0F;
-         this.quadColors[i] = ColorABGR.withAlpha(this.quadColors[i], alpha * ratio);
+         int color = this.quadColors[i];
+         float red = ColorABGR.unpackRed(color) / 255.0F;
+         float green = ColorABGR.unpackGreen(color) / 255.0F;
+         float blue = ColorABGR.unpackBlue(color) / 255.0F;
+         float alpha = ColorABGR.unpackAlpha(color) / 255.0F;
+         // Fluid brightness is an RGB multiplier. Writing the ratio to alpha
+         // makes water translucent, and ColorABGR's byte conversion wraps
+         // values above 1 instead of clamping them.
+         this.quadColors[i] = ColorABGR.pack(
+            clamp(red * ratio), clamp(green * ratio), clamp(blue * ratio), alpha);
       }
+   }
+
+   private static float clamp(float value) {
+      return Math.max(0.0F, Math.min(1.0F, value));
    }
 }

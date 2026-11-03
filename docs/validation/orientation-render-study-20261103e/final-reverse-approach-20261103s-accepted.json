@@ -1,0 +1,10 @@
+{
+  "id": "final-reverse-approach-20261103s",
+  "yaw": 90,
+  "pitch": 10,
+  "move": "backward",
+  "ticks": 600,
+  "waitMillis": 29000,
+  "waitFrames": 5,
+  "timingFrames": 720
+}

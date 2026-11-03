@@ -24,6 +24,11 @@ public abstract class CubeNetSodiumBlockLightMixin {
       // Sodium's slice starts one section before the section being compiled.
       Direction mapped = CubeNetClientTransition.sodiumShadeDirection(direction,
          (this.originX >> 4) + 1, (this.originZ >> 4) + 1);
-      callback.setReturnValue(this.world.getShade(mapped, shaded));
+      CubeNetClientTransition.beginShadeMappingBypass();
+      try {
+         callback.setReturnValue(this.world.getShade(mapped, shaded));
+      } finally {
+         CubeNetClientTransition.endShadeMappingBypass();
+      }
    }
 }

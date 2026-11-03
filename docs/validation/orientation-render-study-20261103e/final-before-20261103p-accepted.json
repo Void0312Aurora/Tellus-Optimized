@@ -1,0 +1,9 @@
+{
+  "id": "final-before-20261103p",
+  "yaw": 0,
+  "pitch": 10,
+  "move": "none",
+  "waitMillis": 3000,
+  "waitFrames": 5,
+  "timingFrames": 180
+}

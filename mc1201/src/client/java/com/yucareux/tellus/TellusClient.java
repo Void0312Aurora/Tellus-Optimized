@@ -5,6 +5,7 @@ import com.yucareux.tellus.client.hud.ManagedTerrainDownloadOverlay;
 import com.yucareux.tellus.client.SphereClientState;
 import com.yucareux.tellus.client.CubeNetClientTransition;
 import com.yucareux.tellus.client.CubeNetBoundaryRenderer;
+import com.yucareux.tellus.client.CubeNetUnfoldClient;
 import com.yucareux.tellus.compat.TellusRenderCompatibility;
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
 import com.yucareux.tellus.integration.distant_horizons.managed.ManagedTerrainClientState;
@@ -15,6 +16,7 @@ import com.yucareux.tellus.network.ManagedTerrainStatusPayload;
 import com.yucareux.tellus.network.ManagedTerrainViewPayload;
 import com.yucareux.tellus.network.TellusWeatherPayload;
 import com.yucareux.tellus.network.SphereFramePayload;
+import com.yucareux.tellus.network.CubeNetLayoutPayload;
 import com.yucareux.tellus.network.CubeNetTransitionPreparePayload;
 import com.yucareux.tellus.network.CubeNetTransitionCancelPayload;
 import com.yucareux.tellus.network.CubeNetTransitionCommitPayload;
@@ -109,26 +111,34 @@ public class TellusClient implements ClientModInitializer {
       );
       ClientPlayNetworking.registerGlobalReceiver(
          Objects.requireNonNull(CubeNetTransitionPreparePayload.TYPE, "CubeNetTransitionPreparePayload.TYPE"),
-         (payload, player, responseSender) -> Minecraft.getInstance().execute(
-            () -> CubeNetClientTransition.prepare(payload))
+         // Fabric's typed receivers already run on the render thread. A
+         // second execute() queues behind subsequent vanilla chunk packets
+         // while Minecraft is running a task, losing the prepare/center/data
+         // order and moving the live cache to the destination before staging.
+         (payload, player, responseSender) -> CubeNetClientTransition.prepare(payload)
       );
       ClientPlayNetworking.registerGlobalReceiver(
          Objects.requireNonNull(CubeNetTransitionCommitPayload.TYPE, "CubeNetTransitionCommitPayload.TYPE"),
-         (payload, player, responseSender) -> Minecraft.getInstance().execute(
-            () -> CubeNetClientTransition.commit(payload))
+         (payload, player, responseSender) -> CubeNetClientTransition.commit(payload)
+      );
+      ClientPlayNetworking.registerGlobalReceiver(
+         Objects.requireNonNull(CubeNetLayoutPayload.TYPE, "CubeNetLayoutPayload.TYPE"),
+         (payload, player, responseSender) -> CubeNetUnfoldClient.configure(payload)
       );
       ClientPlayNetworking.registerGlobalReceiver(
          Objects.requireNonNull(CubeNetBoundaryHintPayload.TYPE, "CubeNetBoundaryHintPayload.TYPE"),
          (payload, player, responseSender) -> Minecraft.getInstance().execute(
             () -> CubeNetBoundaryRenderer.show(Minecraft.getInstance(), payload))
       );
-      WorldRenderEvents.AFTER_SETUP.register(context -> CubeNetClientTransition.renderedFrame(Minecraft.getInstance()));
+      // Iris also invokes terrain setup for shadows. Sample only after the
+      // main world render so the trace does not mix two visibility lists.
+      WorldRenderEvents.END.register(context -> CubeNetClientTransition.renderedFrame(Minecraft.getInstance()));
       WorldRenderEvents.LAST.register(CubeNetBoundaryRenderer::render);
       ClientPlayNetworking.registerGlobalReceiver(CubeNetTransitionCancelPayload.TYPE,
-         (payload, player, responseSender) -> Minecraft.getInstance().execute(
-            () -> CubeNetClientTransition.cancel(payload.transitionId())));
+         (payload, player, responseSender) -> CubeNetClientTransition.cancel(payload.transitionId()));
       ClientTickEvents.END_CLIENT_TICK.register(client -> {
          CubeNetClientTransition.tick(client);
+         CubeNetUnfoldClient.tick(client);
          CubeNetBoundaryRenderer.tick(client);
          if (client.player != null) {
             SphereClientState.updateLocalPose(client.player.getX(), client.player.getY(), client.player.getZ(), client.player.getYRot());
@@ -146,14 +156,17 @@ public class TellusClient implements ClientModInitializer {
             }
          }
       });
-      ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
+      // Fabric can fire disconnect from Netty. Renderer disposal and the
+      // associated chunk/cache cleanup must run on Minecraft's client thread.
+      ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> client.execute(() -> {
          TellusRealtimeState.reset();
          ManagedTerrainClientState.reset();
          SphereClientState.reset();
-         CubeNetClientTransition.reset();
+         CubeNetClientTransition.resetAll();
          CubeNetClientTransition.resetShadeOrientation();
+         CubeNetUnfoldClient.reset();
          CubeNetBoundaryRenderer.reset();
          this.managedTerrainViewUpdateTicks = 0;
-      });
+      }));
    }
 }

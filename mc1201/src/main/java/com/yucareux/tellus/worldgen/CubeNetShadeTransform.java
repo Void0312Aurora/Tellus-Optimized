@@ -16,6 +16,16 @@ public final class CubeNetShadeTransform {
       };
    }
 
+   /** Rotates a horizontal vector using the same clockwise chart convention as {@link #rotate}. */
+   public static double[] rotateHorizontal(double x, double z, int clockwiseQuarterTurns) {
+      return switch (Math.floorMod(clockwiseQuarterTurns, 4)) {
+         case 0 -> new double[] {x, z};
+         case 1 -> new double[] {-z, x};
+         case 2 -> new double[] {-x, -z};
+         default -> new double[] {z, -x};
+      };
+   }
+
    public static float fluidHorizontalBrightness(Direction direction) {
       return switch (direction.getAxis()) {
          case X -> 0.6F;

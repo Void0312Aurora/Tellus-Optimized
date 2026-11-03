@@ -1,0 +1,10 @@
+{
+  "id": "final-forward-cross-20261103r",
+  "yaw": 0,
+  "pitch": 10,
+  "move": "forward",
+  "ticks": 600,
+  "waitMillis": 30000,
+  "waitFrames": 5,
+  "timingFrames": 720
+}

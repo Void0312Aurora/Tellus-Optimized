@@ -1,0 +1,10 @@
+{
+  "id": "iris-vector-forward-time3000-20261103v",
+  "yaw": 0,
+  "pitch": 10,
+  "move": "forward",
+  "ticks": 600,
+  "waitMillis": 30000,
+  "waitFrames": 5,
+  "timingFrames": 720
+}

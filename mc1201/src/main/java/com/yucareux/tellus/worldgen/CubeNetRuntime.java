@@ -6,6 +6,7 @@ import com.yucareux.tellus.worldgen.global.CubeNetApronResolver;
 import com.yucareux.tellus.worldgen.global.CubeNetSeamTransform;
 import com.yucareux.tellus.worldgen.global.SphereSingularityPolicy;
 import com.yucareux.tellus.worldgen.global.SphereWorldModel;
+import com.yucareux.tellus.network.CubeNetLayoutPayload;
 import com.yucareux.tellus.network.CubeNetTransitionPreparePayload;
 import com.yucareux.tellus.network.CubeNetTransitionCancelPayload;
 import com.yucareux.tellus.network.CubeNetTransitionCommitPayload;
@@ -28,6 +29,8 @@ import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
+import net.fabricmc.fabric.api.entity.event.v1.ServerEntityWorldChangeEvents;
+import net.fabricmc.fabric.api.entity.event.v1.ServerPlayerEvents;
 import net.minecraft.Util;
 import net.minecraft.core.BlockPos;
 import net.minecraft.commands.Commands;
@@ -74,6 +77,8 @@ public final class CubeNetRuntime {
    private static final long MAX_CHUNK_LOAD_BYTES =
       MAX_CONCURRENT_CHUNK_LOADS * ESTIMATED_CHUNK_LOAD_BYTES;
    private static final int APRON_REBASE_DEPTH_BLOCKS = 24;
+   /** One target chunk of motion along a seam must not throw away a warm view. */
+   private static final int PREPARATION_CENTER_HYSTERESIS_CHUNKS = 1;
    private static final double SEAM_DESTINATION_INSET = 0.5;
    // Chunk loading and client-side interpolation can leave source-face
    // packets in flight for several seconds on a cold seam. Keep the gate
@@ -96,6 +101,8 @@ public final class CubeNetRuntime {
    private static final double MAX_CUSTOM_SPEED_SQUARED = 25.0;
    private static final double MAX_CUSTOM_VELOCITY_DELTA_SQUARED = 9.0;
    private static final double MAX_CUBE_NET_PACKET_STEP_SQUARED = 256.0;
+   private static final double MIN_APPROACH_STEP_SQUARED = 1.0E-6;
+   private static final int APPROACH_DIRECTION_TTL_TICKS = 10;
    private static final double BOUNDARY_HINT_SEARCH_RADIUS = 96.0;
    private static final double BOUNDARY_HINT_SEARCH_STEP = 4.0;
    private static final int BOUNDARY_HINT_DIRECTIONS = 32;
@@ -109,6 +116,7 @@ public final class CubeNetRuntime {
    private final Map<UUID, TransitionState> transitionStates = new ConcurrentHashMap<>();
    private final Map<UUID, CorrectionCounters> correctionCounters = new ConcurrentHashMap<>();
    private final Map<UUID, MotionCapture> motionCaptures = new ConcurrentHashMap<>();
+   private final Map<UUID, ApproachMotion> approachMotions = new ConcurrentHashMap<>();
    private final Map<UUID, Integer> retryAfter = new ConcurrentHashMap<>();
    private final Set<UUID> boundaryHintShown = ConcurrentHashMap.newKeySet();
    private final Map<UUID, Integer> nextBoundaryRibbonTick = new ConcurrentHashMap<>();
@@ -128,6 +136,9 @@ public final class CubeNetRuntime {
       });
       ServerTickEvents.END_SERVER_TICK.register(runtime::tick);
       ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> runtime.disconnect(handler.getPlayer()));
+      ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> syncLayout(handler.getPlayer()));
+      ServerEntityWorldChangeEvents.AFTER_PLAYER_CHANGE_WORLD.register((player, origin, destination) -> syncLayout(player));
+      ServerPlayerEvents.AFTER_RESPAWN.register((oldPlayer, newPlayer, alive) -> syncLayout(newPlayer));
       CommandRegistrationCallback.EVENT.register((dispatcher, registry, environment) -> {
          var root = Commands.literal("cube_net").requires(source -> source.hasPermission(2))
             .then(Commands.literal("status").executes(context -> {
@@ -165,6 +176,17 @@ public final class CubeNetRuntime {
          }
          dispatcher.register(Commands.literal("tellus").then(root));
       });
+   }
+
+   /** Tells the client how to unfold the far view of the level it is in. */
+   static void syncLayout(ServerPlayer player) {
+      if (!ServerPlayNetworking.canSend(player, CubeNetLayoutPayload.TYPE)) return;
+      if (player.serverLevel().getChunkSource().getGenerator() instanceof CubeNetChunkGenerator generator) {
+         ServerPlayNetworking.send(player, new CubeNetLayoutPayload(
+            generator.adapter().layout().faceSize(), Math.max(16, generator.apronWidthChunks() * 16)));
+      } else {
+         ServerPlayNetworking.send(player, CubeNetLayoutPayload.none());
+      }
    }
 
    public static boolean interceptBoundaryMove(ServerPlayer player, Vec3 movement) {
@@ -846,6 +868,7 @@ public final class CubeNetRuntime {
                this.sendBoundaryHint(player);
             }
          }
+         this.sampleApproachMotion(player, server.getTickCount());
          this.prepareApproach(player);
          this.sampleMotion(player, server.getTickCount());
          this.startDeferred(player);
@@ -891,8 +914,15 @@ public final class CubeNetRuntime {
          return;
       }
       Entity observer = player.getRootVehicle();
-      var approach = CubeNetSeamApproach.find(generator.adapter().layout(), generator.apronResolver(),
-         observer.getX(), observer.getZ(), observer.getYRot(), 192, APRON_REBASE_DEPTH_BLOCKS).orElse(null);
+      int tick = player.server.getTickCount();
+      ApproachMotion motion = this.approachMotions.get(id);
+      boolean motionHeading = motion != null && motion.hasFreshDirection(tick);
+      var approachResult = motionHeading
+         ? CubeNetSeamApproach.find(generator.adapter().layout(), generator.apronResolver(),
+            observer.getX(), observer.getZ(), motion.headingX(), motion.headingZ(), 192, APRON_REBASE_DEPTH_BLOCKS)
+         : CubeNetSeamApproach.findNearest(generator.adapter().layout(), generator.apronResolver(),
+            observer.getX(), observer.getZ(), 192, APRON_REBASE_DEPTH_BLOCKS);
+      var approach = approachResult.orElse(null);
       Preparation old = this.preparations.get(id);
       if (approach == null) {
          this.cancelPreparation(id, player);
@@ -905,7 +935,8 @@ public final class CubeNetRuntime {
          this.retryAfter.put(id, player.server.getTickCount() + 200);
          return;
       }
-      if (old != null && (!old.center().equals(center) || old.radius() != radius
+      if (old != null && (!preparationCenterReusable(old.center(), center, radius)
+         || old.radius() != radius
          || !old.seam().equals(approach.seam()) || !old.rootId().equals(observer.getUUID())
          || preparationTimedOut(old.clientReady(), player.server.getTickCount() - old.startedTick()))) {
          this.cancelPreparation(id, player);
@@ -922,8 +953,8 @@ public final class CubeNetRuntime {
          ServerPlayNetworking.send(player, new CubeNetTransitionPreparePayload(
             transitionId, center.x, center.z, radius, false,
             shadingQuarterTurns(generator.adapter().layout(), approach.seam())));
-         TellusCommon.LOGGER.info("Cube-net approach preparing {} source={} distance={} center={} radius={}",
-            transitionId, observer.position(), approach.distance(), center, radius);
+         TellusCommon.LOGGER.info("Cube-net approach preparing {} mode={} source={} distance={} center={} radius={}",
+            transitionId, motionHeading ? "motion" : "nearest", observer.position(), approach.distance(), center, radius);
       }
       if (old.ready().isCompletedExceptionally()) {
          this.cancelPreparation(id, player);
@@ -935,7 +966,7 @@ public final class CubeNetRuntime {
             TellusCommon.LOGGER.info("Cube-net approach loaded {} elapsedMs={}", old.transitionId(),
                (System.nanoTime() - old.startedNanos()) / 1_000_000L);
          }
-         this.stageClientChunks(old.level(), center, old.clientChunks(), player, radius,
+         this.stageClientChunks(old.level(), old.center(), old.clientChunks(), player, radius,
             player.server.getTickCount(), supportsChunkReceipt(player));
       }
    }
@@ -949,10 +980,17 @@ public final class CubeNetRuntime {
          && (!clientReady.isDone() || clientReady.isCompletedExceptionally());
    }
 
+   static boolean preparationCenterReusable(ChunkPos prepared, ChunkPos requested, int radius) {
+      if (prepared == null || requested == null || radius < 1) return false;
+      return Math.abs((long)prepared.x - requested.x) <= PREPARATION_CENTER_HYSTERESIS_CHUNKS
+         && Math.abs((long)prepared.z - requested.z) <= PREPARATION_CENTER_HYSTERESIS_CHUNKS;
+   }
+
    private Preparation takePreparation(ServerPlayer player, ChunkPos center, int radius) {
       Preparation preparation = this.preparations.get(player.getUUID());
       if (preparation == null) return null;
-      if (preparation.level() != player.serverLevel() || !preparation.center().equals(center)
+      if (preparation.level() != player.serverLevel()
+         || !preparationCenterReusable(preparation.center(), center, radius)
          || preparation.radius() != radius || !preparation.rootId().equals(player.getRootVehicle().getUUID())) {
          this.cancelPreparation(player.getUUID(), player);
          return null;
@@ -1421,7 +1459,7 @@ public final class CubeNetRuntime {
          return;
       }
       if (transfer.ready().isDone() && !transfer.clientReady().isDone()) {
-         this.stageClientChunks(transfer.level(), transfer.chunk(), transfer.clientChunks(), player,
+         this.stageClientChunks(transfer.level(), transfer.clientCenter(), transfer.clientChunks(), player,
             transfer.radius(), player.server.getTickCount(), supportsChunkReceipt(player));
       }
       if (transfer.ready().isDone() && transfer.clientReady().isDone()) {
@@ -1478,8 +1516,11 @@ public final class CubeNetRuntime {
                transfer.yaw(), transfer.sourcePitch(), !atomicCommit,
                atomicCommit ? transfer.transitionId() : null);
             this.transitionStates.put(player.getUUID(), TransitionState.RELEASE);
-            TellusCommon.LOGGER.info("Cube-net seam transfer complete for {} target=({}, {}, {})",
-               player.getGameProfile().getName(), transfer.x(), transfer.y(), transfer.z());
+            TellusCommon.LOGGER.info("Cube-net seam transfer complete for {} target=({}, {}, {}) "
+                  + "elapsedMs={} clientReady={}",
+               player.getGameProfile().getName(), transfer.x(), transfer.y(), transfer.z(),
+               (player.server.getTickCount() - transfer.startedTick()) * 50L,
+               transfer.clientReady().isDone());
             this.cancel(player);
          } catch (RuntimeException error) {
             this.fail(player, "Cube-net seam destination could not be loaded");
@@ -1522,7 +1563,8 @@ public final class CubeNetRuntime {
       boolean clientStaging = ServerPlayNetworking.canSend(player, CubeNetTransitionPreparePayload.TYPE);
       CompletableFuture<Void> clientReady = preparation != null ? preparation.clientReady() : clientStaging
          ? new CompletableFuture<>() : CompletableFuture.completedFuture(null);
-      var transfer = new Transfer(target, x, y, z, chunk, velocity, yaw, shadingQuarterTurns,
+      ChunkPos clientCenter = preparation == null ? chunk : preparation.center();
+      var transfer = new Transfer(target, x, y, z, chunk, clientCenter, velocity, yaw, shadingQuarterTurns,
          player.server.getTickCount(), deferredTransfer.sourceX(), deferredTransfer.sourceY(),
          deferredTransfer.sourceZ(), deferredTransfer.sourceYaw(), deferredTransfer.sourcePitch(),
          deferredTransfer.sourceVelocity(), deferredTransfer.fallDistance(), ready, transitionId, clientReady,
@@ -1531,7 +1573,7 @@ public final class CubeNetRuntime {
       this.transitionStates.put(id, TransitionState.STAGED);
       if (clientStaging) {
          ServerPlayNetworking.send(player, new CubeNetTransitionPreparePayload(transitionId,
-            chunk.x, chunk.z, radius, true, shadingQuarterTurns));
+            clientCenter.x, clientCenter.z, radius, true, shadingQuarterTurns));
       }
       this.hold(player, true);
    }
@@ -1763,6 +1805,7 @@ public final class CubeNetRuntime {
       this.correctionGates.clear();
       this.transitionStates.clear();
       this.correctionCounters.clear();
+      this.approachMotions.clear();
       this.boundaryHintShown.clear();
       this.nextBoundaryRibbonTick.clear();
       this.level = null;
@@ -1774,6 +1817,7 @@ public final class CubeNetRuntime {
       EntityTransfer entityTransfer = this.entityTransfers.get(player.getUUID());
       if (entityTransfer != null) this.cancelEntity(entityTransfer);
       this.correctionGates.remove(player.getUUID());
+      this.approachMotions.remove(player.getUUID());
       this.transitionStates.remove(player.getUUID());
       this.boundaryHintShown.remove(player.getUUID());
       this.nextBoundaryRibbonTick.remove(player.getUUID());
@@ -1850,6 +1894,43 @@ public final class CubeNetRuntime {
          && this.motionCaptures.remove(player.getUUID(), capture)) {
          TellusCommon.LOGGER.info("Cube-net motion trace complete player={} preSamples={} postSamples={}",
             player.getGameProfile().getName(), capture.before.size(), capture.after.size());
+      }
+   }
+
+   /**
+    * Tracks the root vehicle's actual planar movement for seam prediction.
+    * Player yaw describes the camera, while a backward walk can travel in the
+    * opposite direction. Large jumps are treated as teleports and clear the
+    * direction rather than allowing a stale heading to select a seam.
+    */
+   private void sampleApproachMotion(ServerPlayer player, int tick) {
+      Entity observer = player.getRootVehicle();
+      UUID id = player.getUUID();
+      if (this.level != player.serverLevel()) {
+         this.approachMotions.remove(id);
+         return;
+      }
+      ApproachMotion previous = this.approachMotions.get(id);
+      if (previous == null || tick <= previous.sampleTick()) {
+         this.approachMotions.put(id, new ApproachMotion(observer.getX(), observer.getZ(), tick,
+            0.0, 0.0, -1));
+         return;
+      }
+      double dx = observer.getX() - previous.x();
+      double dz = observer.getZ() - previous.z();
+      double stepSquared = dx * dx + dz * dz;
+      if (!Double.isFinite(stepSquared) || stepSquared > MAX_CUBE_NET_PACKET_STEP_SQUARED) {
+         this.approachMotions.put(id, new ApproachMotion(observer.getX(), observer.getZ(), tick,
+            0.0, 0.0, -1));
+         return;
+      }
+      if (stepSquared >= MIN_APPROACH_STEP_SQUARED) {
+         double inverseLength = 1.0 / Math.sqrt(stepSquared);
+         this.approachMotions.put(id, new ApproachMotion(observer.getX(), observer.getZ(), tick,
+            dx * inverseLength, dz * inverseLength, tick));
+      } else {
+         this.approachMotions.put(id, new ApproachMotion(observer.getX(), observer.getZ(), tick,
+            previous.headingX(), previous.headingZ(), previous.headingTick()));
       }
    }
 
@@ -1970,7 +2051,8 @@ public final class CubeNetRuntime {
       return (float)Math.toDegrees(Math.atan2(-planar[0], planar[1]));
    }
 
-   private record Transfer(ServerLevel level, double x, double y, double z, ChunkPos chunk, Vec3 velocity, float yaw,
+   private record Transfer(ServerLevel level, double x, double y, double z, ChunkPos chunk, ChunkPos clientCenter,
+      Vec3 velocity, float yaw,
       int shadingQuarterTurns, int startedTick, double sourceX, double sourceY, double sourceZ, float sourceYaw, float sourcePitch,
       Vec3 sourceVelocity, float fallDistance, CompletableFuture<Void> ready,
       UUID transitionId, CompletableFuture<Void> clientReady, ClientChunkDelivery clientChunks, int radius) { }
@@ -2126,6 +2208,13 @@ public final class CubeNetRuntime {
    }
 
    private record MotionSample(int tick, Vec3 position, Vec3 velocity, boolean onGround) { }
+
+   private record ApproachMotion(double x, double z, int sampleTick,
+      double headingX, double headingZ, int headingTick) {
+      private boolean hasFreshDirection(int tick) {
+         return this.headingTick >= 0 && tick - this.headingTick <= APPROACH_DIRECTION_TTL_TICKS;
+      }
+   }
 
    private static final class MotionCapture {
       private final int armedTick;

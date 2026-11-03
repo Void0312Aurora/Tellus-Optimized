@@ -27,6 +27,12 @@ public final class TellusClientMixinPlugin implements IMixinConfigPlugin {
       "com.yucareux.tellus.mixin.client.CubeNetSodiumBlockLightMixin";
    private static final String SODIUM_FLUID_LIGHT_MIXIN =
       "com.yucareux.tellus.mixin.client.CubeNetSodiumFluidLightMixin";
+   private static final String IRIS_CAMERA_HISTORY_MIXIN =
+      "com.yucareux.tellus.mixin.client.CubeNetIrisCameraPositionTrackerMixin";
+   private static final String IRIS_CELESTIAL_LIGHTING_MIXIN =
+      "com.yucareux.tellus.mixin.client.CubeNetIrisCelestialLightingMixin";
+   private static final String IRIS_SHADOW_MATRICES_MIXIN =
+      "com.yucareux.tellus.mixin.client.CubeNetIrisShadowMatricesMixin";
    private static final String VANILLA_MODEL_LIGHT_MIXIN =
       "com.yucareux.tellus.mixin.client.CubeNetModelBlockRendererMixin";
    private static final String VANILLA_LEVEL_LIGHT_MIXIN =
@@ -55,7 +61,21 @@ public final class TellusClientMixinPlugin implements IMixinConfigPlugin {
          || SODIUM_FLUID_LIGHT_MIXIN.equals(mixinClassName)) {
          return TellusRenderCompatibility.sodiumStagingSupported();
       }
+      if (IRIS_CAMERA_HISTORY_MIXIN.equals(mixinClassName)) {
+         return classPresent("net.irisshaders.iris.uniforms.CameraUniforms$CameraPositionTracker");
+      }
+      if (IRIS_CELESTIAL_LIGHTING_MIXIN.equals(mixinClassName)) {
+         return classPresent("net.irisshaders.iris.uniforms.CelestialUniforms");
+      }
+      if (IRIS_SHADOW_MATRICES_MIXIN.equals(mixinClassName)) {
+         return classPresent("net.irisshaders.iris.shadows.ShadowMatrices");
+      }
       return true;
+   }
+
+   private static boolean classPresent(String name) {
+      String resource = name.replace('.', '/') + ".class";
+      return Thread.currentThread().getContextClassLoader().getResource(resource) != null;
    }
 
    @Override

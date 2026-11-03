@@ -1,0 +1,9 @@
+{
+  "id": "iris-enable-test-20261103i",
+  "shaders": true,
+  "dh": false,
+  "waitMillis": 10000,
+  "waitFrames": 5,
+  "timingFrames": 120,
+  "resetTiming": true
+}

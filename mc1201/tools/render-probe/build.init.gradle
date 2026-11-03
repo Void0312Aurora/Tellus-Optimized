@@ -1,0 +1,26 @@
+gradle.projectsEvaluated {
+    def target = gradle.rootProject.project(':mc1201')
+    target.tasks.register('compileRenderProbe', JavaCompile) {
+        dependsOn target.tasks.named('clientClasses')
+        source target.fileTree('tools/render-probe/src') { include '**/*.java' }
+        classpath = files(target.sourceSets.client.output, target.sourceSets.main.output) + target.sourceSets.client.compileClasspath
+        destinationDirectory = target.layout.buildDirectory.dir('render-probe/classes')
+        javaCompiler = target.javaToolchains.compilerFor { languageVersion = JavaLanguageVersion.of(17) }
+        options.release = 17
+    }
+    def probeJar = target.tasks.register('renderProbeJar', Jar) {
+        dependsOn 'compileRenderProbe'
+        from target.layout.buildDirectory.dir('render-probe/classes')
+        from target.file('tools/render-probe/resources')
+        archiveFileName = 'tellus-render-probe-dev.jar'
+        destinationDirectory = target.layout.buildDirectory.dir('render-probe')
+    }
+    def remapTaskType = target.tasks.named('remapJar').get().getClass().getSuperclass()
+    target.tasks.register('remapRenderProbe', remapTaskType) {
+        dependsOn probeJar
+        inputFile = probeJar.flatMap { it.archiveFile }
+        archiveFileName = 'tellus-render-probe.jar'
+        destinationDirectory = target.layout.buildDirectory.dir('render-probe')
+        addNestedDependencies = false
+    }
+}

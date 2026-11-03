@@ -1,0 +1,9 @@
+{
+  "id": "iris-vector-source-time3000-20261103u",
+  "yaw": 0,
+  "pitch": 10,
+  "move": "none",
+  "waitMillis": 1000,
+  "waitFrames": 5,
+  "timingFrames": 60
+}

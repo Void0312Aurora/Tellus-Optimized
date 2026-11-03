@@ -1,0 +1,12 @@
+{
+  "id": "baseline-approach-20261103g",
+  "yaw": 0,
+  "pitch": 0,
+  "flying": false,
+  "move": "left",
+  "ticks": 600,
+  "waitMillis": 15000,
+  "waitFrames": 5,
+  "timingFrames": 180,
+  "resetTiming": true
+}

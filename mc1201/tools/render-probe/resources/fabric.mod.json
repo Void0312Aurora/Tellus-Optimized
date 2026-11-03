@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "id": "tellus_render_probe",
+  "version": "0.1.0",
+  "name": "Tellus Render Probe (test only)",
+  "environment": "client",
+  "entrypoints": {"client": ["com.yucareux.tellus.probe.RenderProbe"]},
+  "depends": {"fabricloader": ">=0.16.0", "minecraft": "1.20.1", "fabric-api": "*", "sodium": "0.5.13+mc1.20.1"}
+}

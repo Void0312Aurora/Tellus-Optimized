@@ -54,6 +54,13 @@ public final class CubeNetClientTransition {
    /** Cumulative target-to-source chart rotation used by directional shading. */
    private static volatile int shadeQuarterTurns;
    private static final ThreadLocal<BlockPos> shadeRenderPosition = new ThreadLocal<>();
+   /**
+    * Sodium supplies a direction already mapped for the section it is compiling, then
+    * delegates to ClientLevel#getShade for the vanilla brightness calculation.  Keep
+    * that delegation from applying the chart mapping a second time.
+    */
+   private static final ThreadLocal<Integer> shadeMappingBypassDepth =
+      ThreadLocal.withInitial(() -> 0);
 
    private CubeNetClientTransition() { }
 
@@ -67,6 +74,41 @@ public final class CubeNetClientTransition {
          turns = current.targetShadeQuarterTurns;
       }
       return CubeNetShadeTransform.rotate(direction, turns);
+   }
+
+   /** Current target-to-source chart rotation for optional shader integrations. */
+   public static int shadeQuarterTurns() {
+      return Math.floorMod(shadeQuarterTurns, 4);
+   }
+
+   /**
+    * Maps an Iris celestial direction from the source chart into the active
+    * target chart.  The face mapping is target-to-source, so the light vector
+    * uses the inverse horizontal rotation.
+    */
+   public static org.joml.Vector4f rotateCelestialWorld(org.joml.Vector4f vector) {
+      int turns = Math.floorMod(-shadeQuarterTurns, 4);
+      if (turns == 0) return vector;
+      double[] rotated = CubeNetShadeTransform.rotateHorizontal(vector.x(), vector.z(), turns);
+      vector.set((float)rotated[0], vector.y(), (float)rotated[1], vector.w());
+      return vector;
+   }
+
+   public static boolean shadeMappingBypassed() {
+      return shadeMappingBypassDepth.get() > 0;
+   }
+
+   public static void beginShadeMappingBypass() {
+      shadeMappingBypassDepth.set(shadeMappingBypassDepth.get() + 1);
+   }
+
+   public static void endShadeMappingBypass() {
+      int depth = shadeMappingBypassDepth.get() - 1;
+      if (depth <= 0) {
+         shadeMappingBypassDepth.remove();
+      } else {
+         shadeMappingBypassDepth.set(depth);
+      }
    }
 
    /** Chart-relative direction used by Sodium's native block-light pipeline. */
@@ -189,6 +231,52 @@ public final class CubeNetClientTransition {
       return current != null && current.holdMovement;
    }
 
+   /**
+    * Small, allocation-only diagnostics for the opt-in render probe.  This is
+    * deliberately separate from the transition control path so a probe can
+    * tell a render-thread stall from a scene that is still displaying the old
+    * chart while the destination chart is being prepared.
+    */
+   public static Map<String, Object> diagnostics() {
+      Pending current = pending;
+      if (current == null) return Map.of("pending", false, "phase", "IDLE");
+      int expected = (current.area.radius() * 2 + 1) * (current.area.radius() * 2 + 1);
+      String phase;
+      if (current.readySent) {
+         phase = "READY";
+      } else if (current.remote.size() < expected) {
+         phase = "WAIT_CHUNKS";
+      } else if (!current.chunksReceivedSent) {
+         phase = "CHUNKS_COMPLETE";
+      } else if (current.staged == null && current.stagedSodium == null) {
+         phase = "WAIT_LIGHT_OR_START";
+      } else if (current.stagedSodium != null) {
+         phase = "NATIVE_MESH";
+      } else if (current.nextSection < current.sections.size()) {
+         phase = "COMPILE";
+      } else if (!current.inFlight.isEmpty()) {
+         phase = "UPLOAD_WAIT";
+      } else {
+         phase = "READY_WAIT_ACK";
+      }
+      return Map.ofEntries(
+         Map.entry("pending", true),
+         Map.entry("transitionId", current.area.transitionId().toString()),
+         Map.entry("phase", phase),
+         Map.entry("elapsedMs", (System.nanoTime() - current.startedNanos) / 1_000_000L),
+         Map.entry("remoteChunks", current.remote.size()),
+         Map.entry("expectedChunks", expected),
+         Map.entry("packetChunks", current.packets.size()),
+         Map.entry("readySent", current.readySent),
+         Map.entry("holdMovement", current.holdMovement),
+         Map.entry("dataReadyTicks", current.dataReadyTicks),
+         Map.entry("stagedSections", current.stagedSodium == null ? current.sections.size()
+            : CubeNetSodiumStaging.sectionCount(current.stagedSodium)),
+         Map.entry("nextSection", current.nextSection),
+         Map.entry("inFlight", current.inFlight.size()),
+         Map.entry("remainingTicks", current.remainingTicks));
+   }
+
    public static void cancel(java.util.UUID id) {
       if (pending != null && pending.area.transitionId().equals(id)) reset();
    }
@@ -196,13 +284,18 @@ public final class CubeNetClientTransition {
    /** A renderer reload invalidates its off-screen native resources as well. */
    public static void rendererInvalidated() {
       Pending current = pending;
-      if (current == null || current.stagedSodium == null) return;
-      rejectUnsupported(Minecraft.getInstance(), current.area.transitionId());
-      reset();
+      if (current != null && current.stagedSodium != null) {
+         rejectUnsupported(Minecraft.getInstance(), current.area.transitionId());
+         reset();
+      }
+      CubeNetSodiumStaging.discardCachedRenderer();
    }
 
    public static void tick(Minecraft client) {
       tracePostCommitMotion(client);
+      if (client.player != null) {
+         CubeNetSodiumStaging.updateCachedRendererPosition(client.player.getX(), client.player.getZ());
+      }
       Pending current = pending;
       if (current == null) return;
       if (client.level == null || client.player == null || client.getConnection() == null
@@ -255,7 +348,8 @@ public final class CubeNetClientTransition {
          if (TellusRenderCompatibility.sodiumLoaded()) {
             try {
                current.stagedSodium = CubeNetSodiumStaging.begin(
-                  current.area.centerChunkX(), current.area.centerChunkZ());
+                  current.area.centerChunkX(), current.area.centerChunkZ(), current.viewDistance,
+                  current.targetShadeQuarterTurns);
                TellusCommon.LOGGER.info("Cube-net Sodium client compiling {} backend={}",
                   current.area.transitionId(), TellusRenderCompatibility.backendId());
             } catch (RuntimeException error) {
@@ -347,10 +441,13 @@ public final class CubeNetClientTransition {
 
    private static void markReady(Pending current) {
       if (current.readySent || !ClientPlayNetworking.canSend(CubeNetTransitionReadyPayload.TYPE)) return;
+      // DH's seam envelope is render-only.  It must not hold the authoritative
+      // player handoff: if DH cannot produce the target LOD envelope, commit
+      // the native chart and let DH roll the envelope back and recenter from
+      // the new player position on the following ticks.
       if (current.dhTransitionActive && !DistantHorizonsSeamClient.ready(current.area.transitionId())) {
-         if (current.remainingTicks % 200 == 0) TellusCommon.LOGGER.info(
-            "Cube-net client waiting for DH render envelope {}", current.area.transitionId());
-         return;
+         TellusCommon.LOGGER.warn("Cube-net client continuing without ready DH render envelope {}",
+            current.area.transitionId());
       }
       ClientPlayNetworking.send(new CubeNetTransitionReadyPayload(current.area.transitionId()));
       current.readySent = true;
@@ -416,14 +513,43 @@ public final class CubeNetClientTransition {
 
    private static void commitPrepared(Minecraft client, Pending current, Vec3 position,
       float yaw, float pitch, Vec3 velocity, float fallDistance, boolean customCommit) {
-      // Promote through the ordinary packet path so the native cache owns all
-      // data after commit. Source reception stayed active until this point.
-      DistantHorizonsSeamClient.end(current.area.transitionId(), true);
+      // Promote through the live chunk cache so the native cache owns all data
+      // after commit. Sodium has built the near-player core; its promoted
+      // manager keeps building the remaining view-radius halo asynchronously.
+      // DH's envelope is optional for gameplay. Commit it only if it actually
+      // became ready; otherwise roll back the render-only envelope while the
+      // native chart and player pose still commit atomically.
+      boolean dhReady = !current.dhTransitionActive
+         || DistantHorizonsSeamClient.ready(current.area.transitionId());
+      DistantHorizonsSeamClient.end(current.area.transitionId(), dhReady);
+      if (current.dhTransitionActive && !dhReady) {
+         TellusCommon.LOGGER.warn("Cube-net client committed native chart with DH render fallback {}",
+            current.area.transitionId());
+      }
       pending = null;
       current.cache.updateViewCenter(current.area.centerChunkX(), current.area.centerChunkZ());
-      for (var packet : current.packets.values()) client.getConnection().handleLevelChunkWithLight(packet);
+      boolean lightQueueBeforeInstall = client.level.isLightUpdateQueueEmpty();
+      int installedChunks = 0;
+      // The packet handler already queued and applied the destination light
+      // sections while the staged view was built; tick() waited for that queue
+      // to drain before marking the renderer ready. Replaying the complete
+      // packet here would enqueue the same light sections a second time after
+      // the visible renderer had switched, producing a one-to-several-frame
+      // brightness jump. Install only the block/biome payload into the live
+      // chunk cache and keep the settled light engine state intact.
+      for (var packet : current.packets.values()) {
+         var chunkData = packet.getChunkData();
+         current.cache.replaceWithPacketData(packet.getX(), packet.getZ(),
+            chunkData.getReadBuffer(), chunkData.getHeightmaps(),
+            chunkData.getBlockEntitiesTagsConsumer(packet.getX(), packet.getZ()));
+         installedChunks++;
+      }
+      boolean lightQueueAfterInstall = client.level.isLightUpdateQueueEmpty();
+      TellusCommon.LOGGER.info("Cube-net client installed live chunk payloads {} chunks={} lightQueueBefore={} lightQueueAfter={}",
+         current.area.transitionId(), installedChunks, lightQueueBeforeInstall, lightQueueAfterInstall);
       if (current.stagedSodium != null) {
-         CubeNetSodiumStaging.commit(current.stagedSodium);
+         CubeNetSodiumStaging.commit(current.stagedSodium, current.area.centerChunkX(),
+            current.area.centerChunkZ(), current.viewDistance);
          current.stagedSodium = null;
       } else {
          ((CubeNetRenderStaging)client.levelRenderer).tellus$installStagedView(current.staged);
@@ -432,9 +558,11 @@ public final class CubeNetClientTransition {
       int previousShade = shadeQuarterTurns;
       shadeQuarterTurns = current.targetShadeQuarterTurns;
       traceFrames = 8;
+      CubeNetIrisHistoryReset.request();
       TellusCommon.LOGGER.info("Cube-net client render chart committed {} player={} vehicle={} shadingTurns={} previous={}",
          current.area.transitionId(), position, client.player.getVehicle(), shadeQuarterTurns, previousShade);
       restoreMeasuredMotion(client, current);
+      CubeNetUnfoldClient.cameraMoved(client);
       postCommitMotionTrace = new PostCommitMotionTrace(current.area.transitionId(), position);
       outboundMotionTrace = new OutboundMotionTrace(current.area.transitionId(), customCommit);
       TellusCommon.LOGGER.info("Cube-net client pose commit {} mode={} pose=({}, {}, {}) yaw={} pitch={} velocity=({}, {}, {})",
@@ -618,8 +746,12 @@ public final class CubeNetClientTransition {
 
    public static void renderedFrame(Minecraft client) {
       if (traceFrames <= 0 || client.player == null) return;
-      TellusCommon.LOGGER.info("Cube-net client committed frame={} camera={} chunks={}",
-         9 - traceFrames--, client.gameRenderer.getMainCamera().getPosition(), client.levelRenderer.getChunkStatistics());
+      var camera = client.gameRenderer.getMainCamera();
+      TellusCommon.LOGGER.info(
+         "Cube-net client committed frame={} camera={} yaw={} pitch={} viewDistance={} shadingTurns={} unfoldActive={} chunks={}",
+         9 - traceFrames--, camera.getPosition(), camera.getYRot(),
+         camera.getXRot(), client.options.getEffectiveRenderDistance(), shadeQuarterTurns,
+         CubeNetUnfoldClient.active(), client.levelRenderer.getChunkStatistics());
    }
 
    public static void reset() {
@@ -636,6 +768,12 @@ public final class CubeNetClientTransition {
       }
       traceFrames = 0;
       outboundMotionTrace = null;
+   }
+
+   /** Disconnect/world teardown path; ordinary prepare/cancel keeps the reverse cache alive. */
+   public static void resetAll() {
+      reset();
+      CubeNetSodiumStaging.discardCachedRenderer();
    }
 
    private static final class Pending {

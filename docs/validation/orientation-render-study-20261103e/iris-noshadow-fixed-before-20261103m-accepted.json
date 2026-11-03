@@ -1,0 +1,11 @@
+{
+  "id": "iris-noshadow-fixed-before-20261103m",
+  "yaw": 90,
+  "pitch": 0,
+  "move": "none",
+  "ticks": 0,
+  "waitMillis": 1000,
+  "waitFrames": 5,
+  "timingFrames": 120,
+  "resetTiming": true
+}

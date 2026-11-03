@@ -3,6 +3,7 @@ package com.yucareux.tellus.worldgen;
 import net.minecraft.core.Direction;
 import org.junit.jupiter.api.Test;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class CubeNetShadeTransformTest {
@@ -23,5 +24,17 @@ class CubeNetShadeTransformTest {
       assertEquals(0.6F, CubeNetShadeTransform.fluidHorizontalBrightness(
          CubeNetShadeTransform.rotate(Direction.NORTH, 1)));
       assertEquals(1.0F, CubeNetShadeTransform.fluidHorizontalBrightness(Direction.UP));
+   }
+
+   @Test
+   void horizontalVectorsUseTheSameClockwiseConvention() {
+      assertArrayEquals(new double[] {1.0, 0.0},
+         CubeNetShadeTransform.rotateHorizontal(0.0, -1.0, 1), 0.0);
+      assertArrayEquals(new double[] {-1.0, 0.0},
+         CubeNetShadeTransform.rotateHorizontal(0.0, 1.0, 1), 0.0);
+      assertArrayEquals(new double[] {0.0, -1.0},
+         CubeNetShadeTransform.rotateHorizontal(0.0, 1.0, 2), 0.0);
+      assertArrayEquals(new double[] {-1.0, 0.0},
+         CubeNetShadeTransform.rotateHorizontal(0.0, -1.0, 3), 0.0);
    }
 }

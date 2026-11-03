@@ -14,6 +14,7 @@ public abstract class CubeNetClientLevelShadeMixin {
    @Inject(method = "getShade", at = @At("HEAD"), cancellable = true)
    private void tellus$shadeInChart(Direction direction, boolean shade,
       CallbackInfoReturnable<Float> callback) {
+      if (CubeNetClientTransition.shadeMappingBypassed()) return;
       Direction mapped = CubeNetClientTransition.shadeDirection(direction);
       if (mapped == direction) return;
       ClientLevel level = (ClientLevel)(Object)this;

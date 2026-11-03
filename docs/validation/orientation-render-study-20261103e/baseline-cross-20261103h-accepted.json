@@ -1,0 +1,12 @@
+{
+  "id": "baseline-cross-20261103h",
+  "yaw": 0,
+  "pitch": 0,
+  "flying": false,
+  "move": "left",
+  "ticks": 600,
+  "waitMillis": 30000,
+  "waitFrames": 5,
+  "timingFrames": 360,
+  "resetTiming": true
+}
