@@ -198,9 +198,11 @@ public final class CubeNetBiomeSource extends TellusBiomeSourceBridge {
          point, this.model.config().worldScale(), surface.waterAvailable()), "climateData");
       if (surface.waterAvailable()) return this.resolveOceanBiome(surface, climate.ocean());
       String koppen = climate.koppen();
+      double earthBlockX = EarthProjection.longitudeToBlockX(point.longitude(), this.model.config().worldScale());
+      double earthBlockZ = EarthProjection.latToBlockZ(point.latitude(), this.model.config().worldScale());
       ResourceKey<Biome> biomeKey = BiomeClassificationProviders.findBiomeKey(
-         surface.coverClass(), koppen, this.coordinateForClassification(canonical.blockX()),
-         this.coordinateForClassification(canonical.blockZ()), this.model.config().worldScale());
+         surface.coverClass(), koppen, this.coordinateForClassification(earthBlockX),
+         this.coordinateForClassification(earthBlockZ), this.model.config().worldScale());
       if (biomeKey == null) biomeKey = BiomeClassification.findBiomeKey(surface.coverClass(), koppen);
       if (biomeKey == null) biomeKey = BiomeClassification.findFallbackKey(surface.coverClass());
       return this.resolveBiome(biomeKey, this.plains);
@@ -234,7 +236,8 @@ public final class CubeNetBiomeSource extends TellusBiomeSourceBridge {
       );
    }
 
-   private static int coordinateForClassification(long coordinate) {
+   private static int coordinateForClassification(double coordinate) {
+      if (!Double.isFinite(coordinate)) return 0;
       return coordinate <= Integer.MIN_VALUE ? Integer.MIN_VALUE
          : coordinate >= Integer.MAX_VALUE ? Integer.MAX_VALUE : (int)coordinate;
    }
