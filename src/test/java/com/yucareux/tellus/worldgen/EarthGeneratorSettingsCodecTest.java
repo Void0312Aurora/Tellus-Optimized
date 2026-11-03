@@ -53,7 +53,6 @@ class EarthGeneratorSettingsCodecTest {
       assertFalse(EarthGeneratorSettings.DEFAULT.addTrailRuins());
       assertFalse(EarthGeneratorSettings.DEFAULT.deepDark());
       assertFalse(EarthGeneratorSettings.DEFAULT.geodes());
-      assertTrue(EarthGeneratorSettings.DEFAULT.distantHorizonsWaterResolver());
    }
 
    @Test
@@ -65,6 +64,15 @@ class EarthGeneratorSettingsCodecTest {
 
       assertTrue(decoded.enableWater());
       assertTrue(encoded.get("enable_water").getAsBoolean());
+   }
+
+   @Test
+   void legacyUltraFastRenderModeLoadsAsFast() {
+      JsonElement input = JsonParser.parseString("{\"distant_horizons_render_mode\":\"ultra_fast\"}");
+
+      EarthGeneratorSettings decoded = requireSuccess(EarthGeneratorSettings.CODEC.parse(JsonOps.INSTANCE, input));
+
+      assertEquals(EarthGeneratorSettings.DistantHorizonsRenderMode.FAST, decoded.distantHorizonsRenderMode());
    }
 
    @Test
@@ -82,6 +90,56 @@ class EarthGeneratorSettingsCodecTest {
          assertEquals(settings, requireSuccess(EarthGeneratorSettings.CODEC.parse(JsonOps.INSTANCE, encoded)));
       }
       assertTrue(EarthGeneratorSettings.DEFAULT.withDistantHorizonsCityLightsDistance(0).distantHorizonsCityLightsUnlimited());
+   }
+
+   @Test
+   void lakeFreezingDefaultOnAndRoundTrip() {
+      assertTrue(EarthGeneratorSettings.DEFAULT.lakeFreezing());
+      // Worlds saved before the setting existed already froze water, so they keep lake freezing on.
+      EarthGeneratorSettings legacy = requireSuccess(EarthGeneratorSettings.CODEC.parse(JsonOps.INSTANCE, JsonParser.parseString("{\"realtime_weather\":true}")));
+      assertTrue(legacy.lakeFreezing());
+
+      EarthGeneratorSettings disabled = requireSuccess(
+         EarthGeneratorSettings.CODEC.parse(JsonOps.INSTANCE, JsonParser.parseString("{\"lake_freezing\":false,\"add_abandoned_camps\":true}"))
+      );
+      JsonObject encoded = requireSuccess(EarthGeneratorSettings.CODEC.encodeStart(JsonOps.INSTANCE, disabled)).getAsJsonObject();
+      assertFalse(disabled.lakeFreezing());
+      assertTrue(disabled.addAbandonedCamps());
+      assertFalse(encoded.get("lake_freezing").getAsBoolean());
+      assertEquals(disabled, requireSuccess(EarthGeneratorSettings.CODEC.parse(JsonOps.INSTANCE, encoded)));
+   }
+
+   @Test
+   void teleportProgressDefaultOnAndRoundTrip() {
+      assertTrue(EarthGeneratorSettings.DEFAULT.teleportProgress());
+      EarthGeneratorSettings legacy = requireSuccess(EarthGeneratorSettings.CODEC.parse(JsonOps.INSTANCE, JsonParser.parseString("{\"lake_freezing\":false}")));
+      assertTrue(legacy.teleportProgress());
+
+      EarthGeneratorSettings disabled = requireSuccess(
+         EarthGeneratorSettings.CODEC.parse(JsonOps.INSTANCE, JsonParser.parseString("{\"teleport_progress\":false,\"lake_freezing\":false}"))
+      );
+      JsonObject encoded = requireSuccess(EarthGeneratorSettings.CODEC.encodeStart(JsonOps.INSTANCE, disabled)).getAsJsonObject();
+      assertFalse(disabled.teleportProgress());
+      assertFalse(disabled.lakeFreezing());
+      assertFalse(encoded.get("teleport_progress").getAsBoolean());
+      assertEquals(disabled, requireSuccess(EarthGeneratorSettings.CODEC.parse(JsonOps.INSTANCE, encoded)));
+   }
+
+   @Test
+   void abandonedCampsDefaultOffAndRoundTrip() {
+      assertFalse(EarthGeneratorSettings.DEFAULT.addAbandonedCamps());
+      // Worlds saved before the setting existed keep camps off.
+      EarthGeneratorSettings legacy = requireSuccess(EarthGeneratorSettings.CODEC.parse(JsonOps.INSTANCE, JsonParser.parseString("{\"add_trail_ruins\":true}")));
+      assertFalse(legacy.addAbandonedCamps());
+
+      EarthGeneratorSettings enabled = requireSuccess(
+         EarthGeneratorSettings.CODEC.parse(JsonOps.INSTANCE, JsonParser.parseString("{\"add_abandoned_camps\":true,\"add_villages\":true}"))
+      );
+      JsonObject encoded = requireSuccess(EarthGeneratorSettings.CODEC.encodeStart(JsonOps.INSTANCE, enabled)).getAsJsonObject();
+      assertTrue(enabled.addAbandonedCamps());
+      assertTrue(enabled.addVillages());
+      assertTrue(encoded.get("add_abandoned_camps").getAsBoolean());
+      assertEquals(enabled, requireSuccess(EarthGeneratorSettings.CODEC.parse(JsonOps.INSTANCE, encoded)));
    }
 
    @Test

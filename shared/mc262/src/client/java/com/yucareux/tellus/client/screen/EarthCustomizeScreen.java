@@ -7,12 +7,13 @@ import com.yucareux.tellus.cache.TellusCacheManager;
 import com.yucareux.tellus.client.preview.TerrainPreview;
 import com.yucareux.tellus.client.preview.TerrainPreviewWidget;
 import com.yucareux.tellus.client.widget.CustomizationList;
+import com.yucareux.tellus.compat.MinecraftVersionCompat;
+import com.yucareux.tellus.integration.distant_horizons.DistantHorizonsCompatibility;
 import com.yucareux.tellus.platform.TellusPlatform;
 import com.yucareux.tellus.worldgen.EarthChunkGenerator;
 import com.yucareux.tellus.worldgen.EarthGeneratorSettings;
 import com.yucareux.tellus.worldgen.EarthProjection;
 import com.yucareux.tellus.worldgen.ExperimentalHeightSupport;
-import com.yucareux.tellus.worldgen.RandomBiomeCatalog;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.FormatStyle;
@@ -38,6 +39,7 @@ import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.components.Button.OnPress;
 import net.minecraft.client.gui.components.CycleButton.Builder;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
+import net.minecraft.client.gui.screens.ConfirmScreen;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.worldselection.CreateWorldScreen;
 import net.minecraft.client.gui.screens.worldselection.WorldCreationContext;
@@ -86,6 +88,8 @@ public class EarthCustomizeScreen extends Screen {
    // LOD city lights distance slider stops, in chunks; the step after the last one is Unlimited.
    private static final int[] CITY_LIGHTS_DISTANCE_STEPS = {256, 512, 1024, 2048, 4096};
    private static final String BIOME_TOGGLE_PREFIX = "random_biome.";
+   // Once per game launch: the disabled options keep the reason in their tooltips.
+   private static boolean incompatibleDistantHorizonsWarned;
    private final CreateWorldScreen parent;
    private final List<EarthCustomizeScreen.CategoryDefinition> categories;
    private CustomizationList list;
@@ -387,6 +391,27 @@ public class EarthCustomizeScreen extends Screen {
             this.previewWidget.requestRebuild(this.buildSettings());
          }
       }
+
+      if (!incompatibleDistantHorizonsWarned && this.minecraft != null && DistantHorizonsCompatibility.isIncompatibleBuildInstalled()) {
+         incompatibleDistantHorizonsWarned = true;
+         this.minecraft.gui.setScreen(this.incompatibleDistantHorizonsWarning());
+      }
+   }
+
+   private ConfirmScreen incompatibleDistantHorizonsWarning() {
+      Component title = Component.translatable("tellus.distant_horizons.incompatible.title").withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD);
+      Component message = Component.translatable("tellus.distant_horizons.incompatible.message")
+         .append("\n\n")
+         .append(Component.literal(DistantHorizonsCompatibility.TELLUS_BUILD_URL).withStyle(ChatFormatting.AQUA));
+      return new ConfirmScreen(openDownloadPage -> {
+         if (openDownloadPage) {
+            com.yucareux.tellus.client.ClientInputCompat.openUri(DistantHorizonsCompatibility.TELLUS_BUILD_URL);
+         }
+
+         if (this.minecraft != null) {
+            this.minecraft.gui.setScreen(this);
+         }
+      }, title, message, Component.translatable("tellus.distant_horizons.incompatible.download"), Component.translatable("gui.continue"));
    }
 
    public void removed() {
@@ -432,8 +457,9 @@ public class EarthCustomizeScreen extends Screen {
       this.setToggleValue("add_ancient_cities", settings.addAncientCities());
       this.setToggleValue("add_trial_chambers", settings.addTrialChambers());
       this.setToggleValue("add_trail_ruins", settings.addTrailRuins());
+      this.setToggleValue("add_abandoned_camps", settings.addAbandonedCamps());
       this.setToggleValue("automatic_height_scaling", settings.automaticHeightScaling());
-      this.setToggleValue("experimental_increase_height", settings.experimentalIncreaseHeight() && ExperimentalHeightSupport.isRuntimeProfileActive());
+      this.setToggleValue("experimental_increase_height", settings.experimentalIncreaseHeight() && increaseHeightAvailable());
       this.applyPreloadHeightGuard(settings);
       this.onSettingsChanged();
    }
@@ -513,9 +539,7 @@ public class EarthCustomizeScreen extends Screen {
       boolean addAncientCities = this.findToggleValue("add_ancient_cities", EarthGeneratorSettings.DEFAULT.addAncientCities());
       boolean addTrialChambers = this.findToggleValue("add_trial_chambers", EarthGeneratorSettings.DEFAULT.addTrialChambers());
       boolean addTrailRuins = this.findToggleValue("add_trail_ruins", EarthGeneratorSettings.DEFAULT.addTrailRuins());
-      boolean distantHorizonsWaterResolver = this.findToggleValue(
-         "distant_horizons_water_resolver", EarthGeneratorSettings.DEFAULT.distantHorizonsWaterResolver()
-      );
+      boolean addAbandonedCamps = this.findToggleValue("add_abandoned_camps", EarthGeneratorSettings.DEFAULT.addAbandonedCamps());
       boolean distantHorizonsOsmFeatures = EarthGeneratorSettings.DEFAULT.distantHorizonsOsmFeatures();
       int distantHorizonsOsmRoadMaxDetail = EarthGeneratorSettings.DEFAULT.distantHorizonsOsmRoadMaxDetail();
       int distantHorizonsOsmBuildingMaxDetail = EarthGeneratorSettings.DEFAULT.distantHorizonsOsmBuildingMaxDetail();
@@ -529,6 +553,8 @@ public class EarthCustomizeScreen extends Screen {
       boolean realtimeTime = this.findToggleValue("realtime_time", EarthGeneratorSettings.DEFAULT.realtimeTime());
       boolean realtimeWeather = this.findToggleValue("realtime_weather", EarthGeneratorSettings.DEFAULT.realtimeWeather());
       boolean historicalSnow = false;
+      boolean lakeFreezing = this.findToggleValue("lake_freezing", EarthGeneratorSettings.DEFAULT.lakeFreezing());
+      boolean teleportProgress = this.findToggleValue("teleport_progress", EarthGeneratorSettings.DEFAULT.teleportProgress());
       boolean voxyChunkPregenEnabled = this.findToggleValue("voxy_chunk_pregen_enabled", EarthGeneratorSettings.DEFAULT.voxyChunkPregenEnabled());
       int voxyChunkPregenMaxRadius = (int)Math.round(
          this.findSliderValue("voxy_chunk_pregen_max_radius", EarthGeneratorSettings.DEFAULT.voxyChunkPregenMaxRadius())
@@ -545,10 +571,6 @@ public class EarthCustomizeScreen extends Screen {
       if (!roadsAndBuildingsSupportedForWorldScale(worldScale)) {
          enableRoads = false;
          enableBuildings = false;
-      }
-
-      if (renderMode == EarthGeneratorSettings.DistantHorizonsRenderMode.ULTRA_FAST) {
-         distantHorizonsWaterResolver = false;
       }
 
       return new EarthGeneratorSettings(
@@ -586,7 +608,6 @@ public class EarthCustomizeScreen extends Screen {
          addTrailRuins,
          deepDark,
          geodes,
-         distantHorizonsWaterResolver,
          distantHorizonsOsmFeatures,
          distantHorizonsOsmRoadMaxDetail,
          distantHorizonsOsmBuildingMaxDetail,
@@ -616,7 +637,10 @@ public class EarthCustomizeScreen extends Screen {
          customTrees,
          automaticHeightScaling,
          hugeRedMushrooms,
-         distantHorizonsCityLightsDistance
+         distantHorizonsCityLightsDistance,
+         addAbandonedCamps,
+         lakeFreezing,
+         teleportProgress
       );
    }
 
@@ -671,7 +695,7 @@ public class EarthCustomizeScreen extends Screen {
       this.randomBiomeSeed = initialSettings.randomBiomeSeed();
       this.setRandomBiomeSelection(initialSettings.randomBiomeIds());
       this.setToggleValue("automatic_height_scaling", initialSettings.automaticHeightScaling());
-      this.setToggleValue("experimental_increase_height", initialSettings.experimentalIncreaseHeight() && ExperimentalHeightSupport.isRuntimeProfileActive());
+      this.setToggleValue("experimental_increase_height", initialSettings.experimentalIncreaseHeight() && increaseHeightAvailable());
       this.setToggleValue("deep_dark", initialSettings.deepDark());
       this.setToggleValue("geodes", initialSettings.geodes());
       this.setToggleValue("add_strongholds", initialSettings.addStrongholds());
@@ -691,12 +715,14 @@ public class EarthCustomizeScreen extends Screen {
       this.setToggleValue("add_ancient_cities", initialSettings.addAncientCities());
       this.setToggleValue("add_trial_chambers", initialSettings.addTrialChambers());
       this.setToggleValue("add_trail_ruins", initialSettings.addTrailRuins());
-      this.setToggleValue("distant_horizons_water_resolver", initialSettings.distantHorizonsWaterResolver());
+      this.setToggleValue("add_abandoned_camps", initialSettings.addAbandonedCamps());
       this.setToggleValue("tellus_managed_terrain_downloads", initialSettings.tellusManagedTerrainDownloads());
       this.setToggleValue("show_terrain_download_overlay", initialSettings.showTerrainDownloadOverlay());
       this.setToggleValue("realtime_time", initialSettings.realtimeTime());
       this.setToggleValue("realtime_weather", initialSettings.realtimeWeather());
       this.setToggleValue("historical_snow", false);
+      this.setToggleValue("lake_freezing", initialSettings.lakeFreezing());
+      this.setToggleValue("teleport_progress", initialSettings.teleportProgress());
       this.setToggleValue("voxy_chunk_pregen_enabled", initialSettings.voxyChunkPregenEnabled());
       this.setSliderValue("voxy_chunk_pregen_max_radius", initialSettings.voxyChunkPregenMaxRadius());
       this.setSliderValue("voxy_chunk_pregen_chunks_per_tick", initialSettings.voxyChunkPregenChunksPerTick());
@@ -803,7 +829,12 @@ public class EarthCustomizeScreen extends Screen {
             toggle("automatic_height_scaling", EarthGeneratorSettings.DEFAULT.automaticHeightScaling()),
             toggle("experimental_increase_height", EarthGeneratorSettings.DEFAULT.experimentalIncreaseHeight())
                .withTooltip(experimentalIncreaseHeightTooltip())
-               .forceDisabled(!ExperimentalHeightSupport.isRuntimeProfileActive(), experimentalHeightRuntimeDisabledTooltip()),
+               .forceDisabled(
+                  !increaseHeightAvailable(),
+                  DistantHorizonsCompatibility.isIncompatibleBuildInstalled()
+                     ? requiresTellusDistantHorizonsTooltip()
+                     : experimentalHeightRuntimeDisabledTooltip()
+               ),
             slider(
                "underground_depth",
                EarthGeneratorSettings.DEFAULT.undergroundDepth(),
@@ -824,7 +855,8 @@ public class EarthCustomizeScreen extends Screen {
             slider("height_offset", EarthGeneratorSettings.DEFAULT.heightOffset(), -2000.0, 128.0, 1.0)
                .withDisplay(EarthCustomizeScreen::formatHeightOffset),
             slider("max_altitude", -1.0, -1.0, 2031.0, 16.0).withDisplay(EarthCustomizeScreen::formatMaxAltitude),
-            slider("min_altitude", EarthGeneratorSettings.DEFAULT.minAltitude(), -2048.0, 2031.0, 16.0).withDisplay(EarthCustomizeScreen::formatMinAltitude)
+            slider("min_altitude", EarthGeneratorSettings.DEFAULT.minAltitude(), -2048.0, 2031.0, 16.0).withDisplay(EarthCustomizeScreen::formatMinAltitude),
+            toggle("teleport_progress", EarthGeneratorSettings.DEFAULT.teleportProgress())
          )
       );
       categories.add(
@@ -841,7 +873,7 @@ public class EarthCustomizeScreen extends Screen {
          )
       );
       EarthCustomizeScreen.CategoryDefinition biomesCategory = new EarthCustomizeScreen.CategoryDefinition(
-         "biomes", biomeSettings(RandomBiomeCatalog.minecraft26_2OverworldBiomeIds())
+         "biomes", biomeSettings(MinecraftVersionCompat.defaultRandomBiomeIds())
       ).hideFromRoot().parent("ecological");
       categories.add(
          new EarthCustomizeScreen.CategoryDefinition(
@@ -870,39 +902,42 @@ public class EarthCustomizeScreen extends Screen {
             )
          )
       );
-      categories.add(
-         new EarthCustomizeScreen.CategoryDefinition(
-            "structure",
-            List.of(
-               toggle("add_strongholds", EarthGeneratorSettings.DEFAULT.addStrongholds()),
-               toggle("add_villages", EarthGeneratorSettings.DEFAULT.addVillages()),
-               toggle("add_mineshafts", EarthGeneratorSettings.DEFAULT.addMineshafts()),
-               toggle("add_ocean_monuments", EarthGeneratorSettings.DEFAULT.addOceanMonuments()),
-               toggle("add_woodland_mansions", EarthGeneratorSettings.DEFAULT.addWoodlandMansions()),
-               toggle("add_desert_temples", EarthGeneratorSettings.DEFAULT.addDesertTemples()),
-               toggle("add_jungle_temples", EarthGeneratorSettings.DEFAULT.addJungleTemples()),
-               toggle("add_pillager_outposts", EarthGeneratorSettings.DEFAULT.addPillagerOutposts()),
-               toggle("add_ruined_portals", EarthGeneratorSettings.DEFAULT.addRuinedPortals()),
-               toggle("add_shipwrecks", EarthGeneratorSettings.DEFAULT.addShipwrecks()),
-               toggle("add_ocean_ruins", EarthGeneratorSettings.DEFAULT.addOceanRuins()),
-               toggle("add_buried_treasure", EarthGeneratorSettings.DEFAULT.addBuriedTreasure()),
-               toggle("add_igloos", EarthGeneratorSettings.DEFAULT.addIgloos()),
-               toggle("add_witch_huts", EarthGeneratorSettings.DEFAULT.addWitchHuts()),
-               toggle("add_ancient_cities", EarthGeneratorSettings.DEFAULT.addAncientCities()),
-               toggle("add_trial_chambers", EarthGeneratorSettings.DEFAULT.addTrialChambers()),
-               toggle("add_trail_ruins", EarthGeneratorSettings.DEFAULT.addTrailRuins()),
-               toggle("deep_dark", EarthGeneratorSettings.DEFAULT.deepDark()),
-               toggle("geodes", EarthGeneratorSettings.DEFAULT.geodes())
-            )
+      List<EarthCustomizeScreen.SettingDefinition> structureSettings = new ArrayList<>(
+         List.of(
+            toggle("add_strongholds", EarthGeneratorSettings.DEFAULT.addStrongholds()),
+            toggle("add_villages", EarthGeneratorSettings.DEFAULT.addVillages()),
+            toggle("add_mineshafts", EarthGeneratorSettings.DEFAULT.addMineshafts()),
+            toggle("add_ocean_monuments", EarthGeneratorSettings.DEFAULT.addOceanMonuments()),
+            toggle("add_woodland_mansions", EarthGeneratorSettings.DEFAULT.addWoodlandMansions()),
+            toggle("add_desert_temples", EarthGeneratorSettings.DEFAULT.addDesertTemples()),
+            toggle("add_jungle_temples", EarthGeneratorSettings.DEFAULT.addJungleTemples()),
+            toggle("add_pillager_outposts", EarthGeneratorSettings.DEFAULT.addPillagerOutposts()),
+            toggle("add_ruined_portals", EarthGeneratorSettings.DEFAULT.addRuinedPortals()),
+            toggle("add_shipwrecks", EarthGeneratorSettings.DEFAULT.addShipwrecks()),
+            toggle("add_ocean_ruins", EarthGeneratorSettings.DEFAULT.addOceanRuins()),
+            toggle("add_buried_treasure", EarthGeneratorSettings.DEFAULT.addBuriedTreasure()),
+            toggle("add_igloos", EarthGeneratorSettings.DEFAULT.addIgloos()),
+            toggle("add_witch_huts", EarthGeneratorSettings.DEFAULT.addWitchHuts()),
+            toggle("add_ancient_cities", EarthGeneratorSettings.DEFAULT.addAncientCities()),
+            toggle("add_trial_chambers", EarthGeneratorSettings.DEFAULT.addTrialChambers()),
+            toggle("add_trail_ruins", EarthGeneratorSettings.DEFAULT.addTrailRuins())
          )
       );
+      if (MinecraftVersionCompat.hasAbandonedCamps()) {
+         structureSettings.add(toggle("add_abandoned_camps", EarthGeneratorSettings.DEFAULT.addAbandonedCamps()));
+      }
+
+      structureSettings.add(toggle("deep_dark", EarthGeneratorSettings.DEFAULT.deepDark()));
+      structureSettings.add(toggle("geodes", EarthGeneratorSettings.DEFAULT.geodes()));
+      categories.add(new EarthCustomizeScreen.CategoryDefinition("structure", structureSettings));
       categories.add(
          new EarthCustomizeScreen.CategoryDefinition(
             "realtime",
             List.of(
                toggle("realtime_time", EarthGeneratorSettings.DEFAULT.realtimeTime()),
                toggle("realtime_weather", EarthGeneratorSettings.DEFAULT.realtimeWeather()),
-               toggle("historical_snow", false).forceDisabled(true, historicalSnowReworkTooltip())
+               toggle("historical_snow", false).forceDisabled(true, historicalSnowReworkTooltip()),
+               toggle("lake_freezing", EarthGeneratorSettings.DEFAULT.lakeFreezing())
             )
          )
       );
@@ -920,7 +955,6 @@ public class EarthCustomizeScreen extends Screen {
                "distant_horizons",
                List.of(
                   mode("distant_horizons_render_mode", EarthGeneratorSettings.DEFAULT.distantHorizonsRenderMode()),
-                  toggle("distant_horizons_water_resolver", EarthGeneratorSettings.DEFAULT.distantHorizonsWaterResolver()),
                   slider(
                      "distant_horizons_city_lights_distance",
                      cityLightsDistanceStep(EarthGeneratorSettings.DEFAULT_DH_CITY_LIGHTS_DISTANCE),
@@ -949,19 +983,23 @@ public class EarthCustomizeScreen extends Screen {
             .parent("compatibility"),
          "voxyCategory"
       );
-      if (!distantHorizonsInstalled) {
-         disableCategoryForMissingMod(distantHorizonsCategory, "distanthorizons");
+      // A DH older than API 7.1 never runs the Tellus LOD generators, so these settings would do nothing.
+      Component distantHorizonsUnavailable = !distantHorizonsInstalled
+         ? requiresModTooltip("distanthorizons")
+         : (DistantHorizonsCompatibility.isIntegrationEnabled() ? null : requiresTellusDistantHorizonsTooltip());
+      if (distantHorizonsUnavailable != null) {
+         disableCategory(distantHorizonsCategory, distantHorizonsUnavailable);
       }
 
       if (!voxyInstalled) {
-         disableCategoryForMissingMod(voxyCategory, "voxy");
+         disableCategory(voxyCategory, requiresModTooltip("voxy"));
       }
 
       List<EarthCustomizeScreen.SettingDefinition> compatibilitySettings = new ArrayList<>();
       compatibilitySettings.add(
          this.categoryLink(distantHorizonsCategory)
-            .active(distantHorizonsInstalled)
-            .withTooltip(distantHorizonsInstalled ? null : requiresModTooltip("distanthorizons"))
+            .active(distantHorizonsUnavailable == null)
+            .withTooltip(distantHorizonsUnavailable)
       );
       compatibilitySettings.add(this.categoryLink(voxyCategory).active(voxyInstalled).withTooltip(voxyInstalled ? null : requiresModTooltip("voxy")));
       if (distantHorizonsInstalled && voxyInstalled) {
@@ -986,6 +1024,7 @@ public class EarthCustomizeScreen extends Screen {
                cacheEntry(TellusCacheManager.Metric.OPENWATERS, true),
                cacheEntry(TellusCacheManager.Metric.OISST, true),
                cacheEntry(TellusCacheManager.Metric.PRELOADED_TERRAIN, true),
+               cacheEntry(TellusCacheManager.Metric.GEOLOGY, true),
                cacheEntry(TellusCacheManager.Metric.TOTAL, false),
                cacheActionButton(Component.translatable("tellus.cache.delete_all"), TellusCacheManager::deleteAll)
             )
@@ -1050,9 +1089,7 @@ public class EarthCustomizeScreen extends Screen {
       return new EarthCustomizeScreen.CategoryLinkDefinition(targetCategory);
    }
 
-   private static void disableCategoryForMissingMod( EarthCustomizeScreen.CategoryDefinition category,  String modId) {
-      Component tooltip = requiresModTooltip(modId);
-
+   private static void disableCategory( EarthCustomizeScreen.CategoryDefinition category,  Component tooltip) {
       for (EarthCustomizeScreen.SettingDefinition setting : category.getSettings()) {
          if (setting instanceof EarthCustomizeScreen.ModeDefinition mode) {
             mode.unavailable(tooltip);
@@ -1134,6 +1171,19 @@ public class EarthCustomizeScreen extends Screen {
       entries.add(infoLink("https://creativecommons.org/licenses/by/4.0/"));
       entries.add(infoLine("tellus.data_sources.openmeteo.credit"));
       entries.add(infoLink("https://doi.org/10.5281/ZENODO.7970649"));
+      entries.add(infoSpacer());
+      entries.add(infoHeader("tellus.data_sources.macrostrat.title"));
+      entries.add(infoLine("tellus.data_sources.macrostrat.source"));
+      entries.add(infoSubtle("tellus.data_sources.license_cc_by"));
+      entries.add(infoLink("https://macrostrat.org/"));
+      entries.add(infoLine("tellus.data_sources.macrostrat.processing_1"));
+      entries.add(infoLine("tellus.data_sources.macrostrat.processing_2"));
+      entries.add(infoSpacer());
+      entries.add(infoHeader("tellus.data_sources.glim.title"));
+      entries.add(infoLine("tellus.data_sources.glim.source"));
+      entries.add(infoSubtle("tellus.data_sources.license_cc_by_sa"));
+      entries.add(infoLink("https://doi.org/10.5281/zenodo.1464846"));
+      entries.add(infoLine("tellus.data_sources.glim.processing_1"));
       return entries;
    }
 
@@ -1350,6 +1400,18 @@ public class EarthCustomizeScreen extends Screen {
    }
 
    
+   private static Component requiresTellusDistantHorizonsTooltip() {
+      return Objects.requireNonNull(
+         Component.translatable("tellus.compatibility.requires_tellus_distant_horizons").withStyle(ChatFormatting.GRAY),
+         "requiresTellusDistantHorizonsTooltip"
+      );
+   }
+
+   /** Increase Height needs its launch profile and, with DH installed, the Tellus build that holds its LODs. */
+   private static boolean increaseHeightAvailable() {
+      return ExperimentalHeightSupport.isRuntimeProfileActive() && !DistantHorizonsCompatibility.isIncompatibleBuildInstalled();
+   }
+
    private static Component compatibilityModName( String modId) {
       return switch (modId) {
          case "distanthorizons" -> (MutableComponent)Objects.requireNonNull(Component.translatable("tellus.compatibility.mod.distant_horizons"), "modName");
@@ -1713,16 +1775,11 @@ public class EarthCustomizeScreen extends Screen {
          }
       } else if ("distant_horizons".equals(category.getId())) {
          EarthCustomizeScreen.ModeDefinition renderMode = null;
-         EarthCustomizeScreen.ToggleDefinition waterResolver = null;
          EarthCustomizeScreen.SliderDefinition cityLightsDistance = null;
 
          for (EarthCustomizeScreen.SettingDefinition setting : category.getSettings()) {
             if (setting instanceof EarthCustomizeScreen.ModeDefinition mode && mode.key.equals("distant_horizons_render_mode")) {
                renderMode = mode;
-            }
-
-            if (setting instanceof EarthCustomizeScreen.ToggleDefinition toggle && toggle.key.equals("distant_horizons_water_resolver")) {
-               waterResolver = toggle;
             }
 
             if (setting instanceof EarthCustomizeScreen.SliderDefinition slider && slider.key.equals("distant_horizons_city_lights_distance")) {
@@ -1731,13 +1788,8 @@ public class EarthCustomizeScreen extends Screen {
          }
 
          boolean blockedByVoxy = bothCompatibilityModsInstalled && voxyEnabled;
-         if (renderMode != null && waterResolver != null) {
-            boolean ultraFast = renderMode.value == EarthGeneratorSettings.DistantHorizonsRenderMode.ULTRA_FAST;
+         if (renderMode != null) {
             renderMode.forceDisabled(blockedByVoxy);
-            waterResolver.forceDisabled(ultraFast || blockedByVoxy);
-            if (ultraFast) {
-               waterResolver.value = false;
-            }
          }
 
          if (cityLightsDistance != null) {
@@ -2373,7 +2425,6 @@ public class EarthCustomizeScreen extends Screen {
          List<EarthGeneratorSettings.DistantHorizonsRenderMode> modes = new ArrayList<>(3);
          modes.add(EarthGeneratorSettings.DistantHorizonsRenderMode.DETAILED);
          modes.add(EarthGeneratorSettings.DistantHorizonsRenderMode.FAST);
-         modes.add(EarthGeneratorSettings.DistantHorizonsRenderMode.ULTRA_FAST);
          return modes;
       }
 

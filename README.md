@@ -26,6 +26,8 @@ Server support note: Tellus must be installed on the server, but is not required
 
 For 26.3, use Fabric Loader 0.19.5 or later with Fabric API 0.160.5+26.3 or later, or NeoForge 26.3.0.3-beta or later for Minecraft 26.3. Distant Horizons 3.3.1 is supported, including the Tellus fork for extended-height worlds and managed terrain downloads.
 
+On 26.3, the Dappled Forest mixes through the forest of cool continental climates (Köppen Dfb, Dwb, and Dsb) in clumps of a few trees, about 60% of it, so autumn and green crowns blend like a real mixed forest. This covers New England, the Great Lakes, the Canadian aspen parkland, and the forest-steppe from Poland to Siberia. Forests that Tellus maps as taiga or conifer forest keep their taiga. Custom Trees grows red, orange, and yellow poplars there, Random Biomes can select the biome, and Abandoned Camps can place its Dappled Forest camp. Newly generated chunks use this mix, so biome edges may be visible at old chunk borders in existing 26.3 worlds.
+
 Build all targets with `./gradlew build`, or only the new targets with `./gradlew -PtellusTargets=mc263,mc263-neoforge build`. See [26.3 compatibility notes](docs/minecraft-26.3.md) for the shared-source layout, validation, and possible follow-up features.
 
 ## Features
@@ -34,6 +36,7 @@ Build all targets with `./gradlew build`, or only the new targets with `./gradle
 - Highly customizable terrain generation (scale, height limits, and more)
 - Built-in terrain preview screen for visualizing settings before world creation
 - Biomes placed to match real-world climate regions
+- Real-world bedrock on cliffs and mountain faces, drawn as strata that follow the world scale
 - OSM roads, buildings, and map features generated with Arnis-derived logic
 - Real-time inspired weather and time systems (optional)
 - Distant Horizons integration for long-distance terrain rendering
@@ -72,6 +75,7 @@ The `3.3.1-tellus.1` fork preserves extended-height LODs and Iris compatibility,
 - `/tellus weather`: Shows local Tellus weather and time information at your current position.
 - `/tellus config weather enable_realtime_time <true|false>`: Overrides the real-time time setting on the server (requires gamemaster permissions).
 - `/tellus config weather enable_realtime_weather <true|false>`: Overrides the real-time weather setting on the server (requires gamemaster permissions).
+- `/tellus config teleport_progress <true|false>`: Overrides the Teleport Progress setting on the server until it restarts (requires gamemaster permissions).
 
 More commands will be added over time.
 
@@ -91,6 +95,7 @@ These options are available in the "Customize World Generation" screen when crea
 - **Height Offset**: Shifts all terrain up or down by a fixed number of blocks. Use this to raise or lower the entire world.
 - **Max Altitude**: Upper world limit in blocks. Set to Automatic to let Tellus compute a safe cap based on your scale settings.
 - **Min Altitude**: Lower world limit in blocks. Set to Automatic to let Tellus compute a safe floor based on your scale settings.
+- **Teleport Progress**: On by default, also in worlds created before the setting existed. When you teleport with the GeoTP map, a chat message says the destination is being prepared and a progress bar shows at the top of the screen until you arrive. The bar is an estimate, because Tellus cannot tell in advance how much terrain data a destination needs.
 - **Water**: Uses Overture Maps `subtype=ocean` surface polygons as the sole ocean and coastline authority. Physical sea and ocean labels do not generate water. Rivers and lakes retain their own Overture feature kinds, and ocean floors use OpenWaters bathymetry with a corrective coastal safety ramp.
 
 ### Ecological Settings (work in progress)
@@ -111,16 +116,18 @@ Tellus reads the live `minecraft:overworld` noise settings, so compatible data p
 Worlds created with earlier 0.8.1 builds keep their already-generated chunks unchanged. Newly generated chunks use the corrected full-depth underground rules, so underground seams may be visible at old chunk borders.
 
 ### Structure Settings
-This section lets you toggle vanilla structures and world features on or off, such as villages, temples, monuments, ruins, and underground features like Deep Dark and amethyst geodes. Some structures (notably Deep Dark and certain ocean structures) may not generate properly yet and are still work in progress.
+This section lets you toggle vanilla structures and world features on or off, such as villages, temples, monuments, ruins, and underground features like Deep Dark and amethyst geodes. Some structures (notably Deep Dark and certain ocean structures) may not generate properly yet and are still work in progress. Explorer maps from chests and cartographers are left out, because finding their targets would load real-world terrain for tens of kilometres on the server thread and freeze the game; shipwreck and ocean ruin treasure maps are unchanged.
+
+- **Add Abandoned Camps** (26.3 only, off by default): Generates the 26.3 abandoned camps in their vanilla biomes. Tellus terrain is not reshaped around structures, so a camp is only kept where every piece sits on dry ground within one block of its floor, away from mapped roads, buildings, and landmarks. Tellus trees are kept off the camp so its chests, barrels, and beds stay intact.
 
 ### Real-Time Settings
 - **Real-Time Time**: Syncs the in-game day/night cycle to real-world time based on your in-game location, so sunrise and sunset match that location's local clock.
 - **Real-Time Weather**: Pulls live weather conditions for your location and mirrors them in-game (rain, thunder, or snow) instead of Minecraft's default weather rolls.
 - **Historical Snow Coverage** (work in progress): Tracks recent temperature and snowfall data to decide if snow should appear and persist on the ground, creating more realistic seasonal snow coverage.
+- **Lake Freezing**: On by default, also in worlds created before the setting existed. Mapped lakes, ponds and reservoirs freeze from the shore inward when the real-world air temperature is at or below 0 °C and the last three days averaged at or below 0 °C. Their ice melts back to water when it is above 0 °C and the last three days averaged above 0 °C; in between, a lake keeps its ice or open water. Rivers, streams, canals and the sea never freeze. It uses the Open-Meteo temperature that Tellus reads even when Real-Time Weather is off. Turn it off and no water freezes in Tellus worlds; ice that has already formed stays until light melts it, as in vanilla.
 
 ### Compatibility Settings
 - **Distant Horizons Render Mode**: Fast uses Tellus's LOD generator to build simplified distant terrain quickly with lower cost. Detailed asks Distant Horizons to use full chunk generation for far terrain, which is more accurate but significantly slower and heavier. For most setups, keeping Fast LOD generation is recommended.
-- **LOD Water Resolver**: Adds coherent lake beds and smoother water surfaces to Distant Horizons fast LODs directly on the sampled LOD grid, avoiding block-resolution water-region generation.
 - **Coming Soon**: Additional compatibility options are work in progress and currently unavailable.
 
 ### Cache
@@ -132,6 +139,7 @@ This section lets you toggle vanilla structures and world features on or off, su
 - **OpenWaters bathymetry**: Cached bathymetry tiles used for ocean and underwater terrain.
 - **NOAA OISST v2.1**: Cached sea-surface temperature and sea-ice blocks used for ocean climate.
 - **Preloaded terrain**: Terrain areas prepared with Preload Terrain. Deleting removes them; preload the area again to restore fast generation.
+- **Macrostrat geology**: Cached geologic map tiles that give rock faces their local rock.
 - **Total**: Combined size of all Tellus caches (read-only).
 - **Delete cache / Delete all cache**: Removes cached data to free disk space; data will be re-downloaded or rebuilt as needed.
 </details>
@@ -178,6 +186,22 @@ This section lets you toggle vanilla structures and world features on or off, su
 - Publication DOI:
 - https://doi.org/10.1038/sdata.2018.214
 - In-game processing: reprojected and resampled to match the world grid, cached for fast lookup.
+
+### GLiM rock classes
+- Steep faces, bare mountain ground and the mountain body under them use the local rock class of the Global Lithological Map (GLiM): granite, limestone, basalt, sandstone, schist and the rest of its 16 classes. Before this, steep faces turned to deepslate everywhere.
+- Source: OpenLandMap lithology class map at 250 m (Hengl, 2018), derived from the USGS global ecological land units and GLiM (Hartmann and Moosdorf, 2012).
+- https://doi.org/10.5281/zenodo.1464846
+- License: CC BY-SA 4.0 for the bundled derived lookup only.
+- In-game processing: bundled as a 60-arc-second (about 1.85 km) lookup, so it needs no network access; a smooth warp bends the cell borders. Layered rock is cut into beds along real height, so a bed sits at the same real height at every world scale. Beds thinner than one block are left out, so coarse scales show one rock per slope. Sediment in deserts uses red-bed colours.
+- Newly generated chunks use the new rock. Existing chunks keep their deepslate faces, so seams can show at old chunk borders.
+
+### Macrostrat geologic maps
+- Where a local, state or national geologic map exists, rock faces use its map unit instead of the GLiM class: the Grand Canyon shows its formations in order, the Lauterbrunnen cliffs their Jurassic limestone. Coverage is best in the United States, Canada, Switzerland, Spain, Great Britain and New Zealand; elsewhere, including the Himalaya, the Andes, Norway and Japan, GLiM fills in.
+- Source: Macrostrat, which merges more than 800 published geologic maps. Peters, S.E., Husson, J.M., and Czaplewski, J. (2018), "Macrostrat: a platform for geological data integration and deep-time Earth crust research", Geochemistry, Geophysics, Geosystems, 19.
+- https://macrostrat.org/
+- License: CC BY 4.0. Each map unit comes from a source map listed by Macrostrat at https://macrostrat.org/maps.
+- In-game processing: `carto` vector tiles are fetched only when a rock face first needs them, at a zoom chosen from the world scale (zoom 14 at 1:1, zoom 12 at 1:30, zoom 7 at 1:1000), cached on disk and read into a grid of map units. Each unit's rock, colour and "Minor" words choose its strata blocks, and a unit of two rocks interbeds them. Continental and world maps, buried-basement maps, loose cover such as alluvium or till, ice and water fall back to GLiM, as do scales coarser than about 1:1200 and far LODs.
+- Set `tellus.macrostrat.enabled=false` to use GLiM only. Newly generated chunks use the map rock; chunks generated while Macrostrat was unreachable keep GLiM rock.
 
 ### Mapterhorn terrain DEM
 - Source: Mapterhorn global terrain tiles.

@@ -36,18 +36,13 @@ public final class MountainSurfaceRules {
    }
 
    /**
-    * The land cover a column's ground, trees and biome follow. Forests and towns
-    * take the blended border too: keeping their raw 10 m pixels made every forest
-    * edge and town edge a staircase at fine scales.
+    * The land cover a column's ground, trees and biome follow. Every class but
+    * water and missing data takes the blended border: keeping the raw 10 m pixels
+    * made forest, town and snow edges staircases at fine scales, and left rock
+    * pixels inside glaciers as perfect squares.
     */
    public static int resolveSurfaceCoverClass(int terrainCoverClass, int visualCoverClass) {
-      if (terrainCoverClass == ESA_SNOW_ICE || visualCoverClass == ESA_SNOW_ICE) {
-         // Visual blending must neither invent snow outside the data nor erase
-         // a mapped snow source. SnowTransitionPolicy softens its inner edge.
-         return terrainCoverClass;
-      } else {
-         return !isWaterLikeCoverClass(terrainCoverClass) && !isWaterLikeCoverClass(visualCoverClass) ? visualCoverClass : terrainCoverClass;
-      }
+      return !isWaterLikeCoverClass(terrainCoverClass) && !isWaterLikeCoverClass(visualCoverClass) ? visualCoverClass : terrainCoverClass;
    }
 
    public static MountainSurfaceRules.ShorelineMaterial classifyShorelineMaterial(
@@ -368,9 +363,9 @@ public final class MountainSurfaceRules {
    }
 
    /**
-    * Top material of exposed rock, as clustered patches per landform. Scree and
-    * gullies are loose and lighter than the rock faces above them; faces and
-    * ridges are rock with weathered accents.
+    * Top material of loose debris, as clustered patches per landform. Scree and
+    * gullies are lighter than the rock faces above them. Rock faces and ridges
+    * take the local bedrock from {@link StrataPolicy} instead.
     */
    public static int formSurfaceMaterial(MountainSurfaceRules.MountainForm form, int worldX, int worldZ) {
       int primary = SurfacePatchNoise.percent(worldX, worldZ, FORM_PRIMARY_SALT);
@@ -381,10 +376,6 @@ public final class MountainSurfaceRules {
             : accent < 45 ? MATERIAL_ANDESITE : accent < 78 ? MATERIAL_DIORITE : MATERIAL_COBBLESTONE;
          case DRAINAGE_CHUTE -> primary < 75 ? MATERIAL_GRAVEL : accent < 60 ? MATERIAL_COBBLESTONE : MATERIAL_ANDESITE;
          case GLACIER_BASIN -> primary < 50 ? MATERIAL_GRAVEL : accent < 60 ? MATERIAL_STONE : MATERIAL_COBBLESTONE;
-         case RIDGE -> primary < 65 ? MATERIAL_STONE : accent < 57 ? MATERIAL_ANDESITE : MATERIAL_COBBLESTONE;
-         case STEEP_ROCKY_SLOPE -> primary < 70 ? MATERIAL_STONE : accent < 67 ? MATERIAL_ANDESITE : MATERIAL_GRAVEL;
-         case VALLEY_WALL -> primary < 70 ? MATERIAL_STONE : accent < 50 ? MATERIAL_ANDESITE : MATERIAL_GRAVEL;
-         case CLIFF_FACE -> primary < 85 ? MATERIAL_STONE : MATERIAL_ANDESITE;
          default -> MATERIAL_STONE;
       };
    }

@@ -14,15 +14,19 @@ import com.yucareux.tellus.world.data.elevation.TerrainSlopeFixture;
 import com.yucareux.tellus.world.data.elevation.TiltedTerrainFixture;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import net.minecraft.SharedConstants;
 import net.minecraft.core.Holder;
+import net.minecraft.core.HolderGetter;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
@@ -208,19 +212,22 @@ class LodBiomeSnowTest {
    }
 
    @Test
-   void nearbySnowAndVisualBlendingCannotSnowOverBareOrMissingTerrain() {
+   void nearbySnowCannotSnowOverOtherTerrainButTheBlendedSnowBorderCan() {
       try (@SuppressWarnings("unused") ManagedTerrainNetworkPolicy.Scope ignored = ManagedTerrainNetworkPolicy.cacheOnly()) {
          Holder<Biome> biome = biomes.getOrThrow(Biomes.SNOWY_TAIGA);
          EarthChunkGenerator generator = new EarthChunkGenerator(new FixedBiomeSource(biome), EarthGeneratorSettings.DEFAULT);
          generator.setLodShorelineOverrideSuppressed(true);
          generator.setLodMountainTransitionCache(new SnowSourceCache(true));
          for (int coverClass : new int[]{0, 10, 20, 30, 40, 50, 60, 90, 100}) {
-            for (int visualCover : new int[]{coverClass, MountainSurfaceRules.ESA_SNOW_ICE}) {
-               for (boolean ultraFast : List.of(false, true)) {
-                  for (int x = -16; x <= 16; x++) {
-                     assertSnowFree(resolveAt(generator, biome, x, 0, 320, false, coverClass, visualCover, 8, false, ultraFast).top());
-                  }
+            for (boolean ultraFast : List.of(false, true)) {
+               for (int x = -16; x <= 16; x++) {
+                  assertSnowFree(resolveAt(generator, biome, x, 0, 320, false, coverClass, coverClass, 8, false, ultraFast).top());
                }
+               // Chunks bend the snow edge with the land-cover border; LODs must too, except over missing data.
+               BlockState bordered = resolveAt(
+                  generator, biome, 0, 0, 320, false, coverClass, MountainSurfaceRules.ESA_SNOW_ICE, 0, false, ultraFast
+               ).top();
+               assertEquals(coverClass != MountainSurfaceRules.ESA_NO_DATA, bordered.is(Blocks.SNOW_BLOCK), "cover " + coverClass);
             }
          }
       }
@@ -284,7 +291,13 @@ class LodBiomeSnowTest {
                   );
                   Method topAccessor = palette.getClass().getDeclaredMethod("top");
                   topAccessor.setAccessible(true);
-                  BlockState fullChunkTop = (BlockState)topAccessor.invoke(palette);
+                  Method strataAccessor = palette.getClass().getDeclaredMethod("strata");
+                  strataAccessor.setAccessible(true);
+                  boolean strata = (boolean)strataAccessor.invoke(palette);
+                  // A bare-rock palette only holds a placeholder top; the chunk writes the column's rock at that height.
+                  BlockState fullChunkTop = strata
+                     ? EarthChunkGenerator.resolveStrataBlock(generator.resolveStrataColumn(x, z, biome), HIGHLAND_SURFACE_Y)
+                     : (BlockState)topAccessor.invoke(palette);
                   BlockState lodTop = generator.resolveLodSurface(
                      biome, x, z, HIGHLAND_SURFACE_Y, false, coverClass, coverClass, shape[0], shape[1], null, null, OsmQueryMode.NON_BLOCKING
                   ).top();
@@ -295,7 +308,7 @@ class LodBiomeSnowTest {
                   assertEquals(fullChunkTop, lodTop, where);
                   assertEquals(fullChunkTop, ultraFastTop, where);
                   if (coverClass == MountainSurfaceRules.ESA_GRASSLAND && shape[0] >= 3) {
-                     if (fullChunkTop.is(Blocks.STONE)) outcrops++; else steepTurf++;
+                     if (strata) outcrops++; else steepTurf++;
                   } else if (coverClass == MountainSurfaceRules.ESA_BARE && shape[0] == 2 && shape[1] == 1) {
                      assertTrue(scree.contains(fullChunkTop.getBlock()), "Scree below steeper rock is loose debris: " + where);
                      screeColumns++;
@@ -352,8 +365,8 @@ class LodBiomeSnowTest {
          assertTrue(generator.sampleDemSlopeDegrees(8, 8) > 65.0, "Fixture must exercise exposed-cliff rules");
          for (boolean ultraFast : List.of(false, true)) {
             EarthChunkGenerator.LodSurface surface = resolveSlope(generator, biome, 8, 8, ultraFast);
-            assertEquals(Blocks.DEEPSLATE.defaultBlockState(), surface.top(), "Steep mapped snow must expose rock");
-            assertEquals(Blocks.DEEPSLATE.defaultBlockState(), surface.filler());
+            assertTrue(surface.strata(), "Steep mapped snow must expose rock");
+            assertFalse(surface.top().is(Blocks.SNOW_BLOCK));
          }
       }
    }
@@ -385,8 +398,7 @@ class LodBiomeSnowTest {
                   if (snow) {
                      assertEquals(Blocks.SNOW_BLOCK.defaultBlockState(), surface.filler());
                   } else if (DeepslateSlopePolicy.shouldCover(x, z, slope)) {
-                     assertEquals(Blocks.DEEPSLATE.defaultBlockState(), surface.top());
-                     assertEquals(Blocks.DEEPSLATE.defaultBlockState(), surface.filler());
+                     assertTrue(surface.strata(), "Exposed rock at " + x + "," + z + ", ultraFast=" + ultraFast);
                   }
                }
             }
@@ -480,6 +492,28 @@ class LodBiomeSnowTest {
          biome, worldX, worldZ, 220, false, MountainSurfaceRules.ESA_SNOW_ICE, MountainSurfaceRules.ESA_SNOW_ICE,
          8, 0, null, null, OsmQueryMode.NON_BLOCKING
       );
+   }
+
+   @Test
+   void asksOnlyForBiomesThisVersionRegisters() {
+      // A new world's registration lookup turns each missing biome asked for into an unbound holder that stops world creation.
+      Set<Object> missing = new HashSet<>();
+      @SuppressWarnings("unchecked")
+      HolderGetter<Biome> recording = (HolderGetter<Biome>)Proxy.newProxyInstance(
+         LodBiomeSnowTest.class.getClassLoader(),
+         new Class<?>[]{HolderGetter.class},
+         (proxy, method, args) -> {
+            Object result = method.invoke(biomes, args);
+            if (result instanceof Optional<?> found && found.isEmpty()) {
+               missing.add(args[0]);
+            }
+            return result;
+         }
+      );
+      try (@SuppressWarnings("unused") ManagedTerrainNetworkPolicy.Scope ignored = ManagedTerrainNetworkPolicy.cacheOnly()) {
+         new EarthBiomeSource(recording, EarthGeneratorSettings.DEFAULT);
+      }
+      assertEquals(Set.of(), missing);
    }
 
    private static ResourceKey<Biome> classifyAt(double longitude, double latitude, String climate, int coverClass) {

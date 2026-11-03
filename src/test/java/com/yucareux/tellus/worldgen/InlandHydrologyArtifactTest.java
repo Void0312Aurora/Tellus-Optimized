@@ -150,6 +150,53 @@ class InlandHydrologyArtifactTest {
       assertFalse(new HydrologyWaterMap.Shape(feature(51, false, OsmWaterKind.UNKNOWN, lake), 1.0).river);
    }
 
+   @Test void lakeIslandShoreMeetsTheWater() {
+      // A mapped island (a hole in the lake, wound the other way) rising gently from the lake's flat surface. Its
+      // shore was left unshaped, two blocks above the water, while the lake's own shores meet it.
+      double[][] rings = {{300, 300, 700, 300, 700, 700, 300, 700, 300, 300},
+         {460.5, 460.5, 460.5, 539.5, 539.5, 539.5, 539.5, 460.5, 460.5, 460.5}};
+      double[][] lon = new double[2][], lat = new double[2][];
+      for (int r = 0; r < 2; r++) {
+         lon[r] = new double[rings[r].length / 2]; lat[r] = new double[lon[r].length];
+         for (int i = 0; i < lon[r].length; i++) {
+            lon[r][i] = EarthProjection.blockXToLongitude(rings[r][i * 2], 1.0);
+            lat[r][i] = EarthProjection.blockZToLat(rings[r][i * 2 + 1], 1.0);
+         }
+      }
+      DoubleBinaryOperator dem = (x, z) -> 100 + 0.3 * Math.max(0, Math.min(Math.min(x - 460.5, 539.5 - x), Math.min(z - 460.5, 539.5 - z)));
+      var planner = planner(dem, 30, new OsmWaterFeature(54, false, false, OsmWaterKind.LAKE, lon, lat));
+      int[][] shoreAndWater = {{500, 461, 500, 460}, {500, 539, 500, 540}, {461, 500, 460, 500}, {539, 500, 540, 500}};
+      for (int[] s : shoreAndWater) {
+         var water = planner.sample(s[2], s[3], (int)Math.ceil(dem.applyAsDouble(s[2], s[3])));
+         var shore = planner.sample(s[0], s[1], (int)Math.ceil(dem.applyAsDouble(s[0], s[1])));
+         assertTrue(water.wet() && !shore.wet(), "Island shore at " + s[0] + "," + s[1] + ": " + shore + " beside " + water);
+         assertEquals(water.water(), shore.terrain(), "Island shore at " + s[0] + "," + s[1] + " does not meet the water");
+      }
+      var top = planner.sample(500, 500, 112);
+      assertFalse(top.wet(), "The island stays land");
+      assertEquals(112, top.terrain(), "The island's top keeps its terrain");
+   }
+
+   @Test void lakeWithArmsAtDifferentHeightsIsNotWalledIn() {
+      // The Great Salt Lake at 1:1: the terrain model shows its arms (and a receded bed) at different heights. Set by
+      // the higher arm, most of the lake, the water stood six blocks above the lower arm's shore, held in by a wall.
+      OsmWaterFeature lake = feature(55, false, OsmWaterKind.LAKE, 300, 300, 700, 300, 700, 700, 300, 700, 300, 300);
+      DoubleBinaryOperator arms = (x, z) -> (x < 420 ? 100 : 106)
+         + (x < 300 || x > 700 || z < 300 || z > 700 ? 0.5 + 0.05 * Math.max(Math.max(300 - x, x - 700), Math.max(300 - z, z - 700)) : 0);
+      var planner = planner(arms, 30, lake);
+      assertEquals(planner.sample(350, 500, 100).water(), planner.sample(600, 500, 106).water(), "One lake, one level");
+      int[][] lowShore = {{299, 500}, {295, 400}, {290, 600}, {350, 299}, {380, 701}};
+      for (int[] s : lowShore) {
+         int raw = (int)Math.ceil(arms.applyAsDouble(s[0], s[1]));
+         var column = planner.sample(s[0], s[1], raw);
+         assertTrue(!column.wet() && column.terrain() <= raw, "Walled shore at " + s[0] + "," + s[1] + ": " + column + " over " + raw);
+      }
+      // A flat lake whose outline runs down a slope on one side keeps the level of its own water.
+      DoubleBinaryOperator slope = (x, z) -> x < 310 ? 100 - 2.0 * (310 - x)
+         : 100 + 0.05 * Math.max(0, Math.max(x - 700, Math.max(300 - z, z - 700)));
+      assertEquals(99, planner(slope, 30, lake).sample(500, 500, 100).water(), "A slope below the outline sank the lake");
+   }
+
    @Test void riverBesideAHigherLakeKeepsItsOwnLevel() {
       // A lake on a terrace a few blocks from a river is not that river's inlet or outlet.
       DoubleBinaryOperator dem = (x, z) -> z < 494 ? 130 : 100 + x * 0.01 + Math.abs(z - 500) * 0.8;
