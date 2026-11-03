@@ -4,13 +4,18 @@ import com.google.common.base.Suppliers;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import com.yucareux.tellus.world.data.biome.BiomeClassification;
+import com.yucareux.tellus.world.data.biome.BiomeClassificationProviders;
+import com.yucareux.tellus.world.data.ocean.OisstOceanClimateSource;
 import com.yucareux.tellus.worldgen.global.CubeNetApronResolver;
 import com.yucareux.tellus.worldgen.global.CubeNetLayout;
 import com.yucareux.tellus.worldgen.global.SphereChunkSampler;
 import com.yucareux.tellus.worldgen.global.SphereSingularityPolicy;
 import com.yucareux.tellus.worldgen.global.SphereWorldModel;
+import java.util.HashSet;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 import net.minecraft.core.Holder;
@@ -18,6 +23,7 @@ import net.minecraft.core.HolderGetter;
 import net.minecraft.core.QuartPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.RegistryOps;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.BiomeSource;
 import net.minecraft.world.level.biome.Biomes;
@@ -55,19 +61,44 @@ public final class CubeNetBiomeSource extends TellusBiomeSourceBridge {
    private final CubeNetApronResolver apronResolver;
    private final SphereSingularityPolicy policy;
    private final int apronChunks;
+   private final HolderGetter<Biome> biomes;
    private final FixedBiomeSource fallback;
    private final Holder<Biome> plains;
    private final Holder<Biome> ocean;
+   private final Holder<Biome> warmOcean;
+   private final Holder<Biome> lukewarmOcean;
+   private final Holder<Biome> coldOcean;
+   private final Holder<Biome> frozenOcean;
+   private final Holder<Biome> deepOcean;
+   private final Holder<Biome> deepLukewarmOcean;
+   private final Holder<Biome> deepColdOcean;
+   private final Holder<Biome> deepFrozenOcean;
    private final Holder<Biome> snowyPlains;
    private final Holder<Biome> desert;
    private final Holder<Biome> swamp;
    private final Holder<Biome> mangrove;
    private final Supplier<SphereChunkSampler> sampler;
+   private final ClimateSampler climateSampler;
+
+   @FunctionalInterface
+   interface ClimateSampler {
+      ClimateData sample(SphereWorldModel.GeoPoint point, double worldScale, boolean water);
+   }
+
+   record ClimateData(String koppen, OisstOceanClimateSource.Sample ocean) { }
 
    CubeNetBiomeSource(
       HolderGetter<Biome> biomes, double scale, int apronChunks,
       SphereSingularityPolicy.Config policy, FixedBiomeSource fallback,
       SphereChunkSampler.PointSampler pointSampler
+   ) {
+      this(biomes, scale, apronChunks, policy, fallback, pointSampler, null);
+   }
+
+   CubeNetBiomeSource(
+      HolderGetter<Biome> biomes, double scale, int apronChunks,
+      SphereSingularityPolicy.Config policy, FixedBiomeSource fallback,
+      SphereChunkSampler.PointSampler pointSampler, ClimateSampler climateSampler
    ) {
       this.model = SphereWorldModel.forWorldScale(scale);
       if (apronChunks < 0 || apronChunks > 35 || (long)apronChunks * 16L > this.model.config().faceBlocks()) {
@@ -77,10 +108,18 @@ public final class CubeNetBiomeSource extends TellusBiomeSourceBridge {
       this.apronChunks = apronChunks;
       this.apronResolver = new CubeNetApronResolver(this.layout, Math.max(16, apronChunks * 16));
       this.policy = new SphereSingularityPolicy(this.model, Objects.requireNonNull(policy, "policy"));
+      this.biomes = Objects.requireNonNull(biomes, "biomes");
       this.fallback = Objects.requireNonNull(fallback, "fallback");
-      Objects.requireNonNull(biomes, "biomes");
       this.plains = biomes.getOrThrow(Biomes.PLAINS);
       this.ocean = biomes.getOrThrow(Biomes.OCEAN);
+      this.warmOcean = this.resolveBiome(Biomes.WARM_OCEAN, this.ocean);
+      this.lukewarmOcean = this.resolveBiome(Biomes.LUKEWARM_OCEAN, this.ocean);
+      this.coldOcean = this.resolveBiome(Biomes.COLD_OCEAN, this.ocean);
+      this.frozenOcean = this.resolveBiome(Biomes.FROZEN_OCEAN, this.ocean);
+      this.deepOcean = this.resolveBiome(Biomes.DEEP_OCEAN, this.ocean);
+      this.deepLukewarmOcean = this.resolveBiome(Biomes.DEEP_LUKEWARM_OCEAN, this.deepOcean);
+      this.deepColdOcean = this.resolveBiome(Biomes.DEEP_COLD_OCEAN, this.deepOcean);
+      this.deepFrozenOcean = this.resolveBiome(Biomes.DEEP_FROZEN_OCEAN, this.deepOcean);
       this.snowyPlains = biomes.getOrThrow(Biomes.SNOWY_PLAINS);
       this.desert = biomes.getOrThrow(Biomes.DESERT);
       this.swamp = biomes.getOrThrow(Biomes.SWAMP);
@@ -88,6 +127,7 @@ public final class CubeNetBiomeSource extends TellusBiomeSourceBridge {
       this.sampler = Suppliers.memoize(() -> pointSampler == null
          ? TellusWorldgenSources.sphericalSampler(this.model)
          : new SphereChunkSampler(this.model, pointSampler));
+      this.climateSampler = climateSampler == null ? CubeNetBiomeSource::sampleDefaultClimate : climateSampler;
    }
 
    public CubeNetBiomeSource(HolderGetter<Biome> biomes, double scale, int apronChunks,
@@ -118,8 +158,25 @@ public final class CubeNetBiomeSource extends TellusBiomeSourceBridge {
 
    @Override
    protected Stream<Holder<Biome>> collectPossibleBiomes() {
-      return Stream.of(this.fallback.getNoiseBiome(0, 0, 0), this.plains, this.ocean,
-         this.snowyPlains, this.desert, this.swamp, this.mangrove).distinct();
+      Set<Holder<Biome>> result = new HashSet<>();
+      result.add(this.fallback.getNoiseBiome(0, 0, 0));
+      result.add(this.plains);
+      result.add(this.ocean);
+      result.add(this.warmOcean);
+      result.add(this.lukewarmOcean);
+      result.add(this.coldOcean);
+      result.add(this.frozenOcean);
+      result.add(this.deepOcean);
+      result.add(this.deepLukewarmOcean);
+      result.add(this.deepColdOcean);
+      result.add(this.deepFrozenOcean);
+      result.add(this.snowyPlains);
+      result.add(this.desert);
+      result.add(this.swamp);
+      result.add(this.mangrove);
+      for (ResourceKey<Biome> key : BiomeClassification.allBiomeKeys()) result.add(this.resolveBiome(key, this.plains));
+      for (ResourceKey<Biome> key : BiomeClassificationProviders.allBiomeKeys()) result.add(this.resolveBiome(key, this.plains));
+      return result.stream();
    }
 
    @Override
@@ -136,14 +193,50 @@ public final class CubeNetBiomeSource extends TellusBiomeSourceBridge {
       }
       SphereChunkSampler.SurfaceData surface = this.sampler.get().samplePoint(this.model.surfacePoint(canonical));
       if (!surface.elevationAvailable()) return this.fallback.getNoiseBiome(quartX, quartY, quartZ);
-      if (surface.waterAvailable()) return this.ocean;
-      return switch (surface.coverClass()) {
-         case 70 -> this.snowyPlains;
-         case 60 -> this.desert;
-         case 90 -> this.swamp;
-         case 95 -> this.mangrove;
-         default -> this.plains;
-      };
+      SphereWorldModel.GeoPoint point = this.model.surfacePoint(canonical);
+      ClimateData climate = Objects.requireNonNull(this.climateSampler.sample(
+         point, this.model.config().worldScale(), surface.waterAvailable()), "climateData");
+      if (surface.waterAvailable()) return this.resolveOceanBiome(surface, climate.ocean());
+      String koppen = climate.koppen();
+      ResourceKey<Biome> biomeKey = BiomeClassificationProviders.findBiomeKey(
+         surface.coverClass(), koppen, this.coordinateForClassification(canonical.blockX()),
+         this.coordinateForClassification(canonical.blockZ()), this.model.config().worldScale());
+      if (biomeKey == null) biomeKey = BiomeClassification.findBiomeKey(surface.coverClass(), koppen);
+      if (biomeKey == null) biomeKey = BiomeClassification.findFallbackKey(surface.coverClass());
+      return this.resolveBiome(biomeKey, this.plains);
+   }
+
+   private Holder<Biome> resolveOceanBiome(SphereChunkSampler.SurfaceData surface,
+      OisstOceanClimateSource.Sample climate) {
+      if (climate == null || !climate.available()) return this.ocean;
+      boolean deep = surface.elevationMeters() <= -200.0;
+      if (climate.maxIceFraction() >= 0.15 || climate.meanSstC() <= -1.5) {
+         return deep ? this.deepFrozenOcean : this.frozenOcean;
+      } else if (climate.meanSstC() >= 23.0) {
+         return deep ? this.deepLukewarmOcean : this.warmOcean;
+      } else if (climate.meanSstC() >= 13.0) {
+         return deep ? this.deepLukewarmOcean : this.lukewarmOcean;
+      } else {
+         return deep ? this.deepColdOcean : this.coldOcean;
+      }
+   }
+
+   private Holder<Biome> resolveBiome(ResourceKey<Biome> key, Holder<Biome> fallback) {
+      return key == null ? fallback : this.biomes.get(key).map(holder -> (Holder<Biome>)holder).orElse(fallback);
+   }
+
+   private static ClimateData sampleDefaultClimate(SphereWorldModel.GeoPoint point, double worldScale, boolean water) {
+      double blockX = EarthProjection.longitudeToBlockX(point.longitude(), worldScale);
+      double blockZ = EarthProjection.latToBlockZ(point.latitude(), worldScale);
+      return new ClimateData(
+         water ? null : TellusWorldgenSources.koppen().sampleDitheredCode(blockX, blockZ, worldScale),
+         water ? TellusWorldgenSources.oceanClimate().sample(blockX, blockZ, worldScale) : null
+      );
+   }
+
+   private static int coordinateForClassification(long coordinate) {
+      return coordinate <= Integer.MIN_VALUE ? Integer.MIN_VALUE
+         : coordinate >= Integer.MAX_VALUE ? Integer.MAX_VALUE : (int)coordinate;
    }
 
    private Optional<SphereWorldModel.SphereBlockAddress> resolveAddress(int blockX, int blockZ) {

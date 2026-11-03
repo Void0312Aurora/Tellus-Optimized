@@ -43,11 +43,11 @@ CubeNetAddressAdapter
 后续 biome、水面和特性阶段可以沿用同一列上下文，不需要再次从 Cube-Net
 平面坐标反推地理位置。
 
-第二阶段已经提供可注册的 `CubeNetBiomeSource`。它通过当前世界的 biome
-registry 解码，按 canonical GeoPoint 读取 SurfaceData，再把水面、雪冰、裸地、
-湿地和红树林覆盖映射到基础 vanilla biome；旧的固定 plains 配置仍然可以继续
-使用，新测试世界可通过 `create_cube_net_datapack.py --geodetic-biomes` 选择
-该阶段。完整气候分类、内陆河湖求解和 EarthBiomeSource 的所有特殊 biome 仍待
+当前阶段的 `CubeNetBiomeSource` 已经可注册。它通过当前世界的 biome
+registry 解码，按 canonical GeoPoint 读取 SurfaceData，并复用 Tellus
+的 ESA + Köppen 陆地分类和可用的海洋气候分级；旧的固定 plains 配置仍然可以
+继续使用，新测试世界可通过 `create_cube_net_datapack.py --geodetic-biomes`
+选择该阶段。内陆河湖求解和 EarthBiomeSource 的完整特殊 biome、洞穴策略仍待
 后续适配。
 
 另外，真实数据的服务器验证记录在
@@ -61,7 +61,7 @@ chunk 持久化的一致性；它不代表完整地貌特性已经接入。
 
 固定配置下，`CubeNetChunkGenerator` 仍使用 `FixedBiomeSource`；启用
 `CubeNetBiomeSource` 后才会按 canonical GeoPoint 做第一阶段的基础 biome
-解析。两种配置的 `fillFromNoise` 都使用 `SphereTerrainMaterializer` 的基础
+解析和第二阶段的气候分类。两种配置的 `fillFromNoise` 都使用 `SphereTerrainMaterializer` 的基础
 石头、草、土、沙、雪、泥和水面调色板；它们都没有调用 `EarthBiomeSource` 或
 `EarthChunkGenerator` 的完整列解析和特性阶段。
 

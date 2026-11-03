@@ -141,12 +141,19 @@ class CubeNetChunkGeneratorTest {
       int quartZ = Math.floorDiv((int)Math.floor(center.z()), 4);
 
       var wet = new CubeNetBiomeSource(lookup, 1000.0, 5, SphereSingularityPolicy.DEFAULT_CONFIG,
-         fallback, (point, resolution) -> new SphereChunkSampler.SurfaceData(-10.0, 80, 0.0));
+         fallback, (point, resolution) -> new SphereChunkSampler.SurfaceData(-10.0, 80, 0.0),
+         (point, resolution, water) -> new CubeNetBiomeSource.ClimateData(null, null));
       assertTrue(wet.getNoiseBiome(quartX, 0, quartZ, null).is(Biomes.OCEAN));
 
       var snowy = new CubeNetBiomeSource(lookup, 1000.0, 5, SphereSingularityPolicy.DEFAULT_CONFIG,
-         fallback, (point, resolution) -> new SphereChunkSampler.SurfaceData(10.0, 70));
-      assertTrue(snowy.getNoiseBiome(quartX, 0, quartZ, null).is(Biomes.SNOWY_PLAINS));
+         fallback, (point, resolution) -> new SphereChunkSampler.SurfaceData(10.0, 70),
+         (point, resolution, water) -> new CubeNetBiomeSource.ClimateData("Cfb", null));
+      assertTrue(snowy.getNoiseBiome(quartX, 0, quartZ, null).is(Biomes.FROZEN_PEAKS));
+
+      var forest = new CubeNetBiomeSource(lookup, 1000.0, 5, SphereSingularityPolicy.DEFAULT_CONFIG,
+         fallback, (point, resolution) -> new SphereChunkSampler.SurfaceData(10.0, 10),
+         (point, resolution, water) -> new CubeNetBiomeSource.ClimateData("Cfa", null));
+      assertTrue(forest.getNoiseBiome(quartX, 0, quartZ, null).is(Biomes.DARK_FOREST));
    }
 
    @Test

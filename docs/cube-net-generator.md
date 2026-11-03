@@ -40,9 +40,10 @@ The helper keeps the fixed plains source by default for compatibility. To use
 the first geodetic biome stage, create a new pack with
 `--geodetic-biomes`; its `biome_source` stores the same fixed plains fallback
 inside the registered `tellus:cube_net` spherical biome source. That stage maps
-canonical water, snow/ice, bare ground, wetland and mangrove cover to vanilla
-surface biomes. It does not yet include the full climate and inland-water
-policy from `EarthBiomeSource`.
+canonical water through the available ocean climate sample and applies Tellus's
+ESA + Köppen land classification for snow/ice, bare ground, wetland, mangrove
+and vegetated cover. It does not yet include the inland-water solver or the
+full surface and cave policy from `EarthBiomeSource`.
 
 `CubeNetRuntime` enables same-Level routing only when exactly one loaded Level
 uses this generator. The five edges that touch directly in the planar net use
