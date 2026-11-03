@@ -92,6 +92,44 @@ class CubeNetChunkGeneratorTest {
    }
 
    @Test
+   void defaultGeneratorUsesTellusSphericalSourceFactoryForCanonicalColumns() {
+      String previous = System.getProperty("tellus.sphere.syntheticSampler");
+      try {
+         // Keep this test independent of local DEM/land-mask availability while
+         // still exercising the production constructor and lazy source path.
+         System.setProperty("tellus.sphere.syntheticSampler", "true");
+         var generator = new CubeNetChunkGenerator(new FixedBiomeSource(plains), 1.0, 64, -64, 384);
+         var model = generator.model();
+         var canonical = model.blockForGeo(new SphereWorldModel.GeoPoint(0.0, 0.0, 0.0));
+         var planarCenter = generator.adapter().layout().toPlanar(new CubeNetLayout.FacePoint(
+            CubeNetLayout.Face.of(canonical.face()), canonical.blockX() + 0.5, canonical.blockZ() + 0.5));
+         ChunkPos planar = new ChunkPos((int)Math.floor(planarCenter.x() / 16.0),
+            (int)Math.floor(planarCenter.z() / 16.0));
+         var address = generator.address(planar).orElseThrow();
+         assertEquals(canonical.face(), address.face());
+
+         var chunk = new ProtoChunk(planar, UpgradeData.EMPTY, LevelHeightAccessor.create(-64, 384), registry, null);
+         chunk.setStatus(ChunkStatus.BIOMES);
+         generator.fillFromNoise(Runnable::run, null, null, null, chunk).join();
+
+         int blockX = (int)Math.floor(planarCenter.x());
+         int blockZ = (int)Math.floor(planarCenter.z());
+         var sampled = TellusWorldgenSources.sphericalSampler(model).samplePoint(
+            model.surfacePoint(new SphereWorldModel.SphereBlockAddress(
+               canonical.face(), canonical.blockX(), canonical.blockZ())));
+         var materializer = new SphereTerrainMaterializer(1.0, 64);
+         int expectedSurface = materializer.height(sampled.elevationMeters());
+         assertEquals(expectedSurface + 1, generator.getBaseHeight(blockX, blockZ,
+            net.minecraft.world.level.levelgen.Heightmap.Types.WORLD_SURFACE_WG, chunk, null));
+         assertEquals(SphereTerrainMaterializer.palette(sampled.coverClass()).top(),
+            chunk.getBlockState(new net.minecraft.core.BlockPos(blockX, expectedSurface, blockZ)));
+      } finally {
+         if (previous == null) System.clearProperty("tellus.sphere.syntheticSampler");
+         else System.setProperty("tellus.sphere.syntheticSampler", previous);
+      }
+   }
+
+   @Test
    void materializedColumnsFollowThePlanarOrientationOnEveryFace() {
       for (var face : CubeNetLayout.Face.values()) {
          AtomicInteger calls = new AtomicInteger();
