@@ -7,6 +7,8 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import com.yucareux.tellus.world.data.biome.BiomeClassification;
 import com.yucareux.tellus.world.data.biome.BiomeClassificationProviders;
 import com.yucareux.tellus.world.data.ocean.OisstOceanClimateSource;
+import com.yucareux.tellus.world.data.osm.OsmQueryMode;
+import com.yucareux.tellus.world.data.osm.TellusOsmWaterSource;
 import com.yucareux.tellus.worldgen.global.CubeNetApronResolver;
 import com.yucareux.tellus.worldgen.global.CubeNetLayout;
 import com.yucareux.tellus.worldgen.global.SphereChunkSampler;
@@ -77,8 +79,10 @@ public final class CubeNetBiomeSource extends TellusBiomeSourceBridge {
    private final Holder<Biome> desert;
    private final Holder<Biome> swamp;
    private final Holder<Biome> mangrove;
+   private final Holder<Biome> river;
    private final Supplier<SphereChunkSampler> sampler;
    private final ClimateSampler climateSampler;
+   private final InlandWaterSampler inlandWaterSampler;
 
    @FunctionalInterface
    interface ClimateSampler {
@@ -86,6 +90,15 @@ public final class CubeNetBiomeSource extends TellusBiomeSourceBridge {
    }
 
    record ClimateData(String koppen, OisstOceanClimateSource.Sample ocean) { }
+
+   @FunctionalInterface
+   interface InlandWaterSampler {
+      WaterData sample(SphereWorldModel.GeoPoint point, double worldScale);
+   }
+
+   record WaterData(boolean hasWater, boolean ocean) {
+      static WaterData dry() { return new WaterData(false, false); }
+   }
 
    CubeNetBiomeSource(
       HolderGetter<Biome> biomes, double scale, int apronChunks,
@@ -99,6 +112,15 @@ public final class CubeNetBiomeSource extends TellusBiomeSourceBridge {
       HolderGetter<Biome> biomes, double scale, int apronChunks,
       SphereSingularityPolicy.Config policy, FixedBiomeSource fallback,
       SphereChunkSampler.PointSampler pointSampler, ClimateSampler climateSampler
+   ) {
+      this(biomes, scale, apronChunks, policy, fallback, pointSampler, climateSampler, null);
+   }
+
+   CubeNetBiomeSource(
+      HolderGetter<Biome> biomes, double scale, int apronChunks,
+      SphereSingularityPolicy.Config policy, FixedBiomeSource fallback,
+      SphereChunkSampler.PointSampler pointSampler, ClimateSampler climateSampler,
+      InlandWaterSampler inlandWaterSampler
    ) {
       this.model = SphereWorldModel.forWorldScale(scale);
       if (apronChunks < 0 || apronChunks > 35 || (long)apronChunks * 16L > this.model.config().faceBlocks()) {
@@ -124,10 +146,13 @@ public final class CubeNetBiomeSource extends TellusBiomeSourceBridge {
       this.desert = biomes.getOrThrow(Biomes.DESERT);
       this.swamp = biomes.getOrThrow(Biomes.SWAMP);
       this.mangrove = biomes.getOrThrow(Biomes.MANGROVE_SWAMP);
+      this.river = biomes.getOrThrow(Biomes.RIVER);
       this.sampler = Suppliers.memoize(() -> pointSampler == null
          ? TellusWorldgenSources.sphericalSampler(this.model)
          : new SphereChunkSampler(this.model, pointSampler));
       this.climateSampler = climateSampler == null ? CubeNetBiomeSource::sampleDefaultClimate : climateSampler;
+      this.inlandWaterSampler = inlandWaterSampler == null
+         ? CubeNetBiomeSource::sampleDefaultInlandWater : inlandWaterSampler;
    }
 
    public CubeNetBiomeSource(HolderGetter<Biome> biomes, double scale, int apronChunks,
@@ -174,6 +199,7 @@ public final class CubeNetBiomeSource extends TellusBiomeSourceBridge {
       result.add(this.desert);
       result.add(this.swamp);
       result.add(this.mangrove);
+      result.add(this.river);
       for (ResourceKey<Biome> key : BiomeClassification.allBiomeKeys()) result.add(this.resolveBiome(key, this.plains));
       for (ResourceKey<Biome> key : BiomeClassificationProviders.allBiomeKeys()) result.add(this.resolveBiome(key, this.plains));
       return result.stream();
@@ -194,9 +220,25 @@ public final class CubeNetBiomeSource extends TellusBiomeSourceBridge {
       SphereChunkSampler.SurfaceData surface = this.sampler.get().samplePoint(this.model.surfacePoint(canonical));
       if (!surface.elevationAvailable()) return this.fallback.getNoiseBiome(quartX, quartY, quartZ);
       SphereWorldModel.GeoPoint point = this.model.surfacePoint(canonical);
+      boolean surfaceWater = surface.waterAvailable();
+      if (surfaceWater) {
+         if (!surface.oceanWater()) return this.river;
+         ClimateData climate = Objects.requireNonNull(this.climateSampler.sample(
+            point, this.model.config().worldScale(), true), "climateData");
+         return this.resolveOceanBiome(surface, climate.ocean());
+      }
+      if (isWaterCandidate(surface.coverClass())) {
+         WaterData mappedWater = Objects.requireNonNull(this.inlandWaterSampler.sample(
+            point, this.model.config().worldScale()), "waterData");
+         if (mappedWater.hasWater()) {
+            if (!mappedWater.ocean()) return this.river;
+            ClimateData climate = Objects.requireNonNull(this.climateSampler.sample(
+               point, this.model.config().worldScale(), true), "climateData");
+            return this.resolveOceanBiome(surface, climate.ocean());
+         }
+      }
       ClimateData climate = Objects.requireNonNull(this.climateSampler.sample(
-         point, this.model.config().worldScale(), surface.waterAvailable()), "climateData");
-      if (surface.waterAvailable()) return this.resolveOceanBiome(surface, climate.ocean());
+         point, this.model.config().worldScale(), false), "climateData");
       String koppen = climate.koppen();
       double earthBlockX = EarthProjection.longitudeToBlockX(point.longitude(), this.model.config().worldScale());
       double earthBlockZ = EarthProjection.latToBlockZ(point.latitude(), this.model.config().worldScale());
@@ -234,6 +276,23 @@ public final class CubeNetBiomeSource extends TellusBiomeSourceBridge {
          water ? null : TellusWorldgenSources.koppen().sampleDitheredCode(blockX, blockZ, worldScale),
          water ? TellusWorldgenSources.oceanClimate().sample(blockX, blockZ, worldScale) : null
       );
+   }
+
+   private static WaterData sampleDefaultInlandWater(SphereWorldModel.GeoPoint point, double worldScale) {
+      double earthBlockX = EarthProjection.longitudeToBlockX(point.longitude(), worldScale);
+      double earthBlockZ = EarthProjection.latToBlockZ(point.latitude(), worldScale);
+      if (!Double.isFinite(earthBlockX) || !Double.isFinite(earthBlockZ)
+         || earthBlockX < Integer.MIN_VALUE || earthBlockX > Integer.MAX_VALUE
+         || earthBlockZ < Integer.MIN_VALUE || earthBlockZ > Integer.MAX_VALUE) {
+         return WaterData.dry();
+      }
+      TellusOsmWaterSource.FastWaterSample sample = TellusWorldgenSources.osmWater().sampleWater(
+         (int)Math.floor(earthBlockX), (int)Math.floor(earthBlockZ), worldScale, OsmQueryMode.NON_BLOCKING);
+      return new WaterData(sample.hasWater(), sample.ocean());
+   }
+
+   private static boolean isWaterCandidate(int coverClass) {
+      return coverClass == 0 || coverClass == 80;
    }
 
    private static int coordinateForClassification(double coordinate) {

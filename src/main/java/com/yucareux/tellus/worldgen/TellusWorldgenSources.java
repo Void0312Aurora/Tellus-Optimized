@@ -121,7 +121,9 @@ public final class TellusWorldgenSources {
             - 4.0 * Math.sin(5.0 * longitude + latitude);
          int coverClass = elevation < -2.0 ? 80 : 30;
          double waterSurface = elevation < 0.0 ? 0.0 : Double.NaN;
-         return new SphereChunkSampler.SurfaceData(elevation, coverClass, waterSurface);
+         return new SphereChunkSampler.SurfaceData(elevation, coverClass, waterSurface,
+            Double.isFinite(waterSurface) ? SphereChunkSampler.SurfaceData.WaterKind.OCEAN
+               : SphereChunkSampler.SurfaceData.WaterKind.NONE);
       });
    }
 

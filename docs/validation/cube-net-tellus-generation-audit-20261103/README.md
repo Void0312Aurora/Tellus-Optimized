@@ -47,8 +47,11 @@ CubeNetAddressAdapter
 registry 解码，按 canonical GeoPoint 读取 SurfaceData，并复用 Tellus
 的 ESA + Köppen 陆地分类和可用的海洋气候分级；旧的固定 plains 配置仍然可以
 继续使用，新测试世界可通过 `create_cube_net_datapack.py --geodetic-biomes`
-选择该阶段。内陆河湖求解和 EarthBiomeSource 的完整特殊 biome、洞穴策略仍待
-后续适配。
+选择该阶段。对 ESA 水体候选列，当前还会按 canonical 经纬度进行非阻塞 OSM
+水体查询；命中内陆水体时返回河流 biome，命中海洋提示时回到海洋气候分级。
+这一步只完成 biome 判定，缓存未命中时保留陆地回退，不会把网络等待引入地形
+生成主路径。内陆水面的高度、连通河湖求解和 EarthBiomeSource 的完整特殊
+biome、洞穴策略仍待后续适配。
 
 另外，真实数据的服务器验证记录在
 `docs/validation/terrain-stability-20261026/summary.json`：
@@ -61,14 +64,15 @@ chunk 持久化的一致性；它不代表完整地貌特性已经接入。
 
 固定配置下，`CubeNetChunkGenerator` 仍使用 `FixedBiomeSource`；启用
 `CubeNetBiomeSource` 后才会按 canonical GeoPoint 做第一阶段的基础 biome
-解析和第二阶段的气候分类。两种配置的 `fillFromNoise` 都使用 `SphereTerrainMaterializer` 的基础
+解析、第二阶段的气候分类和非阻塞内陆水体 biome 探测。两种配置的 `fillFromNoise` 都使用 `SphereTerrainMaterializer` 的基础
 石头、草、土、沙、雪、泥和水面调色板；它们都没有调用 `EarthBiomeSource` 或
 `EarthChunkGenerator` 的完整列解析和特性阶段。
 
 因此以下机制目前仍属于普通 `tellus:earth` 路径，不能宣称已经融入立方球：
 
 - `EarthBiomeSource` 的气候/覆盖物生物群系选择和雪地缓存；
-- `WaterSurfaceResolver` 的河流、湖泊、海岸和区域水面求解；
+- `WaterSurfaceResolver` 的河流、湖泊、海岸和区域水面求解；当前 OSM 内陆水体
+  只参与 biome 判定，尚未参与方块级水面高度；
 - OSM 道路、建筑、水体和沙地的方块级特性填充；
 - 树木、洞穴、矿物、结构及其他 `EarthChunkGenerator` decoration/carver 阶段。
 

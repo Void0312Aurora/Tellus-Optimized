@@ -42,8 +42,13 @@ the first geodetic biome stage, create a new pack with
 inside the registered `tellus:cube_net` spherical biome source. That stage maps
 canonical water through the available ocean climate sample and applies Tellus's
 ESA + Köppen land classification for snow/ice, bare ground, wetland, mangrove
-and vegetated cover. It does not yet include the inland-water solver or the
-full surface and cave policy from `EarthBiomeSource`.
+and vegetated cover. Suspected water-like land-cover columns also make a
+geodetic, non-blocking OSM water query; a mapped inland feature gets the vanilla
+river biome, while an ocean hint reuses the ocean climate path. This first
+inland-water step only classifies the biome and deliberately does not block
+terrain generation on a cache miss. The canonical water-surface levels,
+connected lake/river solver and the full surface/cave policy from
+`EarthBiomeSource` remain separate work.
 
 `CubeNetRuntime` enables same-Level routing only when exactly one loaded Level
 uses this generator. The five edges that touch directly in the planar net use

@@ -157,6 +157,42 @@ class CubeNetChunkGeneratorTest {
    }
 
    @Test
+   void cubeNetBiomeSourceQueriesInlandWaterInGeodeticSpaceOnlyForWaterLikeCover() {
+      var lookup = VanillaRegistries.createLookup().lookupOrThrow(Registries.BIOME);
+      var fallback = new FixedBiomeSource(lookup.getOrThrow(Biomes.PLAINS));
+      var model = SphereWorldModel.forWorldScale(1000.0);
+      var layout = CubeNetLayout.standard(model.config().faceBlocks());
+      var center = layout.toPlanar(new CubeNetLayout.FacePoint(CubeNetLayout.Face.POS_X,
+         layout.faceSize() * 0.5, layout.faceSize() * 0.5));
+      int quartX = Math.floorDiv((int)Math.floor(center.x()), 4);
+      int quartZ = Math.floorDiv((int)Math.floor(center.z()), 4);
+      var seen = new java.util.ArrayList<SphereWorldModel.GeoPoint>();
+      AtomicInteger waterCalls = new AtomicInteger();
+      var source = new CubeNetBiomeSource(lookup, 1000.0, 5, SphereSingularityPolicy.DEFAULT_CONFIG,
+         fallback, (point, resolution) -> new SphereChunkSampler.SurfaceData(10.0, 80),
+         (point, resolution, water) -> new CubeNetBiomeSource.ClimateData("Cfb", null),
+         (point, scale) -> {
+            waterCalls.incrementAndGet();
+            seen.add(point);
+            return new CubeNetBiomeSource.WaterData(true, false);
+         });
+      assertTrue(source.getNoiseBiome(quartX, 0, quartZ, null).is(Biomes.RIVER));
+      assertEquals(1, waterCalls.get());
+      assertEquals(1, seen.size());
+      assertTrue(Math.abs(seen.get(0).longitude()) <= 180.0);
+      assertTrue(Math.abs(seen.get(0).latitude()) <= 90.0);
+
+      var drySource = new CubeNetBiomeSource(lookup, 1000.0, 5, SphereSingularityPolicy.DEFAULT_CONFIG,
+         fallback, (point, resolution) -> new SphereChunkSampler.SurfaceData(10.0, 30),
+         (point, resolution, water) -> new CubeNetBiomeSource.ClimateData("Cfb", null),
+         (point, scale) -> {
+            fail("dry cover must not trigger an OSM water query");
+            return CubeNetBiomeSource.WaterData.dry();
+         });
+      assertNotNull(drySource.getNoiseBiome(quartX, 0, quartZ, null));
+   }
+
+   @Test
    void cubeNetBiomeSourceCodecUsesTheActiveBiomeRegistry() {
       var provider = VanillaRegistries.createLookup();
       var lookup = provider.lookupOrThrow(Registries.BIOME);

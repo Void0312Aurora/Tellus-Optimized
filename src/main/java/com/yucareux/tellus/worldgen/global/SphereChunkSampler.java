@@ -47,7 +47,8 @@ public final class SphereChunkSampler {
          // Neither cover=80 nor a bathymetry sample proves ocean membership.
          double waterSurface = ocean && !sample.mapterhornLandOverride()
             && sample.elevationMeters() < 0.0 ? 0.0 : Double.NaN;
-         return new SurfaceData(sample.elevationMeters(), coverClass, waterSurface);
+         return new SurfaceData(sample.elevationMeters(), coverClass, waterSurface,
+            ocean && Double.isFinite(waterSurface) ? SurfaceData.WaterKind.OCEAN : SurfaceData.WaterKind.NONE);
       });
    }
 
@@ -116,11 +117,16 @@ public final class SphereChunkSampler {
       SurfaceData sample(SphereWorldModel.GeoPoint point, double resolutionMeters);
    }
 
-   public record SurfaceData(double elevationMeters, int coverClass, double waterSurfaceMeters) {
+   public record SurfaceData(double elevationMeters, int coverClass, double waterSurfaceMeters, WaterKind waterKind) {
       public SurfaceData(double elevationMeters, int coverClass) {
-         this(elevationMeters, coverClass, Double.NaN);
+         this(elevationMeters, coverClass, Double.NaN, WaterKind.NONE);
+      }
+      public SurfaceData(double elevationMeters, int coverClass, double waterSurfaceMeters) {
+         this(elevationMeters, coverClass, waterSurfaceMeters,
+            Double.isFinite(waterSurfaceMeters) ? WaterKind.OCEAN : WaterKind.NONE);
       }
       public SurfaceData {
+         Objects.requireNonNull(waterKind, "waterKind");
          if (!Double.isNaN(waterSurfaceMeters)
             && (!Double.isFinite(waterSurfaceMeters) || !Double.isFinite(elevationMeters)
                || waterSurfaceMeters < elevationMeters)) {
@@ -129,6 +135,14 @@ public final class SphereChunkSampler {
       }
       public boolean elevationAvailable() { return Double.isFinite(this.elevationMeters); }
       public boolean waterAvailable() { return Double.isFinite(this.waterSurfaceMeters); }
+      public boolean oceanWater() { return this.waterAvailable() && this.waterKind == WaterKind.OCEAN; }
+      public boolean inlandWater() { return this.waterAvailable() && this.waterKind == WaterKind.INLAND; }
+
+      public enum WaterKind {
+         NONE,
+         OCEAN,
+         INLAND
+      }
    }
 
    public record Column(SphereWorldModel.SphereBlockAddress address,
