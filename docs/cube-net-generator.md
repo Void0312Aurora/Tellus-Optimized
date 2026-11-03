@@ -47,8 +47,11 @@ geodetic, non-blocking OSM water query; a mapped inland feature gets the vanilla
 river biome, while an ocean hint reuses the ocean climate path. This first
 inland-water step only classifies the biome and deliberately does not block
 terrain generation on a cache miss. The canonical water-surface levels,
-connected lake/river solver and the full surface/cave policy from
-`EarthBiomeSource` remain separate work.
+connected lake/river solver are now adapted through Tellus's existing
+`InlandHydrologyPlanner` and `RiverNetwork`: the adapter runs that Earth-grid
+solver on geodetic coordinates and maps its terrain samples back to canonical
+sphere columns. A missing OSM tile falls back to the unmodified terrain column;
+the full surface/cave policy from `EarthBiomeSource` remains separate work.
 
 `CubeNetRuntime` enables same-Level routing only when exactly one loaded Level
 uses this generator. The five edges that touch directly in the planar net use

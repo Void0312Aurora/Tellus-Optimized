@@ -147,12 +147,12 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
       this.materializer = new SphereTerrainMaterializer(scale, seaLevel);
       this.singularityConfig = singularityConfig;
       this.singularityPolicy = new SphereSingularityPolicy(this.model, singularityConfig);
+      SphereChunkSampler.PointSampler effectivePointSampler = pointSampler == null
+         ? TellusWorldgenSources.cubeNetPointSampler(this.model, seaLevel) : pointSampler;
       this.faces = new SphereFaceChunkGenerator[CubeNetLayout.FACE_COUNT];
       for (CubeNetLayout.Face face : CubeNetLayout.Face.values()) {
-         this.faces[face.index()] = pointSampler == null
-            ? new SphereFaceChunkGenerator(faceBiome, face.index(), scale, seaLevel, minY, height,
-               "", singularityConfig)
-            : new SphereFaceChunkGenerator(faceBiome, face.index(), scale, seaLevel, minY, height, pointSampler);
+         this.faces[face.index()] = new SphereFaceChunkGenerator(faceBiome, face.index(), scale, seaLevel, minY, height,
+            effectivePointSampler, singularityConfig);
       }
    }
 

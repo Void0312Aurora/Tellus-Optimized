@@ -105,6 +105,13 @@ public final class SphereFaceChunkGenerator extends ChunkGenerator {
          SphereSingularityPolicy.DEFAULT_CONFIG);
    }
 
+   SphereFaceChunkGenerator(
+      FixedBiomeSource biome, int face, double scale, int seaLevel, int minY, int height,
+      SphereChunkSampler.PointSampler pointSampler, SphereSingularityPolicy.Config singularityConfig
+   ) {
+      this(biome, face, scale, seaLevel, minY, height, "", pointSampler, singularityConfig);
+   }
+
    private SphereFaceChunkGenerator(
       FixedBiomeSource biome, int face, double scale, int seaLevel, int minY, int height, String planet,
       SphereChunkSampler.PointSampler pointSampler, SphereSingularityPolicy.Config singularityConfig

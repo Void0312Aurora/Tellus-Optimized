@@ -107,6 +107,18 @@ public final class TellusWorldgenSources {
    }
 
    /**
+    * Cube-Net sampler that keeps Tellus's spherical terrain source as the
+    * authority and applies the existing inland hydrology planner through its
+    * geodetic adapter. The resolver is shared by all six face callbacks for a
+    * generator, so lake identity and river tiles do not split at face seams.
+    */
+   public static SphereChunkSampler.PointSampler cubeNetPointSampler(SphereWorldModel model, int seaLevel) {
+      SphereChunkSampler terrain = sphericalSampler(Objects.requireNonNull(model, "model"));
+      CubeNetInlandWaterResolver water = new CubeNetInlandWaterResolver(model, seaLevel, terrain, OSM_WATER);
+      return (point, resolutionMeters) -> water.apply(point, terrain.samplePoint(point, resolutionMeters));
+   }
+
+   /**
     * Deterministic analytic terrain for topology, chunk loading and routing
     * integration tests. This is not a geographic fallback and is guarded by
     * {@code tellus.sphere.syntheticSampler} at the only production entry point.

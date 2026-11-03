@@ -50,8 +50,10 @@ registry 解码，按 canonical GeoPoint 读取 SurfaceData，并复用 Tellus
 选择该阶段。对 ESA 水体候选列，当前还会按 canonical 经纬度进行非阻塞 OSM
 水体查询；命中内陆水体时返回河流 biome，命中海洋提示时回到海洋气候分级。
 这一步只完成 biome 判定，缓存未命中时保留陆地回退，不会把网络等待引入地形
-生成主路径。内陆水面的高度、连通河湖求解和 EarthBiomeSource 的完整特殊
-biome、洞穴策略仍待后续适配。
+生成主路径。地形列现在另有适配器复用 Tellus 的
+`InlandHydrologyPlanner`、`RiverNetwork` 和湖泊水面求解：它使用 Earth 投影
+网格执行既有算法，再把结果写回 canonical 球面列；缺失 OSM 覆盖时保留原始
+地形列。EarthBiomeSource 的完整特殊 biome、洞穴策略仍待后续适配。
 
 另外，真实数据的服务器验证记录在
 `docs/validation/terrain-stability-20261026/summary.json`：
@@ -71,8 +73,8 @@ chunk 持久化的一致性；它不代表完整地貌特性已经接入。
 因此以下机制目前仍属于普通 `tellus:earth` 路径，不能宣称已经融入立方球：
 
 - `EarthBiomeSource` 的气候/覆盖物生物群系选择和雪地缓存；
-- `WaterSurfaceResolver` 的河流、湖泊、海岸和区域水面求解；当前 OSM 内陆水体
-  只参与 biome 判定，尚未参与方块级水面高度；
+- `WaterSurfaceResolver` 的海岸、海底和完整区域水面策略；内陆河湖算法已通过
+  Cube-Net 适配器复用，但仍需要真实数据下的跨面、重载和性能验证；
 - OSM 道路、建筑、水体和沙地的方块级特性填充；
 - 树木、洞穴、矿物、结构及其他 `EarthChunkGenerator` decoration/carver 阶段。
 
