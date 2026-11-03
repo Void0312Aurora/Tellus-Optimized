@@ -130,6 +130,78 @@ class CubeNetChunkGeneratorTest {
    }
 
    @Test
+   void cubeNetBiomeSourceUsesCanonicalWaterAndCover() {
+      var lookup = VanillaRegistries.createLookup().lookupOrThrow(Registries.BIOME);
+      var fallback = new FixedBiomeSource(lookup.getOrThrow(Biomes.PLAINS));
+      var model = SphereWorldModel.forWorldScale(1000.0);
+      var layout = CubeNetLayout.standard(model.config().faceBlocks());
+      var center = layout.toPlanar(new CubeNetLayout.FacePoint(CubeNetLayout.Face.POS_X,
+         layout.faceSize() * 0.5, layout.faceSize() * 0.5));
+      int quartX = Math.floorDiv((int)Math.floor(center.x()), 4);
+      int quartZ = Math.floorDiv((int)Math.floor(center.z()), 4);
+
+      var wet = new CubeNetBiomeSource(lookup, 1000.0, 5, SphereSingularityPolicy.DEFAULT_CONFIG,
+         fallback, (point, resolution) -> new SphereChunkSampler.SurfaceData(-10.0, 80, 0.0));
+      assertTrue(wet.getNoiseBiome(quartX, 0, quartZ, null).is(Biomes.OCEAN));
+
+      var snowy = new CubeNetBiomeSource(lookup, 1000.0, 5, SphereSingularityPolicy.DEFAULT_CONFIG,
+         fallback, (point, resolution) -> new SphereChunkSampler.SurfaceData(10.0, 70));
+      assertTrue(snowy.getNoiseBiome(quartX, 0, quartZ, null).is(Biomes.SNOWY_PLAINS));
+   }
+
+   @Test
+   void cubeNetBiomeSourceCodecUsesTheActiveBiomeRegistry() {
+      var provider = VanillaRegistries.createLookup();
+      var lookup = provider.lookupOrThrow(Registries.BIOME);
+      var fallback = new FixedBiomeSource(lookup.getOrThrow(Biomes.PLAINS));
+      var source = new CubeNetBiomeSource(lookup, 1000.0, 5,
+         SphereSingularityPolicy.DEFAULT_CONFIG, fallback,
+         (point, resolution) -> new SphereChunkSampler.SurfaceData(10.0, 30));
+      var ops = RegistryOps.create(JsonOps.INSTANCE, provider);
+      JsonObject encoded = CubeNetBiomeSource.CODEC.codec().encodeStart(ops, source)
+         .getOrThrow(false, failure -> fail(failure)).getAsJsonObject();
+      assertEquals(1000.0, encoded.get("world_scale").getAsDouble());
+      var restored = CubeNetBiomeSource.CODEC.codec().parse(ops, encoded)
+         .getOrThrow(false, failure -> fail(failure));
+      assertEquals(1000.0, restored.worldScale());
+      assertEquals(5, restored.apronChunks());
+   }
+
+   @Test
+   void cubeNetGeneratorCodecAcceptsTheGeodeticBiomeSource() {
+      var provider = VanillaRegistries.createLookup();
+      var ops = RegistryOps.create(JsonOps.INSTANCE, provider);
+      JsonObject biomeSource = new JsonObject();
+      biomeSource.addProperty("world_scale", 1000.0);
+      biomeSource.addProperty("apron_chunks", 5);
+      biomeSource.addProperty("excluded_radius_meters", 300000.0);
+      biomeSource.addProperty("transition_width_meters", 50000.0);
+      JsonObject fallback = new JsonObject();
+      fallback.addProperty("biome", "minecraft:plains");
+      biomeSource.add("fallback", fallback);
+
+      JsonObject generator = new JsonObject();
+      generator.addProperty("geometry_version", CubeNetChunkGenerator.GEOMETRY_VERSION);
+      generator.addProperty("mapping", SphereWorldModel.MAPPING_ID);
+      generator.addProperty("excluded_radius_meters", 300000.0);
+      generator.addProperty("transition_width_meters", 50000.0);
+      generator.add("biome_source", biomeSource);
+      generator.addProperty("world_scale", 1000.0);
+      generator.addProperty("sea_level", 64);
+      generator.addProperty("min_y", -64);
+      generator.addProperty("height", 384);
+      generator.addProperty("experimental_apron_chunks", 5);
+
+      var restored = CubeNetChunkGenerator.CODEC.parse(ops, generator)
+         .getOrThrow(false, failure -> fail(failure));
+      assertInstanceOf(CubeNetBiomeSource.class, restored.getBiomeSource());
+      assertEquals(1000.0, restored.worldScale());
+      assertEquals(5, restored.apronWidthChunks());
+      biomeSource.addProperty("world_scale", 999.0);
+      assertThrows(IllegalArgumentException.class, () -> CubeNetChunkGenerator.CODEC.parse(ops, generator));
+   }
+
+   @Test
    void materializedColumnsFollowThePlanarOrientationOnEveryFace() {
       for (var face : CubeNetLayout.Face.values()) {
          AtomicInteger calls = new AtomicInteger();

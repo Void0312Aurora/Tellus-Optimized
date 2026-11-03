@@ -11,6 +11,7 @@ import com.yucareux.tellus.platform.FabricTellusRuntimePlatform;
 import com.yucareux.tellus.worldgen.EarthBiomeSource;
 import com.yucareux.tellus.worldgen.EarthChunkGenerator;
 import com.yucareux.tellus.worldgen.CubeNetChunkGenerator;
+import com.yucareux.tellus.worldgen.CubeNetBiomeSource;
 import com.yucareux.tellus.worldgen.CubeNetRuntime;
 import com.yucareux.tellus.worldgen.CubeNetApronChunkSync;
 import com.yucareux.tellus.worldgen.SphereFaceChunkGenerator;
@@ -31,6 +32,7 @@ public final class Tellus extends TellusCommon implements ModInitializer {
    public void onInitialize() {
       TellusCommon.validateRuntime();
       Registry.register(BuiltInRegistries.BIOME_SOURCE, id("earth"), EarthBiomeSource.CODEC);
+      Registry.register(BuiltInRegistries.BIOME_SOURCE, id("cube_net"), CubeNetBiomeSource.CODEC.codec());
       Registry.register(BuiltInRegistries.CHUNK_GENERATOR, id("earth"), EarthChunkGenerator.CODEC);
       Registry.register(BuiltInRegistries.CHUNK_GENERATOR, id("sphere_face"), SphereFaceChunkGenerator.CODEC);
       Registry.register(BuiltInRegistries.CHUNK_GENERATOR, id("cube_net"), CubeNetChunkGenerator.CODEC);

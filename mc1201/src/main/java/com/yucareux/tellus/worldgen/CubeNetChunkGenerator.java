@@ -2,6 +2,7 @@ package com.yucareux.tellus.worldgen;
 
 import com.google.common.base.Preconditions;
 import com.mojang.serialization.Codec;
+import com.mojang.datafixers.util.Either;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import com.yucareux.tellus.worldgen.global.CubeNetAddressAdapter;
 import com.yucareux.tellus.worldgen.global.CubeNetApronResolver;
@@ -26,6 +27,7 @@ import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.server.level.WorldGenRegion;
 import net.minecraft.world.level.biome.BiomeGenerationSettings;
 import net.minecraft.world.level.biome.BiomeManager;
+import net.minecraft.world.level.biome.BiomeSource;
 import net.minecraft.world.level.biome.Climate;
 import net.minecraft.world.level.biome.FixedBiomeSource;
 import net.minecraft.world.level.block.Blocks;
@@ -47,6 +49,15 @@ import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemp
  */
 public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeNetLodSurface {
    public static final int GEOMETRY_VERSION = 3;
+   private static final Codec<BiomeSource> BIOME_SOURCE_CODEC = Codec.either(
+      FixedBiomeSource.CODEC,
+      CubeNetBiomeSource.CODEC.codec()
+   ).xmap(
+      either -> either.map(source -> (BiomeSource)source, source -> (BiomeSource)source),
+      source -> source instanceof FixedBiomeSource fixed
+         ? Either.left(fixed)
+         : Either.right((CubeNetBiomeSource)source)
+   );
    public static final Codec<CubeNetChunkGenerator> CODEC = RecordCodecBuilder.create(instance -> instance.group(
       Codec.intRange(GEOMETRY_VERSION, GEOMETRY_VERSION).fieldOf("geometry_version").forGetter(generator -> GEOMETRY_VERSION),
       Codec.STRING.fieldOf("mapping").forGetter(generator -> generator.model().mappingId()),
@@ -56,7 +67,7 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
       Codec.DOUBLE.optionalFieldOf("transition_width_meters",
          SphereSingularityPolicy.DEFAULT_CONFIG.transitionWidthMeters())
          .forGetter(generator -> generator.singularityConfig().transitionWidthMeters()),
-      FixedBiomeSource.CODEC.fieldOf("biome_source").forGetter(generator -> (FixedBiomeSource)generator.getBiomeSource()),
+      BIOME_SOURCE_CODEC.fieldOf("biome_source").forGetter(ChunkGenerator::getBiomeSource),
       Codec.DOUBLE.fieldOf("world_scale").forGetter(CubeNetChunkGenerator::worldScale),
       Codec.INT.fieldOf("sea_level").forGetter(CubeNetChunkGenerator::getSeaLevel),
       Codec.intRange(-2032, 2016).fieldOf("min_y").forGetter(CubeNetChunkGenerator::getMinY),
@@ -67,8 +78,19 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
       if (!SphereWorldModel.MAPPING_ID.equals(mapping)) {
          throw new IllegalArgumentException("unsupported spherical mapping: " + mapping);
       }
-      return new CubeNetChunkGenerator(biome, scale, sea, min, height,
-         new SphereSingularityPolicy.Config(excludedRadius, transitionWidth), null, apronChunks);
+      SphereSingularityPolicy.Config singularityConfig =
+         new SphereSingularityPolicy.Config(excludedRadius, transitionWidth);
+      if (biome instanceof CubeNetBiomeSource spherical
+         && (Double.compare(spherical.worldScale(), scale) != 0
+            || spherical.apronChunks() != apronChunks
+            || !spherical.singularityConfig().equals(singularityConfig))) {
+         throw new IllegalArgumentException("cube-net biome source does not match generator geometry");
+      }
+      FixedBiomeSource faceBiome = biome instanceof CubeNetBiomeSource spherical
+         ? spherical.fallback()
+         : (FixedBiomeSource)biome;
+      return new CubeNetChunkGenerator(biome, faceBiome, scale, sea, min, height,
+         singularityConfig, apronChunks);
    }));
 
    private final int seaLevel;
@@ -85,21 +107,28 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
    private final SphereSingularityPolicy singularityPolicy;
 
    public CubeNetChunkGenerator(FixedBiomeSource biome, double scale, int seaLevel, int minY, int height) {
-      this(biome, scale, seaLevel, minY, height, SphereSingularityPolicy.DEFAULT_CONFIG, null,
-         CubeNetViewCoverage.DEFAULT_APRON_CHUNKS);
+      this((BiomeSource)biome, biome, scale, seaLevel, minY, height,
+         SphereSingularityPolicy.DEFAULT_CONFIG, CubeNetViewCoverage.DEFAULT_APRON_CHUNKS);
    }
 
    CubeNetChunkGenerator(FixedBiomeSource biome, double scale, int seaLevel, int minY, int height,
       SphereChunkSampler.PointSampler pointSampler) {
-      this(biome, scale, seaLevel, minY, height, pointSampler, CubeNetViewCoverage.DEFAULT_APRON_CHUNKS);
+      this((BiomeSource)biome, biome, scale, seaLevel, minY, height,
+         SphereSingularityPolicy.DEFAULT_CONFIG, pointSampler, CubeNetViewCoverage.DEFAULT_APRON_CHUNKS);
    }
 
    CubeNetChunkGenerator(FixedBiomeSource biome, double scale, int seaLevel, int minY, int height,
       SphereChunkSampler.PointSampler pointSampler, int apronChunks) {
-      this(biome, scale, seaLevel, minY, height, SphereSingularityPolicy.DEFAULT_CONFIG, pointSampler, apronChunks);
+      this((BiomeSource)biome, biome, scale, seaLevel, minY, height,
+         SphereSingularityPolicy.DEFAULT_CONFIG, pointSampler, apronChunks);
    }
 
-   private CubeNetChunkGenerator(FixedBiomeSource biome, double scale, int seaLevel, int minY, int height,
+   private CubeNetChunkGenerator(BiomeSource biome, FixedBiomeSource faceBiome, double scale, int seaLevel, int minY, int height,
+      SphereSingularityPolicy.Config singularityConfig, int apronChunks) {
+      this(biome, faceBiome, scale, seaLevel, minY, height, singularityConfig, null, apronChunks);
+   }
+
+   private CubeNetChunkGenerator(BiomeSource biome, FixedBiomeSource faceBiome, double scale, int seaLevel, int minY, int height,
       SphereSingularityPolicy.Config singularityConfig, SphereChunkSampler.PointSampler pointSampler, int apronChunks) {
       super(biome, ignored -> BiomeGenerationSettings.EMPTY);
       Preconditions.checkArgument(minY % 16 == 0 && height % 16 == 0 && height >= 16
@@ -121,9 +150,9 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
       this.faces = new SphereFaceChunkGenerator[CubeNetLayout.FACE_COUNT];
       for (CubeNetLayout.Face face : CubeNetLayout.Face.values()) {
          this.faces[face.index()] = pointSampler == null
-            ? new SphereFaceChunkGenerator(biome, face.index(), scale, seaLevel, minY, height,
+            ? new SphereFaceChunkGenerator(faceBiome, face.index(), scale, seaLevel, minY, height,
                "", singularityConfig)
-            : new SphereFaceChunkGenerator(biome, face.index(), scale, seaLevel, minY, height, pointSampler);
+            : new SphereFaceChunkGenerator(faceBiome, face.index(), scale, seaLevel, minY, height, pointSampler);
       }
    }
 

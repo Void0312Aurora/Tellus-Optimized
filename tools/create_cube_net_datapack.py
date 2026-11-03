@@ -15,7 +15,7 @@ MAPPING = "rancic-ccam30-double-v1"
 
 
 def create_pack(output: Path, world: str, scale: float, sea: int, min_y: int, height: int,
-                apron_chunks: int = 5) -> list[Path]:
+                apron_chunks: int = 5, geodetic_biomes: bool = False) -> list[Path]:
     if not IDENTIFIER.fullmatch(world):
         raise ValueError("world must be a namespace:path identifier")
     namespace, name = world.split(":", 1)
@@ -51,13 +51,22 @@ def create_pack(output: Path, world: str, scale: float, sea: int, min_y: int, he
         "monster_spawn_block_light_limit": 0,
         "monster_spawn_light_level": 0,
     }
+    biome_source = {"biome": "minecraft:plains"}
+    if geodetic_biomes:
+        biome_source = {
+            "world_scale": scale,
+            "apron_chunks": apron_chunks,
+            "excluded_radius_meters": 300000.0,
+            "transition_width_meters": 50000.0,
+            "fallback": {"biome": "minecraft:plains"},
+        }
     generator = {
         "type": "tellus:cube_net",
         "geometry_version": 3,
         "mapping": MAPPING,
         "excluded_radius_meters": 300000.0,
         "transition_width_meters": 50000.0,
-        "biome_source": {"biome": "minecraft:plains"},
+        "biome_source": biome_source,
         "world_scale": scale,
         "sea_level": sea,
         "min_y": min_y,
@@ -100,10 +109,12 @@ def main() -> None:
                         help="Native mirror band width, 0..35 chunks (default: 5, only for effective view "
                              "and simulation distance 2). For other distances choose "
                              "3 + max(min(client view, server view), server simulation distance).")
+    parser.add_argument("--geodetic-biomes", action="store_true",
+                        help="Use the experimental Cube-Net GeoPoint biome source; default keeps fixed plains.")
     args = parser.parse_args()
     try:
         files = create_pack(args.output, args.world, args.scale, args.sea_level, args.min_y, args.height,
-                            args.apron_chunks)
+                            args.apron_chunks, args.geodetic_biomes)
     except ValueError as error:
         parser.error(str(error))
     print(f"Created {len(files)} files for {args.world}: {args.output}")
