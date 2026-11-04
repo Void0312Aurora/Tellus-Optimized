@@ -663,8 +663,8 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
 
    /**
     * Reuses OSM road/building data only after projecting every vertex through
-    * the canonical face. Cache misses return no geometry and are retried by
-    * the next chunk-detail pass, matching Tellus's no-data contract.
+    * the canonical face. Cache misses return no geometry, matching Tellus's
+    * no-data contract; a later generation or reload can observe the cache.
     */
    private void placeCubeNetFeatures(WorldGenLevel level, ChunkAccess chunk) {
       if (!CUBE_NET_ROADS && !CUBE_NET_BUILDINGS) return;
