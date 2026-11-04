@@ -82,10 +82,11 @@ geological stone patches. It supplies the runner with canonical surface heights,
 a surface-relative underground floor, and a two-column water halo; water columns
 receive the same flood and seabed cover rule before carving. The AIR carving step
 is the only step admitted, so the runner is not invoked twice by the engine. Cave
-noise is not rerun in apron chunks; those remain derived views until their
-post-carver owner projection is implemented. The vanilla horizontal noise seed
-still follows the planar chunk coordinate; a spherical seam-continuous cave seed
-requires a separate 3D sampler and remains open.
+noise is not independently rerun in apron chunks. Instead, the canonical owner
+terrain is carved once in a temporary owner chunk and its complete vertical
+state is seam-rotated into the derived view. The vanilla horizontal noise seed
+still follows the canonical owner's planar chunk coordinate; a spherical
+seam-continuous cave seed requires a separate 3D sampler and remains open.
 
 Cube-Net also exposes geodetic OSM feature queries and a canonical projector for
 roads/buildings. Every returned vertex carries its owning face coordinates and

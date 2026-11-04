@@ -9,6 +9,7 @@ import com.yucareux.tellus.worldgen.tree.TellusProceduralTreeGenerator;
 import com.yucareux.tellus.worldgen.global.CubeNetAddressAdapter;
 import com.yucareux.tellus.worldgen.global.CubeNetApronResolver;
 import com.yucareux.tellus.worldgen.global.CubeNetLayout;
+import com.yucareux.tellus.worldgen.global.CubeNetSeamTransform;
 import com.yucareux.tellus.worldgen.global.CubeNetRemoteProjection;
 import com.yucareux.tellus.worldgen.global.SphereChunkSampler;
 import com.yucareux.tellus.worldgen.global.SphereSingularityPolicy;
@@ -23,6 +24,7 @@ import com.yucareux.tellus.worldgen.building.TellusBuildingMaterials;
 import com.yucareux.tellus.worldgen.building.TellusBuildingProfiles;
 import com.yucareux.tellus.worldgen.caves.TellusNoiseSettingsAdapter;
 import com.yucareux.tellus.worldgen.caves.TellusVanillaCarverRunner;
+import com.yucareux.tellus.compat.MinecraftVersionCompat;
 import com.yucareux.tellus.worldgen.UndergroundStructureExclusion;
 import com.yucareux.tellus.world.data.osm.OsmQueryMode;
 import java.util.Arrays;
@@ -55,6 +57,8 @@ import net.minecraft.world.level.biome.FixedBiomeSource;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.ChunkAccess;
+import net.minecraft.world.level.chunk.ProtoChunk;
+import net.minecraft.world.level.chunk.UpgradeData;
 import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.level.chunk.ChunkGeneratorStructureState;
 import net.minecraft.world.level.levelgen.structure.StructureSet;
@@ -461,8 +465,7 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
       SphereWorldModel.SphereChunkAddress address = this.address(chunk.getPos())
          .filter(this.singularityPolicy::admitsTerrainMaterialization).orElse(null);
       if (address == null) {
-         // Apron chunks are derived views. Re-running the noise field here
-         // would create a second cave identity with a different flat seed.
+         this.applyCarversToApron(level, seed, biomes, structures, chunk);
          return;
       }
       UndergroundColumns columns = this.undergroundColumns(chunk.getPos());
@@ -523,6 +526,66 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
    }
 
    record UndergroundColumns(int[] surfaceY, int[] floodGuardY, int[] generationFloorY, IntBinaryOperator surfaceSampler) { }
+
+   /** Runs the owner once in a temporary canonical chunk, then mirrors every Y. */
+   private void applyCarversToApron(
+      WorldGenRegion level, long seed, BiomeManager biomes, StructureManager structures, ChunkAccess apron
+   ) {
+      CubeNetApronResolver.ChunkProjection projection = this.apronProjection(apron.getPos()).orElse(null);
+      if (projection == null) return;
+      SphereWorldModel.SphereChunkAddress ownerAddress = new SphereWorldModel.SphereChunkAddress(
+         projection.targetFace().index(), projection.targetChunkX(), projection.targetChunkZ());
+      ChunkPos ownerPos = CubeNetApronChunkSync.canonicalChunkPosition(this.adapter.layout(), projection);
+      Registry<net.minecraft.world.level.biome.Biome> biomeRegistry =
+         level.registryAccess().registryOrThrow(Registries.BIOME);
+      ProtoChunk owner = new ProtoChunk(ownerPos, UpgradeData.EMPTY,
+         apron.getHeightAccessorForGeneration(), biomeRegistry, null);
+      this.fillFromCanonical(owner, ownerAddress);
+      UndergroundColumns columns = this.undergroundColumns(ownerPos);
+      this.getCubeNetCarverRunner(level.registryAccess()).applyCarvers(
+         level,
+         seed,
+         biomes,
+         structures,
+         owner,
+         this.seaLevel,
+         CUBE_NET_CAVES,
+         CUBE_NET_CAVES_REACH_SURFACE,
+         CUBE_NET_ORE_VEINS,
+         CUBE_NET_GEOLOGICAL_STONE,
+         columns.surfaceY(),
+         columns.surfaceSampler(),
+         columns.floodGuardY(),
+         columns.generationFloorY(),
+         List.of()
+      );
+
+      CubeNetLayout.Seam seam = this.adapter.layout().seam(projection.sourceFace(), projection.sourceSide());
+      net.minecraft.world.level.block.Rotation rotation = CubeNetApronChunkSync.rotation(
+         new CubeNetSeamTransform(this.adapter.layout(), seam)
+            .targetToSourceClockwiseQuarterTurns().orElseThrow());
+      BlockPos.MutableBlockPos sourcePos = new BlockPos.MutableBlockPos();
+      BlockPos.MutableBlockPos targetPos = new BlockPos.MutableBlockPos();
+      for (int localZ = 0; localZ < 16; localZ++) for (int localX = 0; localX < 16; localX++) {
+         int targetX = projection.targetBlockX(localX, localZ);
+         int targetZ = projection.targetBlockZ(localX, localZ);
+         CubeNetLayout.PlanarPoint ownerPoint = this.adapter.layout().toPlanar(new CubeNetLayout.FacePoint(
+            projection.targetFace(), targetX + 0.5, targetZ + 0.5));
+         int ownerX = (int)Math.floor(ownerPoint.x());
+         int ownerZ = (int)Math.floor(ownerPoint.z());
+         for (int y = this.minY; y < this.maxY(); y++) {
+            sourcePos.set(ownerX, y, ownerZ);
+            BlockState state = owner.getBlockState(sourcePos).rotate(rotation);
+            int targetXWorld = apron.getPos().getMinBlockX() + localX;
+            int targetZWorld = apron.getPos().getMinBlockZ() + localZ;
+            targetPos.set(targetXWorld, y, targetZWorld);
+            MinecraftVersionCompat.setBlockState(apron, targetPos, state);
+            if (apron instanceof ProtoChunk proto && !state.getFluidState().isEmpty()) {
+               MinecraftVersionCompat.markPosForPostProcessing(proto, targetPos);
+            }
+         }
+      }
+   }
    @Override public void applyBiomeDecoration(WorldGenLevel level, ChunkAccess chunk, StructureManager structures) {
       this.placeCubeNetFeatures(level, chunk);
       this.placeCubeNetTrees(level, chunk);
