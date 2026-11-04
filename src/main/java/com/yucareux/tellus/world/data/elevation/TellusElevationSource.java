@@ -830,6 +830,17 @@ public final class TellusElevationSource implements TellusCacheHandle {
          : this.sampleOpenWatersBathymetry(blockX, blockZ, worldScale, requestedResolutionMeters);
    }
 
+   /** OpenWaters bathymetry sampled from the canonical spherical coordinate. */
+   public double sampleOpenWatersElevationMeters(
+      SphereWorldModel.GeoPoint point, double worldScale, double requestedResolutionMeters
+   ) {
+      Objects.requireNonNull(point, "point");
+      if (!(worldScale > 0.0) || !Double.isFinite(worldScale)) return Double.NaN;
+      double blockX = EarthProjection.longitudeToBlockX(point.longitude(), worldScale);
+      double blockZ = EarthProjection.latToBlockZ(point.latitude(), worldScale);
+      return this.sampleOpenWatersElevationMeters(blockX, blockZ, worldScale, requestedResolutionMeters);
+   }
+
    public double samplePreviewOceanElevationMetersLocalOnly(double blockX, double blockZ, double worldScale, double previewResolutionMeters) {
       return this.samplePreviewOceanElevationMetersLocalOnly(
          blockX, blockZ, worldScale, EarthGeneratorSettings.DEFAULT.demSelection(), previewResolutionMeters

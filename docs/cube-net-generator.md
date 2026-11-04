@@ -45,13 +45,14 @@ ESA + Köppen land classification for snow/ice, bare ground, wetland, mangrove
 and vegetated cover. Suspected water-like land-cover columns also make a
 geodetic, non-blocking OSM water query; a mapped inland feature gets the vanilla
 river biome, while an ocean hint reuses the ocean climate path. This first
-inland-water step only classifies the biome and deliberately does not block
-terrain generation on a cache miss. The canonical water-surface levels,
-connected lake/river solver are now adapted through Tellus's existing
+inland-water step now also applies canonical terrain and water levels through
+Tellus's existing
 `InlandHydrologyPlanner` and `RiverNetwork`: the adapter runs that Earth-grid
 solver on geodetic coordinates and maps its terrain samples back to canonical
-sphere columns. A missing OSM tile falls back to the unmodified terrain column;
-the full surface/cave policy from `EarthBiomeSource` remains separate work.
+sphere columns. Ocean columns additionally use the OpenWaters bathymetry
+adapter; unavailable OSM or bathymetry coverage falls back to the existing
+column. The full surface/cave policy from `EarthBiomeSource` remains separate
+work.
 
 `CubeNetRuntime` enables same-Level routing only when exactly one loaded Level
 uses this generator. The five edges that touch directly in the planar net use
@@ -59,6 +60,13 @@ ordinary movement. The other seven physical face pairs preload the target area,
 transform horizontal velocity and yaw, probe the translated bounding box, then
 complete the move. A corner crossing is held because cube vertices are outside
 the ordinary face policy.
+
+The canonical terrain path now also carries Tellus's offline GLiM/Macrostrat
+geology result into `StrataPolicy`: native columns, LOD columns and derived
+apron columns use the same geodetic rock profile. Ocean columns reuse the
+OpenWaters bathymetry lookup through a spherical adapter; a missing bathymetry
+sample keeps the existing DEM floor and never invents ocean membership. The
+Macrostrat overlay is opt-in, while the bundled GLiM lookup remains offline.
 
 This remains a wiring and compatibility prototype. Cut-edge apron chunks are
 now generated as derived native `LevelChunk` instances from canonical face

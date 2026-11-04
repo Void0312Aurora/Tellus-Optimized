@@ -117,7 +117,17 @@ public final class TellusWorldgenSources {
    public static SphereChunkSampler.PointSampler cubeNetPointSampler(SphereWorldModel model, int seaLevel) {
       SphereChunkSampler terrain = sphericalSampler(Objects.requireNonNull(model, "model"));
       CubeNetInlandWaterResolver water = new CubeNetInlandWaterResolver(model, seaLevel, terrain, OSM_WATER);
-      return (point, resolutionMeters) -> water.apply(point, terrain.samplePoint(point, resolutionMeters));
+      CubeNetOceanSurfaceResolver ocean = new CubeNetOceanSurfaceResolver(
+         model.config().worldScale(),
+         (point, scale, resolution) -> ELEVATION.sampleOpenWatersElevationMeters(point, scale, resolution)
+      );
+      boolean synthetic = Boolean.getBoolean("tellus.sphere.syntheticSampler");
+      return (point, resolutionMeters) -> {
+         SphereChunkSampler.SurfaceData base = terrain.samplePoint(point, resolutionMeters);
+         if (synthetic) return water.apply(point, base);
+         SphereChunkSampler.SurfaceData inland = water.apply(point, base);
+         return ocean.apply(point, inland, resolutionMeters);
+      };
    }
 
    /**
