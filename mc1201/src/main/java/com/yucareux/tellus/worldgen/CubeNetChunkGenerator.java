@@ -667,16 +667,23 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
     * the next chunk-detail pass, matching Tellus's no-data contract.
     */
    private void placeCubeNetFeatures(WorldGenLevel level, ChunkAccess chunk) {
-      if ((!CUBE_NET_ROADS && !CUBE_NET_BUILDINGS) || this.address(chunk.getPos()).isEmpty()) return;
+      if (!CUBE_NET_ROADS && !CUBE_NET_BUILDINGS) return;
       SphereWorldModel.SphereChunkAddress address = this.address(chunk.getPos())
          .filter(this.singularityPolicy::admitsTerrainMaterialization).orElse(null);
-      if (address == null) return;
+      CubeNetApronResolver.ChunkProjection apron = address == null ? this.apronProjection(chunk.getPos()).orElse(null) : null;
+      if (address == null && apron == null) return;
+      ChunkPos queryPos = address == null
+         ? CubeNetApronChunkSync.canonicalChunkPosition(this.adapter.layout(), apron)
+         : chunk.getPos();
+      SphereWorldModel.SphereChunkAddress queryAddress = address == null
+         ? new SphereWorldModel.SphereChunkAddress(apron.targetFace().index(), apron.targetChunkX(), apron.targetChunkZ())
+         : address;
       SphereChunkSampler.FeatureData data = this.sampleFeatures(
-         chunk.getPos(), 96.0, OsmQueryMode.NON_BLOCKING).orElse(null);
+         queryPos, 96.0, OsmQueryMode.NON_BLOCKING).orElse(null);
       if (data == null) return;
-      CubeNetLayout.Face face = CubeNetLayout.Face.of(address.face());
-      int minX = Math.toIntExact(address.blockX());
-      int minZ = Math.toIntExact(address.blockZ());
+      CubeNetLayout.Face face = CubeNetLayout.Face.of(queryAddress.face());
+      int minX = Math.toIntExact(queryAddress.blockX());
+      int minZ = Math.toIntExact(queryAddress.blockZ());
       int maxX = minX + 15;
       int maxZ = minZ + 15;
       if (CUBE_NET_ROADS) {
@@ -684,13 +691,58 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
             if (road.mode() != RoadMode.NORMAL) continue;
             for (CubeNetFeatureRasterizer.FaceCell cell : CubeNetFeatureRasterizer.roadCells(
                this.model, this.adapter.layout(), road, face, minX, minZ, maxX, maxZ, this.worldScale())) {
-               this.placeFeatureBlock(level, chunk, cell, this.cubeNetRoadState(road, cell.x(), cell.z()));
+               BlockState state = this.cubeNetRoadState(road, cell.x(), cell.z());
+               if (apron == null) this.placeFeatureBlock(level, chunk, cell, state);
+               else this.placeApronFeatureBlock(level, chunk, apron, cell, state);
             }
          }
       }
       if (CUBE_NET_BUILDINGS) {
          for (OsmBuildingFeature building : data.buildings().features()) {
-            this.placeCubeNetBuilding(level, chunk, building, face, minX, minZ, maxX, maxZ);
+            if (apron == null) this.placeCubeNetBuilding(level, chunk, building, face, minX, minZ, maxX, maxZ);
+            else this.placeCubeNetApronBuilding(level, chunk, apron, building, face, minX, minZ, maxX, maxZ);
+         }
+      }
+   }
+
+   private void placeCubeNetApronBuilding(
+      WorldGenLevel level, ChunkAccess chunk, CubeNetApronResolver.ChunkProjection apron,
+      OsmBuildingFeature building, CubeNetLayout.Face face, int minX, int minZ, int maxX, int maxZ
+   ) {
+      List<CubeNetFeatureRasterizer.FaceCell> cells = CubeNetFeatureRasterizer.buildingCells(
+         this.model, this.adapter.layout(), building, face, minX - 1, minZ - 1, maxX + 1, maxZ + 1);
+      if (cells.isEmpty()) return;
+      var centroid = com.yucareux.tellus.worldgen.global.CubeNetFeatureProjector.project(
+         this.model, this.adapter.layout(), building.centroidLat(), building.centroidLon()).orElse(null);
+      if (centroid == null || centroid.face() != face.index()) return;
+      int groundY;
+      BuildingProfile profile;
+      TellusBuildingMaterials.BuildingMaterialPalette palette;
+      int height;
+      try {
+         groundY = this.surfaceYAtPlanar((int)Math.floor(centroid.planarX()), (int)Math.floor(centroid.planarZ()),
+            new HashMap<>(), new HashMap<>());
+         profile = TellusBuildingProfiles.resolveProfile(building, this.worldScale(), null, false);
+         palette = TellusBuildingMaterials.resolvePalette(profile, building.featureId() ^ this.worldSeed);
+         height = Math.max(3, TellusBuildingProfiles.heightBlocks(building, this.worldScale()));
+      } catch (RuntimeException unavailableTerrain) {
+         return;
+      }
+      java.util.Set<Long> occupied = new java.util.HashSet<>();
+      for (var cell : cells) occupied.add(packFaceCell(cell.x(), cell.z()));
+      for (var cell : cells) {
+         if (cell.x() < minX || cell.x() > maxX || cell.z() < minZ || cell.z() > maxZ) continue;
+         boolean boundary = !occupied.contains(packFaceCell(cell.x() - 1, cell.z()))
+            || !occupied.contains(packFaceCell(cell.x() + 1, cell.z()))
+            || !occupied.contains(packFaceCell(cell.x(), cell.z() - 1))
+            || !occupied.contains(packFaceCell(cell.x(), cell.z() + 1));
+         int[] local = this.sourceLocalForTarget(apron, cell.x(), cell.z());
+         if (local == null) continue;
+         for (int y = groundY; y <= groundY + height; y++) {
+            BlockState state = y == groundY ? palette.floor()
+               : y == groundY + height ? palette.roof()
+               : boundary ? palette.wall() : Blocks.AIR.defaultBlockState();
+            this.placeApronFeatureBlock(level, chunk, apron, cell, state, y, local);
          }
       }
    }
@@ -700,7 +752,7 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
       int minX, int minZ, int maxX, int maxZ
    ) {
       List<CubeNetFeatureRasterizer.FaceCell> cells = CubeNetFeatureRasterizer.buildingCells(
-         this.model, this.adapter.layout(), building, face, minX, minZ, maxX, maxZ);
+         this.model, this.adapter.layout(), building, face, minX - 1, minZ - 1, maxX + 1, maxZ + 1);
       if (cells.isEmpty()) return;
       SphereWorldModel.GeoPoint centroid = new SphereWorldModel.GeoPoint(
          building.centroidLat(), building.centroidLon(), 0.0);
@@ -724,6 +776,7 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
       java.util.Set<Long> occupied = new java.util.HashSet<>();
       for (CubeNetFeatureRasterizer.FaceCell cell : cells) occupied.add(packFaceCell(cell.x(), cell.z()));
       for (CubeNetFeatureRasterizer.FaceCell cell : cells) {
+         if (cell.x() < minX || cell.x() > maxX || cell.z() < minZ || cell.z() > maxZ) continue;
          boolean boundary = !occupied.contains(packFaceCell(cell.x() - 1, cell.z()))
             || !occupied.contains(packFaceCell(cell.x() + 1, cell.z()))
             || !occupied.contains(packFaceCell(cell.x(), cell.z() - 1))
@@ -757,6 +810,34 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
          || y < this.minY || y >= this.maxY()) return;
       BlockPos pos = new BlockPos(worldX, y, worldZ);
       level.setBlock(pos, state, 2);
+   }
+
+   private void placeApronFeatureBlock(WorldGenLevel level, ChunkAccess chunk,
+      CubeNetApronResolver.ChunkProjection apron, CubeNetFeatureRasterizer.FaceCell cell, BlockState state) {
+      int[] local = this.sourceLocalForTarget(apron, cell.x(), cell.z());
+      if (local == null) return;
+      int worldX = chunk.getPos().getMinBlockX() + local[0];
+      int worldZ = chunk.getPos().getMinBlockZ() + local[1];
+      int y = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, worldX, worldZ) - 1;
+      this.placeApronFeatureBlock(level, chunk, apron, cell, state, y + 1, local);
+   }
+
+   private void placeApronFeatureBlock(WorldGenLevel level, ChunkAccess chunk,
+      CubeNetApronResolver.ChunkProjection apron, CubeNetFeatureRasterizer.FaceCell cell,
+      BlockState state, int y, int[] local) {
+      if (y < this.minY || y >= this.maxY()) return;
+      BlockPos pos = new BlockPos(chunk.getPos().getMinBlockX() + local[0], y,
+         chunk.getPos().getMinBlockZ() + local[1]);
+      level.setBlock(pos, state, 2);
+   }
+
+   private int[] sourceLocalForTarget(CubeNetApronResolver.ChunkProjection apron, int targetX, int targetZ) {
+      for (int localZ = 0; localZ < 16; localZ++) for (int localX = 0; localX < 16; localX++) {
+         if (apron.targetBlockX(localX, localZ) == targetX && apron.targetBlockZ(localX, localZ) == targetZ) {
+            return new int[]{localX, localZ};
+         }
+      }
+      return null;
    }
 
    private BlockState cubeNetRoadState(RoadFeature road, int x, int z) {

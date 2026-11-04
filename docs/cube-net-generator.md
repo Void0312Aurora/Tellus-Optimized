@@ -95,6 +95,10 @@ surface style and building material/profile rules for ordinary, same-face
 geometry. Bridge/tunnel modes and polygons that cross a face are quarantined
 until their seam ownership adapter is available. A cache miss remains an empty
 feature set and never invents geometry.
+Canonical feature blocks are projected into loaded apron views through the same
+owner-to-source seam transform; apron decoration does not issue a second OSM
+query or select a different foundation height. Building edge tests include a
+one-cell owner halo so walls do not repeat at chunk boundaries.
 
 Vanilla structure starts and references are likewise created only on canonical
 chunks; apron views do not create duplicate starts. Structure block projection
