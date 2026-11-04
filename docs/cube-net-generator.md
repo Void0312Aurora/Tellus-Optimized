@@ -73,6 +73,11 @@ canonical surface. `MountainSurfaceRules`, `SurfaceMaterialDepthPolicy` and
 input; native columns and distant-horizon LOD reuse the same decision. When
 slope coverage is unavailable, the previous cover-class palette and three-block
 surface fallback remain in force.
+Canonical land-cover tree anchors now reuse Tellus's ETH canopy-height sample
+and procedural tree generator. Only the owning face chunk decorates an anchor;
+apron chunks do not own trees. Cave/ore carvers, OSM roads/buildings and vanilla
+structure placement still require a separate Cube-Net adapter because their
+current runners assume a planar Earth generator context.
 
 This remains a wiring and compatibility prototype. Cut-edge apron chunks are
 now generated as derived native `LevelChunk` instances from canonical face
