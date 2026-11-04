@@ -762,6 +762,51 @@ public final class TellusElevationSource implements TellusCacheHandle {
       return new TerrainSlopePolicy.Neighbourhood(gradient, relief);
    }
 
+   /**
+    * Spherical equivalent of {@link #sampleTerrainNeighbourhoodAtResolution(double, double, double, double)}.
+    * The four neighbours are made by the cubed-sphere exponential map, so a
+    * Cube-Net face edge never changes the slope frame or the source lookup.
+    */
+   public TerrainSlopePolicy.Neighbourhood sampleTerrainNeighbourhoodAtResolution(
+      SphereWorldModel.GeoPoint point, double worldScale, double resolutionMeters
+   ) {
+      Objects.requireNonNull(point, "point");
+      if (!(worldScale > 0.0) || !Double.isFinite(worldScale)) {
+         return TerrainSlopePolicy.Neighbourhood.MISSING;
+      }
+      double sampleResolutionMeters = Double.isFinite(resolutionMeters)
+         ? Math.max(worldScale, resolutionMeters) : worldScale;
+      int stepBlocks = Math.max(TerrainSlopePolicy.SAMPLE_RADIUS_BLOCKS,
+         (int)Math.min(1_000_000.0, Math.ceil(sampleResolutionMeters / worldScale)));
+      double stepMeters = stepBlocks * worldScale;
+      SphereWorldModel.GeoPoint east = SphereWorldModel.expandFrom(
+         point, new SphereWorldModel.LocalOffset(stepMeters, 0.0), 12);
+      SphereWorldModel.GeoPoint west = SphereWorldModel.expandFrom(
+         point, new SphereWorldModel.LocalOffset(-stepMeters, 0.0), 12);
+      SphereWorldModel.GeoPoint north = SphereWorldModel.expandFrom(
+         point, new SphereWorldModel.LocalOffset(0.0, stepMeters), 12);
+      SphereWorldModel.GeoPoint south = SphereWorldModel.expandFrom(
+         point, new SphereWorldModel.LocalOffset(0.0, -stepMeters), 12);
+      double center = this.samplePreviewElevationMeters(point, worldScale, false, sampleResolutionMeters);
+      double eastHeight = this.samplePreviewElevationMeters(east, worldScale, false, sampleResolutionMeters);
+      double westHeight = this.samplePreviewElevationMeters(west, worldScale, false, sampleResolutionMeters);
+      double northHeight = this.samplePreviewElevationMeters(north, worldScale, false, sampleResolutionMeters);
+      double southHeight = this.samplePreviewElevationMeters(south, worldScale, false, sampleResolutionMeters);
+      TerrainSlopePolicy.Gradient gradient = TerrainSlopePolicy.localGradient(
+         center, eastHeight, westHeight, northHeight, southHeight, stepMeters, stepMeters
+      );
+      double low = Double.POSITIVE_INFINITY;
+      double high = Double.NEGATIVE_INFINITY;
+      for (double height : new double[]{center, eastHeight, westHeight, northHeight, southHeight}) {
+         if (Double.isFinite(height)) {
+            low = Math.min(low, height);
+            high = Math.max(high, height);
+         }
+      }
+      double relief = high >= low ? (high - low) / (2.0 * stepMeters) : Double.NaN;
+      return new TerrainSlopePolicy.Neighbourhood(gradient, relief);
+   }
+
    public TellusElevationSource.ResolvedElevationSample sampleResolvedPreviewElevationMetersMemoryOnly(
       double blockX,
       double blockZ,

@@ -138,25 +138,41 @@ public final class SphereChunkSampler {
       int coverClass,
       double waterSurfaceMeters,
       WaterKind waterKind,
-      GeologyData geology
+      GeologyData geology,
+      com.yucareux.tellus.worldgen.TerrainSlopePolicy.Neighbourhood neighbourhood
    ) {
       public SurfaceData(double elevationMeters, int coverClass) {
-         this(elevationMeters, coverClass, Double.NaN, WaterKind.NONE, null);
+         this(elevationMeters, coverClass, Double.NaN, WaterKind.NONE, null,
+            com.yucareux.tellus.worldgen.TerrainSlopePolicy.Neighbourhood.MISSING);
       }
       public SurfaceData(double elevationMeters, int coverClass, double waterSurfaceMeters) {
          this(elevationMeters, coverClass, waterSurfaceMeters,
-            Double.isFinite(waterSurfaceMeters) ? WaterKind.OCEAN : WaterKind.NONE, null);
+            Double.isFinite(waterSurfaceMeters) ? WaterKind.OCEAN : WaterKind.NONE, null,
+            com.yucareux.tellus.worldgen.TerrainSlopePolicy.Neighbourhood.MISSING);
       }
       public SurfaceData(double elevationMeters, int coverClass, double waterSurfaceMeters, WaterKind waterKind) {
-         this(elevationMeters, coverClass, waterSurfaceMeters, waterKind, null);
+         this(elevationMeters, coverClass, waterSurfaceMeters, waterKind, null,
+            com.yucareux.tellus.worldgen.TerrainSlopePolicy.Neighbourhood.MISSING);
+      }
+      public SurfaceData(double elevationMeters, int coverClass, double waterSurfaceMeters,
+         WaterKind waterKind, GeologyData geology) {
+         this(elevationMeters, coverClass, waterSurfaceMeters, waterKind, geology,
+            com.yucareux.tellus.worldgen.TerrainSlopePolicy.Neighbourhood.MISSING);
       }
       public SurfaceData {
          Objects.requireNonNull(waterKind, "waterKind");
+         Objects.requireNonNull(neighbourhood, "neighbourhood");
          if (!Double.isNaN(waterSurfaceMeters)
             && (!Double.isFinite(waterSurfaceMeters) || !Double.isFinite(elevationMeters)
                || waterSurfaceMeters < elevationMeters)) {
             throw new IllegalArgumentException("water surface requires finite terrain at or below it");
          }
+      }
+      public SurfaceData withNeighbourhood(
+         com.yucareux.tellus.worldgen.TerrainSlopePolicy.Neighbourhood value
+      ) {
+         return new SurfaceData(this.elevationMeters, this.coverClass, this.waterSurfaceMeters,
+            this.waterKind, this.geology, Objects.requireNonNull(value, "neighbourhood"));
       }
       public boolean elevationAvailable() { return Double.isFinite(this.elevationMeters); }
       public boolean waterAvailable() { return Double.isFinite(this.waterSurfaceMeters); }

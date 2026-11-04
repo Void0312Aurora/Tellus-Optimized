@@ -126,7 +126,13 @@ public final class TellusWorldgenSources {
          SphereChunkSampler.SurfaceData base = terrain.samplePoint(point, resolutionMeters);
          if (synthetic) return water.apply(point, base);
          SphereChunkSampler.SurfaceData inland = water.apply(point, base);
-         return ocean.apply(point, inland, resolutionMeters);
+         SphereChunkSampler.SurfaceData resolved = ocean.apply(point, inland, resolutionMeters);
+         // Tellus already owns a geodetic neighbourhood sampler for slope and
+         // snow rules. Attach it after hydrology/bathymetry so all later
+         // materializers consume one canonical surface sample.
+         return resolved.withNeighbourhood(ELEVATION.sampleTerrainNeighbourhoodAtResolution(
+            point, model.config().worldScale(), resolutionMeters
+         ));
       };
    }
 

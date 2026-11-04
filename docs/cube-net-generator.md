@@ -67,6 +67,12 @@ apron columns use the same geodetic rock profile. Ocean columns reuse the
 OpenWaters bathymetry lookup through a spherical adapter; a missing bathymetry
 sample keeps the existing DEM floor and never invents ocean membership. The
 Macrostrat overlay is opt-in, while the bundled GLiM lookup remains offline.
+The same path now attaches Tellus's geodetic slope neighbourhood to each
+canonical surface. `MountainSurfaceRules`, `SurfaceMaterialDepthPolicy` and
+`DeepslateSlopePolicy` choose the surface palette and depth from that canonical
+input; native columns and distant-horizon LOD reuse the same decision. When
+slope coverage is unavailable, the previous cover-class palette and three-block
+surface fallback remain in force.
 
 This remains a wiring and compatibility prototype. Cut-edge apron chunks are
 now generated as derived native `LevelChunk` instances from canonical face

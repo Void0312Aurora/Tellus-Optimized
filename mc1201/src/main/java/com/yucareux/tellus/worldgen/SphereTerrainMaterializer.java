@@ -64,7 +64,7 @@ public final class SphereTerrainMaterializer {
             } else {
                writer.fillStrataSpan(x, z, minY, plan.surfaceY() - 1, minY, plan.strata());
             }
-            writer.fillSurfaceColumn(x, z, plan.surfaceY(), Math.max(minY + 1, plan.surfaceY() - 3),
+            writer.fillSurfaceColumn(x, z, plan.surfaceY(), Math.max(minY + 1, plan.surfaceY() - plan.surfaceDepth()),
                plan.top(), plan.filler());
             writer.setBlock(x, z, minY, Blocks.BEDROCK.defaultBlockState());
             writer.fillColumnConstant(x, z, plan.surfaceY() + 1, plan.waterY(), Blocks.WATER.defaultBlockState());
@@ -89,12 +89,18 @@ public final class SphereTerrainMaterializer {
             + "]; chunk supports [" + (minY + 1) + ", " + (maxY - 1) + "]");
       }
       Palette palette = palette(data.coverClass());
-      return new ColumnPlan(surfaceY, waterY, palette.top(), palette.filler(), null);
+      return new ColumnPlan(surfaceY, waterY, palette.top(), palette.filler(), 3, null);
    }
 
    ColumnPlan plan(SphereColumnContext column, int minY, int maxY) {
       Objects.requireNonNull(column, "column");
       ColumnPlan base = this.plan(column.surface(), minY, maxY);
+      CubeNetSurfacePolicy.Decision surface = CubeNetSurfacePolicy.resolve(
+         column.point(), column.surface(), this.worldScale, this.worldSeed
+      );
+      Palette palette = palette(surface);
+      base = new ColumnPlan(base.surfaceY(), base.waterY(), palette.top(), palette.filler(),
+         surface.depth(), base.strata());
       StrataPolicy.Column strata = this.strata(column);
       return strata == null ? base : base.withStrata(strata);
    }
@@ -118,7 +124,7 @@ public final class SphereTerrainMaterializer {
       BlockState state = plan.stateAt(minY, minY);
       // There are at most six changes; visit only their boundary positions.
       var boundaries = new java.util.TreeSet<Integer>();
-      for (int boundary : new int[]{minY + 1, plan.surfaceY() - 3, plan.surfaceY(),
+      for (int boundary : new int[]{minY + 1, plan.surfaceY() - plan.surfaceDepth(), plan.surfaceY(),
          plan.surfaceY() + 1, plan.waterY() + 1, maxY}) {
          if (boundary > minY && boundary <= maxY) boundaries.add(boundary);
       }
@@ -154,10 +160,34 @@ public final class SphereTerrainMaterializer {
       };
    }
 
+   private static Palette palette(CubeNetSurfacePolicy.Decision decision) {
+      return new Palette(state(decision.top()), state(decision.filler()));
+   }
+
+   private static BlockState state(CubeNetSurfacePolicy.Material material) {
+      return switch (material) {
+         case GRASS -> Blocks.GRASS_BLOCK.defaultBlockState();
+         case DIRT -> Blocks.DIRT.defaultBlockState();
+         case SAND -> Blocks.SAND.defaultBlockState();
+         case SANDSTONE -> Blocks.SANDSTONE.defaultBlockState();
+         case SNOW -> Blocks.SNOW_BLOCK.defaultBlockState();
+         case POWDER_SNOW -> Blocks.POWDER_SNOW.defaultBlockState();
+         case STONE -> Blocks.STONE.defaultBlockState();
+         case GRAVEL -> Blocks.GRAVEL.defaultBlockState();
+         case ANDESITE -> Blocks.ANDESITE.defaultBlockState();
+         case DIORITE -> Blocks.DIORITE.defaultBlockState();
+         case COBBLESTONE -> Blocks.COBBLESTONE.defaultBlockState();
+         case PACKED_ICE -> Blocks.PACKED_ICE.defaultBlockState();
+         case BLUE_ICE -> Blocks.BLUE_ICE.defaultBlockState();
+         case MUD -> Blocks.MUD.defaultBlockState();
+      };
+   }
+
    record Palette(BlockState top, BlockState filler) { }
-   record ColumnPlan(int surfaceY, int waterY, BlockState top, BlockState filler, StrataPolicy.Column strata) {
+   record ColumnPlan(int surfaceY, int waterY, BlockState top, BlockState filler, int surfaceDepth,
+      StrataPolicy.Column strata) {
       ColumnPlan withStrata(StrataPolicy.Column strata) {
-         return new ColumnPlan(this.surfaceY, this.waterY, this.top, this.filler, strata);
+         return new ColumnPlan(this.surfaceY, this.waterY, this.top, this.filler, this.surfaceDepth, strata);
       }
       int topY() { return Math.max(this.surfaceY, this.waterY); }
       BlockState stateAt(int y, int minY) {
@@ -165,7 +195,7 @@ public final class SphereTerrainMaterializer {
          if (y == minY) return Blocks.BEDROCK.defaultBlockState();
          if (y > this.surfaceY) return Blocks.WATER.defaultBlockState();
          if (y == this.surfaceY) return this.top;
-         if (y >= this.surfaceY - 3) return this.filler;
+         if (y >= this.surfaceY - this.surfaceDepth) return this.filler;
          return this.strata == null ? Blocks.STONE.defaultBlockState() : StrataMaterials.state(this.strata.material(y));
       }
    }

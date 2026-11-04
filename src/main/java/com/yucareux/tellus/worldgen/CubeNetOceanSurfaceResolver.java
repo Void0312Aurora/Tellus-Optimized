@@ -29,7 +29,8 @@ public final class CubeNetOceanSurfaceResolver {
       floor = Math.min(floor, waterSurface - MIN_OCEAN_DEPTH_METERS);
       if (!Double.isFinite(floor) || floor >= waterSurface) return surface;
       return new SphereChunkSampler.SurfaceData(
-         floor, surface.coverClass(), waterSurface, SphereChunkSampler.SurfaceData.WaterKind.OCEAN, surface.geology()
+         floor, surface.coverClass(), waterSurface, SphereChunkSampler.SurfaceData.WaterKind.OCEAN,
+         surface.geology(), surface.neighbourhood()
       );
    }
 
