@@ -592,8 +592,18 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
    }
    @Override public void spawnOriginalMobs(WorldGenRegion level) { }
    @Override public void createStructures(RegistryAccess registry, ChunkGeneratorStructureState state,
-      StructureManager structures, ChunkAccess chunk, StructureTemplateManager templates) { }
-   @Override public void createReferences(WorldGenLevel level, StructureManager structures, ChunkAccess chunk) { }
+      StructureManager structures, ChunkAccess chunk, StructureTemplateManager templates) {
+      // Structures have one canonical owner. Aprons receive the owner's block
+      // projection later and never create a second start at the seam view.
+      if (this.address(chunk.getPos()).filter(this.singularityPolicy::admitsTerrainMaterialization).isPresent()) {
+         super.createStructures(registry, state, structures, chunk, templates);
+      }
+   }
+   @Override public void createReferences(WorldGenLevel level, StructureManager structures, ChunkAccess chunk) {
+      if (this.address(chunk.getPos()).filter(this.singularityPolicy::admitsTerrainMaterialization).isPresent()) {
+         super.createReferences(level, structures, chunk);
+      }
+   }
 
    private TellusVanillaCarverRunner getCubeNetCarverRunner(RegistryAccess registryAccess) {
       TellusVanillaCarverRunner cached = this.cubeNetCarverRunner;

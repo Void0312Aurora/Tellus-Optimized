@@ -96,6 +96,11 @@ geometry. Bridge/tunnel modes and polygons that cross a face are quarantined
 until their seam ownership adapter is available. A cache miss remains an empty
 feature set and never invents geometry.
 
+Vanilla structure starts and references are likewise created only on canonical
+chunks; apron views do not create duplicate starts. Structure block projection
+through a seam remains separate acceptance work, so structure placement at a cut
+edge is conservatively deferred.
+
 This remains a wiring and compatibility prototype. Cut-edge apron chunks are
 now generated as derived native `LevelChunk` instances from canonical face
 columns; transition-buffer chunks use the same ordinary sampler, while
