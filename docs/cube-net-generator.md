@@ -78,10 +78,20 @@ and procedural tree generator. Only the owning face chunk decorates an anchor;
 apron chunks do not own trees. Cave/ore carvers, OSM roads/buildings and vanilla
 structure placement still require separate adapters. The canonical chunk path
 now reuses Tellus's vanilla density cave sampler, ore-vein replacement and
-geological stone patches. It supplies the runner with canonical surface heights
-and enables the existing no-data guards. Cave noise is not rerun in apron
-chunks; those remain derived views until their post-carver owner projection is
-implemented.
+geological stone patches. It supplies the runner with canonical surface heights,
+a surface-relative underground floor, and a two-column water halo; water columns
+receive the same flood and seabed cover rule before carving. The AIR carving step
+is the only step admitted, so the runner is not invoked twice by the engine. Cave
+noise is not rerun in apron chunks; those remain derived views until their
+post-carver owner projection is implemented. The vanilla horizontal noise seed
+still follows the planar chunk coordinate; a spherical seam-continuous cave seed
+requires a separate 3D sampler and remains open.
+
+Cube-Net also exposes geodetic OSM feature queries and a canonical projector for
+roads/buildings. Every returned vertex carries its owning face coordinates and
+the matching planar position; callers must use that projection before rasterizing.
+The actual road/building block overlay is still pending, so a cache miss remains
+an empty feature set and never invents geometry.
 
 This remains a wiring and compatibility prototype. Cut-edge apron chunks are
 now generated as derived native `LevelChunk` instances from canonical face

@@ -10,6 +10,7 @@ import com.yucareux.tellus.worldgen.global.SphereFaceTopology;
 import com.yucareux.tellus.worldgen.global.SphereSingularityPolicy;
 import com.yucareux.tellus.worldgen.global.SphereSurfaceMotion;
 import com.yucareux.tellus.worldgen.global.SphereWorldModel;
+import com.yucareux.tellus.world.data.osm.OsmQueryMode;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -229,6 +230,18 @@ public final class SphereFaceChunkGenerator extends ChunkGenerator {
       SphereWorldModel.GeoPoint point = this.model.surfacePoint(address);
       return new SphereChunkSampler.Column(address, point,
          this.sampler.get().samplePoint(point, this.worldScale() * cellSize));
+   }
+
+   SphereChunkSampler.FeatureData sampleFeatures(
+      SphereWorldModel.SphereChunkAddress address, double marginMeters, OsmQueryMode mode
+   ) {
+      this.singularityPolicy.requireTerrainMaterialization(address);
+      return this.sampler.get().sampleFeatures(
+         address, marginMeters, mode,
+         TellusWorldgenSources.osmBuildings(),
+         TellusWorldgenSources.osmRoads(),
+         TellusWorldgenSources.osmWater()
+      );
    }
 
    int getBaseHeightAt(SphereWorldModel.SphereChunkAddress address, int x, int z,

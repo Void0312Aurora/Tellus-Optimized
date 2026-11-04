@@ -16,12 +16,14 @@ import com.yucareux.tellus.worldgen.global.SphereWorldModel;
 import com.yucareux.tellus.worldgen.caves.TellusNoiseSettingsAdapter;
 import com.yucareux.tellus.worldgen.caves.TellusVanillaCarverRunner;
 import com.yucareux.tellus.worldgen.UndergroundStructureExclusion;
+import com.yucareux.tellus.world.data.osm.OsmQueryMode;
 import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.Optional;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.function.IntBinaryOperator;
@@ -257,6 +259,23 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
       return this.adapter.chunkAddress(pos.x, pos.z);
    }
 
+   /**
+    * Fetches OSM geometry in geodetic form for a canonical chunk. Callers that
+    * rasterize the result must project every vertex with
+    * {@code CubeNetFeatureProjector}; no global longitude/latitude plane is
+    * valid near a cube-face seam.
+    */
+   public Optional<SphereChunkSampler.FeatureData> sampleFeatures(
+      ChunkPos pos, double marginMeters, OsmQueryMode mode
+   ) {
+      Objects.requireNonNull(pos, "pos");
+      Objects.requireNonNull(mode, "mode");
+      SphereWorldModel.SphereChunkAddress address = this.address(pos)
+         .filter(this.singularityPolicy::admitsTerrainMaterialization).orElse(null);
+      if (address == null) return Optional.empty();
+      return Optional.of(this.faces[address.face()].sampleFeatures(address, marginMeters, mode));
+   }
+
    /** Surface preview independent of native chunk persistence, bounded by the configured apron. */
    @Override
    public Optional<List<CubeNetLodSurface.Layer>> sampleLodColumn(long minBlockX, long minBlockZ, int cellSize) {
@@ -423,6 +442,7 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
    @Override public void buildSurface(WorldGenRegion level, StructureManager structures, RandomState random, ChunkAccess chunk) { }
    @Override public void applyCarvers(WorldGenRegion level, long seed, RandomState random, BiomeManager biomes,
       StructureManager structures, ChunkAccess chunk, GenerationStep.Carving step) {
+      if (step != GenerationStep.Carving.AIR) return;
       if (!CUBE_NET_CAVES && !CUBE_NET_ORE_VEINS && !CUBE_NET_GEOLOGICAL_STONE) return;
       SphereWorldModel.SphereChunkAddress address = this.address(chunk.getPos())
          .filter(this.singularityPolicy::admitsTerrainMaterialization).orElse(null);
@@ -431,19 +451,8 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
          // would create a second cave identity with a different flat seed.
          return;
       }
-      Map<Long, Integer> surfaceCache = new HashMap<>();
-      int[] surfaceYByColumn = new int[256];
-      int chunkMinX = chunk.getPos().getMinBlockX();
-      int chunkMinZ = chunk.getPos().getMinBlockZ();
-      for (int localZ = 0; localZ < 16; localZ++) {
-         for (int localX = 0; localX < 16; localX++) {
-            surfaceYByColumn[(localZ << 4) | localX] = this.surfaceYAtPlanar(
-               chunkMinX + localX, chunkMinZ + localZ, surfaceCache
-            );
-         }
-      }
+      UndergroundColumns columns = this.undergroundColumns(chunk.getPos());
       TellusVanillaCarverRunner runner = this.getCubeNetCarverRunner(level.registryAccess());
-      IntBinaryOperator surfaceSampler = (x, z) -> this.surfaceYAtPlanar(x, z, surfaceCache);
       runner.applyCarvers(
          level,
          seed,
@@ -455,13 +464,51 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
          CUBE_NET_CAVES_REACH_SURFACE,
          CUBE_NET_ORE_VEINS,
          CUBE_NET_GEOLOGICAL_STONE,
-         surfaceYByColumn,
-         surfaceSampler,
-         null,
-         null,
+         columns.surfaceY(),
+         columns.surfaceSampler(),
+         columns.floodGuardY(),
+         columns.generationFloorY(),
          List.of()
       );
    }
+
+   /** Uses a halo outside the requesting chunk, including rotated seam owners. */
+   UndergroundColumns undergroundColumns(ChunkPos pos) {
+      Map<Long, Integer> surfaceCache = new HashMap<>();
+      Map<Long, SphereChunkSampler.SurfaceData> columnCache = new HashMap<>();
+      int[] surfaceYByColumn = new int[256];
+      int[] floodGuardYByColumn = new int[256];
+      int[] generationFloorYByColumn = new int[256];
+      Arrays.fill(floodGuardYByColumn, Integer.MAX_VALUE);
+      int chunkMinX = pos.getMinBlockX();
+      int chunkMinZ = pos.getMinBlockZ();
+      for (int localZ = 0; localZ < 16; localZ++) {
+         for (int localX = 0; localX < 16; localX++) {
+            int index = (localZ << 4) | localX;
+            int worldX = chunkMinX + localX;
+            int worldZ = chunkMinZ + localZ;
+            int surfaceY = this.surfaceYAtPlanar(worldX, worldZ, surfaceCache, columnCache);
+            surfaceYByColumn[index] = surfaceY;
+            generationFloorYByColumn[index] = CubeNetUndergroundPolicy.generationFloorY(
+               surfaceY, CUBE_NET_UNDERGROUND_DEPTH, this.minY
+            );
+            for (int dz = -CubeNetUndergroundPolicy.WATER_HALO; dz <= CubeNetUndergroundPolicy.WATER_HALO; dz++) {
+               for (int dx = -CubeNetUndergroundPolicy.WATER_HALO; dx <= CubeNetUndergroundPolicy.WATER_HALO; dx++) {
+                  SphereChunkSampler.SurfaceData water = this.surfaceDataAtPlanar(worldX + dx, worldZ + dz, columnCache);
+                  if (water == null || !water.waterAvailable()) continue;
+                  int waterY = this.materializer.height(water.waterSurfaceMeters());
+                  int waterFloorY = this.materializer.height(water.elevationMeters());
+                  int guardY = CubeNetUndergroundPolicy.floodGuardY(waterFloorY, waterY, water.oceanWater());
+                  floodGuardYByColumn[index] = Math.min(floodGuardYByColumn[index], guardY);
+               }
+            }
+         }
+      }
+      IntBinaryOperator surfaceSampler = (x, z) -> this.surfaceYAtPlanar(x, z, surfaceCache, columnCache);
+      return new UndergroundColumns(surfaceYByColumn, floodGuardYByColumn, generationFloorYByColumn, surfaceSampler);
+   }
+
+   record UndergroundColumns(int[] surfaceY, int[] floodGuardY, int[] generationFloorY, IntBinaryOperator surfaceSampler) { }
    @Override public void applyBiomeDecoration(WorldGenLevel level, ChunkAccess chunk, StructureManager structures) {
       this.placeCubeNetTrees(level, chunk);
    }
@@ -491,19 +538,38 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
       }
    }
 
-   private int surfaceYAtPlanar(int worldX, int worldZ, Map<Long, Integer> cache) {
+   private int surfaceYAtPlanar(
+      int worldX,
+      int worldZ,
+      Map<Long, Integer> surfaceCache,
+      Map<Long, SphereChunkSampler.SurfaceData> columnCache
+   ) {
       long key = ChunkPos.asLong(worldX, worldZ);
-      Integer cached = cache.get(key);
+      Integer cached = surfaceCache.get(key);
       if (cached != null) return cached;
-      int result = this.resolveBlock(worldX, worldZ)
+      SphereChunkSampler.SurfaceData surface = this.surfaceDataAtPlanar(worldX, worldZ, columnCache);
+      int result = surface == null ? this.minY : this.materializer.plan(
+         surface, this.minY, this.maxY()).surfaceY();
+      surfaceCache.put(key, result);
+      return result;
+   }
+
+   private SphereChunkSampler.SurfaceData surfaceDataAtPlanar(
+      int worldX,
+      int worldZ,
+      Map<Long, SphereChunkSampler.SurfaceData> cache
+   ) {
+      long key = ChunkPos.asLong(worldX, worldZ);
+      SphereChunkSampler.SurfaceData cached = cache.get(key);
+      if (cached != null) return cached;
+      SphereChunkSampler.SurfaceData result = this.resolveBlock(worldX, worldZ)
          .map(block -> {
             SphereWorldModel.SphereBlockAddress address = new SphereWorldModel.SphereBlockAddress(
                block.address().face(), block.x(), block.z());
-            SphereChunkSampler.Column column = this.faces[address.face()].terrainPoint(address, 1);
-            return this.materializer.plan(column.context(), this.minY, this.maxY()).surfaceY();
+            return this.faces[address.face()].terrainPoint(address, 1).data();
          })
-         .orElse(this.minY);
-      cache.put(key, result);
+         .orElse(null);
+      if (result != null) cache.put(key, result);
       return result;
    }
 
