@@ -4,6 +4,8 @@ import com.google.common.base.Preconditions;
 import com.mojang.serialization.Codec;
 import com.mojang.datafixers.util.Either;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import com.yucareux.tellus.world.data.canopy.TellusCanopyHeightSource;
+import com.yucareux.tellus.worldgen.tree.TellusProceduralTreeGenerator;
 import com.yucareux.tellus.worldgen.global.CubeNetAddressAdapter;
 import com.yucareux.tellus.worldgen.global.CubeNetApronResolver;
 import com.yucareux.tellus.worldgen.global.CubeNetLayout;
@@ -105,6 +107,7 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
    private final int apronWidthChunks;
    private final SphereFaceChunkGenerator[] faces;
    private final SphereTerrainMaterializer materializer;
+   private volatile long worldSeed;
    private final SphereSingularityPolicy.Config singularityConfig;
    private final SphereSingularityPolicy singularityPolicy;
 
@@ -172,6 +175,7 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
    public ChunkGeneratorStructureState createState(
       HolderLookup<StructureSet> structureSets, RandomState randomState, long seed
    ) {
+      this.worldSeed = seed;
       this.materializer.setWorldSeed(seed);
       for (SphereFaceChunkGenerator face : this.faces) face.setWorldSeed(seed);
       return ChunkGeneratorStructureState.createForNormal(randomState, seed, this.biomeSource, structureSets);
@@ -393,11 +397,70 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
    @Override public void buildSurface(WorldGenRegion level, StructureManager structures, RandomState random, ChunkAccess chunk) { }
    @Override public void applyCarvers(WorldGenRegion level, long seed, RandomState random, BiomeManager biomes,
       StructureManager structures, ChunkAccess chunk, GenerationStep.Carving step) { }
-   @Override public void applyBiomeDecoration(WorldGenLevel level, ChunkAccess chunk, StructureManager structures) { }
+   @Override public void applyBiomeDecoration(WorldGenLevel level, ChunkAccess chunk, StructureManager structures) {
+      this.placeCubeNetTrees(level, chunk);
+   }
    @Override public void spawnOriginalMobs(WorldGenRegion level) { }
    @Override public void createStructures(RegistryAccess registry, ChunkGeneratorStructureState state,
       StructureManager structures, ChunkAccess chunk, StructureTemplateManager templates) { }
    @Override public void createReferences(WorldGenLevel level, StructureManager structures, ChunkAccess chunk) { }
+
+   /**
+    * Reuses Tellus's canopy-height and procedural-tree rules at canonical face
+    * anchors. Apron chunks are derived views and never own decoration, so a
+    * tree cannot be written twice at a cut edge.
+    */
+   private void placeCubeNetTrees(WorldGenLevel level, ChunkAccess chunk) {
+      if (!(this.biomeSource instanceof CubeNetBiomeSource)) return;
+      SphereWorldModel.SphereChunkAddress address = this.address(chunk.getPos())
+         .filter(this.singularityPolicy::admitsTerrainMaterialization).orElse(null);
+      if (address == null) return;
+      int face = address.face();
+      int cellSize = TellusProceduralTreeGenerator.PLACEMENT_CELL_SIZE;
+      int minFaceX = Math.toIntExact(address.blockX());
+      int minFaceZ = Math.toIntExact(address.blockZ());
+      int maxFaceX = minFaceX + 15;
+      int maxFaceZ = minFaceZ + 15;
+      int minCellX = Math.floorDiv(minFaceX, cellSize) - 1;
+      int maxCellX = Math.floorDiv(maxFaceX, cellSize) + 1;
+      int minCellZ = Math.floorDiv(minFaceZ, cellSize) - 1;
+      int maxCellZ = Math.floorDiv(maxFaceZ, cellSize) + 1;
+      SphereChunkSampler.TerrainGrid grid = this.faces[face].terrainGrid(address);
+      TellusCanopyHeightSource canopy = TellusWorldgenSources.canopyHeight();
+      for (int cellX = minCellX; cellX <= maxCellX; cellX++) {
+         for (int cellZ = minCellZ; cellZ <= maxCellZ; cellZ++) {
+            TellusProceduralTreeGenerator.TreeAnchor anchor = TellusProceduralTreeGenerator.anchorForCell(
+               cellX, cellZ, this.worldSeed ^ (long)face * 0x9E3779B97F4A7C15L
+            );
+            int faceX = anchor.worldX();
+            int faceZ = anchor.worldZ();
+            if (faceX < minFaceX || faceX > maxFaceX || faceZ < minFaceZ || faceZ > maxFaceZ) continue;
+            CubeNetLayout.PlanarPoint planar = this.adapter.layout().toPlanar(new CubeNetLayout.FacePoint(
+               CubeNetLayout.Face.of(face), faceX + 0.5, faceZ + 0.5));
+            int worldX = (int)Math.floor(planar.x());
+            int worldZ = (int)Math.floor(planar.z());
+            if (Math.floorDiv(worldX, 16) != chunk.getPos().x || Math.floorDiv(worldZ, 16) != chunk.getPos().z) continue;
+            SphereChunkSampler.Column column = grid.column(Math.floorMod(faceX, 16), Math.floorMod(faceZ, 16));
+            SphereChunkSampler.SurfaceData surface = column.data();
+            if (surface.coverClass() != MountainSurfaceRules.ESA_TREE_COVER
+               || surface.waterAvailable() || !surface.elevationAvailable()) continue;
+            SphereTerrainMaterializer.ColumnPlan plan = this.materializer.plan(
+               column.context(), this.minY, this.maxY()
+            );
+            if (plan.surfaceY() < this.seaLevel) continue;
+            BlockPos ground = new BlockPos(worldX, plan.surfaceY(), worldZ);
+            if (!level.getBlockState(ground).is(Blocks.GRASS_BLOCK)
+               && !level.getBlockState(ground).is(Blocks.DIRT)
+               && !level.getBlockState(ground).is(Blocks.MUD)) continue;
+            TellusCanopyHeightSource.CanopySample sample = canopy.sampleCanopy(
+               column.point(), this.worldScale(), this.worldScale()
+            );
+            TellusProceduralTreeGenerator.place(
+               level, ground, level.getBiome(ground.above()), sample, anchor.seed()
+            );
+         }
+      }
+   }
 
    @Override
    public void addDebugScreenInfo(List<String> info, RandomState random, BlockPos pos) {

@@ -14,6 +14,7 @@ import com.yucareux.tellus.platform.TellusPlatform;
 import com.yucareux.tellus.world.data.source.ParallelDownloadRunner;
 import com.yucareux.tellus.world.data.source.SourceInterrupts;
 import com.yucareux.tellus.worldgen.EarthProjection;
+import com.yucareux.tellus.worldgen.global.SphereWorldModel;
 import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.net.URI;
@@ -126,6 +127,22 @@ public final class TellusCanopyHeightSource implements TellusCacheHandle {
       LookupMode lookupMode
    ) {
       GeoPoint point = geoPoint(blockX, blockZ, worldScale);
+      return this.sampleCanopyAtPoint(point, worldScale, previewResolutionMeters, lookupMode);
+   }
+
+   /** Samples the same canopy layer at a canonical spherical point. */
+   public CanopySample sampleCanopy(
+      SphereWorldModel.GeoPoint point, double worldScale, double previewResolutionMeters
+   ) {
+      Objects.requireNonNull(point, "point");
+      return this.sampleCanopyAtPoint(
+         new GeoPoint(point.longitude(), point.latitude()), worldScale, previewResolutionMeters, managedLookupMode()
+      );
+   }
+
+   private CanopySample sampleCanopyAtPoint(
+      GeoPoint point, double worldScale, double previewResolutionMeters, LookupMode lookupMode
+   ) {
       if (point == null || !withinCoverage(point.longitude(), point.latitude())) {
          return CanopySample.unavailable();
       }
