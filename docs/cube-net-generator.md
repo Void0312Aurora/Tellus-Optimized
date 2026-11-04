@@ -51,8 +51,9 @@ Tellus's existing
 solver on geodetic coordinates and maps its terrain samples back to canonical
 sphere columns. Ocean columns additionally use the OpenWaters bathymetry
 adapter; unavailable OSM or bathymetry coverage falls back to the existing
-column. The full surface/cave policy from `EarthBiomeSource` remains separate
-work.
+column. The full biome-selection policy from `EarthBiomeSource` remains a
+separate integration scope; Cube-Net's canonical surface and underground
+block rules are applied by the generator described below.
 
 `CubeNetRuntime` enables same-Level routing only when exactly one loaded Level
 uses this generator. The five edges that touch directly in the planar net use
@@ -91,10 +92,11 @@ field uses the current world seed and physical ECEF-like coordinates, while
 the Tellus replacement rules retain the same cave, ore, flood and geological
 burial policies. It therefore avoids the version-specific planar `ChunkPos`
 carver API while keeping one field across all faces and loaders. The AIR
-carving step remains the only admitted carving step. Face-corner chunks remain
-quarantined because the current chunk resolver still excludes cells touching
-two cut seams; this is a chart materialization constraint, not a discontinuity
-in the spherical cave field.
+carving step remains the only admitted carving step. Face-corner chunks are
+intentionally isolated by the final Cube-Net materialization policy: cells
+touching two cut seams lie outside the ordinary face chart and remain empty.
+This is a topology rule, not incomplete cave generation or a discontinuity in
+the spherical cave field.
 
 Cube-Net also exposes geodetic OSM feature queries and a canonical projector for
 roads/buildings. Every returned vertex carries its owning face coordinates and
@@ -120,8 +122,8 @@ the derived view remains unchanged until the owner can be synchronized safely.
 
 This remains a wiring and compatibility prototype. Cut-edge apron chunks are
 now generated as derived native `LevelChunk` instances from canonical face
-columns; transition-buffer chunks use the same ordinary sampler, while
-excluded corner chunks remain empty. The existing
+columns; transition-buffer chunks use the same ordinary sampler, while the
+final corner-isolation policy leaves excluded corner chunks empty. The existing
 datapack helper for the six-face runtime still creates `tellus:sphere_face`
 dimensions. A server mixin prevents derived chunks from being serialized, and
 ordinary `Level#setBlock` writes in an apron are forwarded to the canonical
@@ -157,8 +159,8 @@ apron is narrower. For example, client view 4 and simulation distance 4 require
 7 apron chunks; an 8-chunk test band supplies a small margin. The old default
 of 2 was a bounded generator fixture and did not support this complete-view
 gate. The supported width is 0..35 chunks; view/simulation distance 32 requires
-35 chunks. Corner/overlap quarantine and
-full-height compilation cost still need separate acceptance.
+35 chunks. The final corner/overlap isolation policy is part of the topology;
+full-height compilation cost still needs separate acceptance.
 
 ## Configure the apron before creating a test world
 
