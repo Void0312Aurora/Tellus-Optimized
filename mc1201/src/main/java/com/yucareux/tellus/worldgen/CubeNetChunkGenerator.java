@@ -588,6 +588,7 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
    }
    @Override public void applyBiomeDecoration(WorldGenLevel level, ChunkAccess chunk, StructureManager structures) {
       this.placeCubeNetFeatures(level, chunk);
+      this.mirrorCanonicalStructureView(level, chunk);
       this.placeCubeNetTrees(level, chunk);
    }
    @Override public void spawnOriginalMobs(WorldGenRegion level) { }
@@ -701,6 +702,40 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
          for (OsmBuildingFeature building : data.buildings().features()) {
             if (apron == null) this.placeCubeNetBuilding(level, chunk, building, face, minX, minZ, maxX, maxZ);
             else this.placeCubeNetApronBuilding(level, chunk, apron, building, face, minX, minZ, maxX, maxZ);
+         }
+      }
+   }
+
+   /** Mirrors the already-generated owner when the worldgen region contains it. */
+   private void mirrorCanonicalStructureView(WorldGenLevel level, ChunkAccess chunk) {
+      if (!(level instanceof WorldGenRegion region) || this.address(chunk.getPos()).isPresent()) return;
+      CubeNetApronResolver.ChunkProjection projection = this.apronProjection(chunk.getPos()).orElse(null);
+      if (projection == null) return;
+      ChunkPos ownerPos = CubeNetApronChunkSync.canonicalChunkPosition(this.adapter.layout(), projection);
+      if (!region.hasChunk(ownerPos.x, ownerPos.z)) return;
+      ChunkAccess owner = region.getChunk(ownerPos.x, ownerPos.z);
+      CubeNetLayout.Seam seam = this.adapter.layout().seam(projection.sourceFace(), projection.sourceSide());
+      net.minecraft.world.level.block.Rotation rotation = CubeNetApronChunkSync.rotation(
+         new CubeNetSeamTransform(this.adapter.layout(), seam)
+            .targetToSourceClockwiseQuarterTurns().orElseThrow());
+      BlockPos.MutableBlockPos sourcePos = new BlockPos.MutableBlockPos();
+      BlockPos.MutableBlockPos targetPos = new BlockPos.MutableBlockPos();
+      for (int localZ = 0; localZ < 16; localZ++) for (int localX = 0; localX < 16; localX++) {
+         int targetX = projection.targetBlockX(localX, localZ);
+         int targetZ = projection.targetBlockZ(localX, localZ);
+         CubeNetLayout.PlanarPoint ownerPoint = this.adapter.layout().toPlanar(new CubeNetLayout.FacePoint(
+            projection.targetFace(), targetX + 0.5, targetZ + 0.5));
+         int ownerX = (int)Math.floor(ownerPoint.x());
+         int ownerZ = (int)Math.floor(ownerPoint.z());
+         for (int y = this.minY; y < this.maxY(); y++) {
+            sourcePos.set(ownerX, y, ownerZ);
+            targetPos.set(chunk.getPos().getMinBlockX() + localX, y,
+               chunk.getPos().getMinBlockZ() + localZ);
+            BlockState state = owner.getBlockState(sourcePos).rotate(rotation);
+            MinecraftVersionCompat.setBlockState(chunk, targetPos, state);
+            if (chunk instanceof ProtoChunk proto && !state.getFluidState().isEmpty()) {
+               MinecraftVersionCompat.markPosForPostProcessing(proto, targetPos);
+            }
          }
       }
    }

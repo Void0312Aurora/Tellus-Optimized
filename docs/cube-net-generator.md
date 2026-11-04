@@ -102,9 +102,10 @@ query or select a different foundation height. Building edge tests include a
 one-cell owner halo so walls do not repeat at chunk boundaries.
 
 Vanilla structure starts and references are likewise created only on canonical
-chunks; apron views do not create duplicate starts. Structure block projection
-through a seam remains separate acceptance work, so structure placement at a cut
-edge is conservatively deferred.
+chunks; apron views do not create duplicate starts. When the canonical owner is
+inside the active worldgen region, its complete block state (including structure
+pieces) is seam-rotated into the apron. If that owner is outside the region,
+the derived view remains unchanged until the owner can be synchronized safely.
 
 This remains a wiring and compatibility prototype. Cut-edge apron chunks are
 now generated as derived native `LevelChunk` instances from canonical face
