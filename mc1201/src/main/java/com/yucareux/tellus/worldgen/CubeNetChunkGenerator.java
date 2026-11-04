@@ -13,15 +13,24 @@ import com.yucareux.tellus.worldgen.global.CubeNetRemoteProjection;
 import com.yucareux.tellus.worldgen.global.SphereChunkSampler;
 import com.yucareux.tellus.worldgen.global.SphereSingularityPolicy;
 import com.yucareux.tellus.worldgen.global.SphereWorldModel;
+import com.yucareux.tellus.worldgen.caves.TellusNoiseSettingsAdapter;
+import com.yucareux.tellus.worldgen.caves.TellusVanillaCarverRunner;
+import com.yucareux.tellus.worldgen.UndergroundStructureExclusion;
 import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
+import java.util.function.IntBinaryOperator;
+import net.minecraft.core.Holder;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.RegistryAccess;
+import net.minecraft.core.Registry;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.LevelHeightAccessor;
 import net.minecraft.world.level.NoiseColumn;
@@ -42,6 +51,7 @@ import net.minecraft.world.level.levelgen.structure.StructureSet;
 import net.minecraft.world.level.levelgen.GenerationStep;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.RandomState;
+import net.minecraft.world.level.levelgen.NoiseGeneratorSettings;
 import net.minecraft.world.level.levelgen.blending.Blender;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplateManager;
 
@@ -108,6 +118,22 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
    private final SphereFaceChunkGenerator[] faces;
    private final SphereTerrainMaterializer materializer;
    private volatile long worldSeed;
+   private volatile TellusVanillaCarverRunner cubeNetCarverRunner;
+   private static final boolean CUBE_NET_CAVES = Boolean.parseBoolean(
+      System.getProperty("tellus.cubeNet.caves", "true")
+   );
+   private static final boolean CUBE_NET_ORE_VEINS = Boolean.parseBoolean(
+      System.getProperty("tellus.cubeNet.oreVeins", "true")
+   );
+   private static final boolean CUBE_NET_GEOLOGICAL_STONE = Boolean.parseBoolean(
+      System.getProperty("tellus.cubeNet.geologicalStonePatches", "true")
+   );
+   private static final boolean CUBE_NET_CAVES_REACH_SURFACE = Boolean.parseBoolean(
+      System.getProperty("tellus.cubeNet.cavesReachSurface", "false")
+   );
+   private static final int CUBE_NET_UNDERGROUND_DEPTH = Integer.getInteger(
+      "tellus.cubeNet.undergroundDepth", 256
+   );
    private final SphereSingularityPolicy.Config singularityConfig;
    private final SphereSingularityPolicy singularityPolicy;
 
@@ -396,7 +422,46 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
    @Override public int getMinY() { return this.minY; }
    @Override public void buildSurface(WorldGenRegion level, StructureManager structures, RandomState random, ChunkAccess chunk) { }
    @Override public void applyCarvers(WorldGenRegion level, long seed, RandomState random, BiomeManager biomes,
-      StructureManager structures, ChunkAccess chunk, GenerationStep.Carving step) { }
+      StructureManager structures, ChunkAccess chunk, GenerationStep.Carving step) {
+      if (!CUBE_NET_CAVES && !CUBE_NET_ORE_VEINS && !CUBE_NET_GEOLOGICAL_STONE) return;
+      SphereWorldModel.SphereChunkAddress address = this.address(chunk.getPos())
+         .filter(this.singularityPolicy::admitsTerrainMaterialization).orElse(null);
+      if (address == null) {
+         // Apron chunks are derived views. Re-running the noise field here
+         // would create a second cave identity with a different flat seed.
+         return;
+      }
+      Map<Long, Integer> surfaceCache = new HashMap<>();
+      int[] surfaceYByColumn = new int[256];
+      int chunkMinX = chunk.getPos().getMinBlockX();
+      int chunkMinZ = chunk.getPos().getMinBlockZ();
+      for (int localZ = 0; localZ < 16; localZ++) {
+         for (int localX = 0; localX < 16; localX++) {
+            surfaceYByColumn[(localZ << 4) | localX] = this.surfaceYAtPlanar(
+               chunkMinX + localX, chunkMinZ + localZ, surfaceCache
+            );
+         }
+      }
+      TellusVanillaCarverRunner runner = this.getCubeNetCarverRunner(level.registryAccess());
+      IntBinaryOperator surfaceSampler = (x, z) -> this.surfaceYAtPlanar(x, z, surfaceCache);
+      runner.applyCarvers(
+         level,
+         seed,
+         biomes,
+         structures,
+         chunk,
+         this.seaLevel,
+         CUBE_NET_CAVES,
+         CUBE_NET_CAVES_REACH_SURFACE,
+         CUBE_NET_ORE_VEINS,
+         CUBE_NET_GEOLOGICAL_STONE,
+         surfaceYByColumn,
+         surfaceSampler,
+         null,
+         null,
+         List.of()
+      );
+   }
    @Override public void applyBiomeDecoration(WorldGenLevel level, ChunkAccess chunk, StructureManager structures) {
       this.placeCubeNetTrees(level, chunk);
    }
@@ -404,6 +469,43 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
    @Override public void createStructures(RegistryAccess registry, ChunkGeneratorStructureState state,
       StructureManager structures, ChunkAccess chunk, StructureTemplateManager templates) { }
    @Override public void createReferences(WorldGenLevel level, StructureManager structures, ChunkAccess chunk) { }
+
+   private TellusVanillaCarverRunner getCubeNetCarverRunner(RegistryAccess registryAccess) {
+      TellusVanillaCarverRunner cached = this.cubeNetCarverRunner;
+      if (cached != null) return cached;
+      synchronized (this) {
+         cached = this.cubeNetCarverRunner;
+         if (cached == null) {
+            Registry<net.minecraft.world.level.block.Block> blocks = registryAccess.registryOrThrow(Registries.BLOCK);
+            Registry<NoiseGeneratorSettings> settings = registryAccess.registryOrThrow(Registries.NOISE_SETTINGS);
+            Holder<NoiseGeneratorSettings> vanilla = settings.getHolderOrThrow(NoiseGeneratorSettings.OVERWORLD);
+            Holder<NoiseGeneratorSettings> adapted = TellusNoiseSettingsAdapter.adaptToTellusHeight(
+               vanilla, this.minY, this.height, this.seaLevel
+            );
+            cached = new TellusVanillaCarverRunner(
+               this.biomeSource, blocks, vanilla, adapted, this.minY, this.height, CUBE_NET_UNDERGROUND_DEPTH
+            );
+            this.cubeNetCarverRunner = cached;
+         }
+         return cached;
+      }
+   }
+
+   private int surfaceYAtPlanar(int worldX, int worldZ, Map<Long, Integer> cache) {
+      long key = ChunkPos.asLong(worldX, worldZ);
+      Integer cached = cache.get(key);
+      if (cached != null) return cached;
+      int result = this.resolveBlock(worldX, worldZ)
+         .map(block -> {
+            SphereWorldModel.SphereBlockAddress address = new SphereWorldModel.SphereBlockAddress(
+               block.address().face(), block.x(), block.z());
+            SphereChunkSampler.Column column = this.faces[address.face()].terrainPoint(address, 1);
+            return this.materializer.plan(column.context(), this.minY, this.maxY()).surfaceY();
+         })
+         .orElse(this.minY);
+      cache.put(key, result);
+      return result;
+   }
 
    /**
     * Reuses Tellus's canopy-height and procedural-tree rules at canonical face

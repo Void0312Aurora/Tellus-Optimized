@@ -76,8 +76,12 @@ surface fallback remain in force.
 Canonical land-cover tree anchors now reuse Tellus's ETH canopy-height sample
 and procedural tree generator. Only the owning face chunk decorates an anchor;
 apron chunks do not own trees. Cave/ore carvers, OSM roads/buildings and vanilla
-structure placement still require a separate Cube-Net adapter because their
-current runners assume a planar Earth generator context.
+structure placement still require separate adapters. The canonical chunk path
+now reuses Tellus's vanilla density cave sampler, ore-vein replacement and
+geological stone patches. It supplies the runner with canonical surface heights
+and enables the existing no-data guards. Cave noise is not rerun in apron
+chunks; those remain derived views until their post-carver owner projection is
+implemented.
 
 This remains a wiring and compatibility prototype. Cut-edge apron chunks are
 now generated as derived native `LevelChunk` instances from canonical face
