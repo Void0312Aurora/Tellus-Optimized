@@ -13,6 +13,14 @@ import com.yucareux.tellus.worldgen.global.CubeNetRemoteProjection;
 import com.yucareux.tellus.worldgen.global.SphereChunkSampler;
 import com.yucareux.tellus.worldgen.global.SphereSingularityPolicy;
 import com.yucareux.tellus.worldgen.global.SphereWorldModel;
+import com.yucareux.tellus.worldgen.global.CubeNetFeatureRasterizer;
+import com.yucareux.tellus.world.data.osm.OsmBuildingFeature;
+import com.yucareux.tellus.world.data.osm.RoadFeature;
+import com.yucareux.tellus.world.data.osm.RoadMode;
+import com.yucareux.tellus.world.data.osm.RoadSurfaceStyle;
+import com.yucareux.tellus.worldgen.building.BuildingProfile;
+import com.yucareux.tellus.worldgen.building.TellusBuildingMaterials;
+import com.yucareux.tellus.worldgen.building.TellusBuildingProfiles;
 import com.yucareux.tellus.worldgen.caves.TellusNoiseSettingsAdapter;
 import com.yucareux.tellus.worldgen.caves.TellusVanillaCarverRunner;
 import com.yucareux.tellus.worldgen.UndergroundStructureExclusion;
@@ -135,6 +143,12 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
    );
    private static final int CUBE_NET_UNDERGROUND_DEPTH = Integer.getInteger(
       "tellus.cubeNet.undergroundDepth", 256
+   );
+   private static final boolean CUBE_NET_ROADS = Boolean.parseBoolean(
+      System.getProperty("tellus.cubeNet.roads", "true")
+   );
+   private static final boolean CUBE_NET_BUILDINGS = Boolean.parseBoolean(
+      System.getProperty("tellus.cubeNet.buildings", "true")
    );
    private final SphereSingularityPolicy.Config singularityConfig;
    private final SphereSingularityPolicy singularityPolicy;
@@ -510,6 +524,7 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
 
    record UndergroundColumns(int[] surfaceY, int[] floodGuardY, int[] generationFloorY, IntBinaryOperator surfaceSampler) { }
    @Override public void applyBiomeDecoration(WorldGenLevel level, ChunkAccess chunk, StructureManager structures) {
+      this.placeCubeNetFeatures(level, chunk);
       this.placeCubeNetTrees(level, chunk);
    }
    @Override public void spawnOriginalMobs(WorldGenRegion level) { }
@@ -571,6 +586,127 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
          .orElse(null);
       if (result != null) cache.put(key, result);
       return result;
+   }
+
+   /**
+    * Reuses OSM road/building data only after projecting every vertex through
+    * the canonical face. Cache misses return no geometry and are retried by
+    * the next chunk-detail pass, matching Tellus's no-data contract.
+    */
+   private void placeCubeNetFeatures(WorldGenLevel level, ChunkAccess chunk) {
+      if ((!CUBE_NET_ROADS && !CUBE_NET_BUILDINGS) || this.address(chunk.getPos()).isEmpty()) return;
+      SphereWorldModel.SphereChunkAddress address = this.address(chunk.getPos())
+         .filter(this.singularityPolicy::admitsTerrainMaterialization).orElse(null);
+      if (address == null) return;
+      SphereChunkSampler.FeatureData data = this.sampleFeatures(
+         chunk.getPos(), 96.0, OsmQueryMode.NON_BLOCKING).orElse(null);
+      if (data == null) return;
+      CubeNetLayout.Face face = CubeNetLayout.Face.of(address.face());
+      int minX = Math.toIntExact(address.blockX());
+      int minZ = Math.toIntExact(address.blockZ());
+      int maxX = minX + 15;
+      int maxZ = minZ + 15;
+      if (CUBE_NET_ROADS) {
+         for (RoadFeature road : data.roads().features()) {
+            if (road.mode() != RoadMode.NORMAL) continue;
+            for (CubeNetFeatureRasterizer.FaceCell cell : CubeNetFeatureRasterizer.roadCells(
+               this.model, this.adapter.layout(), road, face, minX, minZ, maxX, maxZ, this.worldScale())) {
+               this.placeFeatureBlock(level, chunk, cell, this.cubeNetRoadState(road, cell.x(), cell.z()));
+            }
+         }
+      }
+      if (CUBE_NET_BUILDINGS) {
+         for (OsmBuildingFeature building : data.buildings().features()) {
+            this.placeCubeNetBuilding(level, chunk, building, face, minX, minZ, maxX, maxZ);
+         }
+      }
+   }
+
+   private void placeCubeNetBuilding(
+      WorldGenLevel level, ChunkAccess chunk, OsmBuildingFeature building, CubeNetLayout.Face face,
+      int minX, int minZ, int maxX, int maxZ
+   ) {
+      List<CubeNetFeatureRasterizer.FaceCell> cells = CubeNetFeatureRasterizer.buildingCells(
+         this.model, this.adapter.layout(), building, face, minX, minZ, maxX, maxZ);
+      if (cells.isEmpty()) return;
+      SphereWorldModel.GeoPoint centroid = new SphereWorldModel.GeoPoint(
+         building.centroidLat(), building.centroidLon(), 0.0);
+      var centroidProjection = com.yucareux.tellus.worldgen.global.CubeNetFeatureProjector.project(
+         this.model, this.adapter.layout(), centroid.latitude(), centroid.longitude()).orElse(null);
+      if (centroidProjection == null || centroidProjection.face() != face.index()) return;
+      int groundY;
+      BuildingProfile profile;
+      TellusBuildingMaterials.BuildingMaterialPalette palette;
+      int height;
+      try {
+         groundY = this.surfaceYAtPlanar(
+            (int)Math.floor(centroidProjection.planarX()), (int)Math.floor(centroidProjection.planarZ()),
+            new HashMap<>(), new HashMap<>());
+         profile = TellusBuildingProfiles.resolveProfile(building, this.worldScale(), null, false);
+         palette = TellusBuildingMaterials.resolvePalette(profile, building.featureId() ^ this.worldSeed);
+         height = Math.max(3, TellusBuildingProfiles.heightBlocks(building, this.worldScale()));
+      } catch (RuntimeException unavailableTerrain) {
+         return;
+      }
+      java.util.Set<Long> occupied = new java.util.HashSet<>();
+      for (CubeNetFeatureRasterizer.FaceCell cell : cells) occupied.add(packFaceCell(cell.x(), cell.z()));
+      for (CubeNetFeatureRasterizer.FaceCell cell : cells) {
+         boolean boundary = !occupied.contains(packFaceCell(cell.x() - 1, cell.z()))
+            || !occupied.contains(packFaceCell(cell.x() + 1, cell.z()))
+            || !occupied.contains(packFaceCell(cell.x(), cell.z() - 1))
+            || !occupied.contains(packFaceCell(cell.x(), cell.z() + 1));
+         for (int y = groundY; y <= groundY + height; y++) {
+            BlockState state = y == groundY ? palette.floor()
+               : y == groundY + height ? palette.roof()
+               : boundary ? palette.wall() : net.minecraft.world.level.block.Blocks.AIR.defaultBlockState();
+            this.placeFeatureBlock(level, chunk, cell, state, y);
+         }
+      }
+   }
+
+   private void placeFeatureBlock(WorldGenLevel level, ChunkAccess chunk,
+      CubeNetFeatureRasterizer.FaceCell cell, BlockState state) {
+      CubeNetLayout.PlanarPoint point = this.adapter.layout().toPlanar(new CubeNetLayout.FacePoint(
+         CubeNetLayout.Face.of(cell.face()), cell.x() + 0.5, cell.z() + 0.5));
+      int worldX = (int)Math.floor(point.x());
+      int worldZ = (int)Math.floor(point.z());
+      int y = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, worldX, worldZ) - 1;
+      this.placeFeatureBlock(level, chunk, cell, state, y + 1);
+   }
+
+   private void placeFeatureBlock(WorldGenLevel level, ChunkAccess chunk,
+      CubeNetFeatureRasterizer.FaceCell cell, BlockState state, int y) {
+      CubeNetLayout.PlanarPoint point = this.adapter.layout().toPlanar(new CubeNetLayout.FacePoint(
+         CubeNetLayout.Face.of(cell.face()), cell.x() + 0.5, cell.z() + 0.5));
+      int worldX = (int)Math.floor(point.x());
+      int worldZ = (int)Math.floor(point.z());
+      if (Math.floorDiv(worldX, 16) != chunk.getPos().x || Math.floorDiv(worldZ, 16) != chunk.getPos().z
+         || y < this.minY || y >= this.maxY()) return;
+      BlockPos pos = new BlockPos(worldX, y, worldZ);
+      level.setBlock(pos, state, 2);
+   }
+
+   private BlockState cubeNetRoadState(RoadFeature road, int x, int z) {
+      return switch (RoadSurfaceStyle.surfaceStyleId(road, x, z)) {
+         case RoadSurfaceStyle.STYLE_PAVED_LIGHT, RoadSurfaceStyle.STYLE_CONCRETE -> TellusBlockReferences.concreteState("LIGHT_GRAY");
+         case RoadSurfaceStyle.STYLE_PAVED_SMOOTH, RoadSurfaceStyle.STYLE_PEDESTRIAN -> Blocks.SMOOTH_STONE.defaultBlockState();
+         case RoadSurfaceStyle.STYLE_GRAVEL -> Blocks.GRAVEL.defaultBlockState();
+         case RoadSurfaceStyle.STYLE_DIRT -> Blocks.DIRT_PATH.defaultBlockState();
+         case RoadSurfaceStyle.STYLE_COBBLESTONE -> Blocks.COBBLESTONE.defaultBlockState();
+         case RoadSurfaceStyle.STYLE_STONE_PAVERS -> Blocks.STONE_BRICKS.defaultBlockState();
+         case RoadSurfaceStyle.STYLE_BRICK -> Blocks.BRICKS.defaultBlockState();
+         case RoadSurfaceStyle.STYLE_SAND -> Blocks.SANDSTONE.defaultBlockState();
+         case RoadSurfaceStyle.STYLE_WOOD -> Blocks.OAK_PLANKS.defaultBlockState();
+         default -> switch (road.roadClass()) {
+            case MAIN -> TellusBlockReferences.concreteState("GRAY");
+            case NORMAL -> Blocks.SMOOTH_STONE.defaultBlockState();
+            case DIRT -> Blocks.DIRT_PATH.defaultBlockState();
+         };
+      };
+   }
+
+   private static long packFaceCell(int x, int z) {
+      return (long)x << 32 ^ (z & 0xffffffffL);
    }
 
    /**

@@ -89,9 +89,11 @@ requires a separate 3D sampler and remains open.
 
 Cube-Net also exposes geodetic OSM feature queries and a canonical projector for
 roads/buildings. Every returned vertex carries its owning face coordinates and
-the matching planar position; callers must use that projection before rasterizing.
-The actual road/building block overlay is still pending, so a cache miss remains
-an empty feature set and never invents geometry.
+the matching planar position. The canonical decoration pass now reuses the road
+surface style and building material/profile rules for ordinary, same-face
+geometry. Bridge/tunnel modes and polygons that cross a face are quarantined
+until their seam ownership adapter is available. A cache miss remains an empty
+feature set and never invents geometry.
 
 This remains a wiring and compatibility prototype. Cut-edge apron chunks are
 now generated as derived native `LevelChunk` instances from canonical face
