@@ -1,5 +1,8 @@
 package com.yucareux.tellus.worldgen;
 
+import com.yucareux.tellus.world.data.osm.OsmBuildingFeature;
+import com.yucareux.tellus.world.data.osm.OsmBuildingKind;
+import com.yucareux.tellus.world.data.osm.OsmBuildingMetadata;
 import com.yucareux.tellus.world.data.osm.RoadClass;
 import com.yucareux.tellus.world.data.osm.RoadFeature;
 import com.yucareux.tellus.world.data.osm.RoadMode;
@@ -40,5 +43,39 @@ class CubeNetFeatureRasterizerTest {
       var cells = CubeNetFeatureRasterizer.roadCells(MODEL, LAYOUT, road, face, 0, 0,
          LAYOUT.faceSize(), LAYOUT.faceSize(), 1000.0);
       assertTrue(cells.stream().allMatch(cell -> cell.face() == face.index()));
+   }
+
+   @Test
+   void aCrossFaceBuildingUsesGeodeticCellMembershipPerFace() {
+      double[] crossing = findFaceChange();
+      double lat = crossing[0], lon = crossing[1], delta = crossing[2];
+      var left = CubeNetFeatureProjector.project(MODEL, LAYOUT, lat, lon).orElseThrow();
+      var right = CubeNetFeatureProjector.project(MODEL, LAYOUT, lat, lon + delta).orElseThrow();
+      assertNotEquals(left.face(), right.face());
+      OsmBuildingFeature building = new OsmBuildingFeature(OsmBuildingKind.FOOTPRINT, 99L,
+         "cross-face", false, new OsmBuildingMetadata("residential", null, null, null, 1,
+            null, null, null, null, null), 6.0, 0.0,
+         new double[][]{{lon, lon + delta, lon + delta, lon, lon}},
+         new double[][]{{lat - delta, lat - delta, lat + delta, lat + delta, lat - delta}});
+      CubeNetLayout.Face face = CubeNetLayout.Face.of(left.face());
+      int minX = Math.max(0, (int)Math.floor(left.faceX()) - 8);
+      int minZ = Math.max(0, (int)Math.floor(left.faceZ()) - 8);
+      var cells = CubeNetFeatureRasterizer.buildingCells(MODEL, LAYOUT, building, face,
+         minX, minZ, minX + 32, minZ + 32);
+      assertFalse(cells.isEmpty());
+      assertTrue(cells.stream().allMatch(cell -> cell.face() == face.index()));
+   }
+
+   private static double[] findFaceChange() {
+      for (double lat = -80.0; lat <= 80.0; lat += 1.0) {
+         for (double lon = -179.0; lon < 180.0; lon += 1.0) {
+            var first = CubeNetFeatureProjector.project(MODEL, LAYOUT, lat, lon).orElse(null);
+            var second = CubeNetFeatureProjector.project(MODEL, LAYOUT, lat, lon + 0.5).orElse(null);
+            if (first != null && second != null && first.face() != second.face()) {
+               return new double[]{lat, lon, 0.5};
+            }
+         }
+      }
+      throw new AssertionError("test grid did not find a cube-net face seam");
    }
 }

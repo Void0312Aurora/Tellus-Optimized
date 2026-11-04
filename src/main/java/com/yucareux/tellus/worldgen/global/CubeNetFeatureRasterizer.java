@@ -11,8 +11,10 @@ import java.util.Objects;
 
 /**
  * Rasterizes OSM geometry in canonical face coordinates. Road segments are
- * sampled along the geodetic path and split at face ownership changes, while
- * polygons remain conservative until a seam-aware polygon clipper is added.
+ * sampled along the geodetic path and split at face ownership changes. A
+ * building that crosses a face seam is rasterized by testing canonical cell
+ * centres against the original geodetic footprint, so it cannot bridge the
+ * planar gap between faces.
  */
 public final class CubeNetFeatureRasterizer {
    private CubeNetFeatureRasterizer() { }
@@ -68,7 +70,10 @@ public final class CubeNetFeatureRasterizer {
          for (int point = 0; point < building.pointCount(part); point++) {
             var projected = CubeNetFeatureProjector.project(model, layout,
                building.latAt(part, point), building.lonAt(part, point)).orElse(null);
-            if (projected == null || projected.face() != face.index()) return List.of();
+            if (projected == null) return List.of();
+            if (projected.face() != face.index()) {
+               return buildingCellsByGeodeticMembership(model, building, face, minX, minZ, maxX, maxZ);
+            }
             ringsX[part][point] = projected.faceX();
             ringsZ[part][point] = projected.faceZ();
          }
@@ -76,6 +81,26 @@ public final class CubeNetFeatureRasterizer {
       List<FaceCell> cells = new ArrayList<>();
       ScanlinePolygonRasterizer.fill(ringsX, ringsZ, minX, minZ, maxX, maxZ,
          (x, z) -> cells.add(new FaceCell(face.index(), x, z)));
+      return List.copyOf(cells);
+   }
+
+   /**
+    * Cell-centre fallback for a footprint whose vertices occupy more than one
+    * canonical face. This keeps each face's raster independent and naturally
+    * handles a footprint that only clips a small seam strip. OSM building
+    * rings are already geodetic, so no planar-net interpolation is introduced.
+    */
+   private static List<FaceCell> buildingCellsByGeodeticMembership(
+      SphereWorldModel model, OsmBuildingFeature building, CubeNetLayout.Face face,
+      int minX, int minZ, int maxX, int maxZ
+   ) {
+      List<FaceCell> cells = new ArrayList<>();
+      for (int z = minZ; z <= maxZ; z++) for (int x = minX; x <= maxX; x++) {
+         SphereWorldModel.GeoPoint point = model.exactSurfacePoint(face.index(), x + 0.5, z + 0.5);
+         if (building.containsLonLat(point.longitude(), point.latitude())) {
+            cells.add(new FaceCell(face.index(), x, z));
+         }
+      }
       return List.copyOf(cells);
    }
 
