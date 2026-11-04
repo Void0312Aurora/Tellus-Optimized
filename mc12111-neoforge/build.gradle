@@ -20,6 +20,7 @@ ext.tellus = [
 	inheritedMainResourceProjects: ['mc262-neoforge'],
 	inheritedClientResourceProjects: [],
 	overriddenSharedMainSources: [
+		'com/yucareux/tellus/worldgen/TellusBiomeSourceBridge.java',
 		'com/yucareux/tellus/compat/MinecraftVersionCompat.java',
 		'com/yucareux/tellus/compat/TellusMinecraftCompat.java',
 		'com/yucareux/tellus/world/realtime/RealtimeVersionCompat.java',

@@ -15,6 +15,9 @@ ext.tellus = [
 	protobufVersion: '4.28.2',
 	officialMappings: false,
 	testDistantHorizonsRuntime: true,
+	overriddenSharedMainSources: [
+		'com/yucareux/tellus/worldgen/TellusBiomeSourceBridge.java',
+	],
 ]
 
 apply from: rootProject.file('gradle/tellus-fabric.gradle')

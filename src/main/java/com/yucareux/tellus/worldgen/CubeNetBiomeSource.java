@@ -1,7 +1,6 @@
 package com.yucareux.tellus.worldgen;
 
 import com.google.common.base.Suppliers;
-import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import com.yucareux.tellus.world.data.biome.BiomeClassification;
@@ -177,8 +176,8 @@ public final class CubeNetBiomeSource extends TellusBiomeSourceBridge {
    }
 
    @Override
-   protected Codec<? extends BiomeSource> codec() {
-      return CODEC.codec();
+   protected MapCodec<? extends BiomeSource> tellusBiomeSourceMapCodec() {
+      return CODEC;
    }
 
    @Override

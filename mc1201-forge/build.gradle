@@ -16,6 +16,7 @@ def sharedSourceLayers = ['pre-26', 'mc1201', 'forge-family', 'pre-26-forge']
 def overriddenSharedMainSources = [
 	'com/yucareux/tellus/network/GeoTpOpenMapPayload.java',
 	'com/yucareux/tellus/network/GeoTpTeleportPayload.java',
+	'com/yucareux/tellus/worldgen/TellusBiomeSourceBridge.java',
 	'com/yucareux/tellus/worldgen/EarthBiomeSource.java',
 ] as Set
 def sharedMainJavaPath = rootProject.file('src/main/java').toPath().toAbsolutePath().normalize()

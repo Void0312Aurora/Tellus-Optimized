@@ -1,5 +1,6 @@
 package com.yucareux.tellus.worldgen;
 
+import com.mojang.serialization.MapCodec;
 import net.minecraft.core.Holder;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.BiomeResolver;
@@ -21,6 +22,13 @@ public abstract class TellusBiomeSourceBridge extends BiomeSource {
    protected BiomeResolver chunkResolver(ColumnResolver resolver) {
       return (x, y, z) -> resolver.resolve(x, y, z);
    }
+
+   @Override
+   protected final MapCodec<? extends BiomeSource> codec() {
+      return tellusBiomeSourceMapCodec();
+   }
+
+   protected abstract MapCodec<? extends BiomeSource> tellusBiomeSourceMapCodec();
 
    public abstract Holder<Biome> getNoiseBiome(int x, int y, int z, Sampler sampler);
 

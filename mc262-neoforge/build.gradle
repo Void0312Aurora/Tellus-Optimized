@@ -11,6 +11,9 @@ ext.tellus = [
 	javaVersion: 25,
 	distantHorizonsRuntimeProperty: 'mc262_distant_horizons_runtime_path',
 	sharedSourceLayers: ['post-1201', 'mc262', 'mc26', 'forge-family', 'neoforge'],
+	overriddenSharedMainSources: [
+		'com/yucareux/tellus/worldgen/TellusBiomeSourceBridge.java',
+	],
 ]
 
 apply from: rootProject.file('gradle/tellus-neoforge.gradle')

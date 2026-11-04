@@ -218,6 +218,11 @@ public final class EarthBiomeSource extends TellusBiomeSourceBridge {
       return Objects.requireNonNull(CODEC, "CODEC");
    }
 
+   @Override
+   protected MapCodec<? extends BiomeSource> tellusBiomeSourceMapCodec() {
+      return CODEC;
+   }
+
    
    public Holder<Biome> getNoiseBiome(int x, int y, int z,  Sampler sampler) {
       int blockX = QuartPos.toBlock(x);

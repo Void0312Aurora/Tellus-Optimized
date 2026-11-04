@@ -19,6 +19,7 @@ ext.tellus = [
 	overriddenSharedMainSources: [
 		'com/yucareux/tellus/network/GeoTpOpenMapPayload.java',
 		'com/yucareux/tellus/network/GeoTpTeleportPayload.java',
+		'com/yucareux/tellus/worldgen/TellusBiomeSourceBridge.java',
 		'com/yucareux/tellus/worldgen/EarthBiomeSource.java',
 	]
 ]
