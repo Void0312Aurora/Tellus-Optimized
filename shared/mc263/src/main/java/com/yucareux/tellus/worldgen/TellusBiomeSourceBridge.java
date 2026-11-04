@@ -24,7 +24,7 @@ public abstract class TellusBiomeSourceBridge extends BiomeSource {
    }
 
    @Override
-   protected final MapCodec<? extends BiomeSource> codec() {
+   protected MapCodec<? extends BiomeSource> codec() {
       return tellusBiomeSourceMapCodec();
    }
 
@@ -37,10 +37,12 @@ public abstract class TellusBiomeSourceBridge extends BiomeSource {
       return (x, y, z) -> this.getNoiseBiome(x, y, z, sampler);
    }
 
-   public abstract Pair<BlockPos, Holder<Biome>> findClosestBiome3d(
+   public Pair<BlockPos, Holder<Biome>> findClosestBiome3d(
       BlockPos origin, int radius, int horizontalInterval, int verticalInterval,
       Predicate<Holder<Biome>> predicate, Sampler sampler, LevelReader level
-   );
+   ) {
+      return null;
+   }
 
    @Override
    public Pair<BlockPos, Holder<Biome>> findClosestBiome3d(
