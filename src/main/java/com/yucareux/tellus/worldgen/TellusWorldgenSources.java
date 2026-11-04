@@ -8,6 +8,7 @@ import com.yucareux.tellus.compat.MinecraftVersionCompat;
 import com.yucareux.tellus.world.data.canopy.TellusCanopyHeightSource;
 import com.yucareux.tellus.world.data.cover.TellusLandCoverSource;
 import com.yucareux.tellus.world.data.elevation.TellusElevationSource;
+import com.yucareux.tellus.world.data.geology.SphericalGeologySource;
 import com.yucareux.tellus.world.data.koppen.TellusKoppenSource;
 import com.yucareux.tellus.world.data.mask.TellusLandMaskSource;
 import com.yucareux.tellus.world.data.ocean.OisstOceanClimateSource;
@@ -46,6 +47,7 @@ public final class TellusWorldgenSources {
    private static final TellusLandCoverSource LAND_COVER = new TellusLandCoverSource();
    private static final TellusLandMaskSource LAND_MASK = new TellusLandMaskSource();
    private static final TellusElevationSource ELEVATION = new TellusElevationSource();
+   private static final SphericalGeologySource GEOLOGY = SphericalGeologySource.shared();
    private static final TellusKoppenSource KOPPEN = new TellusKoppenSource();
    private static final OisstOceanClimateSource OCEAN_CLIMATE = new OisstOceanClimateSource();
    private static final TellusOsmRoadSource OSM_ROADS = new TellusOsmRoadSource();
@@ -103,7 +105,7 @@ public final class TellusWorldgenSources {
       if (Boolean.getBoolean("tellus.sphere.syntheticSampler")) {
          return syntheticSphericalSampler(model);
       }
-      return SphereChunkSampler.fromSources(model, ELEVATION, LAND_COVER, LAND_MASK);
+      return SphereChunkSampler.fromSources(model, ELEVATION, LAND_COVER, LAND_MASK, GEOLOGY);
    }
 
    /**

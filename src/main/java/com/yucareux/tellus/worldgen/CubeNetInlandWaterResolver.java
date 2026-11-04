@@ -90,7 +90,7 @@ public final class CubeNetInlandWaterResolver {
       if (!sample.hasWater()) return surface;
       return new SphereChunkSampler.SurfaceData(
          sample.terrainSurfaceMeters(), surface.coverClass(), sample.waterSurfaceMeters(),
-         SphereChunkSampler.SurfaceData.WaterKind.INLAND
+         SphereChunkSampler.SurfaceData.WaterKind.INLAND, surface.geology()
       );
    }
 

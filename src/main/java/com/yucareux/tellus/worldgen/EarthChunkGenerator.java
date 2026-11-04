@@ -303,7 +303,6 @@ public final class EarthChunkGenerator extends TellusChunkGeneratorBridge {
       TellusBlockReferences.terracottaState("LIGHT_GRAY"),
       TellusBlockReferences.terracottaState("WHITE")
    };
-   private static final BlockState[] STRATA_STATES = buildStrataStates();
    private static final int CHUNK_SIDE = 16;
    private static final int CHUNK_MASK = 15;
    private static final int CHUNK_AREA = 256;
@@ -6590,43 +6589,12 @@ public final class EarthChunkGenerator extends TellusChunkGeneratorBridge {
    }
 
    public static BlockState resolveStrataBlock(StrataPolicy.Column column, int y) {
-      return STRATA_STATES[column.material(y)];
+      return StrataMaterials.state(column.material(y));
    }
 
    /** Depth of the bare-rock layer on a face this steep, the same for real chunks and Distant Horizons. */
    public int resolveStrataDepth(int localReliefBlocks) {
       return DeepslateSlopePolicy.surfaceDepthForRelief(12, localReliefBlocks);
-   }
-
-   private static BlockState[] buildStrataStates() {
-      BlockState[] states = new BlockState[StrataPolicy.MATERIAL_COUNT];
-      for (int material = 0; material < states.length; material++) {
-         states[material] = switch (material) {
-            case StrataPolicy.ANDESITE -> Blocks.ANDESITE.defaultBlockState();
-            case StrataPolicy.DIORITE -> Blocks.DIORITE.defaultBlockState();
-            case StrataPolicy.GRANITE -> Blocks.GRANITE.defaultBlockState();
-            case StrataPolicy.CALCITE -> Blocks.CALCITE.defaultBlockState();
-            case StrataPolicy.DEEPSLATE -> Blocks.DEEPSLATE.defaultBlockState();
-            case StrataPolicy.TUFF -> Blocks.TUFF.defaultBlockState();
-            case StrataPolicy.BASALT -> Blocks.BASALT.defaultBlockState();
-            case StrataPolicy.SMOOTH_BASALT -> Blocks.SMOOTH_BASALT.defaultBlockState();
-            case StrataPolicy.BLACKSTONE -> Blocks.BLACKSTONE.defaultBlockState();
-            case StrataPolicy.SANDSTONE -> Blocks.SANDSTONE.defaultBlockState();
-            case StrataPolicy.SMOOTH_SANDSTONE -> Blocks.SMOOTH_SANDSTONE.defaultBlockState();
-            case StrataPolicy.RED_SANDSTONE -> Blocks.RED_SANDSTONE.defaultBlockState();
-            case StrataPolicy.TERRACOTTA -> Blocks.TERRACOTTA.defaultBlockState();
-            case StrataPolicy.WHITE_TERRACOTTA -> TellusBlockReferences.terracottaState("WHITE");
-            case StrataPolicy.LIGHT_GRAY_TERRACOTTA -> TellusBlockReferences.terracottaState("LIGHT_GRAY");
-            case StrataPolicy.RED_TERRACOTTA -> TellusBlockReferences.terracottaState("RED");
-            case StrataPolicy.ORANGE_TERRACOTTA -> TellusBlockReferences.terracottaState("ORANGE");
-            case StrataPolicy.PACKED_MUD -> Blocks.PACKED_MUD.defaultBlockState();
-            case StrataPolicy.COARSE_DIRT -> Blocks.COARSE_DIRT.defaultBlockState();
-            case StrataPolicy.CLAY -> Blocks.CLAY.defaultBlockState();
-            case StrataPolicy.COBBLESTONE -> Blocks.COBBLESTONE.defaultBlockState();
-            default -> Blocks.STONE.defaultBlockState();
-         };
-      }
-      return states;
    }
 
    private MountainSurfaceRules.ApproximateSurface classifyMountainSurface(
@@ -13491,7 +13459,7 @@ public final class EarthChunkGenerator extends TellusChunkGeneratorBridge {
             PalettedContainer<BlockState> states = this.acquireStates(sectionIndex, null);
             for (int localY = localStartY; localY <= localEndY; localY++) {
                int worldY = sectionBottomY + localY;
-               states.getAndSetUnchecked(localX, localY, localZ, worldY < deepslateStart ? DEEPSLATE_STATE : resolveStrataBlock(strata, worldY));
+               states.getAndSetUnchecked(localX, localY, localZ, worldY < deepslateStart ? DEEPSLATE_STATE : StrataMaterials.state(strata.material(worldY)));
             }
 
             this.markDirty(sectionIndex);

@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.yucareux.tellus.world.data.geology.Lithology;
 import com.yucareux.tellus.world.data.geology.MapUnit;
 import com.yucareux.tellus.world.data.geology.Rock;
+import com.yucareux.tellus.worldgen.global.SphereWorldModel;
 import java.util.HashSet;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
@@ -109,6 +110,21 @@ class StrataPolicyTest {
          differs |= first.material(y) != otherSeed.material(y);
       }
       assertTrue(differs, "another world seed gives other beds");
+   }
+
+   @Test
+   void sphericalColumnsUseTheSameMaterialFieldAtTheDateLine() {
+      var east = StrataPolicy.sphericalColumn(
+         Lithology.CARBONATE_SEDIMENTARY, false,
+         new SphereWorldModel.GeoPoint(12.0, 180.0, 0.0), 1.0, SEA_LEVEL, SEED
+      );
+      var west = StrataPolicy.sphericalColumn(
+         Lithology.CARBONATE_SEDIMENTARY, false,
+         new SphereWorldModel.GeoPoint(12.0, -180.0, 0.0), 1.0, SEA_LEVEL, SEED
+      );
+      for (int y = SEA_LEVEL; y < SEA_LEVEL + 800; y++) {
+         assertEquals(east.material(y), west.material(y));
+      }
    }
 
    @Test

@@ -149,6 +149,10 @@ public final class SphereFaceChunkGenerator extends ChunkGenerator {
    public SphereSingularityPolicy singularityPolicy() { return this.singularityPolicy; }
    public SphereSurfaceMotion surfaceMotion() { return this.surfaceMotion; }
 
+   void setWorldSeed(long worldSeed) {
+      this.materializer.setWorldSeed(worldSeed);
+   }
+
    /** Engine coordinates are centered on this face, not a Mercator plane. */
    public SphereWorldModel.SphereChunkAddress address(ChunkPos pos) {
       return this.topology.address(this.face, pos.x, pos.z);
@@ -218,11 +222,13 @@ public final class SphereFaceChunkGenerator extends ChunkGenerator {
    }
 
    /** A distant cell samples one canonical point instead of generating 256 columns. */
-   SphereChunkSampler.SurfaceData terrainPoint(SphereWorldModel.SphereBlockAddress address, int cellSize) {
+   SphereChunkSampler.Column terrainPoint(SphereWorldModel.SphereBlockAddress address, int cellSize) {
       var chunk = new SphereWorldModel.SphereChunkAddress(address.face(),
          Math.floorDiv(address.blockX(), 16L), Math.floorDiv(address.blockZ(), 16L));
       this.singularityPolicy.requireTerrainMaterialization(chunk);
-      return this.sampler.get().samplePoint(this.model.surfacePoint(address), this.worldScale() * cellSize);
+      SphereWorldModel.GeoPoint point = this.model.surfacePoint(address);
+      return new SphereChunkSampler.Column(address, point,
+         this.sampler.get().samplePoint(point, this.worldScale() * cellSize));
    }
 
    int getBaseHeightAt(SphereWorldModel.SphereChunkAddress address, int x, int z,

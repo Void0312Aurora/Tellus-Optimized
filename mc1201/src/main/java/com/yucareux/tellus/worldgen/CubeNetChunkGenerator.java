@@ -18,6 +18,7 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.LevelHeightAccessor;
@@ -35,6 +36,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.level.chunk.ChunkGeneratorStructureState;
+import net.minecraft.world.level.levelgen.structure.StructureSet;
 import net.minecraft.world.level.levelgen.GenerationStep;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.RandomState;
@@ -166,6 +168,15 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
    @Override public int maxY() { return this.minY + this.height; }
    SphereSingularityPolicy.Config singularityConfig() { return this.singularityConfig; }
 
+   @Override
+   public ChunkGeneratorStructureState createState(
+      HolderLookup<StructureSet> structureSets, RandomState randomState, long seed
+   ) {
+      this.materializer.setWorldSeed(seed);
+      for (SphereFaceChunkGenerator face : this.faces) face.setWorldSeed(seed);
+      return ChunkGeneratorStructureState.createForNormal(randomState, seed, this.biomeSource, structureSets);
+   }
+
    boolean admitsOrdinaryMaterialization(SphereWorldModel.SphereChunkAddress address) {
       return this.singularityPolicy.admitsOrdinaryMaterialization(address);
    }
@@ -235,13 +246,13 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
       if (!this.singularityPolicy.admitsTerrainMaterialization(address)) return Optional.empty();
       // The fine path shares the exact cached columns used by native chunk
       // filling. Coarse LODs sample only their representative point.
-      var data = cellSize == 1
-         ? this.faces[address.face()].terrainGrid(address).column((int)(blockX & 15), (int)(blockZ & 15)).data()
+      var column = cellSize == 1
+         ? this.faces[address.face()].terrainGrid(address).column((int)(blockX & 15), (int)(blockZ & 15))
          : this.faces[address.face()].terrainPoint(new SphereWorldModel.SphereBlockAddress(
             address.face(), blockX, blockZ), cellSize);
       // Missing elevation and unsupported vertical ranges must fail the
       // future, never turn into a successful all-air DH cache entry.
-      var plan = this.materializer.plan(data, this.minY, this.maxY());
+      var plan = this.materializer.plan(column.context(), this.minY, this.maxY());
       return Optional.of(this.materializer.lodLayers(plan, this.minY, this.maxY()));
    }
 

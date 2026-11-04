@@ -3,6 +3,9 @@ package com.yucareux.tellus.worldgen;
 import com.yucareux.tellus.worldgen.global.CubeNetLayout;
 import com.yucareux.tellus.worldgen.global.SphereChunkSampler;
 import com.yucareux.tellus.worldgen.global.SphereWorldModel;
+import com.yucareux.tellus.world.data.geology.Lithology;
+import com.yucareux.tellus.world.data.geology.MapUnit;
+import com.yucareux.tellus.world.data.geology.Rock;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import net.minecraft.SharedConstants;
@@ -102,6 +105,23 @@ class CubeNetLodSurfaceTest {
       assertEquals(coarse, generator.sampleLodColumn(15368, -5112, 1).orElseThrow());
       assertEquals(257, calls.get());
       assertEquals(1000.0, lastResolution.get());
+   }
+
+   @Test void geologyProfileIsSharedByNativeAndLodColumns() {
+      var geology = new SphereChunkSampler.SurfaceData.GeologyData(
+         Lithology.UNKNOWN, MapUnit.of(Rock.RED_SANDSTONE)
+      );
+      var generator = generator((point, resolution) -> new SphereChunkSampler.SurfaceData(
+         10.0, 30, Double.NaN, SphereChunkSampler.SurfaceData.WaterKind.NONE, geology
+      ));
+      var layout = generator.adapter().layout();
+      var center = layout.toPlanar(new CubeNetLayout.FacePoint(CubeNetLayout.Face.POS_X,
+         layout.faceSize() * 0.5 + 0.5, layout.faceSize() * 0.5 + 0.5));
+      int blockX = (int)Math.floor(center.x()), blockZ = (int)Math.floor(center.z());
+      var layers = generator.sampleLodColumn(blockX, blockZ, 1).orElseThrow();
+      assertTrue(layers.stream().anyMatch(layer -> layer.state().is(Blocks.RED_SANDSTONE)));
+      var base = generator.getBaseColumn(blockX, blockZ, LevelHeightAccessor.create(0, 256), null);
+      assertTrue(base.getBlock(60).is(Blocks.RED_SANDSTONE));
    }
 
    @Test void missingElevationAndOutOfRangeDataFailInsteadOfBecomingCachedAir() {

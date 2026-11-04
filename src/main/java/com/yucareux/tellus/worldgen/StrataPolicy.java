@@ -3,6 +3,8 @@ package com.yucareux.tellus.worldgen;
 import com.yucareux.tellus.world.data.geology.Lithology;
 import com.yucareux.tellus.world.data.geology.MapUnit;
 import com.yucareux.tellus.world.data.geology.Rock;
+import com.yucareux.tellus.worldgen.global.SphereWorldModel;
+import java.util.Objects;
 
 /**
  * Version-neutral rock for exposed bedrock, from the column's geologic map unit or, where there is none, its GLiM rock
@@ -201,9 +203,53 @@ public final class StrataPolicy {
    ) {
       double xMeters = worldX * horizontalMetersPerBlock;
       double zMeters = worldZ * horizontalMetersPerBlock;
+      return columnAtMeters(palette, second, secondPercent, xMeters, 0.0, zMeters,
+         0.0, 1.0, 0.0, horizontalMetersPerBlock, verticalMetersPerBlock, seaLevelY, worldSeed);
+   }
+
+   /** Same rock rules in a continuous Earth-centered field, with radial height in physical metres. */
+   public static Column sphericalColumn(
+      Lithology lithology, boolean arid, SphereWorldModel.GeoPoint point,
+      double metersPerBlock, int seaLevelY, long worldSeed
+   ) {
+      return sphericalColumn(palette(lithology, arid), null, 0, point, metersPerBlock, seaLevelY, worldSeed);
+   }
+
+   public static Column sphericalColumn(
+      MapUnit unit, SphereWorldModel.GeoPoint point, double metersPerBlock, int seaLevelY, long worldSeed
+   ) {
+      return sphericalColumn(palette(unit.main()), unit.second() == null ? null : palette(unit.second()),
+         unit.secondPercent(), point, metersPerBlock, seaLevelY, worldSeed);
+   }
+
+   private static Column sphericalColumn(
+      Palette palette, Palette second, int secondPercent, SphereWorldModel.GeoPoint point,
+      double metersPerBlock, int seaLevelY, long worldSeed
+   ) {
+      Objects.requireNonNull(point, "point");
+      if (!(metersPerBlock > 0.0) || !Double.isFinite(metersPerBlock)) {
+         throw new IllegalArgumentException("metersPerBlock");
+      }
+      double latitude = Math.toRadians(point.latitude());
+      double longitude = Math.toRadians(point.longitude());
+      // All longitudes at either exact pole represent the same physical point.
+      double cosLatitude = Math.abs(point.latitude()) == 90.0 ? 0.0 : Math.cos(latitude);
+      double upX = cosLatitude * Math.cos(longitude);
+      double upY = Math.sin(latitude);
+      double upZ = cosLatitude * Math.sin(longitude);
+      double radius = SphereWorldModel.EARTH_RADIUS_METERS;
+      return columnAtMeters(palette, second, secondPercent, radius * upX, radius * upY, radius * upZ,
+         upX, upY, upZ, metersPerBlock, metersPerBlock, seaLevelY, worldSeed);
+   }
+
+   private static Column columnAtMeters(
+      Palette palette, Palette second, int secondPercent,
+      double xMeters, double yMeters, double zMeters, double upX, double upY, double upZ,
+      double horizontalMetersPerBlock, double verticalMetersPerBlock, int seaLevelY, long worldSeed
+   ) {
       if (second != null && palette.family() == Family.MASSIVE) {
          // Massive rocks do not interbed: each part of the unit is one of them.
-         double zone = noise(xMeters / UNIT_ZONE_METERS, 0.0, zMeters / UNIT_ZONE_METERS, worldSeed ^ UNIT_ZONE_SALT);
+         double zone = noise(xMeters / UNIT_ZONE_METERS, yMeters / UNIT_ZONE_METERS, zMeters / UNIT_ZONE_METERS, worldSeed ^ UNIT_ZONE_SALT);
          if (stretched(zone) * 100.0 < secondPercent) {
             palette = second;
          }
@@ -211,9 +257,9 @@ public final class StrataPolicy {
          secondPercent = 0;
       }
       double offset = switch (palette.family()) {
-         case LAYERED -> dipOffset(xMeters, zMeters, worldSeed, 120.0, 24_000.0, 12.0, 1_600.0);
+         case LAYERED -> dipOffset(xMeters, yMeters, zMeters, worldSeed, 120.0, 24_000.0, 12.0, 1_600.0);
          // Foliation stands steep and folded rather than lying flat.
-         case FOLIATED -> dipOffset(xMeters, zMeters, worldSeed, 500.0, 5_000.0, 150.0, 600.0);
+         case FOLIATED -> dipOffset(xMeters, yMeters, zMeters, worldSeed, 500.0, 5_000.0, 150.0, 600.0);
          case MASSIVE -> 0.0;
       };
       double safeVertical = verticalMetersPerBlock > 0.0 && Double.isFinite(verticalMetersPerBlock) ? verticalMetersPerBlock : 1.0;
@@ -223,10 +269,11 @@ public final class StrataPolicy {
       int main = palette.main();
       if (palette.family() == Family.MASSIVE) {
          // Stretch the zone noise away from its middle so a massif is one rock, with short transitions.
-         double zone = noise(xMeters / ZONE_METERS, 0.0, zMeters / ZONE_METERS, worldSeed ^ ZONE_SALT);
+         double zone = noise(xMeters / ZONE_METERS, yMeters / ZONE_METERS, zMeters / ZONE_METERS, worldSeed ^ ZONE_SALT);
          main = pick(palette, stretched(zone));
       }
-      return new Column(palette, second, secondPercent, main, xMeters, zMeters, offset, safeVertical, seaLevelY, worldSeed, drawFormations);
+      return new Column(palette, second, secondPercent, main, xMeters, yMeters, zMeters,
+         upX, upY, upZ, offset, safeVertical, seaLevelY, worldSeed, drawFormations);
    }
 
    private static double stretched(double noise) {
@@ -288,10 +335,11 @@ public final class StrataPolicy {
    }
 
    private static double dipOffset(
-      double xMeters, double zMeters, long seed, double broadMeters, double broadWavelength, double detailMeters, double detailWavelength
+      double xMeters, double yMeters, double zMeters, long seed,
+      double broadMeters, double broadWavelength, double detailMeters, double detailWavelength
    ) {
-      double broad = noise(xMeters / broadWavelength, 0.0, zMeters / broadWavelength, seed ^ DIP_SALT) * 2.0 - 1.0;
-      double detail = noise(xMeters / detailWavelength, 0.0, zMeters / detailWavelength, seed ^ DIP_DETAIL_SALT) * 2.0 - 1.0;
+      double broad = noise(xMeters / broadWavelength, yMeters / broadWavelength, zMeters / broadWavelength, seed ^ DIP_SALT) * 2.0 - 1.0;
+      double detail = noise(xMeters / detailWavelength, yMeters / detailWavelength, zMeters / detailWavelength, seed ^ DIP_DETAIL_SALT) * 2.0 - 1.0;
       return broad * broadMeters + detail * detailMeters;
    }
 
@@ -396,7 +444,11 @@ public final class StrataPolicy {
       private final int secondPercent;
       private final int main;
       private final double xMeters;
+      private final double yMeters;
       private final double zMeters;
+      private final double upX;
+      private final double upY;
+      private final double upZ;
       private final double offsetMeters;
       private final double verticalMetersPerBlock;
       private final int seaLevelY;
@@ -409,7 +461,11 @@ public final class StrataPolicy {
          int secondPercent,
          int main,
          double xMeters,
+         double yMeters,
          double zMeters,
+         double upX,
+         double upY,
+         double upZ,
          double offsetMeters,
          double verticalMetersPerBlock,
          int seaLevelY,
@@ -421,7 +477,11 @@ public final class StrataPolicy {
          this.secondPercent = secondPercent;
          this.main = main;
          this.xMeters = xMeters;
+         this.yMeters = yMeters;
          this.zMeters = zMeters;
+         this.upX = upX;
+         this.upY = upY;
+         this.upZ = upZ;
          this.offsetMeters = offsetMeters;
          this.verticalMetersPerBlock = verticalMetersPerBlock;
          this.seaLevelY = seaLevelY;
@@ -438,8 +498,11 @@ public final class StrataPolicy {
          double meters = (y + 0.5 - this.seaLevelY) * this.verticalMetersPerBlock + this.offsetMeters;
          if (this.palette.family() == Family.MASSIVE) {
             double patch = this.palette.formationMeters();
-            double broad = noise(this.xMeters / patch, meters / patch, this.zMeters / patch, this.seed ^ PATCH_SALT);
-            double detail = noise(this.xMeters * 3.0 / patch, meters * 3.0 / patch, this.zMeters * 3.0 / patch, this.seed ^ PATCH_DETAIL_SALT);
+            double px = this.xMeters + this.upX * meters;
+            double py = this.yMeters + this.upY * meters;
+            double pz = this.zMeters + this.upZ * meters;
+            double broad = noise(px / patch, py / patch, pz / patch, this.seed ^ PATCH_SALT);
+            double detail = noise(px * 3.0 / patch, py * 3.0 / patch, pz * 3.0 / patch, this.seed ^ PATCH_DETAIL_SALT);
             return broad * 0.7 + detail * 0.3 > ENCLAVE_THRESHOLD ? this.palette.accent() : this.main;
          }
 

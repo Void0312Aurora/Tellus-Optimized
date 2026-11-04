@@ -104,9 +104,27 @@ public final class MacrostratGeologySource implements TellusCacheHandle {
       double z = blockZ + RunLengthGridLookup.borderWarp(blockX, blockZ, cellBlocks, WARP_Z_SEED);
       double longitude = EarthProjection.blockXToLongitude(x, worldScale);
       double latitude = EarthProjection.blockZToLat(z, worldScale);
+      return this.sampleUnitAtLonLat(longitude, latitude, worldScale, resolutionMeters);
+   }
+
+   /**
+    * Bedrock at a geodetic point. This path is used by spherical generators so
+    * the cube face is never part of the lookup identity. It deliberately does
+    * not apply the planar border warp used by {@link #sampleUnit}; the same
+    * physical point must resolve to the same map unit on every face.
+    */
+   public MapUnit sampleUnitAtLonLat(double longitude, double latitude, double worldScale, double resolutionMeters) {
+      if (!ENABLED || !Double.isFinite(longitude) || !Double.isFinite(latitude) || !(worldScale > 0.0)) {
+         return null;
+      }
+      int zoom = zoomFor(worldScale, resolutionMeters);
+      if (zoom < 0) {
+         return null;
+      }
       if (!(Math.abs(latitude) < EarthProjection.MAX_MERCATOR_LATITUDE)) {
          return null;
       }
+      double tilesPerAxis = 1 << zoom;
       double wrappedLongitude = longitude - 360.0 * Math.floor((longitude + 180.0) / 360.0);
       double latitudeRad = Math.toRadians(latitude);
       double tileX = (wrappedLongitude + 180.0) / 360.0 * tilesPerAxis;

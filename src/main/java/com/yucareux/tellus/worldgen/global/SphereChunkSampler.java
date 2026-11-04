@@ -2,6 +2,9 @@ package com.yucareux.tellus.worldgen.global;
 
 import com.yucareux.tellus.world.data.cover.TellusLandCoverSource;
 import com.yucareux.tellus.world.data.elevation.TellusElevationSource;
+import com.yucareux.tellus.world.data.geology.Lithology;
+import com.yucareux.tellus.world.data.geology.MapUnit;
+import com.yucareux.tellus.world.data.geology.SphericalGeologySource;
 import com.yucareux.tellus.world.data.mask.TellusLandMaskSource;
 import com.yucareux.tellus.world.data.geo.GeodeticBounds;
 import com.yucareux.tellus.world.data.osm.OsmQueryMode;
@@ -34,6 +37,16 @@ public final class SphereChunkSampler {
    public static SphereChunkSampler fromSources(
       SphereWorldModel model, TellusElevationSource elevation, TellusLandCoverSource cover, TellusLandMaskSource landMask
    ) {
+      return fromSources(model, elevation, cover, landMask, null);
+   }
+
+   public static SphereChunkSampler fromSources(
+      SphereWorldModel model,
+      TellusElevationSource elevation,
+      TellusLandCoverSource cover,
+      TellusLandMaskSource landMask,
+      SphericalGeologySource geology
+   ) {
       Objects.requireNonNull(elevation, "elevation");
       Objects.requireNonNull(cover, "cover");
       return new SphereChunkSampler(model, (point, resolutionMeters) -> {
@@ -47,8 +60,11 @@ public final class SphereChunkSampler {
          // Neither cover=80 nor a bathymetry sample proves ocean membership.
          double waterSurface = ocean && !sample.mapterhornLandOverride()
             && sample.elevationMeters() < 0.0 ? 0.0 : Double.NaN;
+         SurfaceData.GeologyData geologyData = geology == null ? null
+            : SurfaceData.GeologyData.from(geology.sample(point, model.config().worldScale(), resolutionMeters));
          return new SurfaceData(sample.elevationMeters(), coverClass, waterSurface,
-            ocean && Double.isFinite(waterSurface) ? SurfaceData.WaterKind.OCEAN : SurfaceData.WaterKind.NONE);
+            ocean && Double.isFinite(waterSurface) ? SurfaceData.WaterKind.OCEAN : SurfaceData.WaterKind.NONE,
+            geologyData);
       });
    }
 
@@ -117,13 +133,22 @@ public final class SphereChunkSampler {
       SurfaceData sample(SphereWorldModel.GeoPoint point, double resolutionMeters);
    }
 
-   public record SurfaceData(double elevationMeters, int coverClass, double waterSurfaceMeters, WaterKind waterKind) {
+   public record SurfaceData(
+      double elevationMeters,
+      int coverClass,
+      double waterSurfaceMeters,
+      WaterKind waterKind,
+      GeologyData geology
+   ) {
       public SurfaceData(double elevationMeters, int coverClass) {
-         this(elevationMeters, coverClass, Double.NaN, WaterKind.NONE);
+         this(elevationMeters, coverClass, Double.NaN, WaterKind.NONE, null);
       }
       public SurfaceData(double elevationMeters, int coverClass, double waterSurfaceMeters) {
          this(elevationMeters, coverClass, waterSurfaceMeters,
-            Double.isFinite(waterSurfaceMeters) ? WaterKind.OCEAN : WaterKind.NONE);
+            Double.isFinite(waterSurfaceMeters) ? WaterKind.OCEAN : WaterKind.NONE, null);
+      }
+      public SurfaceData(double elevationMeters, int coverClass, double waterSurfaceMeters, WaterKind waterKind) {
+         this(elevationMeters, coverClass, waterSurfaceMeters, waterKind, null);
       }
       public SurfaceData {
          Objects.requireNonNull(waterKind, "waterKind");
@@ -137,6 +162,16 @@ public final class SphereChunkSampler {
       public boolean waterAvailable() { return Double.isFinite(this.waterSurfaceMeters); }
       public boolean oceanWater() { return this.waterAvailable() && this.waterKind == WaterKind.OCEAN; }
       public boolean inlandWater() { return this.waterAvailable() && this.waterKind == WaterKind.INLAND; }
+
+      public record GeologyData(Lithology lithology, MapUnit mapUnit) {
+         public GeologyData {
+            Objects.requireNonNull(lithology, "lithology");
+         }
+
+         static GeologyData from(SphericalGeologySource.Sample sample) {
+            return sample == null || !sample.available() ? null : new GeologyData(sample.lithology(), sample.mapUnit());
+         }
+      }
 
       public enum WaterKind {
          NONE,

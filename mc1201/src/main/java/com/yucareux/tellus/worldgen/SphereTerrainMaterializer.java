@@ -1,7 +1,10 @@
 package com.yucareux.tellus.worldgen;
 
+import com.yucareux.tellus.world.data.geology.Lithology;
+import com.yucareux.tellus.world.data.geology.MapUnit;
 import com.yucareux.tellus.worldgen.global.SphereChunkSampler;
 import com.yucareux.tellus.worldgen.global.SphereColumnContext;
+import com.yucareux.tellus.worldgen.global.SphereWorldModel;
 import java.util.EnumSet;
 import java.util.Objects;
 import java.util.ArrayList;
@@ -15,11 +18,21 @@ import net.minecraft.world.level.levelgen.Heightmap;
 public final class SphereTerrainMaterializer {
    private final double worldScale;
    private final int seaLevel;
+   private volatile long worldSeed;
 
    public SphereTerrainMaterializer(double worldScale, int seaLevel) {
+      this(worldScale, seaLevel, 0L);
+   }
+
+   public SphereTerrainMaterializer(double worldScale, int seaLevel, long worldSeed) {
       if (!(worldScale > 0.0) || !Double.isFinite(worldScale)) throw new IllegalArgumentException("worldScale");
       this.worldScale = worldScale;
       this.seaLevel = seaLevel;
+      this.worldSeed = worldSeed;
+   }
+
+   public void setWorldSeed(long worldSeed) {
+      this.worldSeed = worldSeed;
    }
 
    /** Preflight every column before writing so missing/out-of-range data cannot leave half a chunk. */
@@ -46,7 +59,11 @@ public final class SphereTerrainMaterializer {
          for (int i = 0; i < plans.length; i++) {
             int x = i % 16, z = i / 16;
             ColumnPlan plan = plans[i];
-            writer.fillColumnConstant(x, z, minY, plan.surfaceY(), Blocks.STONE.defaultBlockState());
+            if (plan.strata() == null) {
+               writer.fillColumnConstant(x, z, minY, plan.surfaceY(), Blocks.STONE.defaultBlockState());
+            } else {
+               writer.fillStrataSpan(x, z, minY, plan.surfaceY() - 1, minY, plan.strata());
+            }
             writer.fillSurfaceColumn(x, z, plan.surfaceY(), Math.max(minY + 1, plan.surfaceY() - 3),
                plan.top(), plan.filler());
             writer.setBlock(x, z, minY, Blocks.BEDROCK.defaultBlockState());
@@ -72,12 +89,26 @@ public final class SphereTerrainMaterializer {
             + "]; chunk supports [" + (minY + 1) + ", " + (maxY - 1) + "]");
       }
       Palette palette = palette(data.coverClass());
-      return new ColumnPlan(surfaceY, waterY, palette.top(), palette.filler());
+      return new ColumnPlan(surfaceY, waterY, palette.top(), palette.filler(), null);
    }
 
    ColumnPlan plan(SphereColumnContext column, int minY, int maxY) {
       Objects.requireNonNull(column, "column");
-      return this.plan(column.surface(), minY, maxY);
+      ColumnPlan base = this.plan(column.surface(), minY, maxY);
+      StrataPolicy.Column strata = this.strata(column);
+      return strata == null ? base : base.withStrata(strata);
+   }
+
+   private StrataPolicy.Column strata(SphereColumnContext column) {
+      SphereChunkSampler.SurfaceData.GeologyData geology = column.surface().geology();
+      if (geology == null || !column.surface().elevationAvailable()) return null;
+      SphereWorldModel.GeoPoint point = column.point();
+      boolean arid = column.surface().coverClass() == 60;
+      MapUnit unit = geology.mapUnit();
+      Lithology lithology = geology.lithology();
+      return unit != null
+         ? StrataPolicy.sphericalColumn(unit, point, this.worldScale, this.seaLevel, this.worldSeed)
+         : StrataPolicy.sphericalColumn(lithology, arid, point, this.worldScale, this.seaLevel, this.worldSeed);
    }
 
    /** Exact run lengths of the native column, including bedrock and sky air. */
@@ -124,7 +155,10 @@ public final class SphereTerrainMaterializer {
    }
 
    record Palette(BlockState top, BlockState filler) { }
-   record ColumnPlan(int surfaceY, int waterY, BlockState top, BlockState filler) {
+   record ColumnPlan(int surfaceY, int waterY, BlockState top, BlockState filler, StrataPolicy.Column strata) {
+      ColumnPlan withStrata(StrataPolicy.Column strata) {
+         return new ColumnPlan(this.surfaceY, this.waterY, this.top, this.filler, strata);
+      }
       int topY() { return Math.max(this.surfaceY, this.waterY); }
       BlockState stateAt(int y, int minY) {
          if (y < minY || y > this.topY()) return Blocks.AIR.defaultBlockState();
@@ -132,7 +166,7 @@ public final class SphereTerrainMaterializer {
          if (y > this.surfaceY) return Blocks.WATER.defaultBlockState();
          if (y == this.surfaceY) return this.top;
          if (y >= this.surfaceY - 3) return this.filler;
-         return Blocks.STONE.defaultBlockState();
+         return this.strata == null ? Blocks.STONE.defaultBlockState() : StrataMaterials.state(this.strata.material(y));
       }
    }
    public record FillResult(int minimumSurfaceY, int maximumOccupiedY, int waterColumns, int dirtySections) { }
