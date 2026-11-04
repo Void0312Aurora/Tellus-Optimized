@@ -15,7 +15,6 @@ import com.yucareux.tellus.worldgen.global.SphereChunkSampler;
 import com.yucareux.tellus.worldgen.global.SphereSingularityPolicy;
 import com.yucareux.tellus.worldgen.global.SphereWorldModel;
 import com.yucareux.tellus.worldgen.global.CubeNetFeatureRasterizer;
-import com.yucareux.tellus.worldgen.global.CubeNetCaveSeamPolicy;
 import com.yucareux.tellus.worldgen.global.CubeNetRoadVerticalPolicy;
 import com.yucareux.tellus.world.data.osm.OsmBuildingFeature;
 import com.yucareux.tellus.world.data.osm.RoadFeature;
@@ -24,8 +23,8 @@ import com.yucareux.tellus.world.data.osm.RoadSurfaceStyle;
 import com.yucareux.tellus.worldgen.building.BuildingProfile;
 import com.yucareux.tellus.worldgen.building.TellusBuildingMaterials;
 import com.yucareux.tellus.worldgen.building.TellusBuildingProfiles;
-import com.yucareux.tellus.worldgen.caves.TellusNoiseSettingsAdapter;
-import com.yucareux.tellus.worldgen.caves.TellusVanillaCarverRunner;
+import com.yucareux.tellus.worldgen.caves.CubeNetSphericalCaveSampler;
+import com.yucareux.tellus.worldgen.caves.CubeNetSphericalCaveField;
 import com.yucareux.tellus.compat.MinecraftVersionCompat;
 import com.yucareux.tellus.worldgen.UndergroundStructureExclusion;
 import com.yucareux.tellus.world.data.osm.OsmQueryMode;
@@ -39,7 +38,6 @@ import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.function.IntBinaryOperator;
-import net.minecraft.core.Holder;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.RegistryAccess;
@@ -64,10 +62,12 @@ import net.minecraft.world.level.chunk.UpgradeData;
 import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.level.chunk.ChunkGeneratorStructureState;
 import net.minecraft.world.level.levelgen.structure.StructureSet;
+import net.minecraft.world.level.levelgen.structure.StructureStart;
+import net.minecraft.world.level.levelgen.structure.StructurePiece;
+import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.level.levelgen.GenerationStep;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.RandomState;
-import net.minecraft.world.level.levelgen.NoiseGeneratorSettings;
 import net.minecraft.world.level.levelgen.blending.Blender;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplateManager;
 
@@ -134,7 +134,9 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
    private final SphereFaceChunkGenerator[] faces;
    private final SphereTerrainMaterializer materializer;
    private volatile long worldSeed;
-   private volatile TellusVanillaCarverRunner cubeNetCarverRunner;
+   private final CubeNetSphericalCaveSampler cubeNetSphericalCaveSampler = new CubeNetSphericalCaveSampler();
+   private volatile long sphericalCaveSeed = Long.MIN_VALUE;
+   private volatile CubeNetSphericalCaveField sphericalCaveField;
    private static final boolean CUBE_NET_CAVES = Boolean.parseBoolean(
       System.getProperty("tellus.cubeNet.caves", "true")
    );
@@ -467,25 +469,23 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
       SphereWorldModel.SphereChunkAddress address = this.address(chunk.getPos())
          .filter(this.singularityPolicy::admitsTerrainMaterialization).orElse(null);
       if (address == null) {
-         this.applyCarversToApron(level, seed, biomes, structures, chunk);
+         this.applyCarversToApron(level, seed, random, structures, chunk);
          return;
       }
-      CubeNetCaveSeamPolicy.Projection seamProjection = CubeNetCaveSeamPolicy
-         .forChunk(this.model, this.adapter.layout(), address)
-         .filter(CubeNetCaveSeamPolicy.Projection::requiresOwnerProjection)
-         .orElse(null);
-      if (seamProjection != null) {
-         this.applyCarversFromSeamOwner(level, seed, biomes, structures, chunk, seamProjection);
-         return;
-      }
-      UndergroundColumns columns = this.undergroundColumns(chunk.getPos());
-      TellusVanillaCarverRunner runner = this.getCubeNetCarverRunner(level.registryAccess());
-      runner.applyCarvers(
-         level,
-         seed,
-         biomes,
-         structures,
+      this.applySphericalCarvers(chunk, address, seed, random, structures);
+   }
+
+   private void applySphericalCarvers(
+      ChunkAccess chunk, SphereWorldModel.SphereChunkAddress address, long seed,
+      RandomState random, StructureManager structures
+   ) {
+      UndergroundColumns columns = this.undergroundColumns(chunk.getPos(), address);
+      this.cubeNetSphericalCaveSampler.apply(
+         this.model,
+         address,
+         this.sphericalCaveField(seed),
          chunk,
+         this.minY,
          this.seaLevel,
          CUBE_NET_CAVES,
          CUBE_NET_CAVES_REACH_SURFACE,
@@ -495,33 +495,97 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
          columns.surfaceSampler(),
          columns.floodGuardY(),
          columns.generationFloorY(),
-         List.of()
+         this.undergroundStructureExclusions(structures, chunk.getPos()),
+         (written, pos, state, fluid) -> {
+            MinecraftVersionCompat.setBlockState(written, pos, state);
+            if (fluid && written instanceof ProtoChunk proto) {
+               MinecraftVersionCompat.markPosForPostProcessing(proto, pos);
+            }
+         }
       );
    }
 
-   /** Uses a halo outside the requesting chunk, including rotated seam owners. */
-   UndergroundColumns undergroundColumns(ChunkPos pos) {
+   private CubeNetSphericalCaveField sphericalCaveField(long seed) {
+      CubeNetSphericalCaveField cached = this.sphericalCaveField;
+      if (cached != null && this.sphericalCaveSeed == seed) return cached;
+      synchronized (this) {
+         cached = this.sphericalCaveField;
+         if (cached == null || this.sphericalCaveSeed != seed) {
+            cached = new CubeNetSphericalCaveField(seed);
+            this.sphericalCaveField = cached;
+            this.sphericalCaveSeed = seed;
+         }
+         return cached;
+      }
+   }
+
+   private List<UndergroundStructureExclusion.Box> undergroundStructureExclusions(
+      StructureManager structures, ChunkPos pos
+   ) {
+      if (structures == null) return List.of();
+      List<UndergroundStructureExclusion.Box> exclusions = new ArrayList<>();
+      Map<Long, Integer> surfaces = new HashMap<>();
+      Map<Long, SphereChunkSampler.SurfaceData> columns = new HashMap<>();
+      for (StructureStart start : WorldgenApi.structureStarts(structures, pos,
+         structure -> UndergroundStructureExclusion.protectsProjectedCarving(structure.terrainAdaptation()))) {
+         if (start == null || !start.isValid()) continue;
+         BoundingBox bounds = start.getBoundingBox();
+         int x = bounds.minX() + (bounds.maxX() - bounds.minX()) / 2;
+         int z = bounds.minZ() + (bounds.maxZ() - bounds.minZ()) / 2;
+         if (!UndergroundStructureExclusion.isUnderground(bounds.maxY(),
+            this.surfaceYAtPlanar(x, z, surfaces, columns))) continue;
+         var adjustment = start.getStructure().terrainAdaptation();
+         int margin = UndergroundStructureProtection.usesBoundedCavernEnvelope(adjustment)
+            ? UndergroundStructureProtection.CAVERN_PIECE_CARVER_MARGIN
+            : UndergroundStructureExclusion.CARVER_MARGIN;
+         for (StructurePiece piece : start.getPieces()) {
+            BoundingBox b = piece.getBoundingBox();
+            var box = new UndergroundStructureExclusion.Box(b.minX(), b.minY(), b.minZ(),
+               b.maxX(), b.maxY(), b.maxZ(), margin,
+               UndergroundStructureExclusion.protectsFeaturePlacement(adjustment));
+            if (box.intersectsHorizontal(pos.getMinBlockX(), pos.getMinBlockZ(),
+               pos.getMaxBlockX(), pos.getMaxBlockZ(), margin)) exclusions.add(box);
+         }
+      }
+      return List.copyOf(exclusions);
+   }
+
+   /** Physical-face halo: guard policies do not depend on whether an apron view is enabled. */
+   UndergroundColumns undergroundColumns(ChunkPos pos, SphereWorldModel.SphereChunkAddress address) {
       Map<Long, Integer> surfaceCache = new HashMap<>();
-      Map<Long, SphereChunkSampler.SurfaceData> columnCache = new HashMap<>();
+      Map<SphereWorldModel.SphereBlockAddress, SphereChunkSampler.SurfaceData> columnCache = new HashMap<>();
+      var face = CubeNetLayout.Face.of(address.face());
+      var placement = this.adapter.layout().placement(face);
+      int chunkMinX = pos.getMinBlockX();
+      int chunkMinZ = pos.getMinBlockZ();
+      java.util.function.BiFunction<Integer, Integer, SphereChunkSampler.SurfaceData> sample = (x, z) -> {
+         double dx = x - chunkMinX - 7.5;
+         double dz = z - chunkMinZ - 7.5;
+         return this.undergroundSurfaceData(face,
+            address.blockX() + 8.0 + placement.uAxisX() * dx + placement.uAxisZ() * dz,
+            address.blockZ() + 8.0 + placement.vAxisX() * dx + placement.vAxisZ() * dz, columnCache);
+      };
+      IntBinaryOperator surfaceSampler = (x, z) -> surfaceCache.computeIfAbsent(ChunkPos.asLong(x, z), key -> {
+         var data = sample.apply(x, z);
+         return data == null ? this.minY : this.materializer.plan(data, this.minY, this.maxY()).surfaceY();
+      });
       int[] surfaceYByColumn = new int[256];
       int[] floodGuardYByColumn = new int[256];
       int[] generationFloorYByColumn = new int[256];
       Arrays.fill(floodGuardYByColumn, Integer.MAX_VALUE);
-      int chunkMinX = pos.getMinBlockX();
-      int chunkMinZ = pos.getMinBlockZ();
       for (int localZ = 0; localZ < 16; localZ++) {
          for (int localX = 0; localX < 16; localX++) {
             int index = (localZ << 4) | localX;
             int worldX = chunkMinX + localX;
             int worldZ = chunkMinZ + localZ;
-            int surfaceY = this.surfaceYAtPlanar(worldX, worldZ, surfaceCache, columnCache);
+            int surfaceY = surfaceSampler.applyAsInt(worldX, worldZ);
             surfaceYByColumn[index] = surfaceY;
             generationFloorYByColumn[index] = CubeNetUndergroundPolicy.generationFloorY(
                surfaceY, CUBE_NET_UNDERGROUND_DEPTH, this.minY
             );
             for (int dz = -CubeNetUndergroundPolicy.WATER_HALO; dz <= CubeNetUndergroundPolicy.WATER_HALO; dz++) {
                for (int dx = -CubeNetUndergroundPolicy.WATER_HALO; dx <= CubeNetUndergroundPolicy.WATER_HALO; dx++) {
-                  SphereChunkSampler.SurfaceData water = this.surfaceDataAtPlanar(worldX + dx, worldZ + dz, columnCache);
+                  SphereChunkSampler.SurfaceData water = sample.apply(worldX + dx, worldZ + dz);
                   if (water == null || !water.waterAvailable()) continue;
                   int waterY = this.materializer.height(water.waterSurfaceMeters());
                   int waterFloorY = this.materializer.height(water.elevationMeters());
@@ -531,111 +595,55 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
             }
          }
       }
-      IntBinaryOperator surfaceSampler = (x, z) -> this.surfaceYAtPlanar(x, z, surfaceCache, columnCache);
       return new UndergroundColumns(surfaceYByColumn, floodGuardYByColumn, generationFloorYByColumn, surfaceSampler);
+   }
+
+   private SphereChunkSampler.SurfaceData undergroundSurfaceData(
+      CubeNetLayout.Face face, double u, double v,
+      Map<SphereWorldModel.SphereBlockAddress, SphereChunkSampler.SurfaceData> cache
+   ) {
+      double size = this.adapter.layout().faceSize();
+      boolean outsideU = u < 0.0 || u >= size;
+      boolean outsideV = v < 0.0 || v >= size;
+      if (outsideU && outsideV) return null; // Existing vertex quarantine.
+      if (outsideU || outsideV) {
+         CubeNetLayout.Side side = outsideU
+            ? u < 0.0 ? CubeNetLayout.Side.WEST : CubeNetLayout.Side.EAST
+            : v < 0.0 ? CubeNetLayout.Side.NORTH : CubeNetLayout.Side.SOUTH;
+         double penetration = outsideU ? u < 0.0 ? -u : u-size : v < 0.0 ? -v : v-size;
+         var target = this.adapter.layout().mapAcross(face, side, outsideU ? v : u, penetration);
+         face = target.face();
+         u = target.u();
+         v = target.v();
+      }
+      var block = new SphereWorldModel.SphereBlockAddress(face.index(), (long)Math.floor(u), (long)Math.floor(v));
+      return cache.computeIfAbsent(block, key -> this.faces[key.face()].terrainPoint(key, 1).data());
    }
 
    record UndergroundColumns(int[] surfaceY, int[] floodGuardY, int[] generationFloorY, IntBinaryOperator surfaceSampler) { }
 
-   /** Runs the lower-face owner once, then projects its full underground state across a cut seam. */
-   private void applyCarversFromSeamOwner(
-      WorldGenRegion level, long seed, BiomeManager biomes, StructureManager structures,
-      ChunkAccess sourceChunk, CubeNetCaveSeamPolicy.Projection projection
-   ) {
-      SphereWorldModel.SphereChunkAddress ownerAddress = new SphereWorldModel.SphereChunkAddress(
-         projection.targetFace().index(), projection.targetChunkX(), projection.targetChunkZ());
-      ChunkPos ownerPos = this.canonicalChunkPosition(projection.targetFace(),
-         projection.targetChunkX(), projection.targetChunkZ());
-      Registry<net.minecraft.world.level.biome.Biome> biomeRegistry =
-         level.registryAccess().registryOrThrow(Registries.BIOME);
-      ProtoChunk owner = new ProtoChunk(ownerPos, UpgradeData.EMPTY,
-         sourceChunk.getHeightAccessorForGeneration(), biomeRegistry, null);
-      this.fillFromCanonical(owner, ownerAddress);
-      UndergroundColumns columns = this.undergroundColumns(ownerPos);
-      this.getCubeNetCarverRunner(level.registryAccess()).applyCarvers(
-         level,
-         seed,
-         biomes,
-         structures,
-         owner,
-         this.seaLevel,
-         CUBE_NET_CAVES,
-         CUBE_NET_CAVES_REACH_SURFACE,
-         CUBE_NET_ORE_VEINS,
-         CUBE_NET_GEOLOGICAL_STONE,
-         columns.surfaceY(),
-         columns.surfaceSampler(),
-         columns.floodGuardY(),
-         columns.generationFloorY(),
-         List.of()
-      );
-
-      CubeNetLayout.Seam seam = this.adapter.layout().seam(
-         CubeNetLayout.Face.of(projection.source().face()), projection.sourceSide());
-      net.minecraft.world.level.block.Rotation rotation = CubeNetApronChunkSync.rotation(
-         new CubeNetSeamTransform(this.adapter.layout(), seam)
-            .targetToSourceClockwiseQuarterTurns().orElseThrow());
-      BlockPos.MutableBlockPos ownerPosMutable = new BlockPos.MutableBlockPos();
-      BlockPos.MutableBlockPos sourcePos = new BlockPos.MutableBlockPos();
-      for (int localZ = 0; localZ < 16; localZ++) for (int localX = 0; localX < 16; localX++) {
-         CubeNetLayout.FacePoint targetPoint = projection.targetPoint(this.adapter.layout(), localX, localZ);
-         CubeNetLayout.PlanarPoint ownerPoint = this.adapter.layout().toPlanar(targetPoint);
-         int ownerX = (int)Math.floor(ownerPoint.x());
-         int ownerZ = (int)Math.floor(ownerPoint.z());
-         for (int y = this.minY; y < this.maxY(); y++) {
-            ownerPosMutable.set(ownerX, y, ownerZ);
-            BlockState state = owner.getBlockState(ownerPosMutable).rotate(rotation);
-            sourcePos.set(sourceChunk.getPos().getMinBlockX() + localX, y,
-               sourceChunk.getPos().getMinBlockZ() + localZ);
-            MinecraftVersionCompat.setBlockState(sourceChunk, sourcePos, state);
-            if (sourceChunk instanceof ProtoChunk proto && !state.getFluidState().isEmpty()) {
-               MinecraftVersionCompat.markPosForPostProcessing(proto, sourcePos);
-            }
-         }
-      }
-   }
-
-   private ChunkPos canonicalChunkPosition(CubeNetLayout.Face face, int chunkX, int chunkZ) {
-      int blockX = chunkX * 16 + 8;
-      int blockZ = chunkZ * 16 + 8;
-      CubeNetLayout.PlanarPoint center = this.adapter.layout().toPlanarUnbounded(
-         new CubeNetLayout.FacePoint(face, blockX + 0.5, blockZ + 0.5));
-      return new ChunkPos(Math.floorDiv((int)Math.floor(center.x()), 16),
-         Math.floorDiv((int)Math.floor(center.z()), 16));
-   }
-
-   /** Runs the owner once in a temporary canonical chunk, then mirrors every Y. */
+   /** Samples the canonical spherical owner, then mirrors every Y into the apron view. */
    private void applyCarversToApron(
-      WorldGenRegion level, long seed, BiomeManager biomes, StructureManager structures, ChunkAccess apron
+      WorldGenRegion level, long seed, RandomState random, StructureManager structures, ChunkAccess apron
    ) {
       CubeNetApronResolver.ChunkProjection projection = this.apronProjection(apron.getPos()).orElse(null);
       if (projection == null) return;
+      ChunkPos ownerPos = CubeNetApronChunkSync.canonicalChunkPosition(this.adapter.layout(), projection);
+      this.applyCarversToApron(level.registryAccess().registryOrThrow(Registries.BIOME), seed, random,
+         level.hasChunk(ownerPos.x, ownerPos.z) ? structures : null, apron, projection);
+   }
+
+   void applyCarversToApron(
+      Registry<net.minecraft.world.level.biome.Biome> biomeRegistry, long seed, RandomState random,
+      StructureManager structures, ChunkAccess apron, CubeNetApronResolver.ChunkProjection projection
+   ) {
       SphereWorldModel.SphereChunkAddress ownerAddress = new SphereWorldModel.SphereChunkAddress(
          projection.targetFace().index(), projection.targetChunkX(), projection.targetChunkZ());
       ChunkPos ownerPos = CubeNetApronChunkSync.canonicalChunkPosition(this.adapter.layout(), projection);
-      Registry<net.minecraft.world.level.biome.Biome> biomeRegistry =
-         level.registryAccess().registryOrThrow(Registries.BIOME);
       ProtoChunk owner = new ProtoChunk(ownerPos, UpgradeData.EMPTY,
          apron.getHeightAccessorForGeneration(), biomeRegistry, null);
       this.fillFromCanonical(owner, ownerAddress);
-      UndergroundColumns columns = this.undergroundColumns(ownerPos);
-      this.getCubeNetCarverRunner(level.registryAccess()).applyCarvers(
-         level,
-         seed,
-         biomes,
-         structures,
-         owner,
-         this.seaLevel,
-         CUBE_NET_CAVES,
-         CUBE_NET_CAVES_REACH_SURFACE,
-         CUBE_NET_ORE_VEINS,
-         CUBE_NET_GEOLOGICAL_STONE,
-         columns.surfaceY(),
-         columns.surfaceSampler(),
-         columns.floodGuardY(),
-         columns.generationFloorY(),
-         List.of()
-      );
+      this.applySphericalCarvers(owner, ownerAddress, seed, random, structures);
 
       CubeNetLayout.Seam seam = this.adapter.layout().seam(projection.sourceFace(), projection.sourceSide());
       net.minecraft.world.level.block.Rotation rotation = CubeNetApronChunkSync.rotation(
@@ -680,27 +688,6 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
    @Override public void createReferences(WorldGenLevel level, StructureManager structures, ChunkAccess chunk) {
       if (this.address(chunk.getPos()).filter(this.singularityPolicy::admitsTerrainMaterialization).isPresent()) {
          super.createReferences(level, structures, chunk);
-      }
-   }
-
-   private TellusVanillaCarverRunner getCubeNetCarverRunner(RegistryAccess registryAccess) {
-      TellusVanillaCarverRunner cached = this.cubeNetCarverRunner;
-      if (cached != null) return cached;
-      synchronized (this) {
-         cached = this.cubeNetCarverRunner;
-         if (cached == null) {
-            Registry<net.minecraft.world.level.block.Block> blocks = registryAccess.registryOrThrow(Registries.BLOCK);
-            Registry<NoiseGeneratorSettings> settings = registryAccess.registryOrThrow(Registries.NOISE_SETTINGS);
-            Holder<NoiseGeneratorSettings> vanilla = settings.getHolderOrThrow(NoiseGeneratorSettings.OVERWORLD);
-            Holder<NoiseGeneratorSettings> adapted = TellusNoiseSettingsAdapter.adaptToTellusHeight(
-               vanilla, this.minY, this.height, this.seaLevel
-            );
-            cached = new TellusVanillaCarverRunner(
-               this.biomeSource, blocks, vanilla, adapted, this.minY, this.height, CUBE_NET_UNDERGROUND_DEPTH
-            );
-            this.cubeNetCarverRunner = cached;
-         }
-         return cached;
       }
    }
 

@@ -76,22 +76,25 @@ surface fallback remain in force.
 Canonical land-cover tree anchors now reuse Tellus's ETH canopy-height sample
 and procedural tree generator. Only the owning face chunk decorates an anchor;
 apron chunks do not own trees. The canonical chunk path now reuses Tellus's
-underground and OSM feature rules, while vanilla structure starts are admitted
-only for canonical chunks. It reuses Tellus's vanilla density cave sampler, ore-vein replacement and
-geological stone patches. It supplies the runner with canonical surface heights,
-a surface-relative underground floor, and a two-column water halo; water columns
-receive the same flood and seabed cover rule before carving. The AIR carving step
-is the only step admitted, so the runner is not invoked twice by the engine. Cave
-noise is not independently rerun in apron chunks. Instead, the canonical owner
-terrain is carved once in a temporary owner chunk and its complete vertical
-state is seam-rotated into the derived view. The vanilla horizontal noise seed
-still follows the canonical owner's planar chunk coordinate; a spherical
-seam-continuous cave seed requires a separate 3D sampler and remains open. On
-the seven cut seams, a deterministic owner policy now selects the lower face
-index as the sole cave owner. The higher-index face projects that owner's
-temporary carved chunk across the seam, so both views cannot create competing
-cave identities. Face-corner chunks remain quarantined because they touch two
-cut seams and need an explicit vertex policy.
+ underground and OSM feature rules, while vanilla structure starts are admitted
+ only for canonical chunks. Cube-Net caves, ore veins and geological stone
+ patches use `CubeNetSphericalCaveSampler`: each block is converted to the exact
+ canonical `GeoPoint`, sampled in an ECEF-like spherical field with radial
+ underground depth, and then written to the owning Minecraft chunk. Equivalent
+ points on adjacent faces therefore use the same cave field without a planar
+ chunk seed or a lower-face owner rule. The sampler retains Tellus's surface
+ cover, water/flood guard, underground floor, base-stone replacement and
+ geological burial policies. Apron chunks build the same canonical owner in a
+ temporary chunk and seam-rotate its complete vertical state into the derived
+view, so they do not run a second noise field. Its deterministic multi-scale
+field uses the current world seed and physical ECEF-like coordinates, while
+the Tellus replacement rules retain the same cave, ore, flood and geological
+burial policies. It therefore avoids the version-specific planar `ChunkPos`
+carver API while keeping one field across all faces and loaders. The AIR
+carving step remains the only admitted carving step. Face-corner chunks remain
+quarantined because the current chunk resolver still excludes cells touching
+two cut seams; this is a chart materialization constraint, not a discontinuity
+in the spherical cave field.
 
 Cube-Net also exposes geodetic OSM feature queries and a canonical projector for
 roads/buildings. Every returned vertex carries its owning face coordinates and
