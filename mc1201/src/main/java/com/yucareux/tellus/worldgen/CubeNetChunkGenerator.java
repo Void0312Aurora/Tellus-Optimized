@@ -764,12 +764,16 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
       int minZ = Math.toIntExact(queryAddress.blockZ());
       int maxX = minX + 15;
       int maxZ = minZ + 15;
+      Map<Long, Integer> featureSurfaceCache = new HashMap<>();
+      Map<Long, SphereChunkSampler.SurfaceData> featureColumnCache = new HashMap<>();
       if (CUBE_NET_ROADS) {
          for (RoadFeature road : data.roads().features()) {
             for (CubeNetFeatureRasterizer.FaceCell cell : CubeNetFeatureRasterizer.roadCells(
                this.model, this.adapter.layout(), road, face, minX, minZ, maxX, maxZ, this.worldScale())) {
-               if (apron == null) this.placeCubeNetRoad(level, chunk, road, cell);
-               else this.placeCubeNetApronRoad(level, chunk, apron, road, cell);
+               if (apron == null) this.placeCubeNetRoad(level, chunk, road, cell,
+                  featureSurfaceCache, featureColumnCache);
+               else this.placeCubeNetApronRoad(level, chunk, apron, road, cell,
+                  featureSurfaceCache, featureColumnCache);
             }
          }
       }
@@ -782,12 +786,13 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
    }
 
    private void placeCubeNetRoad(WorldGenLevel level, ChunkAccess chunk, RoadFeature road,
-      CubeNetFeatureRasterizer.FaceCell cell) {
+      CubeNetFeatureRasterizer.FaceCell cell, Map<Long, Integer> surfaceCache,
+      Map<Long, SphereChunkSampler.SurfaceData> columnCache) {
       CubeNetLayout.PlanarPoint point = this.adapter.layout().toPlanar(new CubeNetLayout.FacePoint(
          CubeNetLayout.Face.of(cell.face()), cell.x() + 0.5, cell.z() + 0.5));
       int worldX = (int)Math.floor(point.x());
       int worldZ = (int)Math.floor(point.z());
-      int terrainSurface = this.surfaceYAtPlanar(worldX, worldZ, new HashMap<>(), new HashMap<>());
+      int terrainSurface = this.surfaceYAtPlanar(worldX, worldZ, surfaceCache, columnCache);
       BlockState roadState = this.cubeNetRoadState(road, cell.x(), cell.z());
       switch (road.mode()) {
          case NORMAL -> this.placeFeatureBlock(level, chunk, cell, roadState);
@@ -813,13 +818,14 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
 
    private void placeCubeNetApronRoad(WorldGenLevel level, ChunkAccess chunk,
       CubeNetApronResolver.ChunkProjection apron, RoadFeature road,
-      CubeNetFeatureRasterizer.FaceCell cell) {
+      CubeNetFeatureRasterizer.FaceCell cell, Map<Long, Integer> surfaceCache,
+      Map<Long, SphereChunkSampler.SurfaceData> columnCache) {
       int[] local = this.sourceLocalForTarget(apron, cell.x(), cell.z());
       if (local == null) return;
       CubeNetLayout.PlanarPoint point = this.adapter.layout().toPlanar(new CubeNetLayout.FacePoint(
          CubeNetLayout.Face.of(cell.face()), cell.x() + 0.5, cell.z() + 0.5));
       int terrainSurface = this.surfaceYAtPlanar((int)Math.floor(point.x()), (int)Math.floor(point.z()),
-         new HashMap<>(), new HashMap<>());
+         surfaceCache, columnCache);
       BlockState roadState = this.cubeNetRoadState(road, cell.x(), cell.z());
       switch (road.mode()) {
          case NORMAL -> this.placeApronFeatureBlock(level, chunk, apron, cell, roadState);
