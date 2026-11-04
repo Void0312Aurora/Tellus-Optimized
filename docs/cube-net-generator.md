@@ -97,8 +97,10 @@ Cube-Net also exposes geodetic OSM feature queries and a canonical projector for
 roads/buildings. Every returned vertex carries its owning face coordinates and
 the matching planar position. The canonical decoration pass now reuses the road
 surface style and building material/profile rules for ordinary geometry. Road
-segments are sampled and split at canonical face ownership changes. Bridge/tunnel
-modes remain quarantined. Building polygons that cross a face are rasterized
+segments are sampled and split at canonical face ownership changes. Normal,
+bridge and tunnel modes reuse the canonical road surface style; bridges use a
+bounded raised deck and sparse supports, while tunnels carve the shared
+seven-block interior. Building polygons that cross a face are rasterized
 per canonical cell through their geodetic footprint, so they do not bridge the
 planar net gap. A cache miss remains an empty
 feature set and never invents geometry.

@@ -16,6 +16,7 @@ import com.yucareux.tellus.worldgen.global.SphereSingularityPolicy;
 import com.yucareux.tellus.worldgen.global.SphereWorldModel;
 import com.yucareux.tellus.worldgen.global.CubeNetFeatureRasterizer;
 import com.yucareux.tellus.worldgen.global.CubeNetCaveSeamPolicy;
+import com.yucareux.tellus.worldgen.global.CubeNetRoadVerticalPolicy;
 import com.yucareux.tellus.world.data.osm.OsmBuildingFeature;
 import com.yucareux.tellus.world.data.osm.RoadFeature;
 import com.yucareux.tellus.world.data.osm.RoadMode;
@@ -765,12 +766,10 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
       int maxZ = minZ + 15;
       if (CUBE_NET_ROADS) {
          for (RoadFeature road : data.roads().features()) {
-            if (road.mode() != RoadMode.NORMAL) continue;
             for (CubeNetFeatureRasterizer.FaceCell cell : CubeNetFeatureRasterizer.roadCells(
                this.model, this.adapter.layout(), road, face, minX, minZ, maxX, maxZ, this.worldScale())) {
-               BlockState state = this.cubeNetRoadState(road, cell.x(), cell.z());
-               if (apron == null) this.placeFeatureBlock(level, chunk, cell, state);
-               else this.placeApronFeatureBlock(level, chunk, apron, cell, state);
+               if (apron == null) this.placeCubeNetRoad(level, chunk, road, cell);
+               else this.placeCubeNetApronRoad(level, chunk, apron, road, cell);
             }
          }
       }
@@ -778,6 +777,71 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
          for (OsmBuildingFeature building : data.buildings().features()) {
             if (apron == null) this.placeCubeNetBuilding(level, chunk, building, face, minX, minZ, maxX, maxZ);
             else this.placeCubeNetApronBuilding(level, chunk, apron, building, face, minX, minZ, maxX, maxZ);
+         }
+      }
+   }
+
+   private void placeCubeNetRoad(WorldGenLevel level, ChunkAccess chunk, RoadFeature road,
+      CubeNetFeatureRasterizer.FaceCell cell) {
+      CubeNetLayout.PlanarPoint point = this.adapter.layout().toPlanar(new CubeNetLayout.FacePoint(
+         CubeNetLayout.Face.of(cell.face()), cell.x() + 0.5, cell.z() + 0.5));
+      int worldX = (int)Math.floor(point.x());
+      int worldZ = (int)Math.floor(point.z());
+      int terrainSurface = this.surfaceYAtPlanar(worldX, worldZ, new HashMap<>(), new HashMap<>());
+      BlockState roadState = this.cubeNetRoadState(road, cell.x(), cell.z());
+      switch (road.mode()) {
+         case NORMAL -> this.placeFeatureBlock(level, chunk, cell, roadState);
+         case BRIDGE -> {
+            int deckY = CubeNetRoadVerticalPolicy.bridgeDeckY(terrainSurface, road.bridgeLevel());
+            this.placeFeatureBlock(level, chunk, cell, roadState, deckY);
+            if ((Math.floorMod(worldX, 8) == 0 && Math.floorMod(worldZ, 8) == 0)
+               && deckY > terrainSurface + 1) {
+               for (int y = terrainSurface + 1; y < deckY; y++) {
+                  this.placeFeatureBlock(level, chunk, cell, Blocks.QUARTZ_PILLAR.defaultBlockState(), y);
+               }
+            }
+         }
+         case TUNNEL -> {
+            int deckY = CubeNetRoadVerticalPolicy.tunnelDeckY(terrainSurface);
+            for (int y = deckY; y < terrainSurface; y++) {
+               this.placeFeatureBlock(level, chunk, cell, Blocks.AIR.defaultBlockState(), y);
+            }
+            this.placeFeatureBlock(level, chunk, cell, roadState, deckY);
+         }
+      }
+   }
+
+   private void placeCubeNetApronRoad(WorldGenLevel level, ChunkAccess chunk,
+      CubeNetApronResolver.ChunkProjection apron, RoadFeature road,
+      CubeNetFeatureRasterizer.FaceCell cell) {
+      int[] local = this.sourceLocalForTarget(apron, cell.x(), cell.z());
+      if (local == null) return;
+      CubeNetLayout.PlanarPoint point = this.adapter.layout().toPlanar(new CubeNetLayout.FacePoint(
+         CubeNetLayout.Face.of(cell.face()), cell.x() + 0.5, cell.z() + 0.5));
+      int terrainSurface = this.surfaceYAtPlanar((int)Math.floor(point.x()), (int)Math.floor(point.z()),
+         new HashMap<>(), new HashMap<>());
+      BlockState roadState = this.cubeNetRoadState(road, cell.x(), cell.z());
+      switch (road.mode()) {
+         case NORMAL -> this.placeApronFeatureBlock(level, chunk, apron, cell, roadState);
+         case BRIDGE -> {
+            int deckY = CubeNetRoadVerticalPolicy.bridgeDeckY(terrainSurface, road.bridgeLevel());
+            this.placeApronFeatureBlock(level, chunk, apron, cell, roadState, deckY, local);
+            int worldX = (int)Math.floor(point.x());
+            int worldZ = (int)Math.floor(point.z());
+            if (Math.floorMod(worldX, 8) == 0 && Math.floorMod(worldZ, 8) == 0
+               && deckY > terrainSurface + 1) {
+               for (int y = terrainSurface + 1; y < deckY; y++) {
+                  this.placeApronFeatureBlock(level, chunk, apron, cell,
+                     Blocks.QUARTZ_PILLAR.defaultBlockState(), y, local);
+               }
+            }
+         }
+         case TUNNEL -> {
+            int deckY = CubeNetRoadVerticalPolicy.tunnelDeckY(terrainSurface);
+            for (int y = deckY; y < terrainSurface; y++) {
+               this.placeApronFeatureBlock(level, chunk, apron, cell, Blocks.AIR.defaultBlockState(), y, local);
+            }
+            this.placeApronFeatureBlock(level, chunk, apron, cell, roadState, deckY, local);
          }
       }
    }

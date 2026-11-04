@@ -33,6 +33,20 @@ class CubeNetFeatureRasterizerTest {
    }
 
    @Test
+   void bridgeAndTunnelRoadModesRemainRasterizableAfterProjection() {
+      for (RoadMode mode : new RoadMode[]{RoadMode.BRIDGE, RoadMode.TUNNEL}) {
+         RoadFeature road = new RoadFeature(70L + mode.ordinal(), RoadClass.NORMAL, mode, 1,
+            "residential", new double[]{0.0, 0.1}, new double[]{20.0, 20.0});
+         var projected = CubeNetFeatureProjector.project(MODEL, LAYOUT, 20.0, 0.0).orElseThrow();
+         var cells = CubeNetFeatureRasterizer.roadCells(MODEL, LAYOUT, road,
+            CubeNetLayout.Face.of(projected.face()), (int)projected.faceX() - 8,
+            (int)projected.faceZ() - 8, (int)projected.faceX() + 8,
+            (int)projected.faceZ() + 8, 1000.0);
+         assertFalse(cells.isEmpty(), mode.name());
+      }
+   }
+
+   @Test
    void aCrossFaceSegmentIsSplitInsteadOfDrawingAcrossThePlanarNetGap() {
       RoadFeature road = new RoadFeature(8L, RoadClass.MAIN, RoadMode.NORMAL, 0, "primary",
          new double[]{0.0, 90.0}, new double[]{0.0, 0.0});
