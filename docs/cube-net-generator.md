@@ -86,7 +86,12 @@ noise is not independently rerun in apron chunks. Instead, the canonical owner
 terrain is carved once in a temporary owner chunk and its complete vertical
 state is seam-rotated into the derived view. The vanilla horizontal noise seed
 still follows the canonical owner's planar chunk coordinate; a spherical
-seam-continuous cave seed requires a separate 3D sampler and remains open.
+seam-continuous cave seed requires a separate 3D sampler and remains open. On
+the seven cut seams, a deterministic owner policy now selects the lower face
+index as the sole cave owner. The higher-index face projects that owner's
+temporary carved chunk across the seam, so both views cannot create competing
+cave identities. Face-corner chunks remain quarantined because they touch two
+cut seams and need an explicit vertex policy.
 
 Cube-Net also exposes geodetic OSM feature queries and a canonical projector for
 roads/buildings. Every returned vertex carries its owning face coordinates and

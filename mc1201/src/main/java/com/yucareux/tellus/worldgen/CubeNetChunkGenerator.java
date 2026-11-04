@@ -15,6 +15,7 @@ import com.yucareux.tellus.worldgen.global.SphereChunkSampler;
 import com.yucareux.tellus.worldgen.global.SphereSingularityPolicy;
 import com.yucareux.tellus.worldgen.global.SphereWorldModel;
 import com.yucareux.tellus.worldgen.global.CubeNetFeatureRasterizer;
+import com.yucareux.tellus.worldgen.global.CubeNetCaveSeamPolicy;
 import com.yucareux.tellus.world.data.osm.OsmBuildingFeature;
 import com.yucareux.tellus.world.data.osm.RoadFeature;
 import com.yucareux.tellus.world.data.osm.RoadMode;
@@ -468,6 +469,14 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
          this.applyCarversToApron(level, seed, biomes, structures, chunk);
          return;
       }
+      CubeNetCaveSeamPolicy.Projection seamProjection = CubeNetCaveSeamPolicy
+         .forChunk(this.model, this.adapter.layout(), address)
+         .filter(CubeNetCaveSeamPolicy.Projection::requiresOwnerProjection)
+         .orElse(null);
+      if (seamProjection != null) {
+         this.applyCarversFromSeamOwner(level, seed, biomes, structures, chunk, seamProjection);
+         return;
+      }
       UndergroundColumns columns = this.undergroundColumns(chunk.getPos());
       TellusVanillaCarverRunner runner = this.getCubeNetCarverRunner(level.registryAccess());
       runner.applyCarvers(
@@ -526,6 +535,73 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
    }
 
    record UndergroundColumns(int[] surfaceY, int[] floodGuardY, int[] generationFloorY, IntBinaryOperator surfaceSampler) { }
+
+   /** Runs the lower-face owner once, then projects its full underground state across a cut seam. */
+   private void applyCarversFromSeamOwner(
+      WorldGenRegion level, long seed, BiomeManager biomes, StructureManager structures,
+      ChunkAccess sourceChunk, CubeNetCaveSeamPolicy.Projection projection
+   ) {
+      SphereWorldModel.SphereChunkAddress ownerAddress = new SphereWorldModel.SphereChunkAddress(
+         projection.targetFace().index(), projection.targetChunkX(), projection.targetChunkZ());
+      ChunkPos ownerPos = this.canonicalChunkPosition(projection.targetFace(),
+         projection.targetChunkX(), projection.targetChunkZ());
+      Registry<net.minecraft.world.level.biome.Biome> biomeRegistry =
+         level.registryAccess().registryOrThrow(Registries.BIOME);
+      ProtoChunk owner = new ProtoChunk(ownerPos, UpgradeData.EMPTY,
+         sourceChunk.getHeightAccessorForGeneration(), biomeRegistry, null);
+      this.fillFromCanonical(owner, ownerAddress);
+      UndergroundColumns columns = this.undergroundColumns(ownerPos);
+      this.getCubeNetCarverRunner(level.registryAccess()).applyCarvers(
+         level,
+         seed,
+         biomes,
+         structures,
+         owner,
+         this.seaLevel,
+         CUBE_NET_CAVES,
+         CUBE_NET_CAVES_REACH_SURFACE,
+         CUBE_NET_ORE_VEINS,
+         CUBE_NET_GEOLOGICAL_STONE,
+         columns.surfaceY(),
+         columns.surfaceSampler(),
+         columns.floodGuardY(),
+         columns.generationFloorY(),
+         List.of()
+      );
+
+      CubeNetLayout.Seam seam = this.adapter.layout().seam(
+         CubeNetLayout.Face.of(projection.source().face()), projection.sourceSide());
+      net.minecraft.world.level.block.Rotation rotation = CubeNetApronChunkSync.rotation(
+         new CubeNetSeamTransform(this.adapter.layout(), seam)
+            .targetToSourceClockwiseQuarterTurns().orElseThrow());
+      BlockPos.MutableBlockPos ownerPosMutable = new BlockPos.MutableBlockPos();
+      BlockPos.MutableBlockPos sourcePos = new BlockPos.MutableBlockPos();
+      for (int localZ = 0; localZ < 16; localZ++) for (int localX = 0; localX < 16; localX++) {
+         CubeNetLayout.FacePoint targetPoint = projection.targetPoint(this.adapter.layout(), localX, localZ);
+         CubeNetLayout.PlanarPoint ownerPoint = this.adapter.layout().toPlanar(targetPoint);
+         int ownerX = (int)Math.floor(ownerPoint.x());
+         int ownerZ = (int)Math.floor(ownerPoint.z());
+         for (int y = this.minY; y < this.maxY(); y++) {
+            ownerPosMutable.set(ownerX, y, ownerZ);
+            BlockState state = owner.getBlockState(ownerPosMutable).rotate(rotation);
+            sourcePos.set(sourceChunk.getPos().getMinBlockX() + localX, y,
+               sourceChunk.getPos().getMinBlockZ() + localZ);
+            MinecraftVersionCompat.setBlockState(sourceChunk, sourcePos, state);
+            if (sourceChunk instanceof ProtoChunk proto && !state.getFluidState().isEmpty()) {
+               MinecraftVersionCompat.markPosForPostProcessing(proto, sourcePos);
+            }
+         }
+      }
+   }
+
+   private ChunkPos canonicalChunkPosition(CubeNetLayout.Face face, int chunkX, int chunkZ) {
+      int blockX = chunkX * 16 + 8;
+      int blockZ = chunkZ * 16 + 8;
+      CubeNetLayout.PlanarPoint center = this.adapter.layout().toPlanarUnbounded(
+         new CubeNetLayout.FacePoint(face, blockX + 0.5, blockZ + 0.5));
+      return new ChunkPos(Math.floorDiv((int)Math.floor(center.x()), 16),
+         Math.floorDiv((int)Math.floor(center.z()), 16));
+   }
 
    /** Runs the owner once in a temporary canonical chunk, then mirrors every Y. */
    private void applyCarversToApron(
