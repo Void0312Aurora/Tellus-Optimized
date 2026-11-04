@@ -2,6 +2,7 @@ package com.yucareux.tellus.worldgen;
 
 import com.google.common.base.Suppliers;
 import com.mojang.serialization.MapCodec;
+import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import com.yucareux.tellus.world.data.biome.BiomeClassification;
 import com.yucareux.tellus.world.data.biome.BiomeClassificationProviders;
@@ -13,7 +14,11 @@ import com.yucareux.tellus.worldgen.global.CubeNetLayout;
 import com.yucareux.tellus.worldgen.global.SphereChunkSampler;
 import com.yucareux.tellus.worldgen.global.SphereSingularityPolicy;
 import com.yucareux.tellus.worldgen.global.SphereWorldModel;
+import com.yucareux.tellus.compat.MinecraftVersionCompat;
+import com.yucareux.tellus.worldgen.caves.TellusCaveBiomeDepthPolicy;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -30,6 +35,7 @@ import net.minecraft.world.level.biome.BiomeSource;
 import net.minecraft.world.level.biome.Biomes;
 import net.minecraft.world.level.biome.Climate;
 import net.minecraft.world.level.biome.FixedBiomeSource;
+import net.minecraft.util.Mth;
 
 /**
  * Geodetic surface biome source for the Cube-Net coordinate view.
@@ -41,6 +47,48 @@ import net.minecraft.world.level.biome.FixedBiomeSource;
  * ownership.</p>
  */
 public final class CubeNetBiomeSource extends TellusBiomeSourceBridge {
+   /** Settings that belong to the spherical view rather than the planar Earth generator. */
+   public record Settings(
+      boolean randomBiomes,
+      double randomBiomeDensity,
+      long randomBiomeSeed,
+      List<String> randomBiomeIds,
+      boolean caveGeneration,
+      boolean deepDark,
+      int undergroundDepth
+   ) {
+      public static final Settings DEFAULT = new Settings(
+         false,
+         EarthGeneratorSettings.DEFAULT_RANDOM_BIOME_DENSITY,
+         EarthGeneratorSettings.DEFAULT_RANDOM_BIOME_SEED,
+         MinecraftVersionCompat.defaultRandomBiomeIds(),
+         true,
+         false,
+         EarthGeneratorSettings.DEFAULT_UNDERGROUND_DEPTH
+      );
+      public static final Codec<Settings> CODEC = RecordCodecBuilder.create(instance -> instance.group(
+         Codec.BOOL.optionalFieldOf("random_biomes", DEFAULT.randomBiomes()).forGetter(Settings::randomBiomes),
+         Codec.DOUBLE.optionalFieldOf("random_biome_density", DEFAULT.randomBiomeDensity()).forGetter(Settings::randomBiomeDensity),
+         Codec.LONG.optionalFieldOf("random_biome_seed", DEFAULT.randomBiomeSeed()).forGetter(Settings::randomBiomeSeed),
+         Codec.STRING.listOf().optionalFieldOf("random_biome_ids", DEFAULT.randomBiomeIds()).forGetter(Settings::randomBiomeIds),
+         Codec.BOOL.optionalFieldOf("cave_generation", DEFAULT.caveGeneration()).forGetter(Settings::caveGeneration),
+         Codec.BOOL.optionalFieldOf("deep_dark", DEFAULT.deepDark()).forGetter(Settings::deepDark),
+         Codec.intRange(EarthGeneratorSettings.MIN_UNDERGROUND_DEPTH, EarthGeneratorSettings.MAX_UNDERGROUND_DEPTH)
+            .optionalFieldOf("underground_depth", DEFAULT.undergroundDepth()).forGetter(Settings::undergroundDepth)
+      ).apply(instance, Settings::new));
+
+      public Settings {
+         randomBiomeIds = List.copyOf(randomBiomeIds == null ? List.of() : randomBiomeIds);
+         if (!Double.isFinite(randomBiomeDensity) || randomBiomeDensity < 0.0 || randomBiomeDensity > 0.4) {
+            throw new IllegalArgumentException("random_biome_density");
+         }
+         if (undergroundDepth < EarthGeneratorSettings.MIN_UNDERGROUND_DEPTH
+            || undergroundDepth > EarthGeneratorSettings.MAX_UNDERGROUND_DEPTH) {
+            throw new IllegalArgumentException("underground_depth");
+         }
+      }
+   }
+
    public static final MapCodec<CubeNetBiomeSource> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
       RegistryOps.retrieveGetter(Registries.BIOME),
       com.mojang.serialization.Codec.DOUBLE.fieldOf("world_scale").forGetter(source -> source.model.config().worldScale()),
@@ -52,10 +100,11 @@ public final class CubeNetBiomeSource extends TellusBiomeSourceBridge {
       com.mojang.serialization.Codec.DOUBLE.optionalFieldOf("transition_width_meters",
          SphereSingularityPolicy.DEFAULT_CONFIG.transitionWidthMeters())
          .forGetter(source -> source.policy.config().transitionWidthMeters()),
-      FixedBiomeSource.CODEC.fieldOf("fallback").forGetter(source -> source.fallback)
-   ).apply(instance, (biomes, scale, apronChunks, excludedRadius, transitionWidth, fallback) ->
+      FixedBiomeSource.CODEC.fieldOf("fallback").forGetter(source -> source.fallback),
+      Settings.CODEC.optionalFieldOf("settings", Settings.DEFAULT).forGetter(source -> source.settings)
+   ).apply(instance, (biomes, scale, apronChunks, excludedRadius, transitionWidth, fallback, settings) ->
       new CubeNetBiomeSource(biomes, scale, apronChunks,
-         new SphereSingularityPolicy.Config(excludedRadius, transitionWidth), fallback, null)));
+         new SphereSingularityPolicy.Config(excludedRadius, transitionWidth), fallback, null, null, null, settings)));
 
    private final SphereWorldModel model;
    private final CubeNetLayout layout;
@@ -75,13 +124,26 @@ public final class CubeNetBiomeSource extends TellusBiomeSourceBridge {
    private final Holder<Biome> deepColdOcean;
    private final Holder<Biome> deepFrozenOcean;
    private final Holder<Biome> snowyPlains;
+   private final Holder<Biome> frozenPeaks;
+   private final Holder<Biome> snowySlopes;
+   private final Holder<Biome> jaggedPeaks;
+   private final Holder<Biome> sunflowerPlains;
+   private final Holder<Biome> flowerForest;
+   private final Holder<Biome> cherryGrove;
+   private final Holder<Biome> dappledForest;
    private final Holder<Biome> desert;
    private final Holder<Biome> swamp;
    private final Holder<Biome> mangrove;
    private final Holder<Biome> river;
+   private final Holder<Biome> lushCaves;
+   private final Holder<Biome> dripstoneCaves;
+   private final Holder<Biome> deepDark;
    private final Supplier<SphereChunkSampler> sampler;
    private final ClimateSampler climateSampler;
    private final InlandWaterSampler inlandWaterSampler;
+   private final Settings settings;
+   private final RandomBiomeMixer randomBiomeMixer;
+   private final BadlandsRegionField badlandsRegion;
 
    @FunctionalInterface
    interface ClimateSampler {
@@ -104,7 +166,7 @@ public final class CubeNetBiomeSource extends TellusBiomeSourceBridge {
       SphereSingularityPolicy.Config policy, FixedBiomeSource fallback,
       SphereChunkSampler.PointSampler pointSampler
    ) {
-      this(biomes, scale, apronChunks, policy, fallback, pointSampler, null);
+      this(biomes, scale, apronChunks, policy, fallback, pointSampler, null, null, Settings.DEFAULT);
    }
 
    CubeNetBiomeSource(
@@ -112,7 +174,7 @@ public final class CubeNetBiomeSource extends TellusBiomeSourceBridge {
       SphereSingularityPolicy.Config policy, FixedBiomeSource fallback,
       SphereChunkSampler.PointSampler pointSampler, ClimateSampler climateSampler
    ) {
-      this(biomes, scale, apronChunks, policy, fallback, pointSampler, climateSampler, null);
+      this(biomes, scale, apronChunks, policy, fallback, pointSampler, climateSampler, null, Settings.DEFAULT);
    }
 
    CubeNetBiomeSource(
@@ -120,6 +182,15 @@ public final class CubeNetBiomeSource extends TellusBiomeSourceBridge {
       SphereSingularityPolicy.Config policy, FixedBiomeSource fallback,
       SphereChunkSampler.PointSampler pointSampler, ClimateSampler climateSampler,
       InlandWaterSampler inlandWaterSampler
+   ) {
+      this(biomes, scale, apronChunks, policy, fallback, pointSampler, climateSampler, inlandWaterSampler, Settings.DEFAULT);
+   }
+
+   CubeNetBiomeSource(
+      HolderGetter<Biome> biomes, double scale, int apronChunks,
+      SphereSingularityPolicy.Config policy, FixedBiomeSource fallback,
+      SphereChunkSampler.PointSampler pointSampler, ClimateSampler climateSampler,
+      InlandWaterSampler inlandWaterSampler, Settings settings
    ) {
       this.model = SphereWorldModel.forWorldScale(scale);
       if (apronChunks < 0 || apronChunks > 35 || (long)apronChunks * 16L > this.model.config().faceBlocks()) {
@@ -131,6 +202,7 @@ public final class CubeNetBiomeSource extends TellusBiomeSourceBridge {
       this.policy = new SphereSingularityPolicy(this.model, Objects.requireNonNull(policy, "policy"));
       this.biomes = Objects.requireNonNull(biomes, "biomes");
       this.fallback = Objects.requireNonNull(fallback, "fallback");
+      this.settings = Objects.requireNonNull(settings, "settings");
       this.plains = biomes.getOrThrow(Biomes.PLAINS);
       this.ocean = biomes.getOrThrow(Biomes.OCEAN);
       this.warmOcean = this.resolveBiome(Biomes.WARM_OCEAN, this.ocean);
@@ -142,21 +214,43 @@ public final class CubeNetBiomeSource extends TellusBiomeSourceBridge {
       this.deepColdOcean = this.resolveBiome(Biomes.DEEP_COLD_OCEAN, this.deepOcean);
       this.deepFrozenOcean = this.resolveBiome(Biomes.DEEP_FROZEN_OCEAN, this.deepOcean);
       this.snowyPlains = biomes.getOrThrow(Biomes.SNOWY_PLAINS);
+      this.frozenPeaks = this.resolveBiome(Biomes.FROZEN_PEAKS, this.snowyPlains);
+      this.snowySlopes = this.resolveBiome(Biomes.SNOWY_SLOPES, this.frozenPeaks);
+      this.jaggedPeaks = this.resolveBiome(Biomes.JAGGED_PEAKS, this.frozenPeaks);
+      this.sunflowerPlains = this.resolveBiome(Biomes.SUNFLOWER_PLAINS, this.plains);
+      this.flowerForest = this.resolveBiome(Biomes.FLOWER_FOREST, this.plains);
+      this.cherryGrove = this.resolveBiome(Biomes.CHERRY_GROVE, this.flowerForest);
+      this.dappledForest = this.resolveOptionalBiome(BiomeClassification.toBiomeKey("dappled_forest"));
       this.desert = biomes.getOrThrow(Biomes.DESERT);
       this.swamp = biomes.getOrThrow(Biomes.SWAMP);
       this.mangrove = biomes.getOrThrow(Biomes.MANGROVE_SWAMP);
       this.river = biomes.getOrThrow(Biomes.RIVER);
+      this.lushCaves = this.resolveOptionalBiome(Biomes.LUSH_CAVES);
+      this.dripstoneCaves = this.resolveOptionalBiome(Biomes.DRIPSTONE_CAVES);
+      this.deepDark = this.resolveOptionalBiome(Biomes.DEEP_DARK);
       this.sampler = Suppliers.memoize(() -> pointSampler == null
          ? TellusWorldgenSources.sphericalSampler(this.model)
          : new SphereChunkSampler(this.model, pointSampler));
       this.climateSampler = climateSampler == null ? CubeNetBiomeSource::sampleDefaultClimate : climateSampler;
       this.inlandWaterSampler = inlandWaterSampler == null
          ? CubeNetBiomeSource::sampleDefaultInlandWater : inlandWaterSampler;
+      this.randomBiomeMixer = new RandomBiomeMixer(
+         this.biomes, this.settings.randomBiomeDensity(), this.settings.randomBiomeSeed(), this.settings.randomBiomeIds());
+      this.badlandsRegion = new BadlandsRegionField(this.model.config().worldScale());
    }
 
    public CubeNetBiomeSource(HolderGetter<Biome> biomes, double scale, int apronChunks,
       FixedBiomeSource fallback) {
       this(biomes, scale, apronChunks, SphereSingularityPolicy.DEFAULT_CONFIG, fallback, null);
+   }
+
+   public CubeNetBiomeSource(HolderGetter<Biome> biomes, double scale, int apronChunks,
+      FixedBiomeSource fallback, Settings settings) {
+      this(biomes, scale, apronChunks, SphereSingularityPolicy.DEFAULT_CONFIG, fallback, null, null, null, settings);
+   }
+
+   Settings settings() {
+      return this.settings;
    }
 
    FixedBiomeSource fallback() {
@@ -195,12 +289,23 @@ public final class CubeNetBiomeSource extends TellusBiomeSourceBridge {
       result.add(this.deepColdOcean);
       result.add(this.deepFrozenOcean);
       result.add(this.snowyPlains);
+      result.add(this.frozenPeaks);
+      result.add(this.snowySlopes);
+      result.add(this.jaggedPeaks);
+      result.add(this.sunflowerPlains);
+      result.add(this.flowerForest);
+      result.add(this.cherryGrove);
       result.add(this.desert);
       result.add(this.swamp);
       result.add(this.mangrove);
       result.add(this.river);
+      if (this.dappledForest != null) result.add(this.dappledForest);
       for (ResourceKey<Biome> key : BiomeClassification.allBiomeKeys()) result.add(this.resolveBiome(key, this.plains));
       for (ResourceKey<Biome> key : BiomeClassificationProviders.allBiomeKeys()) result.add(this.resolveBiome(key, this.plains));
+      if (this.lushCaves != null) result.add(this.lushCaves);
+      if (this.dripstoneCaves != null) result.add(this.dripstoneCaves);
+      if (this.deepDark != null) result.add(this.deepDark);
+      result.addAll(this.randomBiomeMixer.possibleBiomes());
       return result.stream();
    }
 
@@ -219,21 +324,26 @@ public final class CubeNetBiomeSource extends TellusBiomeSourceBridge {
       SphereChunkSampler.SurfaceData surface = this.sampler.get().samplePoint(this.model.surfacePoint(canonical));
       if (!surface.elevationAvailable()) return this.fallback.getNoiseBiome(quartX, quartY, quartZ);
       SphereWorldModel.GeoPoint point = this.model.surfacePoint(canonical);
+      int[] noiseCoordinates = this.noiseCoordinates(point);
       boolean surfaceWater = surface.waterAvailable();
       if (surfaceWater) {
-         if (!surface.oceanWater()) return this.river;
+         if (!surface.oceanWater()) return this.applyRandomRiverBiome(noiseCoordinates[0], noiseCoordinates[1]);
          ClimateData climate = Objects.requireNonNull(this.climateSampler.sample(
             point, this.model.config().worldScale(), true), "climateData");
-         return this.resolveOceanBiome(surface, climate.ocean());
+         return this.resolveCaveAwareBiome(
+            this.resolveOceanBiome(surface, climate.ocean(), noiseCoordinates[0], noiseCoordinates[1]),
+            canonical, surface, quartY, noiseCoordinates[0], noiseCoordinates[1]);
       }
       if (isWaterCandidate(surface.coverClass())) {
          WaterData mappedWater = Objects.requireNonNull(this.inlandWaterSampler.sample(
             point, this.model.config().worldScale()), "waterData");
          if (mappedWater.hasWater()) {
-            if (!mappedWater.ocean()) return this.river;
+            if (!mappedWater.ocean()) return this.applyRandomRiverBiome(noiseCoordinates[0], noiseCoordinates[1]);
             ClimateData climate = Objects.requireNonNull(this.climateSampler.sample(
                point, this.model.config().worldScale(), true), "climateData");
-            return this.resolveOceanBiome(surface, climate.ocean());
+            return this.resolveCaveAwareBiome(
+               this.resolveOceanBiome(surface, climate.ocean(), noiseCoordinates[0], noiseCoordinates[1]),
+               canonical, surface, quartY, noiseCoordinates[0], noiseCoordinates[1]);
          }
       }
       ClimateData climate = Objects.requireNonNull(this.climateSampler.sample(
@@ -241,31 +351,269 @@ public final class CubeNetBiomeSource extends TellusBiomeSourceBridge {
       String koppen = climate.koppen();
       double earthBlockX = EarthProjection.longitudeToBlockX(point.longitude(), this.model.config().worldScale());
       double earthBlockZ = EarthProjection.latToBlockZ(point.latitude(), this.model.config().worldScale());
-      ResourceKey<Biome> biomeKey = BiomeClassificationProviders.findBiomeKey(
-         surface.coverClass(), koppen, this.coordinateForClassification(earthBlockX),
-         this.coordinateForClassification(earthBlockZ), this.model.config().worldScale());
-      if (biomeKey == null) biomeKey = BiomeClassification.findBiomeKey(surface.coverClass(), koppen);
-      if (biomeKey == null) biomeKey = BiomeClassification.findFallbackKey(surface.coverClass());
-      return this.resolveBiome(biomeKey, this.plains);
+      int visualCover = this.sampleVisualCover(point, surface.coverClass(), earthBlockX, earthBlockZ);
+      Holder<Biome> land = this.resolveLandBiome(
+         surface.coverClass(), visualCover, koppen, point, noiseCoordinates[0], noiseCoordinates[1]);
+      return this.resolveCaveAwareBiome(
+         land, canonical, surface, quartY, noiseCoordinates[0], noiseCoordinates[1]);
    }
 
    private Holder<Biome> resolveOceanBiome(SphereChunkSampler.SurfaceData surface,
-      OisstOceanClimateSource.Sample climate) {
+      OisstOceanClimateSource.Sample climate, int blockX, int blockZ) {
       if (climate == null || !climate.available()) return this.ocean;
       boolean deep = surface.elevationMeters() <= -200.0;
+      Holder<Biome> biome;
       if (climate.maxIceFraction() >= 0.15 || climate.meanSstC() <= -1.5) {
-         return deep ? this.deepFrozenOcean : this.frozenOcean;
+         biome = deep ? this.deepFrozenOcean : this.frozenOcean;
       } else if (climate.meanSstC() >= 23.0) {
-         return deep ? this.deepLukewarmOcean : this.warmOcean;
+         biome = deep ? this.deepLukewarmOcean : this.warmOcean;
       } else if (climate.meanSstC() >= 13.0) {
-         return deep ? this.deepLukewarmOcean : this.lukewarmOcean;
+         biome = deep ? this.deepLukewarmOcean : this.lukewarmOcean;
       } else {
-         return deep ? this.deepColdOcean : this.coldOcean;
+         biome = deep ? this.deepColdOcean : this.coldOcean;
       }
+      return this.settings.randomBiomes() ? this.randomBiomeMixer.mixOcean(biome, blockX, blockZ, deep) : biome;
+   }
+
+   private Holder<Biome> applyRandomRiverBiome(int blockX, int blockZ) {
+      return this.settings.randomBiomes() ? this.randomBiomeMixer.mixRiver(this.river, blockX, blockZ) : this.river;
+   }
+
+   private Holder<Biome> resolveLandBiome(
+      int rawCover, int visualCover, String koppen, SphereWorldModel.GeoPoint point, int blockX, int blockZ
+   ) {
+      if (rawCover == 95) return this.mangrove;
+      if (visualCover == 70 || this.isAntarcticSnow(rawCover, point)) {
+         Holder<Biome> snow = this.resolveSnowBiome(point, blockX, blockZ);
+         return this.settings.randomBiomes() ? this.randomBiomeMixer.mixLand(snow, blockX, blockZ, koppen) : snow;
+      }
+
+      String climate = koppen;
+      if (BadlandsTerrainPolicy.isDryCanyonCover(visualCover)) {
+         String coherent = TellusWorldgenSources.koppen().sampleCoherentCode(
+            EarthProjection.longitudeToBlockX(point.longitude(), this.model.config().worldScale()),
+            EarthProjection.latToBlockZ(point.latitude(), this.model.config().worldScale()),
+            this.model.config().worldScale());
+         if (BadlandsTerrainPolicy.shouldUseCoherentAridClimate(visualCover, coherent)) climate = coherent;
+      }
+
+      ResourceKey<Biome> key = BiomeClassificationProviders.findBiomeKey(visualCover, climate, blockX, blockZ,
+         this.model.config().worldScale());
+      if (key == null) key = BiomeClassification.findBiomeKey(visualCover, climate);
+      if (key == null) key = BiomeClassification.findFallbackKey(visualCover);
+      Holder<Biome> biome = this.resolveBiome(key, this.plains);
+
+      if (BadlandsTerrainPolicy.isDryCanyonCover(visualCover)
+         && BadlandsTerrainPolicy.shouldPromoteToBadlands(visualCover, climate,
+            this.sampleRegionalRelief(point, blockX, blockZ))) {
+         biome = this.resolveBiome(Biomes.BADLANDS, biome);
+      }
+      biome = this.applyRareBiomeVariants(biome, visualCover, climate, point, blockX, blockZ);
+      return this.settings.randomBiomes() ? this.randomBiomeMixer.mixLand(biome, blockX, blockZ, climate) : biome;
+   }
+
+   private Holder<Biome> applyRareBiomeVariants(Holder<Biome> biome, int coverClass, String koppen,
+      SphereWorldModel.GeoPoint point, int blockX, int blockZ) {
+      if (koppen == null) return biome;
+      String climate = koppen.toUpperCase(Locale.ROOT);
+      if (coverClass == 10 && isTemperateForest(biome)) {
+         if (this.settings.randomBiomes() && this.settings.randomBiomeIds().contains("cherry_grove")
+            && isCherryClimate(climate) && sampleValueNoise(blockX, blockZ, 448, 7999243172794174439L) >= 0.78
+            && this.isCherryTerrain(point, blockX, blockZ)) {
+            return this.cherryGrove;
+         }
+         if (this.dappledForest != null && isDappledClimate(climate)
+            && sampleValueNoise(blockX, blockZ, 32, 843186567711051837L) * 0.65
+               + sampleValueNoise(blockX, blockZ, 11, -6070240617245934207L) * 0.35 >= 0.45) {
+            return this.dappledForest;
+         }
+         if (isFlowerClimate(climate)
+            && sampleValueNoise(blockX, blockZ, 320, -3588256909144307243L) >= 0.72) {
+            return this.flowerForest;
+         }
+      } else if ((coverClass == 30 || coverClass == 40) && biome.is(Biomes.PLAINS)
+         && isSunflowerClimate(climate)
+         && sampleValueNoise(blockX, blockZ, 384, 5012456494189417561L) >= 0.72) {
+         return this.sunflowerPlains;
+      }
+      return biome;
+   }
+
+   private Holder<Biome> resolveCaveAwareBiome(Holder<Biome> surfaceBiome,
+      SphereWorldModel.SphereBlockAddress address, SphereChunkSampler.SurfaceData surface,
+      int quartY, int blockX, int blockZ) {
+      if (!this.settings.caveGeneration() || !surface.elevationAvailable()) return surfaceBiome;
+      int blockY = QuartPos.toBlock(quartY);
+      double topMeters = surface.waterAvailable() ? Math.max(surface.elevationMeters(), surface.waterSurfaceMeters())
+         : surface.elevationMeters();
+      int surfaceY = (int)Math.round(topMeters / Math.max(0.0001, this.model.config().worldScale()));
+      int depth = surfaceY - blockY;
+      if (!TellusCaveBiomeDepthPolicy.isCaveBiomeDepth(depth, this.settings.undergroundDepth())) return surfaceBiome;
+      if (this.settings.randomBiomes()) {
+         Holder<Biome> selected = this.randomBiomeMixer.mixCave(surfaceBiome, blockX, blockY, blockZ);
+         if (selected != surfaceBiome) return selected;
+      }
+      if (this.deepDark != null && this.settings.deepDark()
+         && TellusCaveBiomeDepthPolicy.isDeepDarkDepth(depth, this.settings.undergroundDepth())
+         && this.caveNoise(address, blockY, 96, 48) < 0.28
+            + TellusCaveBiomeDepthPolicy.normalizedDepthFactor(depth, this.settings.undergroundDepth()) * 0.22) {
+         return this.deepDark;
+      }
+      double depthFactor = TellusCaveBiomeDepthPolicy.normalizedDepthFactor(depth, this.settings.undergroundDepth());
+      double noise = this.caveNoise(address, blockY, 48, 32);
+      double lushChance = (isLushSurface(surfaceBiome) ? 0.45 : 0.25) * (1.0 - depthFactor * 0.35);
+      double dripChance = (isDrySurface(surfaceBiome) ? 0.45 : 0.25) * (0.7 + depthFactor * 0.5);
+      if (depth < 12) lushChance = 0.0;
+      if (depth < 16) dripChance = 0.0;
+      double total = lushChance + dripChance;
+      if (total > 0.0 && noise <= 0.55) {
+         double pick = noise * total / 0.55;
+         if (this.lushCaves != null && pick < lushChance) return this.lushCaves;
+         if (this.dripstoneCaves != null && pick < lushChance + dripChance) return this.dripstoneCaves;
+      }
+      return surfaceBiome;
+   }
+
+   private Holder<Biome> resolveSnowBiome(SphereWorldModel.GeoPoint point, int blockX, int blockZ) {
+      int baseline = SnowBiomePolicy.baselineBlocks(this.model.config().worldScale());
+      double center = this.sampleElevation(point);
+      double east = this.sampleElevationAtPlanar(blockX + baseline, blockZ);
+      double west = this.sampleElevationAtPlanar(blockX - baseline, blockZ);
+      double north = this.sampleElevationAtPlanar(blockX, blockZ - baseline);
+      double south = this.sampleElevationAtPlanar(blockX, blockZ + baseline);
+      double metersX = baseline * EarthProjection.groundMetersPerBlockX(blockZ, this.model.config().worldScale());
+      double metersZ = baseline * EarthProjection.groundMetersPerBlockZ(blockZ, this.model.config().worldScale());
+      return switch (SnowBiomePolicy.classify(center, east, west, north, south, metersX, metersZ)) {
+         case JAGGED_PEAKS -> this.jaggedPeaks;
+         case SNOWY_SLOPES -> this.snowySlopes;
+         case FROZEN_PEAKS -> this.frozenPeaks;
+      };
+   }
+
+   private double sampleRegionalRelief(SphereWorldModel.GeoPoint point, int blockX, int blockZ) {
+      int offset = Math.max(16, (int)Math.ceil(BadlandsTerrainPolicy.CANYON_RELIEF_SAMPLE_METERS
+         / Math.max(1.0, this.model.config().worldScale())));
+      double center = this.sampleElevation(point);
+      double east = this.sampleElevationAtPlanar(blockX + offset, blockZ);
+      double west = this.sampleElevationAtPlanar(blockX - offset, blockZ);
+      double north = this.sampleElevationAtPlanar(blockX, blockZ - offset);
+      double south = this.sampleElevationAtPlanar(blockX, blockZ + offset);
+      double min = center;
+      double max = center;
+      for (double value : new double[]{east, west, north, south}) {
+         if (Double.isFinite(value)) { min = Math.min(min, value); max = Math.max(max, value); }
+      }
+      return max - min;
+   }
+
+   private double sampleElevation(SphereWorldModel.GeoPoint point) {
+      return this.sampler.get().samplePoint(point).elevationMeters();
+   }
+
+   private double sampleElevationAtPlanar(int blockX, int blockZ) {
+      return this.resolveAddress(blockX, blockZ)
+         .map(address -> this.sampleElevation(this.model.surfacePoint(address)))
+         .orElse(Double.NaN);
+   }
+
+   private boolean isAntarcticSnow(int rawCover, SphereWorldModel.GeoPoint point) {
+      return rawCover == 0 && point.latitude() <= -60.0;
+   }
+
+   private int sampleVisualCover(SphereWorldModel.GeoPoint point, int rawCover, double earthBlockX, double earthBlockZ) {
+      if (this.model.config().worldScale() < 10.0 && Double.isFinite(earthBlockX) && Double.isFinite(earthBlockZ)) {
+         return TellusWorldgenSources.landCover().sampleVisualCoverClass(
+            coordinateForClassification(earthBlockX), coordinateForClassification(earthBlockZ),
+            this.model.config().worldScale());
+      }
+      return rawCover;
+   }
+
+   private double caveNoise(SphereWorldModel.SphereBlockAddress address, int blockY, int gridXZ, int gridY) {
+      SphereWorldModel.GeoPoint point = this.model.surfacePoint(address);
+      int[] coordinates = this.noiseCoordinates(point);
+      long seed = Math.floorDiv(coordinates[0], gridXZ) * 341873128712L
+         + Math.floorDiv(coordinates[1], gridXZ) * 132897987541L
+         + Math.floorDiv(blockY, gridY) * 42317861L;
+      return hashToUnit(seed);
+   }
+
+   private int[] noiseCoordinates(SphereWorldModel.GeoPoint point) {
+      double latitude = Math.toRadians(point.latitude());
+      double longitude = Math.toRadians(point.longitude());
+      double cos = Math.cos(latitude);
+      return new int[]{
+         coordinateForClassification(cos * Math.cos(longitude) * 1_000_000.0 + Math.sin(latitude) * 37_000.0),
+         coordinateForClassification(cos * Math.sin(longitude) * 1_000_000.0 + Math.sin(latitude) * 91_000.0)
+      };
+   }
+
+   private static boolean isTemperateForest(Holder<Biome> biome) {
+      return biome.is(Biomes.FOREST) || biome.is(Biomes.BIRCH_FOREST)
+         || biome.is(Biomes.OLD_GROWTH_BIRCH_FOREST) || biome.is(Biomes.DARK_FOREST)
+         || biome.is(Biomes.FLOWER_FOREST) || biome.is(Biomes.CHERRY_GROVE);
+   }
+
+   private static boolean isLushSurface(Holder<Biome> biome) {
+      return biome.is(Biomes.JUNGLE) || biome.is(Biomes.SPARSE_JUNGLE) || biome.is(Biomes.BAMBOO_JUNGLE)
+         || biome.is(Biomes.SWAMP) || biome.is(Biomes.MANGROVE_SWAMP) || biome.is(Biomes.DARK_FOREST)
+         || biome.is(Biomes.FOREST) || biome.is(Biomes.FLOWER_FOREST) || biome.is(Biomes.CHERRY_GROVE)
+         || biome.is(Biomes.BIRCH_FOREST) || biome.is(Biomes.OLD_GROWTH_BIRCH_FOREST)
+         || biome.is(Biomes.OLD_GROWTH_PINE_TAIGA) || biome.is(Biomes.OLD_GROWTH_SPRUCE_TAIGA)
+         || biome.is(Biomes.TAIGA);
+   }
+
+   private static boolean isDrySurface(Holder<Biome> biome) {
+      return biome.is(Biomes.DESERT) || biome.is(Biomes.BADLANDS) || biome.is(Biomes.WOODED_BADLANDS)
+         || biome.is(Biomes.ERODED_BADLANDS) || biome.is(Biomes.SAVANNA)
+         || biome.is(Biomes.SAVANNA_PLATEAU) || biome.is(Biomes.WINDSWEPT_SAVANNA);
+   }
+
+   private static boolean isSunflowerClimate(String code) {
+      return switch (code) { case "CFA", "CWA", "DFA", "DWA" -> true; default -> false; };
+   }
+   private static boolean isFlowerClimate(String code) {
+      return switch (code) { case "CFA", "CFB", "CWA", "CWB", "DFA", "DFB", "DWA", "DWB" -> true; default -> false; };
+   }
+   private static boolean isCherryClimate(String code) {
+      return switch (code) { case "CFA", "CFB", "CWA", "CWB", "DFA", "DFB" -> true; default -> false; };
+   }
+   private static boolean isDappledClimate(String code) {
+      return switch (code) { case "DFB", "DWB", "DSB" -> true; default -> false; };
+   }
+
+   private boolean isCherryTerrain(SphereWorldModel.GeoPoint point, int blockX, int blockZ) {
+      double elevation = this.sampleElevation(point);
+      if (!Double.isFinite(elevation) || elevation < 180.0 || elevation > 1800.0) return false;
+      return this.sampleRegionalRelief(point, blockX, blockZ) >= 35.0;
+   }
+
+   private static double sampleValueNoise(int x, int z, int grid, long salt) {
+      int gx = Math.floorDiv(x, grid), gz = Math.floorDiv(z, grid);
+      double fx = Math.floorMod(x, grid) / (double)grid, fz = Math.floorMod(z, grid) / (double)grid;
+      double sx = fx * fx * (3.0 - 2.0 * fx), sz = fz * fz * (3.0 - 2.0 * fz);
+      double n00 = hashToUnit(gx * 341873128712L + gz * 132897987541L + salt);
+      double n10 = hashToUnit((gx + 1L) * 341873128712L + gz * 132897987541L + salt);
+      double n01 = hashToUnit(gx * 341873128712L + (gz + 1L) * 132897987541L + salt);
+      double n11 = hashToUnit((gx + 1L) * 341873128712L + (gz + 1L) * 132897987541L + salt);
+      return Mth.lerp(sz, Mth.lerp(sx, n00, n10), Mth.lerp(sx, n01, n11));
+   }
+
+   private static double hashToUnit(long seed) {
+      seed ^= seed >>> 33;
+      seed *= -49064778989728563L;
+      seed ^= seed >>> 33;
+      seed *= -4265267296055464877L;
+      seed ^= seed >>> 33;
+      return (seed >>> 11) * 0x1.0p-53;
    }
 
    private Holder<Biome> resolveBiome(ResourceKey<Biome> key, Holder<Biome> fallback) {
       return key == null ? fallback : this.biomes.get(key).map(holder -> (Holder<Biome>)holder).orElse(fallback);
+   }
+
+   private Holder<Biome> resolveOptionalBiome(ResourceKey<Biome> key) {
+      return key == null ? null : this.biomes.get(key).map(holder -> (Holder<Biome>)holder).orElse(null);
    }
 
    private static ClimateData sampleDefaultClimate(SphereWorldModel.GeoPoint point, double worldScale, boolean water) {

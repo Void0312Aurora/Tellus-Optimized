@@ -15,7 +15,7 @@ MAPPING = "rancic-ccam30-double-v1"
 
 
 def create_pack(output: Path, world: str, scale: float, sea: int, min_y: int, height: int,
-                apron_chunks: int = 5, geodetic_biomes: bool = False) -> list[Path]:
+                apron_chunks: int = 5, geodetic_biomes: bool = True) -> list[Path]:
     if not IDENTIFIER.fullmatch(world):
         raise ValueError("world must be a namespace:path identifier")
     namespace, name = world.split(":", 1)
@@ -59,6 +59,15 @@ def create_pack(output: Path, world: str, scale: float, sea: int, min_y: int, he
             "excluded_radius_meters": 300000.0,
             "transition_width_meters": 50000.0,
             "fallback": {"biome": "minecraft:plains"},
+            "settings": {
+                "random_biomes": False,
+                "random_biome_density": 0.12,
+                "random_biome_seed": 0,
+                "random_biome_ids": [],
+                "cave_generation": True,
+                "deep_dark": False,
+                "underground_depth": 256,
+            },
         }
     generator = {
         "type": "tellus:cube_net",
@@ -109,8 +118,10 @@ def main() -> None:
                         help="Native mirror band width, 0..35 chunks (default: 5, only for effective view "
                              "and simulation distance 2). For other distances choose "
                              "3 + max(min(client view, server view), server simulation distance).")
-    parser.add_argument("--geodetic-biomes", action="store_true",
-                        help="Use the experimental Cube-Net GeoPoint biome source; default keeps fixed plains.")
+    parser.add_argument("--geodetic-biomes", action="store_true", dest="geodetic_biomes", default=True,
+                        help="Use the Cube-Net GeoPoint biome source (the default).")
+    parser.add_argument("--fixed-plains", action="store_false", dest="geodetic_biomes",
+                        help="Use fixed plains for a minimal compatibility world.")
     args = parser.parse_args()
     try:
         files = create_pack(args.output, args.world, args.scale, args.sea_level, args.min_y, args.height,

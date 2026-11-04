@@ -27,7 +27,17 @@ vertical limits as the face generator:
   "mapping": "rancic-ccam30-double-v1",
   "excluded_radius_meters": 300000.0,
   "transition_width_meters": 50000.0,
-  "biome_source": {"biome": "minecraft:plains"},
+  "biome_source": {
+    "world_scale": 1.0,
+    "apron_chunks": 5,
+    "fallback": {"biome": "minecraft:plains"},
+    "settings": {
+      "random_biomes": false,
+      "cave_generation": true,
+      "deep_dark": false,
+      "underground_depth": 256
+    }
+  },
   "world_scale": 1.0,
   "sea_level": 64,
   "min_y": -2032,
@@ -36,24 +46,18 @@ vertical limits as the face generator:
 }
 ```
 
-The helper keeps the fixed plains source by default for compatibility. To use
-the first geodetic biome stage, create a new pack with
-`--geodetic-biomes`; its `biome_source` stores the same fixed plains fallback
-inside the registered `tellus:cube_net` spherical biome source. That stage maps
-canonical water through the available ocean climate sample and applies Tellus's
-ESA + Köppen land classification for snow/ice, bare ground, wetland, mangrove
-and vegetated cover. Suspected water-like land-cover columns also make a
-geodetic, non-blocking OSM water query; a mapped inland feature gets the vanilla
-river biome, while an ocean hint reuses the ocean climate path. This first
-inland-water step now also applies canonical terrain and water levels through
-Tellus's existing
-`InlandHydrologyPlanner` and `RiverNetwork`: the adapter runs that Earth-grid
-solver on geodetic coordinates and maps its terrain samples back to canonical
-sphere columns. Ocean columns additionally use the OpenWaters bathymetry
-adapter; unavailable OSM or bathymetry coverage falls back to the existing
-column. The full biome-selection policy from `EarthBiomeSource` remains a
-separate integration scope; Cube-Net's canonical surface and underground
-block rules are applied by the generator described below.
+The helper uses the Cube-Net geodetic biome source by default. `--fixed-plains`
+is available only for a minimal compatibility world. The spherical source maps
+canonical water through the available ocean climate sample and applies the same
+Tellus ESA + Köppen classification used by `EarthBiomeSource`, including random
+biome patches when enabled, badlands promotion, snow biome shape,
+sunflower/flower/cherry/dappled variants, and cave biome selection. Suspected
+water-like land-cover columns also make a geodetic, non-blocking OSM water query;
+a mapped inland feature gets the vanilla river biome, while an ocean hint reuses
+the ocean climate path. This path applies canonical terrain and water levels
+through Tellus's existing inland hydrology and OpenWaters adapters. The
+generator also runs registry biome decoration settings on canonical chunks and
+mirrors the finished result into apron chunks.
 
 `CubeNetRuntime` enables same-Level routing only when exactly one loaded Level
 uses this generator. The five edges that touch directly in the planar net use

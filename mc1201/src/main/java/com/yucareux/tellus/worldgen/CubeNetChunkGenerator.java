@@ -50,6 +50,7 @@ import net.minecraft.world.level.StructureManager;
 import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.server.level.WorldGenRegion;
 import net.minecraft.world.level.biome.BiomeGenerationSettings;
+import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.BiomeManager;
 import net.minecraft.world.level.biome.BiomeSource;
 import net.minecraft.world.level.biome.Climate;
@@ -68,6 +69,9 @@ import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.level.levelgen.GenerationStep;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.RandomState;
+import net.minecraft.world.level.levelgen.LegacyRandomSource;
+import net.minecraft.world.level.levelgen.RandomSupport;
+import net.minecraft.world.level.levelgen.WorldgenRandom;
 import net.minecraft.world.level.levelgen.blending.Blender;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplateManager;
 
@@ -185,7 +189,7 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
 
    private CubeNetChunkGenerator(BiomeSource biome, FixedBiomeSource faceBiome, double scale, int seaLevel, int minY, int height,
       SphereSingularityPolicy.Config singularityConfig, SphereChunkSampler.PointSampler pointSampler, int apronChunks) {
-      super(biome, ignored -> BiomeGenerationSettings.EMPTY);
+      super(biome, holder -> ((Biome)holder.value()).getGenerationSettings());
       Preconditions.checkArgument(minY % 16 == 0 && height % 16 == 0 && height >= 16
          && minY >= -2032 && (long)minY + height <= 2032,
          "vertical range must be section-aligned within [-2032, 2032)");
@@ -672,11 +676,21 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
       }
    }
    @Override public void applyBiomeDecoration(WorldGenLevel level, ChunkAccess chunk, StructureManager structures) {
+      // Only canonical chunks own decoration. Aprons receive the complete
+      // decorated owner view below, which keeps vanilla features, Tellus
+      // features and structures on one spherical owner.
+      if (this.address(chunk.getPos()).filter(this.singularityPolicy::admitsTerrainMaterialization).isPresent()) {
+         super.applyBiomeDecoration(level, chunk, structures);
+      }
       this.placeCubeNetFeatures(level, chunk);
       this.mirrorCanonicalStructureView(level, chunk);
-      this.placeCubeNetTrees(level, chunk);
    }
-   @Override public void spawnOriginalMobs(WorldGenRegion level) { }
+   @Override public void spawnOriginalMobs(WorldGenRegion level) {
+      ChunkPos center = level.getCenter();
+      WorldgenRandom random = new WorldgenRandom(new LegacyRandomSource(RandomSupport.generateUniqueSeed()));
+      random.setDecorationSeed(level.getSeed(), center.getMinBlockX(), center.getMinBlockZ());
+      WorldgenApi.spawnMobs(level, center, random);
+   }
    @Override public void createStructures(RegistryAccess registry, ChunkGeneratorStructureState state,
       StructureManager structures, ChunkAccess chunk, StructureTemplateManager templates) {
       // Structures have one canonical owner. Aprons receive the owner's block

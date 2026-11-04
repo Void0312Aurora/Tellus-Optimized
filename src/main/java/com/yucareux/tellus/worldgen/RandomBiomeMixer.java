@@ -43,11 +43,25 @@ final class RandomBiomeMixer {
    private final List<Holder<Biome>> caves;
 
    RandomBiomeMixer(HolderGetter<Biome> biomeLookup, EarthGeneratorSettings settings) {
+      this(
+         biomeLookup,
+         Objects.requireNonNull(settings, "settings").randomBiomeDensity(),
+         settings.randomBiomeSeed(),
+         settings.randomBiomeIds()
+      );
+   }
+
+   /**
+    * Cube-Net uses the same mixer, but its biome source is intentionally not
+    * backed by the planar EarthGeneratorSettings record.  Keeping this small
+    * constructor here makes the actual selection rules shared instead of
+    * duplicating the pools and salts in a second implementation.
+    */
+   RandomBiomeMixer(HolderGetter<Biome> biomeLookup, double density, long seed, List<String> biomeIds) {
       Objects.requireNonNull(biomeLookup, "biomeLookup");
-      EarthGeneratorSettings safeSettings = Objects.requireNonNull(settings, "settings");
-      this.density = Mth.clamp(safeSettings.randomBiomeDensity(), 0.0, 0.4);
-      this.seed = safeSettings.randomBiomeSeed();
-      Set<ResourceKey<Biome>> selectedKeys = selectedBiomeKeys(safeSettings.randomBiomeIds());
+      this.density = Mth.clamp(density, 0.0, 0.4);
+      this.seed = seed;
+      Set<ResourceKey<Biome>> selectedKeys = selectedBiomeKeys(biomeIds == null ? List.of() : biomeIds);
       RandomBiomeMixer.Pools pools = filterPools(buildPools(biomeLookup, selectedKeys), selectedKeys);
       this.allLand = pools.allLand();
       this.temperateLand = pools.temperateLand();
