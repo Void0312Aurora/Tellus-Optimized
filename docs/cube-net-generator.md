@@ -75,9 +75,9 @@ slope coverage is unavailable, the previous cover-class palette and three-block
 surface fallback remain in force.
 Canonical land-cover tree anchors now reuse Tellus's ETH canopy-height sample
 and procedural tree generator. Only the owning face chunk decorates an anchor;
-apron chunks do not own trees. Cave/ore carvers, OSM roads/buildings and vanilla
-structure placement still require separate adapters. The canonical chunk path
-now reuses Tellus's vanilla density cave sampler, ore-vein replacement and
+apron chunks do not own trees. The canonical chunk path now reuses Tellus's
+underground and OSM feature rules, while vanilla structure starts are admitted
+only for canonical chunks. It reuses Tellus's vanilla density cave sampler, ore-vein replacement and
 geological stone patches. It supplies the runner with canonical surface heights,
 a surface-relative underground floor, and a two-column water halo; water columns
 receive the same flood and seabed cover rule before carving. The AIR carving step
