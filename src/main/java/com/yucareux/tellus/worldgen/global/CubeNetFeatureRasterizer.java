@@ -10,10 +10,9 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Rasterizes OSM geometry in canonical face coordinates. It deliberately
- * refuses a segment or polygon that crosses a face: a later seam splitter can
- * opt in once its ownership policy is explicit, while this path never draws a
- * long false line across the planar net.
+ * Rasterizes OSM geometry in canonical face coordinates. Road segments are
+ * sampled along the geodetic path and split at face ownership changes, while
+ * polygons remain conservative until a seam-aware polygon clipper is added.
  */
 public final class CubeNetFeatureRasterizer {
    private CubeNetFeatureRasterizer() { }
@@ -28,13 +27,31 @@ public final class CubeNetFeatureRasterizer {
       double radius = Math.max(0.5, width * 0.5);
       LinkedHashSet<FaceCell> cells = new LinkedHashSet<>();
       for (int i = 1; i < road.pointCount(); i++) {
-         var start = CubeNetFeatureProjector.project(model, layout, road.latAt(i - 1), road.lonAt(i - 1)).orElse(null);
-         var end = CubeNetFeatureProjector.project(model, layout, road.latAt(i), road.lonAt(i)).orElse(null);
-         if (start == null || end == null || start.face() != face.index() || end.face() != face.index()) continue;
-         addSegmentCells(cells, face.index(), start.faceX(), start.faceZ(), end.faceX(), end.faceZ(),
-            radius, minX, minZ, maxX, maxZ);
+         rasterizeGeodeticSegment(model, layout, road.latAt(i - 1), road.lonAt(i - 1),
+            road.latAt(i), road.lonAt(i), face.index(), radius, minX, minZ, maxX, maxZ, cells);
       }
       return List.copyOf(cells);
+   }
+
+   private static void rasterizeGeodeticSegment(
+      SphereWorldModel model, CubeNetLayout layout, double lat1, double lon1, double lat2, double lon2,
+      int targetFace, double radius, int minX, int minZ, int maxX, int maxZ, LinkedHashSet<FaceCell> cells
+   ) {
+      double deltaLon = lon2 - lon1;
+      if (deltaLon > 180.0) deltaLon -= 360.0;
+      if (deltaLon < -180.0) deltaLon += 360.0;
+      int steps = Math.max(8, Math.min(128, (int)Math.ceil(Math.max(Math.abs(lat2 - lat1), Math.abs(deltaLon)) * 2.0)));
+      var previous = CubeNetFeatureProjector.project(model, layout, lat1, lon1).orElse(null);
+      for (int step = 1; step <= steps && previous != null; step++) {
+         double t = step / (double)steps;
+         var current = CubeNetFeatureProjector.project(model, layout, lat1 + (lat2 - lat1) * t,
+            lon1 + deltaLon * t).orElse(null);
+         if (current != null && previous.face() == targetFace && current.face() == targetFace) {
+            addSegmentCells(cells, targetFace, previous.faceX(), previous.faceZ(), current.faceX(), current.faceZ(),
+               radius, minX, minZ, maxX, maxZ);
+         }
+         previous = current;
+      }
    }
 
    public static List<FaceCell> buildingCells(

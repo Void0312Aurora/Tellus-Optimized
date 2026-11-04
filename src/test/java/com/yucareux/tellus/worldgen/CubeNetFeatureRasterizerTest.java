@@ -10,6 +10,7 @@ import com.yucareux.tellus.worldgen.global.SphereWorldModel;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class CubeNetFeatureRasterizerTest {
@@ -29,11 +30,15 @@ class CubeNetFeatureRasterizerTest {
    }
 
    @Test
-   void aCrossFaceSegmentIsQuarantinedUntilItHasAnExplicitSeamSplit() {
+   void aCrossFaceSegmentIsSplitInsteadOfDrawingAcrossThePlanarNetGap() {
       RoadFeature road = new RoadFeature(8L, RoadClass.MAIN, RoadMode.NORMAL, 0, "primary",
          new double[]{0.0, 90.0}, new double[]{0.0, 0.0});
-      var face = CubeNetLayout.Face.POS_X;
-      var cells = CubeNetFeatureRasterizer.roadCells(MODEL, LAYOUT, road, face, 0, 0, LAYOUT.faceSize(), LAYOUT.faceSize(), 1000.0);
-      assertTrue(cells.isEmpty());
+      var start = CubeNetFeatureProjector.project(MODEL, LAYOUT, 0.0, 0.0).orElseThrow();
+      var end = CubeNetFeatureProjector.project(MODEL, LAYOUT, 0.0, 90.0).orElseThrow();
+      assertNotEquals(start.face(), end.face());
+      var face = CubeNetLayout.Face.of(start.face());
+      var cells = CubeNetFeatureRasterizer.roadCells(MODEL, LAYOUT, road, face, 0, 0,
+         LAYOUT.faceSize(), LAYOUT.faceSize(), 1000.0);
+      assertTrue(cells.stream().allMatch(cell -> cell.face() == face.index()));
    }
 }
