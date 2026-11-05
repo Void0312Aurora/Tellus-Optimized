@@ -58,6 +58,8 @@ import java.util.concurrent.Executor;
 import java.util.function.IntBinaryOperator;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.QuartPos;
+import net.minecraft.core.Holder;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.Registry;
@@ -81,6 +83,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.animal.axolotl.Axolotl;
 import net.minecraft.world.level.biome.Biomes;
+import net.minecraft.tags.BiomeTags;
 import net.minecraft.world.level.material.Fluids;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.ProtoChunk;
@@ -495,6 +498,7 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
          }
          this.materializer.fill(chunk, new SphereChunkSampler.TerrainGrid(address, columns));
          this.applyCubeNetInlandFlow(chunk);
+         this.applyCubeNetBadlandsBands(chunk);
    }
 
    private void applyCubeNetInlandFlow(ChunkAccess chunk) {
@@ -521,6 +525,52 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
             if (chunk instanceof ProtoChunk proto) MinecraftVersionCompat.markPosForPostProcessing(proto, pos);
          }
       }
+   }
+
+   /** Applies Tellus's layered badlands cliff material to canonical columns. */
+   private void applyCubeNetBadlandsBands(ChunkAccess chunk) {
+      if (!(this.biomeSource instanceof CubeNetBiomeSource)) return;
+      Map<Long, SphereChunkSampler.SurfaceData> cache = new HashMap<>();
+      BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
+      boolean changed = false;
+      for (int localZ = 0; localZ < 16; localZ++) for (int localX = 0; localX < 16; localX++) {
+         int worldX = chunk.getPos().getMinBlockX() + localX;
+         int worldZ = chunk.getPos().getMinBlockZ() + localZ;
+         SphereChunkSampler.SurfaceData surface = this.surfaceDataAtPlanar(worldX, worldZ, cache);
+         if (surface == null || !surface.elevationAvailable() || surface.waterAvailable()) continue;
+         int surfaceY = this.materializer.height(surface.elevationMeters());
+         Holder<Biome> biome = this.biomeSource.getNoiseBiome(
+            QuartPos.fromBlock(worldX), QuartPos.fromBlock(surfaceY), QuartPos.fromBlock(worldZ), Climate.empty());
+         if (!biome.is(BiomeTags.IS_BADLANDS)) continue;
+         double relief = surface.neighbourhood().relief();
+         int localReliefBlocks = Double.isFinite(relief)
+            ? Math.max(0, (int)Math.ceil(relief / Math.max(0.0001, this.worldScale()))) : 0;
+         double slope = surface.neighbourhood().gradient().slopeDegrees();
+         if (localReliefBlocks < 3 && Double.isFinite(slope)) {
+            localReliefBlocks = Math.max(0, (int)Math.round(slope / 9.0) * 3);
+         }
+         if (localReliefBlocks < 3) continue;
+         int depth = BadlandsTerrainPolicy.cliffBandDepth(3, localReliefBlocks);
+         int bottom = Math.max(this.minY + 1, surfaceY - depth + 1);
+         for (int y = surfaceY - 1; y >= bottom; y--) {
+            cursor.set(worldX, y, worldZ);
+            MinecraftVersionCompat.setBlockState(chunk, cursor, this.cubeNetBadlandsBand(worldX, worldZ, y));
+            changed = true;
+         }
+      }
+      if (changed) chunk.setUnsaved(true);
+   }
+
+   private BlockState cubeNetBadlandsBand(int worldX, int worldZ, int y) {
+      return switch (BadlandsTerrainPolicy.bandMaterialIndex(worldX, worldZ, y)) {
+         case BadlandsTerrainPolicy.ORANGE_TERRACOTTA -> TellusBlockReferences.terracottaState("ORANGE");
+         case BadlandsTerrainPolicy.YELLOW_TERRACOTTA -> TellusBlockReferences.terracottaState("YELLOW");
+         case BadlandsTerrainPolicy.BROWN_TERRACOTTA -> TellusBlockReferences.terracottaState("BROWN");
+         case BadlandsTerrainPolicy.RED_TERRACOTTA -> TellusBlockReferences.terracottaState("RED");
+         case BadlandsTerrainPolicy.LIGHT_GRAY_TERRACOTTA -> TellusBlockReferences.terracottaState("LIGHT_GRAY");
+         case BadlandsTerrainPolicy.WHITE_TERRACOTTA -> TellusBlockReferences.terracottaState("WHITE");
+         default -> Blocks.TERRACOTTA.defaultBlockState();
+      };
    }
 
    @Override
