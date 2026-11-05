@@ -1253,8 +1253,52 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
                         : Blocks.AIR.defaultBlockState();
             this.placeApronFeatureBlock(level, chunk, apron, cell, state, y, local);
          }
+         this.placeCubeNetApronBuildingExteriorDetails(level, chunk, apron, cell, occupied, blueprint, palette,
+            boundaryDistance, groundY, height);
          this.placeCubeNetRoofDetail(level, chunk, apron, cell, local, blueprint, palette,
             boundaryDistance, earth[0], earth[1], groundY + height + 1);
+      }
+   }
+
+   private void placeCubeNetApronBuildingExteriorDetails(WorldGenLevel level, ChunkAccess chunk,
+      CubeNetApronResolver.ChunkProjection apron, CubeNetFeatureRasterizer.FaceCell cell,
+      java.util.Set<Long> occupied, BuildingBlueprint blueprint,
+      TellusBuildingMaterials.BuildingMaterialPalette palette, int boundaryDistance,
+      int groundY, int height) {
+      Direction facing = this.cubeNetFacadeFacing(cell, occupied);
+      if (facing == null) return;
+      CubeNetFeatureRasterizer.FaceCell outside = new CubeNetFeatureRasterizer.FaceCell(
+         cell.face(), cell.x() + facing.getStepX(), cell.z() + facing.getStepZ());
+      int[] local = this.sourceLocalForTarget(apron, outside.x(), outside.z());
+      if (local == null) return;
+      int highestFloor = blueprint.highestActiveFloor(boundaryDistance);
+      for (int floorIndex = 0; floorIndex <= highestFloor; floorIndex++) {
+         if (!blueprint.isFacadeCell(boundaryDistance, floorIndex)) continue;
+         int floorBottom = blueprint.floorBottomY(floorIndex);
+         int floorTop = blueprint.floorTopY(floorIndex);
+         ArnisBuildingRules.ResidentialDecoration residential = ArnisBuildingRules.residentialWindowDecoration(
+            blueprint, boundaryDistance, cell.x(), cell.z(), floorIndex, floorBottom, floorTop);
+         if (TellusBuildingFacade.shouldPlaceAwning(blueprint, boundaryDistance, cell.x(), cell.z(), floorIndex)) {
+            this.placeApronFeatureBlock(level, chunk, apron, outside, palette.awning(), floorBottom + 3, local);
+         }
+         int detailY = Math.min(floorTop, floorBottom + 2);
+         if (TellusBuildingFacade.shouldPlaceBalcony(blueprint, boundaryDistance, cell.x(), cell.z(), floorIndex, floorBottom, floorTop)
+            || residential == ArnisBuildingRules.ResidentialDecoration.BALCONY) {
+            this.placeApronFeatureBlock(level, chunk, apron, outside, palette.slab(), detailY, local);
+            this.placeApronFeatureBlock(level, chunk, apron, outside, palette.railing(), detailY + 1, local);
+         } else if (TellusBuildingFacade.shouldPlaceFireEscape(blueprint, boundaryDistance, cell.x(), cell.z(), floorIndex)) {
+            this.placeApronFeatureBlock(level, chunk, apron, outside, palette.railing(), floorBottom + 1, local);
+            this.placeApronFeatureBlock(level, chunk, apron, outside, palette.railing(), floorBottom + 2, local);
+         } else if (residential == ArnisBuildingRules.ResidentialDecoration.WINDOW_SILL) {
+            this.placeApronFeatureBlock(level, chunk, apron, outside, palette.slab(), detailY, local);
+            this.placeApronFeatureBlock(level, chunk, apron, outside, palette.planter(), detailY + 1, local);
+         }
+      }
+      int roofTop = groundY + height;
+      if (roofTop >= blueprint.roofBaseY(boundaryDistance)
+         && blueprint.isFacadeCell(boundaryDistance, highestFloor)) {
+         this.placeApronFeatureBlock(level, chunk, apron, outside, palette.trim(), roofTop, local);
+         this.placeApronFeatureBlock(level, chunk, apron, outside, palette.slab(), roofTop + 1, local);
       }
    }
 
