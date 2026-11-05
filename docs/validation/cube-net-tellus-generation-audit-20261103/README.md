@@ -57,7 +57,8 @@ registry 解码，按 canonical GeoPoint 读取 SurfaceData，并复用 Tellus
 生成主路径。地形列现在另有适配器复用 Tellus 的
 `InlandHydrologyPlanner`、`RiverNetwork` 和湖泊水面求解：它使用 Earth 投影
 网格执行既有算法，再把结果写回 canonical 球面列；缺失 OSM 覆盖时保留原始
-地形列。EarthBiomeSource 的完整特殊 biome、洞穴策略仍待后续适配。
+地形列。后续提交又把特殊 biome 变体、球面洞穴/矿脉/地质石层和装饰路径
+接到了 canonical owner；本文末尾列出当前仍保留的差异。
 
 另外，真实数据的服务器验证记录在
 `docs/validation/terrain-stability-20261026/summary.json`：
@@ -66,7 +67,7 @@ registry 解码，按 canonical GeoPoint 读取 SurfaceData，并复用 Tellus
 `passed` 为 `true`。这覆盖了真实高程/覆盖物/陆海掩膜采样、方块物化和原生
 chunk 持久化的一致性；它不代表完整地貌特性已经接入。
 
-## 当前没有接入的路径
+## 11 月 3 日快照（已被后续更新取代）
 
 固定配置下，`CubeNetChunkGenerator` 仍使用 `FixedBiomeSource`；启用
 `CubeNetBiomeSource` 后才会按 canonical GeoPoint 做第一阶段的基础 biome
@@ -74,7 +75,7 @@ chunk 持久化的一致性；它不代表完整地貌特性已经接入。
 石头、草、土、沙、雪、泥和水面调色板；它们都没有调用 `EarthBiomeSource` 或
 `EarthChunkGenerator` 的完整列解析和特性阶段。
 
-因此以下机制目前仍属于普通 `tellus:earth` 路径，不能宣称已经融入立方球：
+在 11 月 3 日时，以下机制仍属于普通 `tellus:earth` 路径：
 
 - `EarthBiomeSource` 的气候/覆盖物生物群系选择和雪地缓存；
 - `WaterSurfaceResolver` 的海岸、海底和完整区域水面策略；内陆河湖算法已通过
@@ -82,12 +83,12 @@ chunk 持久化的一致性；它不代表完整地貌特性已经接入。
 - OSM 道路、建筑、水体和沙地的方块级特性填充；
 - 树木、洞穴、矿物、结构及其他 `EarthChunkGenerator` decoration/carver 阶段。
 
-这些类大量接收平面 `(blockX, blockZ)`，并通过旧的 `EarthProjection` 或
+当时这些类大量接收平面 `(blockX, blockZ)`，并通过旧的 `EarthProjection` 或
 普通世界生成上下文工作。直接把它们挂到 Cube-Net 会把面内坐标误当成全球
 投影坐标，也会在接缝两侧产生不同的物理采样点，所以不能仅靠替换 biome
 source 完成接入。
 
-## 后续工作边界
+## 当时的后续工作边界
 
 如果要把完整 Tellus 特性带入立方球，应按以下顺序增加适配和测试：
 
@@ -100,7 +101,7 @@ source 完成接入。
 4. 最后才把这些结果接到 biome/decoration 阶段，并用真实数据做多面、重载、
    接缝和确定性哈希验证。
 
-在这些适配完成前，立方球的可验证承诺应限定为：球面高程、覆盖物、陆海掩膜
+这段是历史计划；当前承诺应以本文下方的剩余差异为准。历史上立方球的可验证承诺曾限定为：球面高程、覆盖物、陆海掩膜
 采样，基础方块/水面物化，canonical/apron 一致性，以及 chunk 持久化。
 
 ## 当前剩余差异（2026-11-05）
