@@ -115,9 +115,6 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
    private static final float AXOLOTL_CHUNK_CHANCE = 0.55F;
    private static final float AXOLOTL_POND_CHANCE = 0.68F;
    private static final int MAX_AXOLOTLS_PER_CHUNK = 2;
-   private static final int CUBE_NET_INLAND_SHORELINE_RADIUS = EarthGeneratorSettings.DEFAULT.riverLakeShorelineBlend();
-   private static final int CUBE_NET_OCEAN_SHORELINE_RADIUS = EarthGeneratorSettings.DEFAULT.oceanShorelineBlend();
-   private static final boolean CUBE_NET_SHORELINE_CLIFF_LIMIT = EarthGeneratorSettings.DEFAULT.shorelineBlendCliffLimit();
    private static final int CUBE_NET_SHORELINE_MIN_CLIFF = 3;
    private static final BlockState CUBE_NET_ROAD_POINT_BASE = Blocks.STONE_BRICK_WALL.defaultBlockState();
    private static final BlockState CUBE_NET_ROAD_SIGNAL_POLE = Blocks.IRON_BARS.defaultBlockState();
@@ -156,8 +153,18 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
       Codec.intRange(-2032, 2016).fieldOf("min_y").forGetter(CubeNetChunkGenerator::getMinY),
       Codec.intRange(16, 4064).fieldOf("height").forGetter(CubeNetChunkGenerator::getGenDepth),
       Codec.intRange(0, 35).optionalFieldOf("experimental_apron_chunks", CubeNetViewCoverage.DEFAULT_APRON_CHUNKS)
-         .forGetter(generator -> generator.apronWidthChunks)
-   ).apply(instance, (version, mapping, excludedRadius, transitionWidth, biome, scale, sea, min, height, apronChunks) -> {
+         .forGetter(generator -> generator.apronWidthChunks),
+      Codec.intRange(0, 256).optionalFieldOf("river_lake_shoreline_blend",
+         EarthGeneratorSettings.DEFAULT.riverLakeShorelineBlend())
+         .forGetter(generator -> generator.inlandShorelineRadius),
+      Codec.intRange(0, 256).optionalFieldOf("ocean_shoreline_blend",
+         EarthGeneratorSettings.DEFAULT.oceanShorelineBlend())
+         .forGetter(generator -> generator.oceanShorelineRadius),
+      Codec.BOOL.optionalFieldOf("shoreline_blend_cliff_limit",
+         EarthGeneratorSettings.DEFAULT.shorelineBlendCliffLimit())
+         .forGetter(generator -> generator.shorelineBlendCliffLimit)
+    ).apply(instance, (version, mapping, excludedRadius, transitionWidth, biome, scale, sea, min, height,
+       apronChunks, inlandShorelineRadius, oceanShorelineRadius, shorelineBlendCliffLimit) -> {
       if (!SphereWorldModel.MAPPING_ID.equals(mapping)) {
          throw new IllegalArgumentException("unsupported spherical mapping: " + mapping);
       }
@@ -173,7 +180,8 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
          ? spherical.fallback()
          : (FixedBiomeSource)biome;
       return new CubeNetChunkGenerator(biome, faceBiome, scale, sea, min, height,
-         singularityConfig, apronChunks);
+         singularityConfig, null, apronChunks, inlandShorelineRadius,
+         oceanShorelineRadius, shorelineBlendCliffLimit);
    }));
 
    private final int seaLevel;
@@ -215,6 +223,9 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
    );
    private final SphereSingularityPolicy.Config singularityConfig;
    private final SphereSingularityPolicy singularityPolicy;
+   private final int inlandShorelineRadius;
+   private final int oceanShorelineRadius;
+   private final boolean shorelineBlendCliffLimit;
 
    public CubeNetChunkGenerator(FixedBiomeSource biome, double scale, int seaLevel, int minY, int height) {
       this((BiomeSource)biome, biome, scale, seaLevel, minY, height,
@@ -235,11 +246,23 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
 
    private CubeNetChunkGenerator(BiomeSource biome, FixedBiomeSource faceBiome, double scale, int seaLevel, int minY, int height,
       SphereSingularityPolicy.Config singularityConfig, int apronChunks) {
-      this(biome, faceBiome, scale, seaLevel, minY, height, singularityConfig, null, apronChunks);
+      this(biome, faceBiome, scale, seaLevel, minY, height, singularityConfig, null, apronChunks,
+         EarthGeneratorSettings.DEFAULT.riverLakeShorelineBlend(),
+         EarthGeneratorSettings.DEFAULT.oceanShorelineBlend(),
+         EarthGeneratorSettings.DEFAULT.shorelineBlendCliffLimit());
    }
 
    private CubeNetChunkGenerator(BiomeSource biome, FixedBiomeSource faceBiome, double scale, int seaLevel, int minY, int height,
       SphereSingularityPolicy.Config singularityConfig, SphereChunkSampler.PointSampler pointSampler, int apronChunks) {
+      this(biome, faceBiome, scale, seaLevel, minY, height, singularityConfig, pointSampler, apronChunks,
+         EarthGeneratorSettings.DEFAULT.riverLakeShorelineBlend(),
+         EarthGeneratorSettings.DEFAULT.oceanShorelineBlend(),
+         EarthGeneratorSettings.DEFAULT.shorelineBlendCliffLimit());
+   }
+
+   private CubeNetChunkGenerator(BiomeSource biome, FixedBiomeSource faceBiome, double scale, int seaLevel, int minY, int height,
+      SphereSingularityPolicy.Config singularityConfig, SphereChunkSampler.PointSampler pointSampler, int apronChunks,
+      int inlandShorelineRadius, int oceanShorelineRadius, boolean shorelineBlendCliffLimit) {
       super(biome, holder -> ((Biome)holder.value()).getGenerationSettings());
       Preconditions.checkArgument(minY % 16 == 0 && height % 16 == 0 && height >= 16
          && minY >= -2032 && (long)minY + height <= 2032,
@@ -252,6 +275,9 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
       Preconditions.checkArgument(apronChunks >= 0 && apronChunks <= 35
          && apronChunks * 16 <= this.model.config().faceBlocks(), "apron width exceeds supported face size");
       this.apronWidthChunks = apronChunks;
+      this.inlandShorelineRadius = inlandShorelineRadius;
+      this.oceanShorelineRadius = oceanShorelineRadius;
+      this.shorelineBlendCliffLimit = shorelineBlendCliffLimit;
       this.remoteProjection = new CubeNetRemoteProjection(this.adapter.layout(), apronChunks * 16.0);
       this.apronResolver = new CubeNetApronResolver(this.adapter.layout(), Math.max(16, apronChunks * 16));
       this.materializer = new SphereTerrainMaterializer(scale, seaLevel);
@@ -575,8 +601,8 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
    private List<SphereChunkSampler.Column> applyCubeNetShorelineBankRamp(
       ChunkAccess chunk, List<SphereChunkSampler.Column> columns
    ) {
-      if (!CUBE_NET_SHORELINE_CLIFF_LIMIT
-         || Math.max(CUBE_NET_INLAND_SHORELINE_RADIUS, CUBE_NET_OCEAN_SHORELINE_RADIUS) <= 0) {
+      if (!this.shorelineBlendCliffLimit
+         || Math.max(this.inlandShorelineRadius, this.oceanShorelineRadius) <= 0) {
          return columns;
       }
       Map<Long, SphereChunkSampler.SurfaceData> cache = new HashMap<>();
@@ -596,7 +622,7 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
          }
          int terrainY = this.materializer.height(surface.elevationMeters());
          int allowedY = Integer.MAX_VALUE;
-         int searchRadius = Math.max(CUBE_NET_INLAND_SHORELINE_RADIUS, CUBE_NET_OCEAN_SHORELINE_RADIUS);
+         int searchRadius = Math.max(this.inlandShorelineRadius, this.oceanShorelineRadius);
          for (int dz = -searchRadius; dz <= searchRadius; dz++) {
             for (int dx = -searchRadius; dx <= searchRadius; dx++) {
                if (dx == 0 && dz == 0) continue;
@@ -606,7 +632,7 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
                   minX + localX + dx, minZ + localZ + dz, cache);
                if (neighbour == null || !neighbour.waterAvailable()) continue;
                int radius = neighbour.inlandWater()
-                  ? CUBE_NET_INLAND_SHORELINE_RADIUS : CUBE_NET_OCEAN_SHORELINE_RADIUS;
+                  ? this.inlandShorelineRadius : this.oceanShorelineRadius;
                if (distance > radius) continue;
                int waterY = this.materializer.height(neighbour.waterSurfaceMeters());
                allowedY = Math.min(allowedY, waterY + distance);
