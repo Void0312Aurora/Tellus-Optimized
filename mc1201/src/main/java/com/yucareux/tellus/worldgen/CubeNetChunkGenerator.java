@@ -801,6 +801,11 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
                else this.placeCubeNetApronRoad(level, chunk, apron, road, cell,
                   featureSurfaceCache, featureColumnCache);
             }
+            for (CubeNetFeatureRasterizer.FaceCell cell : CubeNetFeatureRasterizer.roadMarkingCells(
+               this.model, this.adapter.layout(), road, face, minX, minZ, maxX, maxZ, this.worldScale())) {
+               if (apron == null) this.placeCubeNetRoadMarking(level, chunk, road, cell, featureColumnCache);
+               else this.placeCubeNetApronRoadMarking(level, chunk, apron, road, cell, featureColumnCache);
+            }
          }
          for (RoadAreaFeature area : data.roadAreas().features()) {
             for (CubeNetFeatureRasterizer.FaceCell cell : CubeNetFeatureRasterizer.roadAreaCells(
@@ -1103,6 +1108,46 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
             this.placeApronFeatureBlock(level, chunk, apron, cell, roadState, deckY, local);
          }
       }
+   }
+
+   private void placeCubeNetRoadMarking(WorldGenLevel level, ChunkAccess chunk, RoadFeature road,
+      CubeNetFeatureRasterizer.FaceCell cell, Map<Long, SphereChunkSampler.SurfaceData> columnCache) {
+      CubeNetLayout.PlanarPoint point = this.adapter.layout().toPlanar(new CubeNetLayout.FacePoint(
+         CubeNetLayout.Face.of(cell.face()), cell.x() + 0.5, cell.z() + 0.5));
+      int worldX = (int)Math.floor(point.x());
+      int worldZ = (int)Math.floor(point.z());
+      SphereChunkSampler.SurfaceData surface = this.surfaceDataAtPlanar(worldX, worldZ, columnCache);
+      if (surface == null || road.mode() == RoadMode.NORMAL && surface.waterAvailable()
+         && surface.waterSurfaceMeters() > surface.elevationMeters()) return;
+      int terrainSurface = this.materializer.height(surface.elevationMeters());
+      int y = switch (road.mode()) {
+         case NORMAL -> terrainSurface;
+         case BRIDGE -> CubeNetRoadVerticalPolicy.bridgeDeckY(terrainSurface, road.bridgeLevel());
+         case TUNNEL -> CubeNetRoadVerticalPolicy.tunnelDeckY(terrainSurface);
+      };
+      this.placeFeatureBlock(level, chunk, cell, TellusBlockReferences.concreteState("WHITE"), y);
+   }
+
+   private void placeCubeNetApronRoadMarking(WorldGenLevel level, ChunkAccess chunk,
+      CubeNetApronResolver.ChunkProjection apron, RoadFeature road,
+      CubeNetFeatureRasterizer.FaceCell cell, Map<Long, SphereChunkSampler.SurfaceData> columnCache) {
+      int[] local = this.sourceLocalForTarget(apron, cell.x(), cell.z());
+      if (local == null) return;
+      CubeNetLayout.PlanarPoint point = this.adapter.layout().toPlanar(new CubeNetLayout.FacePoint(
+         CubeNetLayout.Face.of(cell.face()), cell.x() + 0.5, cell.z() + 0.5));
+      int worldX = (int)Math.floor(point.x());
+      int worldZ = (int)Math.floor(point.z());
+      SphereChunkSampler.SurfaceData surface = this.surfaceDataAtPlanar(worldX, worldZ, columnCache);
+      if (surface == null || road.mode() == RoadMode.NORMAL && surface.waterAvailable()
+         && surface.waterSurfaceMeters() > surface.elevationMeters()) return;
+      int terrainSurface = this.materializer.height(surface.elevationMeters());
+      int y = switch (road.mode()) {
+         case NORMAL -> terrainSurface;
+         case BRIDGE -> CubeNetRoadVerticalPolicy.bridgeDeckY(terrainSurface, road.bridgeLevel());
+         case TUNNEL -> CubeNetRoadVerticalPolicy.tunnelDeckY(terrainSurface);
+      };
+      this.placeApronFeatureBlock(level, chunk, apron, cell,
+         TellusBlockReferences.concreteState("WHITE"), y, local);
    }
 
    /** Mirrors the already-generated owner when the worldgen region contains it. */
