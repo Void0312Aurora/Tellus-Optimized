@@ -697,6 +697,7 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
       // features and structures on one spherical owner.
       if (this.address(chunk.getPos()).filter(this.singularityPolicy::admitsTerrainMaterialization).isPresent()) {
          super.applyBiomeDecoration(level, chunk, structures);
+         this.placeCubeNetTrees(level, chunk);
       }
       this.placeCubeNetFeatures(level, chunk);
       this.mirrorCanonicalStructureView(level, chunk);
@@ -1383,6 +1384,7 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
             if (!level.getBlockState(ground).is(Blocks.GRASS_BLOCK)
                && !level.getBlockState(ground).is(Blocks.DIRT)
                && !level.getBlockState(ground).is(Blocks.MUD)) continue;
+            if (this.hasNearbyTree(level, ground)) continue;
             TellusCanopyHeightSource.CanopySample sample = canopy.sampleCanopy(
                column.point(), this.worldScale(), this.worldScale()
             );
@@ -1391,6 +1393,14 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
             );
          }
       }
+   }
+
+   private boolean hasNearbyTree(WorldGenLevel level, BlockPos ground) {
+      for (int y = 1; y <= 12; y++) for (int dx = -2; dx <= 2; dx++) for (int dz = -2; dz <= 2; dz++) {
+         BlockState state = level.getBlockState(ground.offset(dx, y, dz));
+         if (state.is(net.minecraft.tags.BlockTags.LOGS) || state.is(net.minecraft.tags.BlockTags.LEAVES)) return true;
+      }
+      return false;
    }
 
    @Override
