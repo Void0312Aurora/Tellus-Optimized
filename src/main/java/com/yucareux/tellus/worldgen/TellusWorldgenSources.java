@@ -217,6 +217,15 @@ public final class TellusWorldgenSources {
       return waterResolver(settings);
    }
 
+   /**
+    * The Cube-Net adapter uses the same Earth water resolver as the planar
+    * generator after converting a spherical point to the Earth grid. Keeping
+    * this accessor here avoids a second water implementation in the adapter.
+    */
+   public static WaterSurfaceResolver cubeNetWaterResolver() {
+      return waterResolver(EarthGeneratorSettings.DEFAULT);
+   }
+
    public static TellusOsmSandSource osmSand() {
       return OSM_SAND;
    }

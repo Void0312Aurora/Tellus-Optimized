@@ -71,6 +71,104 @@ public final class CubeNetSurfacePolicy {
       return baseline(surface.coverClass(), slopeDiff, slopeDegrees, mountain.form());
    }
 
+   /**
+    * Earth-equivalent surface selection for the native Cube-Net path. The
+    * caller supplies the Earth-grid cover/climate and shoreline context after
+    * resolving the spherical column; this keeps the material rule identical
+    * inside a face without using planar coordinates as the ownership system.
+    */
+   public static Decision resolveEarthEquivalent(
+      SphereWorldModel.GeoPoint point,
+      SphereChunkSampler.SurfaceData surface,
+      double worldScale,
+      long worldSeed,
+      int visualCover,
+      byte climateGroup,
+      int zoneHeight,
+      int slopeDiff,
+      int convexity,
+      Shoreline shoreline,
+      BiomeSurface biomeSurface,
+      int earthX,
+      int earthZ
+   ) {
+      if (!(worldScale > 0.0) || !Double.isFinite(worldScale) || !surface.elevationAvailable()) {
+         return Decision.DEFAULT;
+      }
+      if (surface.waterAvailable() && surface.waterSurfaceMeters() > surface.elevationMeters()) {
+         return baseline(surface.coverClass(), 0, Double.NaN, MountainSurfaceRules.MountainForm.NONE);
+      }
+      int[] coordinates = new int[]{earthX, earthZ};
+      int heightAboveSea = clampInt((int)Math.round(surface.elevationMeters() / worldScale), -4096, 4096);
+      int boundedZoneHeight = clampInt(zoneHeight, -4096, 4096);
+      double slopeDegrees = surface.neighbourhood().gradient().slopeDegrees();
+      boolean snowLike = visualCover == MountainSurfaceRules.ESA_SNOW_ICE;
+      MountainSurfaceRules.ApproximateSurface mountain = MountainSurfaceRules.classifyApproximateSurface(
+         surface.coverClass(), visualCover, boundedZoneHeight, slopeDiff, convexity,
+         snowLike, coordinates[0], coordinates[1]
+      );
+      if (mountain.palette() == MountainSurfaceRules.ApproximatePalette.SNOW) {
+         SurfaceMaterialDepthPolicy.SnowColumn snow = SurfaceMaterialDepthPolicy.snowColumn(
+            coordinates[0], coordinates[1], worldSeed, slopeDiff <= 2
+         );
+         return new Decision(snow.powderSnow() ? Material.POWDER_SNOW : Material.SNOW,
+            Material.SNOW, snow.depth(), slopeDiff, slopeDegrees, mountain.form());
+      }
+      if (mountain.palette() == MountainSurfaceRules.ApproximatePalette.SNOW_STREAK) {
+         return new Decision(Material.SNOW, Material.SNOW, 1, slopeDiff, slopeDegrees, mountain.form());
+      }
+      if (mountain.palette() == MountainSurfaceRules.ApproximatePalette.STONE) {
+         Material material = materialForMountainForm(mountain.form(), coordinates[0], coordinates[1]);
+         int depth = slopeDiff >= 4 && finite(slopeDegrees) && slopeDegrees > 40.0
+            ? DeepslateSlopePolicy.surfaceDepthForRelief(12, slopeDiff) : 3;
+         return new Decision(material, material, depth, slopeDiff, slopeDegrees, mountain.form());
+      }
+
+      if (shoreline != null && shoreline.kind() != MountainSurfaceRules.ShorelineKind.NONE) {
+         MountainSurfaceRules.ShorelineMaterial material = MountainSurfaceRules.classifyShorelineMaterial(
+            visualCover, climateGroup, boundedZoneHeight, slopeDiff, convexity,
+            shoreline.kind(), shoreline.distance(), biomeSurface == BiomeSurface.BADLANDS);
+         switch (material) {
+            case GRAVEL -> {
+               return new Decision(Material.GRAVEL, Material.STONE, 4, slopeDiff, slopeDegrees, mountain.form());
+            }
+            case SAND -> {
+               return new Decision(Material.SAND, Material.SAND, 4, slopeDiff, slopeDegrees, mountain.form());
+            }
+            case RED_SAND -> {
+               return new Decision(Material.SAND, Material.SANDSTONE, 4, slopeDiff, slopeDegrees, mountain.form());
+            }
+            case PRESERVE_WETLAND, NONE -> {
+               // Continue with the ordinary biome/cover palette.
+            }
+         }
+      }
+      Decision biome = biomeBaseline(surface.coverClass(), visualCover, biomeSurface, slopeDiff, slopeDegrees, mountain.form());
+      if (biome != null) return biome;
+      if (!surface.waterAvailable() && finite(slopeDegrees) && slopeDegrees < 35.0
+         && overtureSandAt(point, worldScale)) {
+         return new Decision(Material.SAND, Material.SANDSTONE, 4, slopeDiff, slopeDegrees, mountain.form());
+      }
+      if (surface.coverClass() != MountainSurfaceRules.ESA_TREE_COVER && finite(slopeDegrees)
+         && DeepslateSlopePolicy.shouldCover(coordinates[0], coordinates[1], slopeDegrees)) {
+         int depth = DeepslateSlopePolicy.surfaceDepthForRelief(12, slopeDiff);
+         return new Decision(Material.STONE, Material.STONE, depth, slopeDiff, slopeDegrees, mountain.form());
+      }
+      return baseline(visualCover, slopeDiff, slopeDegrees, mountain.form());
+   }
+
+   private static Decision biomeBaseline(int rawCover, int visualCover, BiomeSurface biome,
+      int slopeDiff, double slopeDegrees, MountainSurfaceRules.MountainForm form) {
+      return switch (biome) {
+         case BEACH, SNOWY_BEACH, DESERT -> new Decision(Material.SAND, Material.SANDSTONE, 5, slopeDiff, slopeDegrees, form);
+         case STONY_SHORE, STONY_PEAKS -> new Decision(Material.STONE, Material.STONE, 12, slopeDiff, slopeDegrees, form);
+         case GRAVELLY -> new Decision(Material.GRAVEL, Material.STONE, 4, slopeDiff, slopeDegrees, form);
+         case MANGROVE -> new Decision(Material.MUD, Material.DIRT, 4, slopeDiff, slopeDegrees, form);
+         case SWAMP -> new Decision(Material.GRASS, Material.DIRT, 4, slopeDiff, slopeDegrees, form);
+         default -> null;
+      };
+   }
+
    private static boolean overtureSandAt(SphereWorldModel.GeoPoint point, double worldScale) {
       double blockX = EarthProjection.longitudeToBlockX(point.longitude(), worldScale);
       double blockZ = EarthProjection.latToBlockZ(point.latitude(), worldScale);
@@ -144,6 +242,15 @@ public final class CubeNetSurfacePolicy {
    public enum Material {
       GRASS, DIRT, SAND, SANDSTONE, SNOW, POWDER_SNOW, STONE, GRAVEL,
       ANDESITE, DIORITE, COBBLESTONE, PACKED_ICE, BLUE_ICE, MUD
+   }
+
+   public record Shoreline(MountainSurfaceRules.ShorelineKind kind, int distance) {
+      public static final Shoreline NONE = new Shoreline(MountainSurfaceRules.ShorelineKind.NONE, -1);
+   }
+
+   public enum BiomeSurface {
+      DEFAULT, OCEAN, RIVER, MUSHROOM, BEACH, SNOWY_BEACH, STONY_SHORE,
+      BADLANDS, DESERT, MANGROVE, SWAMP, STONY_PEAKS, GRAVELLY
    }
 
    public record Decision(

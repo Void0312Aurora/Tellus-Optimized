@@ -37,6 +37,12 @@ public final class SphereTerrainMaterializer {
 
    /** Preflight every column before writing so missing/out-of-range data cannot leave half a chunk. */
    public FillResult fill(ChunkAccess chunk, SphereChunkSampler.TerrainGrid terrain) {
+      return this.fill(chunk, terrain, null);
+   }
+
+   /** Fills a grid with an optional generator-specific surface decision resolver. */
+   public FillResult fill(ChunkAccess chunk, SphereChunkSampler.TerrainGrid terrain,
+      SurfaceDecisionResolver surfaceResolver) {
       Objects.requireNonNull(chunk, "chunk");
       Objects.requireNonNull(terrain, "terrain");
       int minY = chunk.getMinBuildHeight();
@@ -47,7 +53,7 @@ public final class SphereTerrainMaterializer {
       ColumnPlan[] plans = new ColumnPlan[256];
       int lowest = Integer.MAX_VALUE, highest = Integer.MIN_VALUE, wet = 0;
       for (int i = 0; i < plans.length; i++) {
-         ColumnPlan plan = this.plan(terrain.columns().get(i).context(), minY, maxY);
+         ColumnPlan plan = this.plan(terrain.columns().get(i).context(), minY, maxY, surfaceResolver);
          plans[i] = plan;
          lowest = Math.min(lowest, plan.surfaceY());
          highest = Math.max(highest, plan.topY());
@@ -93,11 +99,16 @@ public final class SphereTerrainMaterializer {
    }
 
    ColumnPlan plan(SphereColumnContext column, int minY, int maxY) {
+      return this.plan(column, minY, maxY, null);
+   }
+
+   ColumnPlan plan(SphereColumnContext column, int minY, int maxY,
+      SurfaceDecisionResolver surfaceResolver) {
       Objects.requireNonNull(column, "column");
       ColumnPlan base = this.plan(column.surface(), minY, maxY);
-      CubeNetSurfacePolicy.Decision surface = CubeNetSurfacePolicy.resolve(
-         column.point(), column.surface(), this.worldScale, this.worldSeed
-      );
+      CubeNetSurfacePolicy.Decision surface = surfaceResolver == null
+         ? CubeNetSurfacePolicy.resolve(column.point(), column.surface(), this.worldScale, this.worldSeed)
+         : Objects.requireNonNull(surfaceResolver.resolve(column), "surfaceDecision");
       Palette palette = palette(surface);
       base = new ColumnPlan(base.surfaceY(), base.waterY(), palette.top(), palette.filler(),
          surface.depth(), base.strata());
@@ -200,4 +211,9 @@ public final class SphereTerrainMaterializer {
       }
    }
    public record FillResult(int minimumSurfaceY, int maximumOccupiedY, int waterColumns, int dirtySections) { }
+
+   @FunctionalInterface
+   interface SurfaceDecisionResolver {
+      CubeNetSurfacePolicy.Decision resolve(SphereColumnContext column);
+   }
 }

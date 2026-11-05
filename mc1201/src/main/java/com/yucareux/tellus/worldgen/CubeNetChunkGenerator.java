@@ -12,6 +12,7 @@ import com.yucareux.tellus.worldgen.global.CubeNetLayout;
 import com.yucareux.tellus.worldgen.global.CubeNetSeamTransform;
 import com.yucareux.tellus.worldgen.global.CubeNetRemoteProjection;
 import com.yucareux.tellus.worldgen.global.SphereChunkSampler;
+import com.yucareux.tellus.worldgen.global.SphereColumnContext;
 import com.yucareux.tellus.worldgen.global.SphereSingularityPolicy;
 import com.yucareux.tellus.worldgen.global.SphereWorldModel;
 import com.yucareux.tellus.worldgen.global.CubeNetFeatureRasterizer;
@@ -512,7 +513,8 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
             }
             columns = this.applyCubeNetLandmarkGround(columns);
             this.materializer.fill(chunk, new SphereChunkSampler.TerrainGrid(targetAddress,
-               this.inlandWaterResolver == null ? columns : this.applyCubeNetShorelineBankRamp(chunk, columns)));
+               this.inlandWaterResolver == null ? columns : this.applyCubeNetShorelineBankRamp(chunk, columns)),
+               this.inlandWaterResolver == null ? null : this.cubeNetSurfaceDecisionResolver(chunk));
             this.applyCubeNetInlandFlow(chunk);
             return chunk;
          }, executor))
@@ -541,10 +543,122 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
          }
          columns = this.applyCubeNetLandmarkGround(columns);
          this.materializer.fill(chunk, new SphereChunkSampler.TerrainGrid(address,
-            this.inlandWaterResolver == null ? columns : this.applyCubeNetShorelineBankRamp(chunk, columns)));
+            this.inlandWaterResolver == null ? columns : this.applyCubeNetShorelineBankRamp(chunk, columns)),
+            this.inlandWaterResolver == null ? null : this.cubeNetSurfaceDecisionResolver(chunk));
          this.applyCubeNetInlandFlow(chunk);
          this.applyCubeNetBadlandsBands(chunk);
    }
+
+   /**
+    * Resolves the same cover, climate and shoreline palette used by Earth for
+    * a canonical spherical column. The resolver is scoped to one fill so all
+    * neighbour water lookups stay deterministic and face-local caches are not
+    * shared between chunk generation tasks.
+    */
+   private SphereTerrainMaterializer.SurfaceDecisionResolver cubeNetSurfaceDecisionResolver(ChunkAccess chunk) {
+      Map<Long, SphereChunkSampler.SurfaceData> cache = new HashMap<>();
+      return column -> this.resolveCubeNetSurfaceDecision(column, cache);
+   }
+
+   private CubeNetSurfacePolicy.Decision resolveCubeNetSurfaceDecision(
+      SphereColumnContext column, Map<Long, SphereChunkSampler.SurfaceData> cache
+   ) {
+      if (!(this.biomeSource instanceof CubeNetBiomeSource)) {
+         return CubeNetSurfacePolicy.resolve(column.point(), column.surface(), this.worldScale(), this.worldSeed);
+      }
+      SphereWorldModel.GeoPoint point = column.point();
+      SphereChunkSampler.SurfaceData surface = column.surface();
+      CubeNetLayout.Face face = CubeNetLayout.Face.of(column.address().face());
+      CubeNetLayout.PlanarPoint planar = this.adapter.layout().toPlanar(new CubeNetLayout.FacePoint(
+         face, column.address().blockX() + 0.5, column.address().blockZ() + 0.5));
+      int worldX = (int)Math.floor(planar.x());
+      int worldZ = (int)Math.floor(planar.z());
+      int surfaceY = this.materializer.height(surface.elevationMeters());
+      Holder<Biome> biome = this.biomeSource.getNoiseBiome(
+         QuartPos.fromBlock(worldX), QuartPos.fromBlock(surfaceY), QuartPos.fromBlock(worldZ), Climate.empty());
+      double earthX = EarthProjection.longitudeToBlockX(point.longitude(), this.worldScale());
+      double earthZ = EarthProjection.latToBlockZ(point.latitude(), this.worldScale());
+      int earthBlockX = coordinateForEarth(earthX);
+      int earthBlockZ = coordinateForEarth(earthZ);
+      int visualCover = surface.coverClass();
+      try {
+         visualCover = TellusWorldgenSources.landCover().sampleVisualCoverClass(earthBlockX, earthBlockZ, this.worldScale());
+      } catch (RuntimeException ignored) {
+         // Cache misses retain the canonical raw cover, matching the source's
+         // non-blocking fallback used by the biome source.
+      }
+      byte climateGroup = cubeNetClimateGroupForBiome(biome);
+      int heightAboveSea = surfaceY - this.seaLevel;
+      int slopeDiff = finite(surface.neighbourhood().gradient().slopeDegrees())
+         ? Math.max(0, Math.min(8, (int)Math.round(surface.neighbourhood().gradient().slopeDegrees() / 9.0))) : 0;
+      int convexity = cubeNetConvexity(surface);
+      CubeNetSurfacePolicy.Shoreline shoreline = this.cubeNetShoreline(
+         worldX, worldZ, surface, cache);
+      CubeNetSurfacePolicy.BiomeSurface biomeSurface = cubeNetBiomeSurface(biome);
+      int zoneHeight = MountainElevationZones.zoneHeight(heightAboveSea,
+         MountainElevationZones.band(point.latitude(), this.worldScale(), 1.0, 1.0, false, false));
+      return CubeNetSurfacePolicy.resolveEarthEquivalent(point, surface, this.worldScale(), this.worldSeed,
+         visualCover, climateGroup, zoneHeight, slopeDiff, convexity, shoreline, biomeSurface,
+         earthBlockX, earthBlockZ);
+   }
+
+   private CubeNetSurfacePolicy.Shoreline cubeNetShoreline(
+      int worldX, int worldZ, SphereChunkSampler.SurfaceData surface,
+      Map<Long, SphereChunkSampler.SurfaceData> cache
+   ) {
+      if (surface.waterAvailable()) return CubeNetSurfacePolicy.Shoreline.NONE;
+      int maxRadius = Math.max(this.inlandShorelineRadius, this.oceanShorelineRadius);
+      int best = Integer.MAX_VALUE;
+      boolean inland = false;
+      for (int dz = -maxRadius; dz <= maxRadius; dz++) for (int dx = -maxRadius; dx <= maxRadius; dx++) {
+         if (dx == 0 && dz == 0) continue;
+         int distance = Math.max(Math.abs(dx), Math.abs(dz));
+         if (distance > maxRadius) continue;
+         SphereChunkSampler.SurfaceData neighbour = this.surfaceDataAtPlanar(worldX + dx, worldZ + dz, cache);
+         if (neighbour == null || !neighbour.waterAvailable()) continue;
+         int radius = neighbour.inlandWater() ? this.inlandShorelineRadius : this.oceanShorelineRadius;
+         if (distance <= radius && distance < best) {
+            best = distance;
+            inland = neighbour.inlandWater();
+         }
+      }
+      return best == Integer.MAX_VALUE ? CubeNetSurfacePolicy.Shoreline.NONE
+         : new CubeNetSurfacePolicy.Shoreline(
+            inland ? MountainSurfaceRules.ShorelineKind.INLAND : MountainSurfaceRules.ShorelineKind.OCEAN, best);
+   }
+
+   private static int cubeNetConvexity(SphereChunkSampler.SurfaceData surface) {
+      double relief = surface.neighbourhood().relief();
+      return finite(relief) ? Math.max(-8, Math.min(8, (int)Math.round(relief * 8.0))) : 0;
+   }
+
+   private static byte cubeNetClimateGroupForBiome(Holder<Biome> biome) {
+      if (biome.is(Biomes.MANGROVE_SWAMP) || biome.is(BiomeTags.IS_JUNGLE) || biome.is(BiomeTags.IS_SAVANNA)) return 1;
+      if (biome.is(Biomes.DESERT) || biome.is(BiomeTags.IS_BADLANDS)) return 2;
+      if (biome.is(Biomes.FROZEN_PEAKS) || biome.is(Biomes.SNOWY_PLAINS)
+         || biome.is(Biomes.SNOWY_SLOPES) || biome.is(Biomes.ICE_SPIKES)) return 5;
+      if (biome.is(BiomeTags.IS_TAIGA) || biome.is(Biomes.GROVE)
+         || biome.is(Biomes.JAGGED_PEAKS) || biome.is(Biomes.WINDSWEPT_GRAVELLY_HILLS)) return 4;
+      return (byte)(!biome.is(BiomeTags.IS_OCEAN) && !biome.is(BiomeTags.IS_RIVER) ? 3 : 0);
+   }
+
+   private static CubeNetSurfacePolicy.BiomeSurface cubeNetBiomeSurface(Holder<Biome> biome) {
+      if (biome.is(BiomeTags.IS_OCEAN)) return CubeNetSurfacePolicy.BiomeSurface.OCEAN;
+      if (biome.is(BiomeTags.IS_RIVER)) return CubeNetSurfacePolicy.BiomeSurface.RIVER;
+      if (biome.is(Biomes.MUSHROOM_FIELDS)) return CubeNetSurfacePolicy.BiomeSurface.MUSHROOM;
+      if (biome.is(Biomes.BEACH)) return CubeNetSurfacePolicy.BiomeSurface.BEACH;
+      if (biome.is(Biomes.SNOWY_BEACH)) return CubeNetSurfacePolicy.BiomeSurface.SNOWY_BEACH;
+      if (biome.is(Biomes.STONY_SHORE)) return CubeNetSurfacePolicy.BiomeSurface.STONY_SHORE;
+      if (biome.is(BiomeTags.IS_BADLANDS)) return CubeNetSurfacePolicy.BiomeSurface.BADLANDS;
+      if (biome.is(Biomes.DESERT)) return CubeNetSurfacePolicy.BiomeSurface.DESERT;
+      if (biome.is(Biomes.MANGROVE_SWAMP)) return CubeNetSurfacePolicy.BiomeSurface.MANGROVE;
+      if (biome.is(Biomes.SWAMP)) return CubeNetSurfacePolicy.BiomeSurface.SWAMP;
+      if (biome.is(Biomes.STONY_PEAKS)) return CubeNetSurfacePolicy.BiomeSurface.STONY_PEAKS;
+      if (biome.is(Biomes.WINDSWEPT_GRAVELLY_HILLS)) return CubeNetSurfacePolicy.BiomeSurface.GRAVELLY;
+      return CubeNetSurfacePolicy.BiomeSurface.DEFAULT;
+   }
+
+   private static boolean finite(double value) { return Double.isFinite(value); }
 
    /** Applies Earth landmark flattening to canonical columns before materialization. */
    private List<SphereChunkSampler.Column> applyCubeNetLandmarkGround(List<SphereChunkSampler.Column> columns) {

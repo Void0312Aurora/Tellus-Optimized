@@ -24,16 +24,24 @@ public final class CubeNetInlandWaterResolver {
    private final int seaLevel;
    private final SphereChunkSampler terrain;
    private final InlandHydrologyPlanner planner;
+   private final WaterSurfaceResolver earthResolver;
 
    public CubeNetInlandWaterResolver(
       SphereWorldModel model, int seaLevel, SphereChunkSampler terrain, TellusOsmWaterSource waterSource
    ) {
       this(model, seaLevel, terrain, new TellusGeodeticWaterInput(
-         Objects.requireNonNull(waterSource, "waterSource")));
+         Objects.requireNonNull(waterSource, "waterSource")), TellusWorldgenSources.cubeNetWaterResolver());
    }
 
    CubeNetInlandWaterResolver(
       SphereWorldModel model, int seaLevel, SphereChunkSampler terrain, GeodeticWaterInput waterSource
+   ) {
+      this(model, seaLevel, terrain, waterSource, null);
+   }
+
+   private CubeNetInlandWaterResolver(
+      SphereWorldModel model, int seaLevel, SphereChunkSampler terrain,
+      GeodeticWaterInput waterSource, WaterSurfaceResolver earthResolver
    ) {
       this.model = Objects.requireNonNull(model, "model");
       this.worldScale = model.config().worldScale();
@@ -41,6 +49,7 @@ public final class CubeNetInlandWaterResolver {
       this.seaLevel = seaLevel;
       this.terrain = Objects.requireNonNull(terrain, "terrain");
       Objects.requireNonNull(waterSource, "waterSource");
+      this.earthResolver = earthResolver;
       this.planner = new InlandHydrologyPlanner(
          new EarthGridWaterInput(waterSource, this.worldScale),
          this.worldScale,
@@ -61,6 +70,24 @@ public final class CubeNetInlandWaterResolver {
       }
       int earthX = earthBlockX(point.longitude());
       int earthZ = earthBlockZ(point.latitude());
+      if (this.earthResolver != null) {
+         try {
+            WaterSurfaceResolver.WaterColumnData resolved = this.earthResolver.resolveColumnData(
+               earthX, earthZ, surface.coverClass());
+            if (!resolved.hasWater() || resolved.isOcean()) return Sample.dry();
+            double waterSurface = (resolved.waterSurface() - this.seaLevel) * this.worldScale;
+            double terrainSurface = (resolved.terrainSurface() - this.seaLevel) * this.worldScale;
+            if (!Double.isFinite(waterSurface) || !Double.isFinite(terrainSurface)
+               || terrainSurface > waterSurface) return Sample.dry();
+            int flow = this.earthResolver.flowingWaterLevel(earthX, earthZ, resolved.waterSurface());
+            int bottom = this.earthResolver.flowingWaterBottom(earthX, earthZ, resolved.waterSurface());
+            return new Sample(true, false, terrainSurface, waterSurface,
+               resolved.terrainSurface(), resolved.waterSurface(), flow,
+               bottom < resolved.waterSurface());
+         } catch (RuntimeException unavailable) {
+            if (!containsCoverageFailure(unavailable)) throw unavailable;
+         }
+      }
       int rawTerrain = height(surface.elevationMeters());
       InlandHydrologyPlanner.Column column;
       try {
@@ -116,6 +143,13 @@ public final class CubeNetInlandWaterResolver {
       }
       int earthX = earthBlockX(point.longitude());
       int earthZ = earthBlockZ(point.latitude());
+      if (this.earthResolver != null) {
+         try {
+            return this.earthResolver.shouldSuppressWaterSourceConversion(earthX, blockY, earthZ);
+         } catch (RuntimeException unavailable) {
+            if (!containsCoverageFailure(unavailable)) throw unavailable;
+         }
+      }
       InlandHydrologyPlanner.Column column;
       try {
          column = this.planner.sample(earthX, earthZ, height(surface.elevationMeters()));
@@ -137,6 +171,15 @@ public final class CubeNetInlandWaterResolver {
       SphereChunkSampler.SurfaceData surface = this.terrain.samplePoint(point, this.worldScale);
       if (!surface.elevationAvailable() || surface.oceanWater() || !waterCandidate(surface.coverClass())) {
          return false;
+      }
+      if (this.earthResolver != null) {
+         int earthX = earthBlockX(point.longitude());
+         int earthZ = earthBlockZ(point.latitude());
+         try {
+            return this.earthResolver.isInlandBank(earthX, earthZ);
+         } catch (RuntimeException unavailable) {
+            if (!containsCoverageFailure(unavailable)) throw unavailable;
+         }
       }
       try {
          InlandHydrologyPlanner.Column column = this.planner.sample(
