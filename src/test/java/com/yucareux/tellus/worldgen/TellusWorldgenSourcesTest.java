@@ -38,6 +38,15 @@ class TellusWorldgenSourcesTest {
    }
 
    @Test
+   void cubeNetWaterSettingsFollowWorldScaleAndSeaLevel() {
+      EarthGeneratorSettings settings = TellusWorldgenSources.cubeNetWaterSettings(1.0, 37);
+
+      assertEquals(1.0, settings.worldScale());
+      assertEquals(37, settings.effectiveHeightOffset());
+      assertEquals(EarthGeneratorSettings.DEFAULT.demSelection(), settings.demSelection());
+   }
+
+   @Test
    void chunkComputeSubmissionCompletesWhenParallelFillIsDisabled() {
       assumeTrue(!Boolean.parseBoolean(System.getProperty("tellus.chunkgen.parallelSolidSections", "false")));
       CompletableFuture<Void> result = TellusWorldgenSources.submitChunkComputeTask(() -> {

@@ -30,7 +30,8 @@ public final class CubeNetInlandWaterResolver {
       SphereWorldModel model, int seaLevel, SphereChunkSampler terrain, TellusOsmWaterSource waterSource
    ) {
       this(model, seaLevel, terrain, new TellusGeodeticWaterInput(
-         Objects.requireNonNull(waterSource, "waterSource")), TellusWorldgenSources.cubeNetWaterResolver());
+         Objects.requireNonNull(waterSource, "waterSource")),
+         TellusWorldgenSources.cubeNetWaterResolver(model.config().worldScale(), seaLevel));
    }
 
    CubeNetInlandWaterResolver(

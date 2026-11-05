@@ -11,6 +11,7 @@ import com.yucareux.tellus.world.data.osm.OsmQueryMode;
 import com.yucareux.tellus.world.data.osm.TellusOsmBuildingSource;
 import com.yucareux.tellus.world.data.osm.TellusOsmRoadSource;
 import com.yucareux.tellus.world.data.osm.TellusOsmWaterSource;
+import com.yucareux.tellus.worldgen.GeodeticOceanAuthority;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -66,6 +67,75 @@ public final class SphereChunkSampler {
             ocean && Double.isFinite(waterSurface) ? SurfaceData.WaterKind.OCEAN : SurfaceData.WaterKind.NONE,
             geologyData);
       });
+   }
+
+   public static SphereChunkSampler fromSources(
+      SphereWorldModel model,
+      TellusElevationSource elevation,
+      TellusLandCoverSource cover,
+      TellusLandMaskSource landMask,
+      SphericalGeologySource geology,
+      GeodeticOceanAuthority oceanAuthority
+   ) {
+      return fromSourcesWithOceanAuthority(model, elevation, cover, landMask, geology, oceanAuthority);
+   }
+
+   /**
+    * Builds the geographic sampler with an optional geodetic ocean authority.
+    * The authority is queried before the legacy mask/DEM decision; UNKNOWN
+    * preserves that decision exactly.
+    */
+   public static SphereChunkSampler fromSourcesWithOceanAuthority(
+      SphereWorldModel model,
+      TellusElevationSource elevation,
+      TellusLandCoverSource cover,
+      TellusLandMaskSource landMask,
+      SphericalGeologySource geology,
+      GeodeticOceanAuthority oceanAuthority
+   ) {
+      Objects.requireNonNull(model, "model");
+      Objects.requireNonNull(elevation, "elevation");
+      Objects.requireNonNull(cover, "cover");
+      return new SphereChunkSampler(model, (point, resolutionMeters) -> {
+         int coverClass = cover.sampleCoverClass(point, model.config().worldScale(), resolutionMeters);
+         var mask = landMask == null ? TellusLandMaskSource.LandMaskSample.unknown()
+            : landMask.sampleLandMask(point, model.config().worldScale());
+         GeodeticOceanAuthority.Classification authority = GeodeticOceanAuthority.Classification.UNKNOWN;
+         if (oceanAuthority != null) {
+            try {
+               authority = Objects.requireNonNullElse(
+                  oceanAuthority.classify(point, model.config().worldScale(), resolutionMeters),
+                  GeodeticOceanAuthority.Classification.UNKNOWN);
+            } catch (RuntimeException unavailable) {
+               // An authority failure is equivalent to an unresolved cache miss.
+               authority = GeodeticOceanAuthority.Classification.UNKNOWN;
+            }
+         }
+         boolean ocean = isOceanAuthorityResult(authority, mask, coverClass);
+         TellusElevationSource.ResolvedElevationSample sample = elevation.sampleResolvedPreviewElevationMeters(
+            point, model.config().worldScale(), ocean || (!mask.known() && coverClass == 80), resolutionMeters
+         );
+         // Neither cover=80 nor a bathymetry sample proves ocean membership.
+         double waterSurface = ocean && !sample.mapterhornLandOverride()
+            && sample.elevationMeters() < 0.0 ? 0.0 : Double.NaN;
+         SurfaceData.GeologyData geologyData = geology == null ? null
+            : SurfaceData.GeologyData.from(geology.sample(point, model.config().worldScale(), resolutionMeters));
+         return new SurfaceData(sample.elevationMeters(), coverClass, waterSurface,
+            ocean && Double.isFinite(waterSurface) ? SurfaceData.WaterKind.OCEAN : SurfaceData.WaterKind.NONE,
+            geologyData);
+      });
+   }
+
+   public static boolean isOceanAuthorityResult(
+      GeodeticOceanAuthority.Classification authority,
+      TellusLandMaskSource.LandMaskSample landMask,
+      int coverClass
+   ) {
+      Objects.requireNonNull(authority, "authority");
+      boolean fallbackOcean = landMask != null && landMask.known() && !landMask.land()
+         && (coverClass == 0 || coverClass == 80);
+      return authority == GeodeticOceanAuthority.Classification.OCEAN
+         || authority == GeodeticOceanAuthority.Classification.UNKNOWN && fallbackOcean;
    }
 
    /** Samples exactly 16 by 16 block centers, in z-major order. */

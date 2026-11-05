@@ -1,5 +1,8 @@
 package com.yucareux.tellus.worldgen;
 
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.mojang.serialization.JsonOps;
 import com.yucareux.tellus.Tellus;
 import com.yucareux.tellus.integration.distant_horizons.managed.ManagedTerrainNetworkPolicy;
 import com.yucareux.tellus.preload.TerrainPreloadPackage;
@@ -105,7 +108,10 @@ public final class TellusWorldgenSources {
       if (Boolean.getBoolean("tellus.sphere.syntheticSampler")) {
          return syntheticSphericalSampler(model);
       }
-      return SphereChunkSampler.fromSources(model, ELEVATION, LAND_COVER, LAND_MASK, GEOLOGY);
+      return SphereChunkSampler.fromSources(
+          model, ELEVATION, LAND_COVER, LAND_MASK, GEOLOGY,
+          GeodeticOceanAuthority.fromOverture(OSM_WATER)
+       );
    }
 
    /**
@@ -224,6 +230,36 @@ public final class TellusWorldgenSources {
     */
    public static WaterSurfaceResolver cubeNetWaterResolver() {
       return waterResolver(EarthGeneratorSettings.DEFAULT);
+   }
+
+   /**
+    * Creates the Earth water resolver for a Cube-Net world's own horizontal
+    * and vertical origins. All other water settings, including the default
+    * DEM selection, remain those of {@link EarthGeneratorSettings#DEFAULT}.
+    */
+   public static WaterSurfaceResolver cubeNetWaterResolver(double worldScale, int seaLevel) {
+      return waterResolver(cubeNetWaterSettings(worldScale, seaLevel));
+   }
+
+   static EarthGeneratorSettings cubeNetWaterSettings(double worldScale, int seaLevel) {
+      if (!(worldScale > 0.0) || !Double.isFinite(worldScale)) {
+         throw new IllegalArgumentException("worldScale");
+      }
+      JsonElement encoded = EarthGeneratorSettings.CODEC.encodeStart(JsonOps.INSTANCE, EarthGeneratorSettings.DEFAULT)
+         .resultOrPartial(error -> {
+            throw new IllegalStateException("Unable to encode default Cube-Net water settings: " + error);
+         })
+         .orElseThrow(() -> new IllegalStateException("Unable to encode default Cube-Net water settings"));
+      if (!(encoded instanceof JsonObject object)) {
+         throw new IllegalStateException("Default Cube-Net water settings must encode as an object");
+      }
+      object.addProperty("world_scale", worldScale);
+      object.addProperty("height_offset", seaLevel);
+      return EarthGeneratorSettings.CODEC.parse(JsonOps.INSTANCE, object)
+         .resultOrPartial(error -> {
+            throw new IllegalStateException("Unable to decode Cube-Net water settings: " + error);
+         })
+         .orElseThrow(() -> new IllegalStateException("Unable to decode Cube-Net water settings"));
    }
 
    public static TellusOsmSandSource osmSand() {
