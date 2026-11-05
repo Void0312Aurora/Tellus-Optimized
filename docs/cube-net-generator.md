@@ -120,10 +120,14 @@ one-cell owner halo so walls do not repeat at chunk boundaries.
 
 The same feature path also rasterizes polygonal road areas, places mapped road
 amenities and street lights through a geodetic infrastructure query, and
-projects Tellus landmark meshes onto the owning face. At world scale 1:1,
-building cells use Tellus's floor plans, stairwells, doors and furnishings;
-coarser scales keep the exterior LOD model. Overture sand polygons feed the
-shared spherical surface policy through a non-blocking cache lookup.
+projects Tellus landmark meshes onto the owning face. Road lane markings use
+the shared dashed-divider rule and follow the same projected bridge and tunnel
+deck heights. At world scale 1:1, building cells use Tellus's floor plans,
+stairwells, doors, furnishings and rooftop equipment; coarser scales keep the
+exterior LOD model. Overture sand polygons feed the shared spherical surface
+policy through a non-blocking cache lookup. Dynamic historical/weather snow is
+also applied from the geographic point mapped by each canonical face column;
+apron views receive it through the owner mirror.
 
 Vanilla structure starts and references are likewise created only on canonical
 chunks; apron views do not create duplicate starts. When the canonical owner is
