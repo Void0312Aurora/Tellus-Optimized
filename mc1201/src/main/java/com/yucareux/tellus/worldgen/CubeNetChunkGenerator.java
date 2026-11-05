@@ -39,6 +39,7 @@ import com.yucareux.tellus.worldgen.road.StreetLightPlanner;
 import com.yucareux.tellus.worldgen.global.CubeNetFeatureProjector;
 import com.yucareux.tellus.worldgen.landmark.LandmarkPlacement;
 import com.yucareux.tellus.worldgen.landmark.TellusLandmarks;
+import com.yucareux.tellus.world.realtime.TellusRealtimeState;
 import com.yucareux.tellus.compat.MinecraftVersionCompat;
 import com.yucareux.tellus.worldgen.UndergroundStructureExclusion;
 import com.yucareux.tellus.world.data.osm.OsmQueryMode;
@@ -71,6 +72,7 @@ import net.minecraft.world.level.biome.Climate;
 import net.minecraft.world.level.biome.FixedBiomeSource;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.ProtoChunk;
 import net.minecraft.world.level.chunk.UpgradeData;
@@ -700,6 +702,7 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
       if (this.address(chunk.getPos()).filter(this.singularityPolicy::admitsTerrainMaterialization).isPresent()) {
          super.applyBiomeDecoration(level, chunk, structures);
          this.placeCubeNetTrees(level, chunk);
+         this.applyCubeNetRealtimeSnowCover(level, chunk);
       }
       this.placeCubeNetFeatures(level, chunk);
       this.mirrorCanonicalStructureView(level, chunk);
@@ -1462,6 +1465,50 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
          if (state.is(net.minecraft.tags.BlockTags.LOGS) || state.is(net.minecraft.tags.BlockTags.LEAVES)) return true;
       }
       return false;
+   }
+
+   /** Applies Tellus's dynamic snow state in geographic coordinates on the canonical face. */
+   private void applyCubeNetRealtimeSnowCover(WorldGenLevel level, ChunkAccess chunk) {
+      if (!TellusRealtimeState.isHistoricalSnowEnabled()
+         && !(TellusRealtimeState.isWeatherEnabled()
+            && TellusRealtimeState.precipitationMode() == TellusRealtimeState.PrecipitationMode.SNOW)) {
+         return;
+      }
+      SphereWorldModel.SphereChunkAddress owner = this.address(chunk.getPos())
+         .filter(this.singularityPolicy::admitsTerrainMaterialization).orElse(null);
+      if (owner == null) return;
+      CubeNetLayout.Face face = CubeNetLayout.Face.of(owner.face());
+      for (int localX = 0; localX < 16; localX++) {
+         for (int localZ = 0; localZ < 16; localZ++) {
+            int worldX = chunk.getPos().getMinBlockX() + localX;
+            int worldZ = chunk.getPos().getMinBlockZ() + localZ;
+            BlockAddress block = this.resolveBlock(worldX, worldZ).orElse(null);
+            if (block == null || block.address().face() != face.index()) continue;
+            SphereChunkSampler.SurfaceData surface = this.faces[face.index()].terrainPoint(
+               new SphereWorldModel.SphereBlockAddress(face.index(), block.x(), block.z()), 1).data();
+            if (surface == null || !surface.elevationAvailable() || surface.waterAvailable()) continue;
+            SphereWorldModel.GeoPoint point = this.model.exactSurfacePoint(
+               face.index(), block.x() + 0.5, block.z() + 0.5);
+            double slope = surface.neighbourhood().gradient().slopeDegrees();
+            int earthX = coordinateForEarth(EarthProjection.longitudeToBlockX(point.longitude(), this.worldScale()));
+            int earthZ = coordinateForEarth(EarthProjection.latToBlockZ(point.latitude(), this.worldScale()));
+            if (!TellusRealtimeState.shouldApplySnow(earthX, earthZ)
+               || !SnowSlopePolicy.shouldCover(earthX, earthZ, slope)) continue;
+            int surfaceY = this.materializer.height(surface.elevationMeters());
+            BlockPos ground = new BlockPos(worldX, surfaceY, worldZ);
+            BlockState surfaceState = level.getBlockState(ground);
+            if (!surfaceState.getFluidState().isEmpty()) continue;
+            BlockPos above = ground.above();
+            BlockState snow = Blocks.SNOW.defaultBlockState();
+            if (level.getBlockState(above).isAir() && snow.canSurvive(level, above)) {
+               level.setBlock(above, snow, 2);
+               if (surfaceState.hasProperty(BlockStateProperties.SNOWY)
+                  && !(Boolean)surfaceState.getValue(BlockStateProperties.SNOWY)) {
+                  level.setBlock(ground, surfaceState.setValue(BlockStateProperties.SNOWY, Boolean.TRUE), 2);
+               }
+            }
+         }
+      }
    }
 
    @Override
