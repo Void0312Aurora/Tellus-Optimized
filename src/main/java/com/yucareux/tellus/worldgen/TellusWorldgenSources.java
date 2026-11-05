@@ -57,6 +57,8 @@ public final class TellusWorldgenSources {
    private static final TellusOsmInfrastructureSource OSM_INFRASTRUCTURE = new TellusOsmInfrastructureSource();
    private static final TellusOsmBuildingSource OSM_BUILDINGS = new TellusOsmBuildingSource();
    private static final TellusOsmWaterSource OSM_WATER = new TellusOsmWaterSource();
+   private static final GeodeticOceanAuthority OVERTURE_OCEAN_AUTHORITY =
+      new CachingGeodeticOceanAuthority(GeodeticOceanAuthority.fromOverture(OSM_WATER));
    private static final TellusOsmSandSource OSM_SAND = new TellusOsmSandSource();
    private static final boolean PREFETCH_ENABLED = Boolean.parseBoolean(System.getProperty("tellus.prefetch.enabled", "true"));
    private static final int LAND_COVER_PREFETCH_RADIUS = intProperty("tellus.prefetch.landcover.radius", 1);
@@ -110,7 +112,7 @@ public final class TellusWorldgenSources {
       }
       return SphereChunkSampler.fromSources(
           model, ELEVATION, LAND_COVER, LAND_MASK, GEOLOGY,
-          GeodeticOceanAuthority.fromOverture(OSM_WATER)
+          OVERTURE_OCEAN_AUTHORITY
        );
    }
 
