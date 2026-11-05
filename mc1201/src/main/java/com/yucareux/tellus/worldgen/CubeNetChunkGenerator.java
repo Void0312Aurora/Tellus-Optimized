@@ -591,7 +591,7 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
       int heightAboveSea = surfaceY - this.seaLevel;
       int slopeDiff = finite(surface.neighbourhood().gradient().slopeDegrees())
          ? Math.max(0, Math.min(8, (int)Math.round(surface.neighbourhood().gradient().slopeDegrees() / 9.0))) : 0;
-      int convexity = cubeNetConvexity(surface);
+      int convexity = cubeNetConvexity(worldX, worldZ, surfaceY, cache);
       CubeNetSurfacePolicy.Shoreline shoreline = this.cubeNetShoreline(
          worldX, worldZ, surface, cache);
       CubeNetSurfacePolicy.BiomeSurface biomeSurface = cubeNetBiomeSurface(biome);
@@ -627,9 +627,19 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
             inland ? MountainSurfaceRules.ShorelineKind.INLAND : MountainSurfaceRules.ShorelineKind.OCEAN, best);
    }
 
-   private static int cubeNetConvexity(SphereChunkSampler.SurfaceData surface) {
-      double relief = surface.neighbourhood().relief();
-      return finite(relief) ? Math.max(-8, Math.min(8, (int)Math.round(relief * 8.0))) : 0;
+   private int cubeNetConvexity(int worldX, int worldZ, int surfaceY,
+      Map<Long, SphereChunkSampler.SurfaceData> cache) {
+      int sum = 0;
+      int count = 0;
+      int step = TerrainSlopePolicy.SAMPLE_RADIUS_BLOCKS;
+      for (int[] offset : new int[][]{{step, 0}, {-step, 0}, {0, step}, {0, -step}}) {
+         SphereChunkSampler.SurfaceData neighbour = this.surfaceDataAtPlanar(
+            worldX + offset[0], worldZ + offset[1], cache);
+         if (neighbour == null || !neighbour.elevationAvailable()) continue;
+         sum += this.materializer.height(neighbour.elevationMeters());
+         count++;
+      }
+      return count == 4 ? Math.max(-8, Math.min(8, sum / 4 - surfaceY)) : 0;
    }
 
    private static byte cubeNetClimateGroupForBiome(Holder<Biome> biome) {
