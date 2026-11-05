@@ -76,6 +76,11 @@ import net.minecraft.world.level.biome.FixedBiomeSource;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.entity.animal.axolotl.Axolotl;
+import net.minecraft.world.level.biome.Biomes;
+import net.minecraft.world.level.material.Fluids;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.ProtoChunk;
 import net.minecraft.world.level.chunk.UpgradeData;
@@ -102,6 +107,9 @@ import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemp
  */
 public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeNetLodSurface {
    public static final int GEOMETRY_VERSION = 3;
+   private static final float AXOLOTL_CHUNK_CHANCE = 0.55F;
+   private static final float AXOLOTL_POND_CHANCE = 0.68F;
+   private static final int MAX_AXOLOTLS_PER_CHUNK = 2;
    private static final Codec<BiomeSource> BIOME_SOURCE_CODEC = Codec.either(
       FixedBiomeSource.CODEC,
       CubeNetBiomeSource.CODEC.codec()
@@ -704,6 +712,7 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
       // features and structures on one spherical owner.
       if (this.address(chunk.getPos()).filter(this.singularityPolicy::admitsTerrainMaterialization).isPresent()) {
          super.applyBiomeDecoration(level, chunk, structures);
+         this.spawnCubeNetAxolotls(level, chunk);
          this.placeCubeNetTrees(level, chunk);
          this.applyCubeNetRealtimeSnowCover(level, chunk);
       }
@@ -1576,6 +1585,50 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
          if (state.is(net.minecraft.tags.BlockTags.LOGS) || state.is(net.minecraft.tags.BlockTags.LEAVES)) return true;
       }
       return false;
+   }
+
+   private void spawnCubeNetAxolotls(WorldGenLevel level, ChunkAccess chunk) {
+      ServerLevel serverLevel = level.getLevel();
+      if (!serverLevel.getServer().isSameThread()) return;
+      SphereWorldModel.SphereChunkAddress owner = this.address(chunk.getPos())
+         .filter(this.singularityPolicy::admitsTerrainMaterialization).orElse(null);
+      if (owner == null) return;
+      long seed = ChunkPos.asLong(chunk.getPos().x, chunk.getPos().z)
+         ^ this.worldSeed ^ (long)owner.face() * 0x9E3779B97F4A7C15L ^ 8943931030581793800L;
+      RandomSource random = RandomSource.create(seed);
+      if (random.nextFloat() > AXOLOTL_CHUNK_CHANCE) return;
+      int chunkMinX = chunk.getPos().getMinBlockX();
+      int chunkMinZ = chunk.getPos().getMinBlockZ();
+      int minY = this.minY + 4;
+      int spawned = 0;
+      int attempts = 6 + random.nextInt(6);
+      BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
+      for (int attempt = 0; attempt < attempts; attempt++) {
+         int worldX = chunkMinX + random.nextInt(16);
+         int worldZ = chunkMinZ + random.nextInt(16);
+         int surface = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, worldX, worldZ);
+         int maxY = Math.min(surface - 4, this.seaLevel - 1);
+         if (maxY <= minY) continue;
+         for (int y = maxY; y >= minY; y--) {
+            cursor.set(worldX, y, worldZ);
+            if (!level.getBlockState(cursor).getFluidState().is(Fluids.WATER)) continue;
+            cursor.set(worldX, y - 1, worldZ);
+            if (!level.getBlockState(cursor).is(Blocks.CLAY)) continue;
+            cursor.set(worldX, y + 1, worldZ);
+            if (!level.getBlockState(cursor).isAir()) continue;
+            cursor.set(worldX, y, worldZ);
+            if (level.getBiome(cursor).is(Biomes.LUSH_CAVES) && random.nextFloat() <= AXOLOTL_POND_CHANCE) {
+               Axolotl axolotl = MinecraftVersionCompat.createAxolotl(serverLevel, cursor.immutable());
+               if (axolotl == null) return;
+               axolotl.setPersistenceRequired();
+               MinecraftVersionCompat.snapTo(axolotl, worldX + 0.5, y + 0.1, worldZ + 0.5,
+                  random.nextFloat() * 360.0F, 0.0F);
+               if (serverLevel.addFreshEntity(axolotl)) spawned++;
+            }
+            break;
+         }
+         if (spawned >= MAX_AXOLOTLS_PER_CHUNK) return;
+      }
    }
 
    /** Applies Tellus's dynamic snow state in geographic coordinates on the canonical face. */
