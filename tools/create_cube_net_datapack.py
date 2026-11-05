@@ -67,6 +67,11 @@ def create_pack(output: Path, world: str, scale: float, sea: int, min_y: int, he
                 "cave_generation": True,
                 "deep_dark": False,
                 "underground_depth": 256,
+                "ore_veins": True,
+                "geological_stone_patches": True,
+                "caves_reach_surface": False,
+                "roads": True,
+                "buildings": True,
             },
         }
     generator = {

@@ -55,7 +55,12 @@ public final class CubeNetBiomeSource extends TellusBiomeSourceBridge {
       List<String> randomBiomeIds,
       boolean caveGeneration,
       boolean deepDark,
-      int undergroundDepth
+      int undergroundDepth,
+      boolean oreVeins,
+      boolean geologicalStonePatches,
+      boolean cavesReachSurface,
+      boolean roads,
+      boolean buildings
    ) {
       public static final Settings DEFAULT = new Settings(
          false,
@@ -64,7 +69,12 @@ public final class CubeNetBiomeSource extends TellusBiomeSourceBridge {
          MinecraftVersionCompat.defaultRandomBiomeIds(),
          true,
          false,
-         EarthGeneratorSettings.DEFAULT_UNDERGROUND_DEPTH
+         EarthGeneratorSettings.DEFAULT_UNDERGROUND_DEPTH,
+         Boolean.parseBoolean(System.getProperty("tellus.cubeNet.oreVeins", "true")),
+         Boolean.parseBoolean(System.getProperty("tellus.cubeNet.geologicalStonePatches", "true")),
+         Boolean.parseBoolean(System.getProperty("tellus.cubeNet.cavesReachSurface", "false")),
+         Boolean.parseBoolean(System.getProperty("tellus.cubeNet.roads", "true")),
+         Boolean.parseBoolean(System.getProperty("tellus.cubeNet.buildings", "true"))
       );
       public static final Codec<Settings> CODEC = RecordCodecBuilder.create(instance -> instance.group(
          Codec.BOOL.optionalFieldOf("random_biomes", DEFAULT.randomBiomes()).forGetter(Settings::randomBiomes),
@@ -74,7 +84,14 @@ public final class CubeNetBiomeSource extends TellusBiomeSourceBridge {
          Codec.BOOL.optionalFieldOf("cave_generation", DEFAULT.caveGeneration()).forGetter(Settings::caveGeneration),
          Codec.BOOL.optionalFieldOf("deep_dark", DEFAULT.deepDark()).forGetter(Settings::deepDark),
          Codec.intRange(EarthGeneratorSettings.MIN_UNDERGROUND_DEPTH, EarthGeneratorSettings.MAX_UNDERGROUND_DEPTH)
-            .optionalFieldOf("underground_depth", DEFAULT.undergroundDepth()).forGetter(Settings::undergroundDepth)
+            .optionalFieldOf("underground_depth", DEFAULT.undergroundDepth()).forGetter(Settings::undergroundDepth),
+         Codec.BOOL.optionalFieldOf("ore_veins", DEFAULT.oreVeins()).forGetter(Settings::oreVeins),
+         Codec.BOOL.optionalFieldOf("geological_stone_patches", DEFAULT.geologicalStonePatches())
+            .forGetter(Settings::geologicalStonePatches),
+         Codec.BOOL.optionalFieldOf("caves_reach_surface", DEFAULT.cavesReachSurface())
+            .forGetter(Settings::cavesReachSurface),
+         Codec.BOOL.optionalFieldOf("roads", DEFAULT.roads()).forGetter(Settings::roads),
+         Codec.BOOL.optionalFieldOf("buildings", DEFAULT.buildings()).forGetter(Settings::buildings)
       ).apply(instance, Settings::new));
 
       public Settings {

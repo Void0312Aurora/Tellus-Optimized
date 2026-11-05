@@ -182,7 +182,8 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
          : (FixedBiomeSource)biome;
       return new CubeNetChunkGenerator(biome, faceBiome, scale, sea, min, height,
          singularityConfig, null, apronChunks, inlandShorelineRadius,
-         oceanShorelineRadius, shorelineBlendCliffLimit);
+          oceanShorelineRadius, shorelineBlendCliffLimit);
+
    }));
 
    private final int seaLevel;
@@ -201,27 +202,86 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
    private final CubeNetSphericalCaveSampler cubeNetSphericalCaveSampler = new CubeNetSphericalCaveSampler();
    private volatile long sphericalCaveSeed = Long.MIN_VALUE;
    private volatile CubeNetSphericalCaveField sphericalCaveField;
-   private static final boolean CUBE_NET_CAVES = Boolean.parseBoolean(
+   private final boolean cubeNetCaves;
+   private final boolean cubeNetOreVeins;
+   private final boolean cubeNetGeologicalStonePatches;
+   private final boolean cubeNetCavesReachSurface;
+   private final int cubeNetUndergroundDepth;
+   private final boolean cubeNetRoads;
+   private final boolean cubeNetBuildings;
+   private static final boolean CUBE_NET_CAVES_DEFAULT = Boolean.parseBoolean(
       System.getProperty("tellus.cubeNet.caves", "true")
    );
-   private static final boolean CUBE_NET_ORE_VEINS = Boolean.parseBoolean(
+   private static final boolean CUBE_NET_ORE_VEINS_DEFAULT = Boolean.parseBoolean(
       System.getProperty("tellus.cubeNet.oreVeins", "true")
    );
-   private static final boolean CUBE_NET_GEOLOGICAL_STONE = Boolean.parseBoolean(
+   private static final boolean CUBE_NET_GEOLOGICAL_STONE_DEFAULT = Boolean.parseBoolean(
       System.getProperty("tellus.cubeNet.geologicalStonePatches", "true")
    );
-   private static final boolean CUBE_NET_CAVES_REACH_SURFACE = Boolean.parseBoolean(
+   private static final boolean CUBE_NET_CAVES_REACH_SURFACE_DEFAULT = Boolean.parseBoolean(
       System.getProperty("tellus.cubeNet.cavesReachSurface", "false")
    );
-   private static final int CUBE_NET_UNDERGROUND_DEPTH = Integer.getInteger(
+   private static final int CUBE_NET_UNDERGROUND_DEPTH_DEFAULT = Integer.getInteger(
       "tellus.cubeNet.undergroundDepth", 256
    );
-   private static final boolean CUBE_NET_ROADS = Boolean.parseBoolean(
+   private static final boolean CUBE_NET_ROADS_DEFAULT = Boolean.parseBoolean(
       System.getProperty("tellus.cubeNet.roads", "true")
    );
-   private static final boolean CUBE_NET_BUILDINGS = Boolean.parseBoolean(
+   private static final boolean CUBE_NET_BUILDINGS_DEFAULT = Boolean.parseBoolean(
       System.getProperty("tellus.cubeNet.buildings", "true")
    );
+   private static boolean resolveCaveGeneration(BiomeSource biomeSource) {
+      return biomeSource instanceof CubeNetBiomeSource cubeNet
+         ? cubeNet.settings().caveGeneration() : CUBE_NET_CAVES_DEFAULT;
+   }
+
+   private static boolean resolveOreVeins(BiomeSource biomeSource) {
+      return biomeSource instanceof CubeNetBiomeSource cubeNet
+         ? cubeNet.settings().oreVeins() : CUBE_NET_ORE_VEINS_DEFAULT;
+   }
+
+   private static boolean resolveGeologicalStonePatches(BiomeSource biomeSource) {
+      return biomeSource instanceof CubeNetBiomeSource cubeNet
+         ? cubeNet.settings().geologicalStonePatches() : CUBE_NET_GEOLOGICAL_STONE_DEFAULT;
+   }
+
+   private static boolean resolveCavesReachSurface(BiomeSource biomeSource) {
+      return biomeSource instanceof CubeNetBiomeSource cubeNet
+         ? cubeNet.settings().cavesReachSurface() : CUBE_NET_CAVES_REACH_SURFACE_DEFAULT;
+   }
+
+   private static int resolveUndergroundDepth(BiomeSource biomeSource) {
+      return biomeSource instanceof CubeNetBiomeSource cubeNet
+         ? cubeNet.settings().undergroundDepth() : CUBE_NET_UNDERGROUND_DEPTH_DEFAULT;
+   }
+
+   private static boolean resolveRoads(BiomeSource biomeSource) {
+      return biomeSource instanceof CubeNetBiomeSource cubeNet
+         ? cubeNet.settings().roads() : CUBE_NET_ROADS_DEFAULT;
+   }
+
+   private static boolean resolveBuildings(BiomeSource biomeSource) {
+      return biomeSource instanceof CubeNetBiomeSource cubeNet
+         ? cubeNet.settings().buildings() : CUBE_NET_BUILDINGS_DEFAULT;
+   }
+
+   private static TellusBiomeGenerationSettings.Settings cubeNetGenerationSettings(BiomeSource biomeSource) {
+      boolean deepDark = biomeSource instanceof CubeNetBiomeSource cubeNetBiomeSource
+         && cubeNetBiomeSource.settings().deepDark();
+      // Vanilla ores and stone patches stay enabled: Cube-Net's own sampler only
+      // adds copper/iron veins and granite/tuff, so filtering them would remove
+      // most ore and rock types. The custom switches control only that sampler.
+      return new TellusBiomeGenerationSettings.Settings(
+         resolveCaveGeneration(biomeSource),
+         true,
+         true,
+         false,
+         false,
+         deepDark,
+         false
+      );
+   }
+
    private final SphereSingularityPolicy.Config singularityConfig;
    private final SphereSingularityPolicy singularityPolicy;
    private final int inlandShorelineRadius;
@@ -264,7 +324,15 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
    private CubeNetChunkGenerator(BiomeSource biome, FixedBiomeSource faceBiome, double scale, int seaLevel, int minY, int height,
       SphereSingularityPolicy.Config singularityConfig, SphereChunkSampler.PointSampler pointSampler, int apronChunks,
       int inlandShorelineRadius, int oceanShorelineRadius, boolean shorelineBlendCliffLimit) {
-      super(biome, holder -> ((Biome)holder.value()).getGenerationSettings());
+      super(biome, holder -> TellusBiomeGenerationSettings.forBiome(holder, cubeNetGenerationSettings(biome)));
+      this.cubeNetCaves = resolveCaveGeneration(biome);
+      this.cubeNetOreVeins = resolveOreVeins(biome);
+      this.cubeNetGeologicalStonePatches = resolveGeologicalStonePatches(biome);
+      this.cubeNetCavesReachSurface = resolveCavesReachSurface(biome);
+      this.cubeNetUndergroundDepth = resolveUndergroundDepth(biome);
+      this.cubeNetRoads = resolveRoads(biome);
+      this.cubeNetBuildings = resolveBuildings(biome);
+
       Preconditions.checkArgument(minY % 16 == 0 && height % 16 == 0 && height >= 16
          && minY >= -2032 && (long)minY + height <= 2032,
          "vertical range must be section-aligned within [-2032, 2032)");
@@ -283,7 +351,7 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
       this.apronResolver = new CubeNetApronResolver(this.adapter.layout(), Math.max(16, apronChunks * 16));
       this.materializer = new SphereTerrainMaterializer(scale, seaLevel);
       this.landmarks = TellusLandmarks.create(
-         scale, CUBE_NET_BUILDINGS, this::surfaceYAtEarthCoordinate,
+         scale, this.cubeNetBuildings, this::surfaceYAtEarthCoordinate,
          (elevation, blockZ) -> this.materializer.height(elevation));
       this.singularityConfig = singularityConfig;
       this.singularityPolicy = new SphereSingularityPolicy(this.model, singularityConfig);
@@ -867,7 +935,7 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
    @Override public void applyCarvers(WorldGenRegion level, long seed, RandomState random, BiomeManager biomes,
       StructureManager structures, ChunkAccess chunk, GenerationStep.Carving step) {
       if (step != GenerationStep.Carving.AIR) return;
-      if (!CUBE_NET_CAVES && !CUBE_NET_ORE_VEINS && !CUBE_NET_GEOLOGICAL_STONE) return;
+      if (!this.cubeNetCaves && !this.cubeNetOreVeins && !this.cubeNetGeologicalStonePatches) return;
       SphereWorldModel.SphereChunkAddress address = this.address(chunk.getPos())
          .filter(this.singularityPolicy::admitsTerrainMaterialization).orElse(null);
       if (address == null) {
@@ -889,10 +957,10 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
          chunk,
          this.minY,
          this.seaLevel,
-         CUBE_NET_CAVES,
-         CUBE_NET_CAVES_REACH_SURFACE,
-         CUBE_NET_ORE_VEINS,
-         CUBE_NET_GEOLOGICAL_STONE,
+         this.cubeNetCaves,
+         this.cubeNetCavesReachSurface,
+         this.cubeNetOreVeins,
+         this.cubeNetGeologicalStonePatches,
          columns.surfaceY(),
          columns.surfaceSampler(),
          columns.floodGuardY(),
@@ -983,7 +1051,7 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
             int surfaceY = surfaceSampler.applyAsInt(worldX, worldZ);
             surfaceYByColumn[index] = surfaceY;
             generationFloorYByColumn[index] = CubeNetUndergroundPolicy.generationFloorY(
-               surfaceY, CUBE_NET_UNDERGROUND_DEPTH, this.minY
+               surfaceY, this.cubeNetUndergroundDepth, this.minY
             );
             for (int dz = -CubeNetUndergroundPolicy.WATER_HALO; dz <= CubeNetUndergroundPolicy.WATER_HALO; dz++) {
                for (int dx = -CubeNetUndergroundPolicy.WATER_HALO; dx <= CubeNetUndergroundPolicy.WATER_HALO; dx++) {
@@ -1147,7 +1215,7 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
     * no-data contract; a later generation or reload can observe the cache.
     */
    private void placeCubeNetFeatures(WorldGenLevel level, ChunkAccess chunk) {
-      if (!CUBE_NET_ROADS && !CUBE_NET_BUILDINGS) return;
+      if (!this.cubeNetRoads && !this.cubeNetBuildings) return;
       SphereWorldModel.SphereChunkAddress address = this.address(chunk.getPos())
          .filter(this.singularityPolicy::admitsTerrainMaterialization).orElse(null);
       CubeNetApronResolver.ChunkProjection apron = address == null ? this.apronProjection(chunk.getPos()).orElse(null) : null;
@@ -1158,7 +1226,7 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
       SphereWorldModel.SphereChunkAddress queryAddress = address == null
          ? new SphereWorldModel.SphereChunkAddress(apron.targetFace().index(), apron.targetChunkX(), apron.targetChunkZ())
          : address;
-      if (apron == null && CUBE_NET_BUILDINGS) {
+      if (apron == null && this.cubeNetBuildings) {
          this.placeCubeNetLandmarks(level, chunk, queryAddress);
       }
       SphereChunkSampler.FeatureData data = this.sampleFeatures(
@@ -1171,7 +1239,7 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
       int maxZ = minZ + 15;
       Map<Long, Integer> featureSurfaceCache = new HashMap<>();
       Map<Long, SphereChunkSampler.SurfaceData> featureColumnCache = new HashMap<>();
-      if (CUBE_NET_ROADS) {
+      if (this.cubeNetRoads) {
          for (RoadFeature road : data.roads().features()) {
             for (CubeNetFeatureRasterizer.FaceCell cell : CubeNetFeatureRasterizer.roadCells(
                this.model, this.adapter.layout(), road, face, minX, minZ, maxX, maxZ, this.worldScale())) {
@@ -1196,7 +1264,7 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
             }
          }
       }
-      if (CUBE_NET_BUILDINGS) {
+      if (this.cubeNetBuildings) {
          for (OsmBuildingFeature building : data.buildings().features()) {
             if (apron == null) this.placeCubeNetBuilding(level, chunk, building, face, minX, minZ, maxX, maxZ);
             else this.placeCubeNetApronBuilding(level, chunk, apron, building, face, minX, minZ, maxX, maxZ);

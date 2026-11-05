@@ -121,7 +121,6 @@ import net.minecraft.world.level.biome.BiomeManager;
 import net.minecraft.world.level.biome.BiomeResolver;
 import net.minecraft.world.level.biome.BiomeSource;
 import net.minecraft.world.level.biome.Biomes;
-import net.minecraft.world.level.biome.BiomeGenerationSettings.PlainBuilder;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
@@ -383,7 +382,6 @@ public final class EarthChunkGenerator extends TellusChunkGeneratorBridge implem
    private static final int MOUNTAIN_ZONE_CELL_SHIFT = 5;
    private static final int MOUNTAIN_ZONE_CACHE_BITS = 12;
    private static final AtomicBoolean LOGGED_CHUNK_LAYOUT = new AtomicBoolean(false);
-   private static final Map<EarthChunkGenerator.BiomeSettingsKey, BiomeGenerationSettings> FILTERED_SETTINGS = new ConcurrentHashMap<>();
    private static final Map<EarthChunkGenerator.TreeFeatureSettingsKey, List<TreeFeatureHandle>> TREE_FEATURES = new ConcurrentHashMap<>();
    private final EarthGeneratorSettings settings;
    private final GlobalMapModel globalMapModel;
@@ -11652,136 +11650,7 @@ public final class EarthChunkGenerator extends TellusChunkGeneratorBridge implem
    }
 
    private static BiomeGenerationSettings generationSettingsForBiome(Holder<Biome> biome, EarthGeneratorSettings settings) {
-      boolean keepTrees = biome.is(Biomes.MANGROVE_SWAMP);
-      int flags = geologyFlags(settings, keepTrees);
-      EarthChunkGenerator.BiomeSettingsKey key = new EarthChunkGenerator.BiomeSettingsKey(biome, flags);
-      return FILTERED_SETTINGS.computeIfAbsent(key, cached -> filterGenerationSettings(biome, settings, keepTrees));
-   }
-
-   private static BiomeGenerationSettings filterGenerationSettings(Holder<Biome> biome, EarthGeneratorSettings settings, boolean keepTrees) {
-      BiomeGenerationSettings original = ((Biome)biome.value()).getGenerationSettings();
-      PlainBuilder builder = new PlainBuilder();
-      boolean keepBiomeDeepDarkFeatures = biome.is(Biomes.DEEP_DARK);
-
-      MinecraftVersionCompat.copyCarvers(original, builder, carver -> shouldKeepCarver(carver, settings));
-
-      List<HolderSet<PlacedFeature>> features = original.features();
-
-      for (int step = 0; step < features.size(); step++) {
-         for (Holder<PlacedFeature> feature : features.get(step)) {
-            Holder<PlacedFeature> safeFeature = Objects.requireNonNull(feature, "feature");
-            if ((keepTrees || !isTreeFeature((PlacedFeature)safeFeature.value()))
-               && shouldKeepFeature(safeFeature, settings, keepBiomeDeepDarkFeatures)) {
-               builder.addFeature(step, safeFeature);
-            }
-         }
-      }
-
-      return builder.build();
-   }
-
-   private static int geologyFlags(EarthGeneratorSettings settings, boolean keepTrees) {
-      int flags = 0;
-      if (settings.caveGeneration()) {
-         flags |= 1;
-      }
-
-      if (settings.oreDistribution()) {
-         flags |= 2;
-      }
-
-      if (settings.lavaPools()) {
-         flags |= 4;
-      }
-
-      if (settings.deepDark()) {
-         flags |= 8;
-      }
-
-      if (settings.geodes()) {
-         flags |= 16;
-      }
-
-      if (keepTrees) {
-         flags |= 32;
-      }
-
-      if (settings.suppressesUndergroundGenerationForTerrainShell()) {
-         flags |= 64;
-      }
-
-      if (settings.geologicalStonePatches()) {
-         flags |= 128;
-      }
-
-      return flags;
-   }
-
-   private static boolean shouldKeepCarver(Holder<?> carver, EarthGeneratorSettings settings) {
-      return carver.unwrapKey().map(MinecraftVersionCompat::keyPath).map(path -> shouldKeepCarverId(path, settings)).orElse(true);
-   }
-
-   private static boolean shouldKeepCarverId(String path, EarthGeneratorSettings settings) {
-      if (settings.suppressesUndergroundGenerationForTerrainShell()) {
-         return false;
-      }
-
-      return settings.caveGeneration() || !path.equals("cave") && !path.equals("cave_extra_underground") && !path.equals("canyon");
-   }
-
-   private static boolean shouldKeepFeature(
-      Holder<PlacedFeature> feature, EarthGeneratorSettings settings, boolean keepBiomeDeepDarkFeatures
-   ) {
-      UndergroundFeatureClassifier.Kind featureKind = UndergroundFeatureClassifier.classify(feature.value());
-      return feature.unwrapKey()
-         .map(MinecraftVersionCompat::keyPath)
-         .map(path -> shouldKeepFeatureId(path, featureKind, settings, keepBiomeDeepDarkFeatures))
-         .orElseGet(() -> shouldKeepFeatureId("", featureKind, settings, keepBiomeDeepDarkFeatures));
-   }
-
-   private static boolean shouldKeepFeatureId(
-      String path,
-      UndergroundFeatureClassifier.Kind featureKind,
-      EarthGeneratorSettings settings,
-      boolean keepBiomeDeepDarkFeatures
-   ) {
-      if (settings.suppressesUndergroundGenerationForTerrainShell() && isThinShellUndergroundFeatureId(path)) {
-         return false;
-      } else if (path.equals("freeze_top_layer") || path.equals("snow_and_freeze")) {
-         return false;
-      } else if (featureKind == UndergroundFeatureClassifier.Kind.GEOLOGICAL_STONE
-         && !settings.geologicalStonePatches()) {
-         return false;
-      } else if (featureKind != UndergroundFeatureClassifier.Kind.GEOLOGICAL_STONE
-         && !settings.oreDistribution()
-         && (featureKind == UndergroundFeatureClassifier.Kind.MINEABLE_ORE || path.startsWith("ore_"))) {
-         return false;
-      } else if (!settings.geodes() && path.contains("geode")) {
-         return false;
-      } else if (settings.deepDark() || keepBiomeDeepDarkFeatures || !path.contains("sculk") && !path.contains("deep_dark")) {
-         return settings.caveGeneration() || !path.contains("dripstone") && !path.startsWith("spring_water")
-            ? settings.lavaPools() || !path.startsWith("lake_lava") && !path.startsWith("spring_lava")
-            : false;
-      } else {
-         return false;
-      }
-   }
-
-   private static boolean isThinShellUndergroundFeatureId(String path) {
-      return path.startsWith("ore_")
-         || path.contains("geode")
-         || path.contains("sculk")
-         || path.contains("deep_dark")
-         || path.contains("dripstone")
-         || path.startsWith("spring_")
-         || path.startsWith("lake_lava")
-         || path.startsWith("lake_water")
-         || path.contains("lava")
-         || path.contains("monster_room")
-         || path.contains("fossil")
-         || path.contains("underground")
-         || path.contains("cave")
-         || path.contains("amethyst");
+      return TellusBiomeGenerationSettings.forBiome(biome, TellusBiomeGenerationSettings.from(settings));
    }
 
    private boolean isStructureSetEnabled(Holder<StructureSet> structureSet) {
@@ -12363,9 +12232,6 @@ public final class EarthChunkGenerator extends TellusChunkGeneratorBridge implem
             }
          }
       }
-   }
-
-   private record BiomeSettingsKey(Holder<Biome> biome, int flags) {
    }
 
    private record TreeFeatureSettingsKey(Holder<Biome> biome, boolean hugeRedMushrooms) {
