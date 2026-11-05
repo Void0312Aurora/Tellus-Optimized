@@ -124,7 +124,8 @@ public final class SphereChunkSampler {
       return new FeatureData(
          buildings.buildingsForGeoAreaWithStatus(bounds, mode),
          roads.roadsForGeoAreaWithStatus(bounds, mode),
-         water.waterForGeoAreaWithStatus(bounds, this.model.config().worldScale(), mode)
+         water.waterForGeoAreaWithStatus(bounds, this.model.config().worldScale(), mode),
+         roads.roadAreasForGeoAreaWithStatus(bounds, mode)
       );
    }
 
@@ -224,6 +225,15 @@ public final class SphereChunkSampler {
    public record FeatureData(
       TellusOsmBuildingSource.BuildingQueryResult buildings,
       TellusOsmRoadSource.RoadQueryResult roads,
-      TellusOsmWaterSource.WaterQueryResult water
-   ) { }
+      TellusOsmWaterSource.WaterQueryResult water,
+      TellusOsmRoadSource.RoadAreaQueryResult roadAreas
+   ) {
+      public FeatureData(
+         TellusOsmBuildingSource.BuildingQueryResult buildings,
+         TellusOsmRoadSource.RoadQueryResult roads,
+         TellusOsmWaterSource.WaterQueryResult water
+      ) {
+         this(buildings, roads, water, new TellusOsmRoadSource.RoadAreaQueryResult(List.of(), false));
+      }
+   }
 }

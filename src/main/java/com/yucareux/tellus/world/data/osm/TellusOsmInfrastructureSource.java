@@ -13,6 +13,7 @@ import com.yucareux.tellus.world.data.pmtiles.PmTilesSafety;
 import com.yucareux.tellus.world.data.source.ParallelDownloadRunner;
 import com.yucareux.tellus.world.data.source.SourceInterrupts;
 import com.yucareux.tellus.worldgen.EarthProjection;
+import com.yucareux.tellus.world.data.geo.GeodeticBounds;
 import io.github.sebasbaumh.mapbox.vectortile.VectorTile.Tile;
 import io.github.sebasbaumh.mapbox.vectortile.VectorTile.Tile.Feature;
 import io.github.sebasbaumh.mapbox.vectortile.VectorTile.Tile.GeomType;
@@ -129,6 +130,31 @@ public final class TellusOsmInfrastructureSource implements TellusCacheHandle {
          }
       }
 
+      return new StreetLightQueryResult(features, hadCacheMiss);
+   }
+
+   /** Queries infrastructure points directly in latitude/longitude for spherical views. */
+   public StreetLightQueryResult roadPointsForGeoAreaWithStatus(GeodeticBounds bounds, OsmQueryMode mode) {
+      java.util.Objects.requireNonNull(bounds, "bounds");
+      this.ensureInitialized();
+      if (!this.available || bounds.mercatorWindows().isEmpty()) {
+         return new StreetLightQueryResult(List.of(), false);
+      }
+      List<OsmStreetLightFeature> features = new ArrayList<>();
+      boolean hadCacheMiss = false;
+      for (GeodeticBounds window : bounds.mercatorWindows()) {
+         List<TellusOsmInfrastructureSource.TileKey> keys = tileKeysForBounds(
+            new TellusOsmInfrastructureSource.GeoBounds(window.south(), window.west(), window.north(), window.east()),
+            this.queryZoom);
+         for (TellusOsmInfrastructureSource.TileKey key : keys) {
+            TellusOsmInfrastructureSource.TileLookup lookup = this.getTileLookup(key, mode);
+            hadCacheMiss |= lookup.cacheMiss();
+            OsmStreetLightTile tile = lookup.tile();
+            if (!tile.isEmpty()) {
+               features.addAll(tile.featuresInBounds(window.south(), window.west(), window.north(), window.east()));
+            }
+         }
+      }
       return new StreetLightQueryResult(features, hadCacheMiss);
    }
 

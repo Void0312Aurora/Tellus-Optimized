@@ -1,5 +1,6 @@
 package com.yucareux.tellus.worldgen;
 
+import com.yucareux.tellus.world.data.osm.OsmQueryMode;
 import com.yucareux.tellus.worldgen.global.SphereChunkSampler;
 import com.yucareux.tellus.worldgen.global.SphereWorldModel;
 
@@ -54,6 +55,13 @@ public final class CubeNetSurfacePolicy {
             ? DeepslateSlopePolicy.surfaceDepthForRelief(12, slopeDiff) : 3;
          return new Decision(material, material, depth, slopeDiff, slopeDegrees, mountain.form());
       }
+      // Overture sand polygons are queried in the same geodetic source used by
+      // the planar generator.  The lookup is non-blocking: a cache miss queues
+      // the tile and leaves this column on the ordinary Tellus surface rules.
+      if (!surface.waterAvailable() && finite(slopeDegrees) && slopeDegrees < 35.0
+         && overtureSandAt(point, worldScale)) {
+         return new Decision(Material.SAND, Material.SANDSTONE, 4, slopeDiff, slopeDegrees, mountain.form());
+      }
       if (surface.coverClass() != MountainSurfaceRules.ESA_TREE_COVER
          && finite(slopeDegrees) && DeepslateSlopePolicy.shouldCover(
             coordinates[0], coordinates[1], slopeDegrees)) {
@@ -61,6 +69,18 @@ public final class CubeNetSurfacePolicy {
          return new Decision(Material.STONE, Material.STONE, depth, slopeDiff, slopeDegrees, mountain.form());
       }
       return baseline(surface.coverClass(), slopeDiff, slopeDegrees, mountain.form());
+   }
+
+   private static boolean overtureSandAt(SphereWorldModel.GeoPoint point, double worldScale) {
+      double blockX = EarthProjection.longitudeToBlockX(point.longitude(), worldScale);
+      double blockZ = EarthProjection.latToBlockZ(point.latitude(), worldScale);
+      if (!Double.isFinite(blockX) || !Double.isFinite(blockZ)
+         || blockX < Integer.MIN_VALUE || blockX > Integer.MAX_VALUE
+         || blockZ < Integer.MIN_VALUE || blockZ > Integer.MAX_VALUE) {
+         return false;
+      }
+      return TellusWorldgenSources.osmSand().containsSand(
+         (int)Math.floor(blockX), (int)Math.floor(blockZ), worldScale, OsmQueryMode.NON_BLOCKING);
    }
 
    private static Decision baseline(int coverClass, int slopeDiff, double slopeDegrees,

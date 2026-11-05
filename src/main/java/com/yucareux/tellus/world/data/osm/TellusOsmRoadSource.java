@@ -141,6 +141,31 @@ public final class TellusOsmRoadSource implements TellusCacheHandle {
       return new RoadQueryResult(new ArrayList<>(new java.util.LinkedHashSet<>(features)), hadCacheMiss);
    }
 
+   /** Queries polygonal road areas directly in latitude/longitude, including date-line crossings. */
+   public RoadAreaQueryResult roadAreasForGeoAreaWithStatus(GeodeticBounds bounds, OsmQueryMode mode) {
+      java.util.Objects.requireNonNull(bounds, "bounds");
+      this.ensureInitialized();
+      if (!this.available || bounds.mercatorWindows().isEmpty()) {
+         return new RoadAreaQueryResult(List.of(), true);
+      }
+      List<RoadAreaFeature> features = new ArrayList<>();
+      boolean hadCacheMiss = bounds.south() < MIN_LAT || bounds.north() > MAX_LAT;
+      for (GeodeticBounds window : bounds.mercatorWindows()) {
+         TellusOsmRoadSource.GeoBounds geoBounds = new TellusOsmRoadSource.GeoBounds(
+            window.south(), window.west(), window.north(), window.east());
+         List<TellusOsmRoadSource.TileKey> keys = tileKeysForBounds(geoBounds, this.queryZoom);
+         for (TellusOsmRoadSource.TileKey key : keys) {
+            TellusOsmRoadSource.TileLookup lookup = this.getTileLookup(key, mode);
+            hadCacheMiss |= lookup.cacheMiss();
+            OverpassRoadTile tile = lookup.tile();
+            if (!tile.isEmpty()) {
+               features.addAll(tile.areaFeaturesInBounds(window.south(), window.west(), window.north(), window.east()));
+            }
+         }
+      }
+      return new RoadAreaQueryResult(new ArrayList<>(new java.util.LinkedHashSet<>(features)), hadCacheMiss);
+   }
+
    private RoadQueryResult roadsForBoundsWithStatus(GeoBounds bounds, OsmQueryMode mode) {
       if (bounds == null) {
          return new TellusOsmRoadSource.RoadQueryResult(List.of(), false);

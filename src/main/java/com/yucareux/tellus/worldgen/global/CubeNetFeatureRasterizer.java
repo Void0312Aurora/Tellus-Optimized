@@ -1,6 +1,7 @@
 package com.yucareux.tellus.worldgen.global;
 
 import com.yucareux.tellus.world.data.osm.OsmBuildingFeature;
+import com.yucareux.tellus.world.data.osm.RoadAreaFeature;
 import com.yucareux.tellus.world.data.osm.RoadFeature;
 import com.yucareux.tellus.world.data.osm.RoadSurfaceStyle;
 import com.yucareux.tellus.worldgen.ScanlinePolygonRasterizer;
@@ -81,6 +82,48 @@ public final class CubeNetFeatureRasterizer {
       List<FaceCell> cells = new ArrayList<>();
       ScanlinePolygonRasterizer.fill(ringsX, ringsZ, minX, minZ, maxX, maxZ,
          (x, z) -> cells.add(new FaceCell(face.index(), x, z)));
+      return List.copyOf(cells);
+   }
+
+   public static List<FaceCell> roadAreaCells(
+      SphereWorldModel model, CubeNetLayout layout, RoadAreaFeature area,
+      CubeNetLayout.Face face, int minX, int minZ, int maxX, int maxZ
+   ) {
+      Objects.requireNonNull(area, "area");
+      if (minX > maxX || minZ > maxZ) return List.of();
+      double[][] ringsX = new double[area.partCount()][];
+      double[][] ringsZ = new double[area.partCount()][];
+      for (int part = 0; part < area.partCount(); part++) {
+         ringsX[part] = new double[area.pointCount(part)];
+         ringsZ[part] = new double[area.pointCount(part)];
+         for (int point = 0; point < area.pointCount(part); point++) {
+            var projected = CubeNetFeatureProjector.project(model, layout,
+               area.latAt(part, point), area.lonAt(part, point)).orElse(null);
+            if (projected == null) return List.of();
+            if (projected.face() != face.index()) {
+               return roadAreaCellsByGeodeticMembership(model, area, face, minX, minZ, maxX, maxZ);
+            }
+            ringsX[part][point] = projected.faceX();
+            ringsZ[part][point] = projected.faceZ();
+         }
+      }
+      List<FaceCell> cells = new ArrayList<>();
+      ScanlinePolygonRasterizer.fill(ringsX, ringsZ, minX, minZ, maxX, maxZ,
+         (x, z) -> cells.add(new FaceCell(face.index(), x, z)));
+      return List.copyOf(cells);
+   }
+
+   private static List<FaceCell> roadAreaCellsByGeodeticMembership(
+      SphereWorldModel model, RoadAreaFeature area, CubeNetLayout.Face face,
+      int minX, int minZ, int maxX, int maxZ
+   ) {
+      List<FaceCell> cells = new ArrayList<>();
+      for (int z = minZ; z <= maxZ; z++) for (int x = minX; x <= maxX; x++) {
+         SphereWorldModel.GeoPoint point = model.exactSurfacePoint(face.index(), x + 0.5, z + 0.5);
+         if (area.containsLonLat(point.longitude(), point.latitude())) {
+            cells.add(new FaceCell(face.index(), x, z));
+         }
+      }
       return List.copyOf(cells);
    }
 
