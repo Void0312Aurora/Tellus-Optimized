@@ -27,8 +27,10 @@ import com.yucareux.tellus.world.data.osm.TellusOsmInfrastructureSource;
 import com.yucareux.tellus.world.data.geo.GeodeticBounds;
 import com.yucareux.tellus.worldgen.building.BuildingProfile;
 import com.yucareux.tellus.worldgen.building.BuildingBlueprint;
+import com.yucareux.tellus.worldgen.building.BuildingFloorPlan;
 import com.yucareux.tellus.worldgen.building.TellusBuildingMaterials;
 import com.yucareux.tellus.worldgen.building.TellusBuildingBlueprints;
+import com.yucareux.tellus.worldgen.building.TellusBuildingInteriors;
 import com.yucareux.tellus.worldgen.building.TellusBuildingProfiles;
 import com.yucareux.tellus.worldgen.caves.CubeNetSphericalCaveSampler;
 import com.yucareux.tellus.worldgen.caves.CubeNetSphericalCaveField;
@@ -1130,17 +1132,20 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
       int groundY;
       BuildingProfile profile;
       BuildingBlueprint blueprint;
+      TellusBuildingInteriors interior;
       TellusBuildingMaterials.BuildingMaterialPalette palette;
       int height;
       try {
          groundY = this.surfaceYAtPlanar((int)Math.floor(centroid.planarX()), (int)Math.floor(centroid.planarZ()),
             new HashMap<>(), new HashMap<>());
-         profile = TellusBuildingProfiles.resolveProfile(building, this.worldScale(), null, false);
+         profile = TellusBuildingProfiles.resolveProfile(building, this.worldScale(), null,
+            Double.compare(this.worldScale(), 1.0) == 0);
          blueprint = TellusBuildingBlueprints.createExterior(
             "cube-net:" + building.featureId(), building, profile, this.worldSeed,
             groundY, groundY, groundY + Math.max(3, TellusBuildingProfiles.heightBlocks(building, this.worldScale())),
             groundY + Math.max(3, TellusBuildingProfiles.heightBlocks(building, this.worldScale())), this.worldScale());
          palette = TellusBuildingMaterials.resolvePalette(blueprint);
+         interior = new TellusBuildingInteriors(BuildingFloorPlan.create(blueprint, building, this.worldScale()));
          height = Math.max(3, TellusBuildingProfiles.heightBlocks(building, this.worldScale()));
       } catch (RuntimeException unavailableTerrain) {
          return;
@@ -1157,15 +1162,18 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
          if (local == null) continue;
          for (int y = groundY; y <= groundY + height; y++) {
             int[] earth = this.earthCoordinates(cell);
-            int boundaryDistance = boundary ? 0 : 2;
+            int boundaryDistance = interior.plan().boundaryDistanceAt(earth[0], earth[1]);
+            if (boundaryDistance < 0) boundaryDistance = boundary ? 0 : 2;
             int floorIndex = blueprint.floorIndexAtY(y);
             BlockState state = y == groundY ? palette.floor()
-               : y >= blueprint.roofBaseY()
+               : y >= blueprint.roofBaseY(boundaryDistance)
                   ? TellusBuildingMaterials.resolveLodRoofBlock(blueprint, palette, boundaryDistance, earth[0], earth[1])
-                  : boundary
-                     ? TellusBuildingMaterials.resolveLodFacadeBlock(blueprint, palette, boundaryDistance,
-                        earth[0], earth[1], floorIndex)
-                     : Blocks.AIR.defaultBlockState();
+                  : blueprint.interiorsEnabled()
+                     ? interior.blockAt(palette, boundaryDistance, earth[0], earth[1], floorIndex, y)
+                     : boundary
+                        ? TellusBuildingMaterials.resolveLodFacadeBlock(blueprint, palette, boundaryDistance,
+                           earth[0], earth[1], floorIndex)
+                        : Blocks.AIR.defaultBlockState();
             this.placeApronFeatureBlock(level, chunk, apron, cell, state, y, local);
          }
       }
@@ -1186,18 +1194,21 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
       int groundY;
       BuildingProfile profile;
       BuildingBlueprint blueprint;
+      TellusBuildingInteriors interior;
       TellusBuildingMaterials.BuildingMaterialPalette palette;
       int height;
       try {
          groundY = this.surfaceYAtPlanar(
             (int)Math.floor(centroidProjection.planarX()), (int)Math.floor(centroidProjection.planarZ()),
             new HashMap<>(), new HashMap<>());
-         profile = TellusBuildingProfiles.resolveProfile(building, this.worldScale(), null, false);
+         profile = TellusBuildingProfiles.resolveProfile(building, this.worldScale(), null,
+            Double.compare(this.worldScale(), 1.0) == 0);
          blueprint = TellusBuildingBlueprints.createExterior(
             "cube-net:" + building.featureId(), building, profile, this.worldSeed,
             groundY, groundY, groundY + Math.max(3, TellusBuildingProfiles.heightBlocks(building, this.worldScale())),
             groundY + Math.max(3, TellusBuildingProfiles.heightBlocks(building, this.worldScale())), this.worldScale());
          palette = TellusBuildingMaterials.resolvePalette(blueprint);
+         interior = new TellusBuildingInteriors(BuildingFloorPlan.create(blueprint, building, this.worldScale()));
          height = Math.max(3, TellusBuildingProfiles.heightBlocks(building, this.worldScale()));
       } catch (RuntimeException unavailableTerrain) {
          return;
@@ -1212,15 +1223,18 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
             || !occupied.contains(packFaceCell(cell.x(), cell.z() + 1));
          for (int y = groundY; y <= groundY + height; y++) {
             int[] earth = this.earthCoordinates(cell);
-            int boundaryDistance = boundary ? 0 : 2;
+            int boundaryDistance = interior.plan().boundaryDistanceAt(earth[0], earth[1]);
+            if (boundaryDistance < 0) boundaryDistance = boundary ? 0 : 2;
             int floorIndex = blueprint.floorIndexAtY(y);
             BlockState state = y == groundY ? palette.floor()
-               : y >= blueprint.roofBaseY()
+               : y >= blueprint.roofBaseY(boundaryDistance)
                   ? TellusBuildingMaterials.resolveLodRoofBlock(blueprint, palette, boundaryDistance, earth[0], earth[1])
-                  : boundary
-                     ? TellusBuildingMaterials.resolveLodFacadeBlock(blueprint, palette, boundaryDistance,
-                        earth[0], earth[1], floorIndex)
-                     : Blocks.AIR.defaultBlockState();
+                  : blueprint.interiorsEnabled()
+                     ? interior.blockAt(palette, boundaryDistance, earth[0], earth[1], floorIndex, y)
+                     : boundary
+                        ? TellusBuildingMaterials.resolveLodFacadeBlock(blueprint, palette, boundaryDistance,
+                           earth[0], earth[1], floorIndex)
+                        : Blocks.AIR.defaultBlockState();
             this.placeFeatureBlock(level, chunk, cell, state, y);
          }
       }
