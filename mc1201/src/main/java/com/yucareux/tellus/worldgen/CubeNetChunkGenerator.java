@@ -22,6 +22,7 @@ import com.yucareux.tellus.world.data.osm.RoadFeature;
 import com.yucareux.tellus.world.data.osm.RoadAreaFeature;
 import com.yucareux.tellus.world.data.osm.RoadClass;
 import com.yucareux.tellus.world.data.osm.RoadMode;
+import com.yucareux.tellus.world.data.osm.RoadPointKind;
 import com.yucareux.tellus.world.data.osm.RoadSurfaceStyle;
 import com.yucareux.tellus.world.data.osm.TellusOsmInfrastructureSource;
 import com.yucareux.tellus.world.data.geo.GeodeticBounds;
@@ -110,6 +111,19 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
    private static final float AXOLOTL_CHUNK_CHANCE = 0.55F;
    private static final float AXOLOTL_POND_CHANCE = 0.68F;
    private static final int MAX_AXOLOTLS_PER_CHUNK = 2;
+   private static final BlockState CUBE_NET_ROAD_POINT_BASE = Blocks.STONE_BRICK_WALL.defaultBlockState();
+   private static final BlockState CUBE_NET_ROAD_SIGNAL_POLE = Blocks.IRON_BARS.defaultBlockState();
+   private static final BlockState CUBE_NET_ROAD_SIGNAL_HEAD = TellusBlockReferences.woolState("BLACK");
+   private static final BlockState CUBE_NET_ROAD_SIGNAL_RED = TellusBlockReferences.concreteState("RED");
+   private static final BlockState CUBE_NET_ROAD_SIGNAL_YELLOW = TellusBlockReferences.concreteState("YELLOW");
+   private static final BlockState CUBE_NET_ROAD_SIGNAL_GREEN = TellusBlockReferences.concreteState("LIME");
+   private static final BlockState CUBE_NET_ROAD_BUS_SIGN = TellusBlockReferences.woolState("BLUE");
+   private static final BlockState CUBE_NET_ROAD_BUS_PANEL = TellusBlockReferences.woolState("WHITE");
+   private static final BlockState CUBE_NET_ROAD_WASTE_BIN = Blocks.CAULDRON.defaultBlockState();
+   private static final BlockState CUBE_NET_ROAD_RECYCLING_BIN = TellusBlockReferences.concreteState("GREEN");
+   private static final BlockState CUBE_NET_ROAD_BICYCLE_RACK = Blocks.IRON_BARS.defaultBlockState();
+   private static final BlockState CUBE_NET_ROAD_FOUNTAIN = Blocks.WATER_CAULDRON.defaultBlockState();
+   private static final BlockState CUBE_NET_ROAD_BOLLARD = Blocks.COBBLESTONE_WALL.defaultBlockState();
    private static final Codec<BiomeSource> BIOME_SOURCE_CODEC = Codec.either(
       FixedBiomeSource.CODEC,
       CubeNetBiomeSource.CODEC.codec()
@@ -990,7 +1004,7 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
       List<OsmStreetLightFeature> points) {
       Map<Long, SphereChunkSampler.SurfaceData> surfaceCache = new HashMap<>();
       for (OsmStreetLightFeature point : points) {
-         if (point.kind() == null || point.kind() == com.yucareux.tellus.world.data.osm.RoadPointKind.STREET_LIGHT) continue;
+         if (point.kind() == null || point.kind() == RoadPointKind.STREET_LIGHT) continue;
          CubeNetFeatureProjector.Projection projection = CubeNetFeatureProjector.project(
             this.model, this.adapter.layout(), point.latitude(), point.longitude()).orElse(null);
          if (projection == null || !this.chunkOwnsPlanarPoint(chunk, projection.planarX(), projection.planarZ())) continue;
@@ -999,25 +1013,81 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
          SphereChunkSampler.SurfaceData surface = this.surfaceDataAtPlanar(worldX, worldZ, surfaceCache);
          if (surface == null || surface.waterAvailable() && surface.waterSurfaceMeters() > surface.elevationMeters()) continue;
          int surfaceY = this.materializer.height(surface.elevationMeters());
-         BlockState state = switch (point.kind()) {
-            case TRAFFIC_SIGNAL -> Blocks.REDSTONE_TORCH.defaultBlockState();
-            case BUS_STOP -> Blocks.OAK_SIGN.defaultBlockState();
-            case CROSSING -> Blocks.WHITE_CARPET.defaultBlockState();
-            case BENCH -> Blocks.OAK_STAIRS.defaultBlockState();
-            case WASTE_BASKET -> Blocks.CAULDRON.defaultBlockState();
-            case RECYCLING -> Blocks.COMPOSTER.defaultBlockState();
-            case BICYCLE_PARKING -> Blocks.IRON_BARS.defaultBlockState();
-            case FOUNTAIN -> Blocks.WATER.defaultBlockState();
-            case BOLLARD -> Blocks.COBBLESTONE_WALL.defaultBlockState();
-            default -> null;
-         };
-         if (state == null) continue;
-         BlockPos target = new BlockPos(worldX, surfaceY + 1, worldZ);
-         if (target.getY() >= this.minY && target.getY() < this.maxY()
-            && level.getBlockState(target).isAir()) {
-            level.setBlock(target, state, 2);
+         Direction facing = this.infrastructureFacing(projection, point.featureId());
+         switch (point.kind()) {
+            case TRAFFIC_SIGNAL -> this.placeCubeNetTrafficSignal(level, chunk, worldX, worldZ, surfaceY, facing);
+            case BUS_STOP -> this.placeCubeNetBusStop(level, chunk, worldX, worldZ, surfaceY, facing);
+            case CROSSING -> this.placeCubeNetInfrastructureBlock(level, chunk, worldX, worldZ, surfaceY + 1,
+               Blocks.WHITE_CARPET.defaultBlockState());
+            case BENCH -> this.placeCubeNetBench(level, chunk, worldX, worldZ, surfaceY + 1, facing);
+            case WASTE_BASKET -> this.placeCubeNetInfrastructureBlock(level, chunk, worldX, worldZ, surfaceY + 1, CUBE_NET_ROAD_WASTE_BIN);
+            case RECYCLING -> this.placeCubeNetInfrastructureBlock(level, chunk, worldX, worldZ, surfaceY + 1, CUBE_NET_ROAD_RECYCLING_BIN);
+            case BICYCLE_PARKING -> this.placeCubeNetDoubleBlock(level, chunk, worldX, worldZ, surfaceY + 1,
+               facing, CUBE_NET_ROAD_BICYCLE_RACK);
+            case FOUNTAIN -> this.placeCubeNetInfrastructureBlock(level, chunk, worldX, worldZ, surfaceY + 1, CUBE_NET_ROAD_FOUNTAIN);
+            case BOLLARD -> this.placeCubeNetInfrastructureBlock(level, chunk, worldX, worldZ, surfaceY + 1, CUBE_NET_ROAD_BOLLARD);
+            default -> { }
          }
       }
+   }
+
+   private Direction infrastructureFacing(CubeNetFeatureProjector.Projection projection, long featureId) {
+      // The face basis is the only local coordinate system used here. A stable
+      // feature hash keeps isolated points from all facing the same direction.
+      boolean xAxis = Math.floorMod(featureId, 2L) == 0L;
+      boolean positive = Math.floorMod(featureId, 4L) < 2L;
+      if (xAxis) return positive ? Direction.EAST : Direction.WEST;
+      return positive ? Direction.SOUTH : Direction.NORTH;
+   }
+
+   private void placeCubeNetTrafficSignal(WorldGenLevel level, ChunkAccess chunk,
+      int x, int z, int baseY, Direction facing) {
+      if (!this.placeCubeNetInfrastructureBlock(level, chunk, x, z, baseY + 1, CUBE_NET_ROAD_POINT_BASE)) return;
+      for (int y = baseY + 2; y <= baseY + 5; y++) {
+         this.placeCubeNetInfrastructureBlock(level, chunk, x, z, y, CUBE_NET_ROAD_SIGNAL_POLE);
+      }
+      this.placeCubeNetInfrastructureBlock(level, chunk, x, z, baseY + 6, CUBE_NET_ROAD_SIGNAL_HEAD);
+      int headX = x + facing.getStepX();
+      int headZ = z + facing.getStepZ();
+      this.placeCubeNetInfrastructureBlock(level, chunk, headX, headZ, baseY + 4, CUBE_NET_ROAD_SIGNAL_GREEN);
+      this.placeCubeNetInfrastructureBlock(level, chunk, headX, headZ, baseY + 5, CUBE_NET_ROAD_SIGNAL_YELLOW);
+      this.placeCubeNetInfrastructureBlock(level, chunk, headX, headZ, baseY + 6, CUBE_NET_ROAD_SIGNAL_RED);
+   }
+
+   private void placeCubeNetBusStop(WorldGenLevel level, ChunkAccess chunk,
+      int x, int z, int baseY, Direction facing) {
+      if (!this.placeCubeNetInfrastructureBlock(level, chunk, x, z, baseY + 1, CUBE_NET_ROAD_POINT_BASE)) return;
+      this.placeCubeNetInfrastructureBlock(level, chunk, x, z, baseY + 2, CUBE_NET_ROAD_SIGNAL_POLE);
+      this.placeCubeNetInfrastructureBlock(level, chunk, x, z, baseY + 3, CUBE_NET_ROAD_SIGNAL_POLE);
+      this.placeCubeNetInfrastructureBlock(level, chunk, x, z, baseY + 4, CUBE_NET_ROAD_BUS_SIGN);
+      this.placeCubeNetInfrastructureBlock(level, chunk, x + facing.getStepX(), z + facing.getStepZ(), baseY + 4,
+         CUBE_NET_ROAD_BUS_PANEL);
+   }
+
+   private void placeCubeNetBench(WorldGenLevel level, ChunkAccess chunk,
+      int x, int z, int y, Direction facing) {
+      BlockState bench = Blocks.OAK_STAIRS.defaultBlockState().setValue(BlockStateProperties.HORIZONTAL_FACING, facing);
+      this.placeCubeNetInfrastructureBlock(level, chunk, x, z, y, bench);
+      Direction along = facing.getClockWise();
+      this.placeCubeNetInfrastructureBlock(level, chunk, x + along.getStepX(), z + along.getStepZ(), y, bench);
+   }
+
+   private void placeCubeNetDoubleBlock(WorldGenLevel level, ChunkAccess chunk,
+      int x, int z, int y, Direction facing, BlockState state) {
+      this.placeCubeNetInfrastructureBlock(level, chunk, x, z, y, state);
+      Direction along = facing.getClockWise();
+      this.placeCubeNetInfrastructureBlock(level, chunk, x + along.getStepX(), z + along.getStepZ(), y, state);
+   }
+
+   private boolean placeCubeNetInfrastructureBlock(WorldGenLevel level, ChunkAccess chunk,
+      int x, int z, int y, BlockState state) {
+      if (x < chunk.getPos().getMinBlockX() || x > chunk.getPos().getMaxBlockX()
+         || z < chunk.getPos().getMinBlockZ() || z > chunk.getPos().getMaxBlockZ()
+         || y < this.minY || y >= this.maxY()) return false;
+      BlockPos target = new BlockPos(x, y, z);
+      if (!level.getBlockState(target).isAir()) return false;
+      level.setBlock(target, state, 2);
+      return true;
    }
 
    private boolean roadCanBeLit(RoadFeature road) {
