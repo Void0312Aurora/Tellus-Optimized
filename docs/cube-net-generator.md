@@ -132,6 +132,12 @@ uses the same canonical-owner rule and never runs in a derived apron view.
 Mapped inland rivers reuse the hydrology planner's flow levels and
 falling-water curtains after spherical materialization, including derived
 apron views.
+Shoreline columns now reuse the Earth generator's short bank-ramp rule through
+the same seam-aware planar lookup, and badlands biomes write Tellus's coloured
+terracotta band palette into canonical cliff columns before the apron mirror.
+Mapped traffic signals, bus stops, benches, recycling points and bicycle racks
+use the corresponding multi-block point layouts; each point remains owned by
+the canonical chunk and an occupied block is never replaced.
 
 Vanilla structure starts and references are likewise created only on canonical
 chunks; apron views do not create duplicate starts. When the canonical owner is
