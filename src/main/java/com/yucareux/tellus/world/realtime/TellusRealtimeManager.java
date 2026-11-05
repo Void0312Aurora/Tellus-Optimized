@@ -8,6 +8,7 @@ import com.yucareux.tellus.world.data.source.NominatimGeocoder;
 import com.yucareux.tellus.world.data.source.OpenMeteoClient;
 import com.yucareux.tellus.worldgen.EarthChunkGenerator;
 import com.yucareux.tellus.worldgen.EarthGeneratorSettings;
+import com.yucareux.tellus.worldgen.TellusGeodeticPosition;
 import it.unimi.dsi.fastutil.longs.LongArrayFIFOQueue;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import java.io.IOException;
@@ -59,6 +60,9 @@ public final class TellusRealtimeManager {
    private static final int GRID_SIZE = 3;
    private static final int GRID_POINTS = 9;
    private static final boolean NTP_ENABLED = Boolean.getBoolean("tellus.realtime.ntp");
+    private static final boolean CUBE_NET_REALTIME_TIME = Boolean.getBoolean("tellus.cubeNet.realtimeTime");
+    private static final boolean CUBE_NET_REALTIME_WEATHER = Boolean.getBoolean("tellus.cubeNet.realtimeWeather");
+    private static final boolean CUBE_NET_HISTORICAL_SNOW = Boolean.getBoolean("tellus.cubeNet.historicalSnow");
    private static final long NTP_REFRESH_MS = 43200000L;
    private static final int NTP_TIMEOUT_MS = 2000;
    private static final int NTP_PORT = 123;
@@ -217,16 +221,17 @@ public final class TellusRealtimeManager {
          this.lastSnowQueueTick = 0L;
       }
 
-      if (!(level.getChunkSource().getGenerator() instanceof EarthChunkGenerator earthGenerator)) {
+      if (!(level.getChunkSource().getGenerator() instanceof TellusGeodeticPosition geodetic)) {
          this.clearRealtimeState(server, level, true);
          return;
       }
 
-      EarthGeneratorSettings settings = earthGenerator.settings();
-      boolean enableTime = this.isRealtimeTimeEnabled(settings);
-      boolean enableWeather = this.isRealtimeWeatherEnabled(settings);
+      EarthGeneratorSettings settings = geodetic instanceof EarthChunkGenerator earthGenerator ? earthGenerator.settings() : null;
+      boolean enableTime = settings != null ? this.isRealtimeTimeEnabled(settings) : CUBE_NET_REALTIME_TIME;
+      boolean enableWeather = settings != null ? this.isRealtimeWeatherEnabled(settings) : CUBE_NET_REALTIME_WEATHER;
+      boolean enableSnow = settings != null ? settings.historicalSnow() : CUBE_NET_HISTORICAL_SNOW;
 
-      if (!enableWeather) {
+      if (!enableWeather && !enableSnow) {
          boolean weatherWasActive = this.hasRealtimeWeatherState();
          TellusRealtimeState.clearRealtimeWeather();
          if (weatherWasActive) {
@@ -234,7 +239,7 @@ public final class TellusRealtimeManager {
          }
       }
 
-      TellusRealtimeManager.GridAnchor anchor = TellusRealtimeManager.GridAnchor.resolve(server, computeGridSpacing(settings.worldScale()));
+      TellusRealtimeManager.GridAnchor anchor = TellusRealtimeManager.GridAnchor.resolve(server, computeGridSpacing(geodetic.worldScale()));
       if (anchor != null) {
          BlockPos samplePos = new BlockPos(anchor.centerX(), 0, anchor.centerZ());
          boolean movedAnchor = this.lastAnchor == null || !this.lastAnchor.equals(anchor);
@@ -259,7 +264,7 @@ public final class TellusRealtimeManager {
          if (enableTime) {
             this.applyTimeRules(level, server);
             this.maybeRefreshNtp(System.currentTimeMillis());
-            this.applyRealtimeTime(level, server, earthGenerator, samplePos);
+            this.applyRealtimeTime(level, server, geodetic, samplePos);
          } else {
             this.restoreTimeRules(level, server);
             this.timeZoneReady = false;
@@ -283,13 +288,13 @@ public final class TellusRealtimeManager {
          boolean shouldUpdateWeather = retryReady && (weatherPending || movedAnchor || now - this.lastWeatherUpdateMs >= WEATHER_REFRESH_MS);
          boolean shouldUpdateTimeZone = enableTime && (movedTimeZoneAnchor || now - this.lastTimeZoneUpdateMs >= TIMEZONE_REFRESH_MS);
          if (shouldUpdateWeather || retryReady && shouldUpdateTimeZone) {
-            this.requestUpdate(server, earthGenerator, anchor, enableWeather, false, enableTime, now);
+            this.requestUpdate(server, geodetic, anchor, enableWeather, enableSnow, enableTime, now);
          }
 
-         if (!enableWeather || TellusRealtimeState.precipitationMode() != TellusRealtimeState.PrecipitationMode.SNOW) {
+         if (!enableSnow && (!enableWeather || TellusRealtimeState.precipitationMode() != TellusRealtimeState.PrecipitationMode.SNOW)) {
             this.clearSnowQueue();
          } else {
-            this.tickSnowPlacement(server, level, earthGenerator);
+            this.tickSnowPlacement(server, level, geodetic);
          }
       } else {
          TellusRealtimeState.updateWeatherState(false, TellusRealtimeState.PrecipitationMode.CLEAR, false, SnowGrid.empty());
@@ -299,7 +304,7 @@ public final class TellusRealtimeManager {
    public TellusRealtimeManager.WeatherReportRequestResult requestWeatherReport(
       MinecraftServer server,
       UUID requesterId,
-      EarthChunkGenerator generator,
+      TellusGeodeticPosition generator,
       BlockPos pos,
       Consumer<TellusRealtimeManager.WeatherReport> callback
    ) {
@@ -308,8 +313,8 @@ public final class TellusRealtimeManager {
       Objects.requireNonNull(generator, "generator");
       Objects.requireNonNull(pos, "pos");
       Objects.requireNonNull(callback, "callback");
-      double latitude = Mth.clamp(generator.latitudeFromBlock(pos.getZ()), -85.05112878, 85.05112878);
-      double longitude = Mth.clamp(generator.longitudeFromBlock(pos.getX()), -180.0, 180.0);
+      double latitude = Mth.clamp(generator.latitudeFromBlock(pos.getX(), pos.getZ()), -85.05112878, 85.05112878);
+      double longitude = Mth.clamp(generator.longitudeFromBlock(pos.getX(), pos.getZ()), -180.0, 180.0);
       long now = System.currentTimeMillis();
       Long lastRequest = this.lastReportRequestMs.get(requesterId);
       if (this.reportRequestsInFlight.contains(requesterId) || lastRequest != null && now - lastRequest < REPORT_COOLDOWN_MS) {
@@ -372,7 +377,7 @@ public final class TellusRealtimeManager {
 
    private void requestUpdate(
       MinecraftServer server,
-      EarthChunkGenerator generator,
+      TellusGeodeticPosition generator,
       TellusRealtimeManager.GridAnchor anchor,
       boolean includeWeather,
       boolean includeSnow,
@@ -380,6 +385,9 @@ public final class TellusRealtimeManager {
       long now
    ) {
       if (this.requestInFlight.compareAndSet(false, true)) {
+         if (includeSnow) {
+            this.pendingInitialSnowPass.set(true);
+         }
          this.lastWeatherAttemptMs = now;
          this.lastWeatherAttemptAnchor = anchor;
          List<BlockPos> samplePoints = new ArrayList<>(GRID_POINTS);
@@ -402,8 +410,8 @@ public final class TellusRealtimeManager {
 
                      for (int i = 0; i < samplePoints.size(); i++) {
                         BlockPos pos = samplePoints.get(i);
-                        double lat = Mth.clamp(generator.latitudeFromBlock(pos.getZ()), -85.05112878, 85.05112878);
-                        double lon = Mth.clamp(generator.longitudeFromBlock(pos.getX()), -180.0, 180.0);
+                        double lat = Mth.clamp(generator.latitudeFromBlock(pos.getX(), pos.getZ()), -85.05112878, 85.05112878);
+                        double lon = Mth.clamp(generator.longitudeFromBlock(pos.getX(), pos.getZ()), -180.0, 180.0);
                         points[i] = this.client.fetch(lat, lon);
                      }
 
@@ -617,7 +625,7 @@ public final class TellusRealtimeManager {
       }
    }
 
-   private ZoneId resolveTimeZone(EarthChunkGenerator generator, BlockPos pos) {
+   private ZoneId resolveTimeZone(TellusGeodeticPosition generator, BlockPos pos) {
       ZoneId zone = this.timeZone;
       if (zone != null && this.timeZoneReady) {
          return zone;
@@ -629,7 +637,7 @@ public final class TellusRealtimeManager {
       }
    }
 
-   private void tickSnowPlacement(MinecraftServer server, ServerLevel level, EarthChunkGenerator generator) {
+   private void tickSnowPlacement(MinecraftServer server, ServerLevel level, TellusGeodeticPosition generator) {
       long tick = server.getTickCount();
       if (tick - this.lastSnowQueueTick >= SNOW_QUEUE_REFRESH_TICKS || this.snowQueue.isEmpty()) {
          this.queueSnowChunks(server);
@@ -659,7 +667,7 @@ public final class TellusRealtimeManager {
       }
    }
 
-   private void processSnowQueue(ServerLevel level, EarthChunkGenerator generator, int maxChunks) {
+   private void processSnowQueue(ServerLevel level, TellusGeodeticPosition generator, int maxChunks) {
       ChunkSource source = level.getChunkSource();
       int processed = 0;
 
@@ -739,13 +747,13 @@ public final class TellusRealtimeManager {
                return;
             }
 
-            if (!(level.getChunkSource().getGenerator() instanceof EarthChunkGenerator earthGenerator)) {
+            if (!(level.getChunkSource().getGenerator() instanceof TellusGeodeticPosition geodetic)) {
                return;
             }
 
             this.clearSnowQueue();
             this.queueSnowChunks(server);
-            this.processSnowQueue(level, earthGenerator, Integer.MAX_VALUE);
+            this.processSnowQueue(level, geodetic, Integer.MAX_VALUE);
          }
       }
    }
@@ -829,7 +837,7 @@ public final class TellusRealtimeManager {
       return code >= 51 && code <= 67 || code >= 80 && code <= 82;
    }
 
-   private void applyRealtimeTime(ServerLevel level, MinecraftServer server, EarthChunkGenerator generator, BlockPos samplePos) {
+   private void applyRealtimeTime(ServerLevel level, MinecraftServer server, TellusGeodeticPosition generator, BlockPos samplePos) {
       long tickCount = server.getTickCount();
       if (tickCount - this.lastTimeApplyTick >= TIME_APPLY_TICK_INTERVAL) {
          this.lastTimeApplyTick = tickCount;
@@ -962,8 +970,8 @@ public final class TellusRealtimeManager {
       return Mth.clamp(spacingBlocks, 1024, 16384);
    }
 
-   private static int approximateUtcOffsetSeconds(EarthChunkGenerator generator, BlockPos pos) {
-      double longitude = Mth.clamp(generator.longitudeFromBlock(pos.getX()), -180.0, 180.0);
+   private static int approximateUtcOffsetSeconds(TellusGeodeticPosition generator, BlockPos pos) {
+      double longitude = Mth.clamp(generator.longitudeFromBlock(pos.getX(), pos.getZ()), -180.0, 180.0);
       double hours = longitude / 15.0;
       return (int)Math.round(hours * 3600.0);
    }

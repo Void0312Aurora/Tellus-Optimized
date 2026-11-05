@@ -155,7 +155,7 @@ import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemp
 import net.minecraft.world.level.material.Fluids;
 import net.minecraft.world.phys.Vec3;
 
-public final class EarthChunkGenerator extends TellusChunkGeneratorBridge implements WaterSourceConversionGuard {
+public final class EarthChunkGenerator extends TellusChunkGeneratorBridge implements WaterSourceConversionGuard, TellusGeodeticPosition {
    private static final TellusElevationSource ELEVATION_SOURCE = TellusWorldgenSources.elevation();
    private static final TellusCanopyHeightSource CANOPY_HEIGHT_SOURCE = TellusWorldgenSources.canopyHeight();
    private static final TellusResolveSource RESOLVE_SOURCE = TellusResolveSource.shared();
@@ -596,6 +596,20 @@ public final class EarthChunkGenerator extends TellusChunkGeneratorBridge implem
          this.settings, spawnX, spawnY, spawnZ, "surface target lat=" + latitude + ", lon=" + longitude
       );
       return new BlockPos(spawnX, spawnY, spawnZ);
+   }
+   @Override
+   public double worldScale() {
+      return this.settings.worldScale();
+   }
+
+   @Override
+   public int heightOffset() {
+      return this.settings.heightOffset();
+   }
+
+   @Override
+   public int seaLevel() {
+      return this.seaLevel;
    }
 
    public double longitudeFromBlock(double blockX) {
@@ -12132,7 +12146,7 @@ public final class EarthChunkGenerator extends TellusChunkGeneratorBridge implem
          default -> STONE_STATE;
       };
    }
-
+   @Override
    public void applyRealtimeSnowCover(WorldGenLevel level, ChunkAccess chunk) {
       if (TellusRealtimeState.isHistoricalSnowEnabled()
          || TellusRealtimeState.isWeatherEnabled() && TellusRealtimeState.precipitationMode() == TellusRealtimeState.PrecipitationMode.SNOW) {

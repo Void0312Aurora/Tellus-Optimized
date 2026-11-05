@@ -111,7 +111,7 @@ import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemp
  * chunks both read canonical face columns. Movement ownership is handled by
  * CubeNetRuntime.
  */
-public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeNetLodSurface, WaterSourceConversionGuard {
+public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeNetLodSurface, WaterSourceConversionGuard, TellusGeodeticPosition {
    public static final int GEOMETRY_VERSION = 3;
    private static final float AXOLOTL_CHUNK_CHANCE = 0.55F;
    private static final float AXOLOTL_POND_CHANCE = 0.68F;
@@ -372,7 +372,54 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
    public CubeNetApronResolver apronResolver() { return this.apronResolver; }
    public boolean nativeApronEnabled() { return this.apronWidthChunks > 0; }
    public int apronWidthChunks() { return this.apronWidthChunks; }
-   public double worldScale() { return this.model.config().worldScale(); }
+   public double worldScale() {
+      return this.model.config().worldScale();
+   }
+
+   @Override
+   public double latitudeFromBlock(double blockZ) {
+       return this.latitudeFromBlock(0.0, blockZ);
+    }
+
+   @Override
+   public double longitudeFromBlock(double blockX) {
+       return this.longitudeFromBlock(blockX, 0.0);
+    }
+
+   @Override
+   public double latitudeFromBlock(double blockX, double blockZ) {
+       return this.geodeticPointFromBlock(blockX, blockZ).latitude();
+    }
+
+   @Override
+   public double longitudeFromBlock(double blockX, double blockZ) {
+       return this.geodeticPointFromBlock(blockX, blockZ).longitude();
+    }
+
+    @Override
+    public int heightOffset() {
+       return this.seaLevel;
+    }
+
+    @Override
+    public int seaLevel() {
+       return this.seaLevel;
+    }
+
+    private SphereWorldModel.GeoPoint geodeticPointFromBlock(double blockX, double blockZ) {
+       if (!Double.isFinite(blockX) || !Double.isFinite(blockZ)) {
+          throw new IllegalArgumentException("block coordinates must be finite");
+       }
+       int x = (int)Math.floor(blockX);
+       int z = (int)Math.floor(blockZ);
+       BlockAddress block = this.resolveBlock(x, z).orElse(null);
+       if (block != null) {
+          return this.model.exactSurfacePoint(block.address().face(), block.x() + 0.5, block.z() + 0.5);
+       }
+       CubeNetLayout.FacePoint point = this.adapter.layout().fromPlanar(
+          new CubeNetLayout.PlanarPoint(blockX + 0.5, blockZ + 0.5));
+       return this.model.exactSurfacePoint(point.face().index(), point.u(), point.v());
+    }
    @Override public int minY() { return this.minY; }
    @Override public int maxY() { return this.minY + this.height; }
    SphereSingularityPolicy.Config singularityConfig() { return this.singularityConfig; }
@@ -1149,7 +1196,7 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
          super.applyBiomeDecoration(level, chunk, structures);
          this.spawnCubeNetAxolotls(level, chunk);
          this.placeCubeNetTrees(level, chunk);
-         this.applyCubeNetRealtimeSnowCover(level, chunk);
+         this.applyRealtimeSnowCover(level, chunk);
       }
       this.placeCubeNetFeatures(level, chunk);
       this.mirrorCanonicalStructureView(level, chunk);
@@ -2679,7 +2726,8 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
    }
 
    /** Applies Tellus's dynamic snow state in geographic coordinates on the canonical face. */
-   private void applyCubeNetRealtimeSnowCover(WorldGenLevel level, ChunkAccess chunk) {
+   @Override
+   public void applyRealtimeSnowCover(WorldGenLevel level, ChunkAccess chunk) {
       if (!TellusRealtimeState.isHistoricalSnowEnabled()
          && !(TellusRealtimeState.isWeatherEnabled()
             && TellusRealtimeState.precipitationMode() == TellusRealtimeState.PrecipitationMode.SNOW)) {
