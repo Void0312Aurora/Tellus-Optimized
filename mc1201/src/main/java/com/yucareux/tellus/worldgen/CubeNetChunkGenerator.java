@@ -114,6 +114,8 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
    private static final float AXOLOTL_CHUNK_CHANCE = 0.55F;
    private static final float AXOLOTL_POND_CHANCE = 0.68F;
    private static final int MAX_AXOLOTLS_PER_CHUNK = 2;
+   private static final int CUBE_NET_SHORELINE_RADIUS = 8;
+   private static final int CUBE_NET_SHORELINE_MIN_CLIFF = 3;
    private static final BlockState CUBE_NET_ROAD_POINT_BASE = Blocks.STONE_BRICK_WALL.defaultBlockState();
    private static final BlockState CUBE_NET_ROAD_SIGNAL_POLE = Blocks.IRON_BARS.defaultBlockState();
    private static final BlockState CUBE_NET_ROAD_SIGNAL_HEAD = TellusBlockReferences.woolState("BLACK");
@@ -469,7 +471,8 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
             for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++) {
                columns.add(canonical.column(candidate.targetBlockX(x, z) & 15, candidate.targetBlockZ(x, z) & 15));
             }
-            this.materializer.fill(chunk, new SphereChunkSampler.TerrainGrid(targetAddress, columns));
+            this.materializer.fill(chunk, new SphereChunkSampler.TerrainGrid(targetAddress,
+               this.inlandWaterResolver == null ? columns : this.applyCubeNetShorelineBankRamp(chunk, columns)));
             this.applyCubeNetInlandFlow(chunk);
             return chunk;
          }, executor))
@@ -496,7 +499,8 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
             columns.add(canonical.column(Math.floorMod((int)Math.floor(local[0]), 16),
                Math.floorMod((int)Math.floor(local[1]), 16)));
          }
-         this.materializer.fill(chunk, new SphereChunkSampler.TerrainGrid(address, columns));
+         this.materializer.fill(chunk, new SphereChunkSampler.TerrainGrid(address,
+            this.inlandWaterResolver == null ? columns : this.applyCubeNetShorelineBankRamp(chunk, columns)));
          this.applyCubeNetInlandFlow(chunk);
          this.applyCubeNetBadlandsBands(chunk);
    }
@@ -525,6 +529,42 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
             if (chunk instanceof ProtoChunk proto) MinecraftVersionCompat.markPosForPostProcessing(proto, pos);
          }
       }
+   }
+
+   private List<SphereChunkSampler.Column> applyCubeNetShorelineBankRamp(
+      ChunkAccess chunk, List<SphereChunkSampler.Column> columns
+   ) {
+      Map<Long, SphereChunkSampler.SurfaceData> cache = new HashMap<>();
+      List<SphereChunkSampler.Column> adjusted = new ArrayList<>(columns);
+      int minX = chunk.getPos().getMinBlockX();
+      int minZ = chunk.getPos().getMinBlockZ();
+      for (int localZ = 0; localZ < 16; localZ++) for (int localX = 0; localX < 16; localX++) {
+         int index = localZ * 16 + localX;
+         SphereChunkSampler.Column column = columns.get(index);
+         SphereChunkSampler.SurfaceData surface = column.data();
+         if (!surface.elevationAvailable() || surface.waterAvailable()) continue;
+         int terrainY = this.materializer.height(surface.elevationMeters());
+         int allowedY = Integer.MAX_VALUE;
+         for (int dz = -CUBE_NET_SHORELINE_RADIUS; dz <= CUBE_NET_SHORELINE_RADIUS; dz++) {
+            for (int dx = -CUBE_NET_SHORELINE_RADIUS; dx <= CUBE_NET_SHORELINE_RADIUS; dx++) {
+               if (dx == 0 && dz == 0) continue;
+               int distance = Math.max(Math.abs(dx), Math.abs(dz));
+               if (distance > CUBE_NET_SHORELINE_RADIUS) continue;
+               SphereChunkSampler.SurfaceData neighbour = this.surfaceDataAtPlanar(
+                  minX + localX + dx, minZ + localZ + dz, cache);
+               if (neighbour == null || !neighbour.waterAvailable()) continue;
+               int waterY = this.materializer.height(neighbour.waterSurfaceMeters());
+               allowedY = Math.min(allowedY, waterY + distance);
+            }
+         }
+         if (allowedY == Integer.MAX_VALUE || terrainY - allowedY < CUBE_NET_SHORELINE_MIN_CLIFF
+            || terrainY <= allowedY) continue;
+         int rampedY = Math.max(this.minY + 1, allowedY);
+         double elevation = (rampedY - this.seaLevel) * this.worldScale();
+         adjusted.set(index, new SphereChunkSampler.Column(column.address(), column.point(),
+            surface.withElevation(elevation)));
+      }
+      return List.copyOf(adjusted);
    }
 
    /** Applies Tellus's layered badlands cliff material to canonical columns. */

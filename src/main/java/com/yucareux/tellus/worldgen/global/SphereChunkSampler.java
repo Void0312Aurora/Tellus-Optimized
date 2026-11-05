@@ -175,6 +175,10 @@ public final class SphereChunkSampler {
          return new SurfaceData(this.elevationMeters, this.coverClass, this.waterSurfaceMeters,
             this.waterKind, this.geology, Objects.requireNonNull(value, "neighbourhood"));
       }
+      public SurfaceData withElevation(double value) {
+         return new SurfaceData(value, this.coverClass, this.waterSurfaceMeters,
+            this.waterKind, this.geology, this.neighbourhood);
+      }
       public boolean elevationAvailable() { return Double.isFinite(this.elevationMeters); }
       public boolean waterAvailable() { return Double.isFinite(this.waterSurfaceMeters); }
       public boolean oceanWater() { return this.waterAvailable() && this.waterKind == WaterKind.OCEAN; }
