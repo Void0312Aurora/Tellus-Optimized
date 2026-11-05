@@ -127,7 +127,8 @@ stairwells, doors, furnishings and rooftop equipment; coarser scales keep the
 exterior LOD model. Overture sand polygons feed the shared spherical surface
 policy through a non-blocking cache lookup. Dynamic historical/weather snow is
 also applied from the geographic point mapped by each canonical face column;
-apron views receive it through the owner mirror.
+apron views receive it through the owner mirror. Lush-cave axolotl decoration
+uses the same canonical-owner rule and never runs in a derived apron view.
 
 Vanilla structure starts and references are likewise created only on canonical
 chunks; apron views do not create duplicate starts. When the canonical owner is
