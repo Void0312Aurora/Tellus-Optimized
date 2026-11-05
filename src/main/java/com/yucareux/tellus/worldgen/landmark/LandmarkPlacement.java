@@ -70,6 +70,19 @@ public final class LandmarkPlacement {
       return this.entry.definition().id();
    }
 
+   public double latitude() {
+      return this.entry.definition().latitude();
+   }
+
+   public double longitude() {
+      return this.entry.definition().longitude();
+   }
+
+   /** Conservative radius of the landmark footprint in metres. */
+   public double radiusMeters() {
+      return this.meshRadiusMeters();
+   }
+
    LandmarkDefinition definition() {
       return this.entry.definition();
    }

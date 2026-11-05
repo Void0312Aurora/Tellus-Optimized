@@ -35,6 +35,8 @@ import com.yucareux.tellus.worldgen.caves.CubeNetSphericalCaveField;
 import com.yucareux.tellus.worldgen.road.StreetLightModel;
 import com.yucareux.tellus.worldgen.road.StreetLightPlanner;
 import com.yucareux.tellus.worldgen.global.CubeNetFeatureProjector;
+import com.yucareux.tellus.worldgen.landmark.LandmarkPlacement;
+import com.yucareux.tellus.worldgen.landmark.TellusLandmarks;
 import com.yucareux.tellus.compat.MinecraftVersionCompat;
 import com.yucareux.tellus.worldgen.UndergroundStructureExclusion;
 import com.yucareux.tellus.world.data.osm.OsmQueryMode;
@@ -147,6 +149,7 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
    private final int apronWidthChunks;
    private final SphereFaceChunkGenerator[] faces;
    private final SphereTerrainMaterializer materializer;
+   private final TellusLandmarks landmarks;
    private volatile long worldSeed;
    private final CubeNetSphericalCaveSampler cubeNetSphericalCaveSampler = new CubeNetSphericalCaveSampler();
    private volatile long sphericalCaveSeed = Long.MIN_VALUE;
@@ -214,6 +217,9 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
       this.remoteProjection = new CubeNetRemoteProjection(this.adapter.layout(), apronChunks * 16.0);
       this.apronResolver = new CubeNetApronResolver(this.adapter.layout(), Math.max(16, apronChunks * 16));
       this.materializer = new SphereTerrainMaterializer(scale, seaLevel);
+      this.landmarks = TellusLandmarks.create(
+         scale, CUBE_NET_BUILDINGS, this::surfaceYAtEarthCoordinate,
+         (elevation, blockZ) -> this.materializer.height(elevation));
       this.singularityConfig = singularityConfig;
       this.singularityPolicy = new SphereSingularityPolicy(this.model, singularityConfig);
       SphereChunkSampler.PointSampler effectivePointSampler = pointSampler == null
@@ -767,6 +773,9 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
       SphereWorldModel.SphereChunkAddress queryAddress = address == null
          ? new SphereWorldModel.SphereChunkAddress(apron.targetFace().index(), apron.targetChunkX(), apron.targetChunkZ())
          : address;
+      if (apron == null && CUBE_NET_BUILDINGS) {
+         this.placeCubeNetLandmarks(level, chunk, queryAddress);
+      }
       SphereChunkSampler.FeatureData data = this.sampleFeatures(
          queryPos, 96.0, OsmQueryMode.NON_BLOCKING).orElse(null);
       if (data == null) return;
@@ -809,6 +818,49 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
       if (apron == null && this.worldScale() <= StreetLightPlanner.MAX_SCALE && !data.roads().features().isEmpty()) {
          this.placeCubeNetStreetLights(level, chunk, queryAddress, data.roads().features());
       }
+   }
+
+   private void placeCubeNetLandmarks(WorldGenLevel level, ChunkAccess chunk,
+      SphereWorldModel.SphereChunkAddress queryAddress) {
+      SphereWorldModel.GeoPoint center = this.model.exactSurfacePoint(queryAddress);
+      double chunkRadius = 24.0 * this.worldScale();
+      for (LandmarkPlacement landmark : this.landmarks.placements()) {
+         if (surfaceDistanceMeters(center.latitude(), center.longitude(), landmark.latitude(), landmark.longitude())
+            > landmark.radiusMeters() + chunkRadius) continue;
+         CubeNetLayout.Face face = CubeNetLayout.Face.of(queryAddress.face());
+         int minX = Math.toIntExact(queryAddress.blockX());
+         int minZ = Math.toIntExact(queryAddress.blockZ());
+         for (int z = minZ; z <= minZ + 15; z++) for (int x = minX; x <= minX + 15; x++) {
+            SphereWorldModel.GeoPoint point = this.model.exactSurfacePoint(face.index(), x + 0.5, z + 0.5);
+            int earthX = coordinateForEarth(EarthProjection.longitudeToBlockX(point.longitude(), this.worldScale()));
+            int earthZ = coordinateForEarth(EarthProjection.latToBlockZ(point.latitude(), this.worldScale()));
+            CubeNetFeatureRasterizer.FaceCell cell = new CubeNetFeatureRasterizer.FaceCell(face.index(), x, z);
+            landmark.columnSpans(earthX, earthZ, this.minY, this.maxY() - 1,
+               (bottomY, topY, state) -> {
+                  for (int y = bottomY; y <= topY; y++) this.placeFeatureBlock(level, chunk, cell, state, y);
+               });
+         }
+      }
+   }
+
+   private int surfaceYAtEarthCoordinate(int earthX, int earthZ) {
+      double longitude = EarthProjection.blockXToLongitude(earthX, this.worldScale());
+      double latitude = EarthProjection.blockZToLat(earthZ, this.worldScale());
+      CubeNetFeatureProjector.Projection projection = CubeNetFeatureProjector.project(
+         this.model, this.adapter.layout(), latitude, longitude).orElse(null);
+      if (projection == null) return this.seaLevel;
+      return this.surfaceYAtPlanar((int)Math.floor(projection.planarX()), (int)Math.floor(projection.planarZ()),
+         new HashMap<>(), new HashMap<>());
+   }
+
+   private static double surfaceDistanceMeters(double latitudeA, double longitudeA,
+      double latitudeB, double longitudeB) {
+      double latA = Math.toRadians(latitudeA), latB = Math.toRadians(latitudeB);
+      double deltaLat = latB - latA;
+      double deltaLon = Math.toRadians(longitudeB - longitudeA);
+      double h = Math.sin(deltaLat * 0.5) * Math.sin(deltaLat * 0.5)
+         + Math.cos(latA) * Math.cos(latB) * Math.sin(deltaLon * 0.5) * Math.sin(deltaLon * 0.5);
+      return 2.0 * SphereWorldModel.EARTH_RADIUS_METERS * Math.asin(Math.sqrt(Math.min(1.0, Math.max(0.0, h))));
    }
 
    private void placeCubeNetRoadArea(WorldGenLevel level, ChunkAccess chunk,
