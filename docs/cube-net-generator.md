@@ -129,6 +129,9 @@ policy through a non-blocking cache lookup. Dynamic historical/weather snow is
 also applied from the geographic point mapped by each canonical face column;
 apron views receive it through the owner mirror. Lush-cave axolotl decoration
 uses the same canonical-owner rule and never runs in a derived apron view.
+Mapped inland rivers reuse the hydrology planner's flow levels and
+falling-water curtains after spherical materialization, including derived
+apron views.
 
 Vanilla structure starts and references are likewise created only on canonical
 chunks; apron views do not create duplicate starts. When the canonical owner is
