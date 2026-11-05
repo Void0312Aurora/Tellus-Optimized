@@ -1073,7 +1073,7 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
          points.add(new OsmStreetLightFeature(point.featureId(),
             this.normalizeLongitude(point.longitude(), center.longitude()), point.latitude(), point.kind()));
       }
-      this.placeCubeNetInfrastructurePoints(level, chunk, points);
+      this.placeCubeNetInfrastructurePoints(level, chunk, points, roads);
       double centerX = EarthProjection.longitudeToBlockX(center.longitude(), this.worldScale());
       double centerZ = EarthProjection.latToBlockZ(center.latitude(), this.worldScale());
       if (!Double.isFinite(centerX) || !Double.isFinite(centerZ)) return;
@@ -1091,7 +1091,7 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
    }
 
    private void placeCubeNetInfrastructurePoints(WorldGenLevel level, ChunkAccess chunk,
-      List<OsmStreetLightFeature> points) {
+      List<OsmStreetLightFeature> points, List<RoadFeature> roads) {
       Map<Long, SphereChunkSampler.SurfaceData> surfaceCache = new HashMap<>();
       for (OsmStreetLightFeature point : points) {
          if (point.kind() == null || point.kind() == RoadPointKind.STREET_LIGHT) continue;
@@ -1103,7 +1103,7 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
          SphereChunkSampler.SurfaceData surface = this.surfaceDataAtPlanar(worldX, worldZ, surfaceCache);
          if (surface == null || surface.waterAvailable() && surface.waterSurfaceMeters() > surface.elevationMeters()) continue;
          int surfaceY = this.materializer.height(surface.elevationMeters());
-         Direction facing = this.infrastructureFacing(projection, point.featureId());
+         Direction facing = this.infrastructureFacing(projection, point.featureId(), roads);
          switch (point.kind()) {
             case TRAFFIC_SIGNAL -> this.placeCubeNetTrafficSignal(level, chunk, worldX, worldZ, surfaceY, facing);
             case BUS_STOP -> this.placeCubeNetBusStop(level, chunk, worldX, worldZ, surfaceY, facing);
@@ -1121,9 +1121,39 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
       }
    }
 
-   private Direction infrastructureFacing(CubeNetFeatureProjector.Projection projection, long featureId) {
-      // The face basis is the only local coordinate system used here. A stable
-      // feature hash keeps isolated points from all facing the same direction.
+   private Direction infrastructureFacing(CubeNetFeatureProjector.Projection projection,
+      long featureId, List<RoadFeature> roads) {
+      double bestDistance = Double.POSITIVE_INFINITY;
+      double bestDx = 0.0;
+      double bestDz = 0.0;
+      for (RoadFeature road : roads) {
+         for (int index = 1; index < road.pointCount(); index++) {
+            CubeNetFeatureProjector.Projection start = CubeNetFeatureProjector.project(
+               this.model, this.adapter.layout(), road.latAt(index - 1), road.lonAt(index - 1)).orElse(null);
+            CubeNetFeatureProjector.Projection end = CubeNetFeatureProjector.project(
+               this.model, this.adapter.layout(), road.latAt(index), road.lonAt(index)).orElse(null);
+            if (start == null || end == null || start.face() != projection.face() || end.face() != projection.face()) continue;
+            double dx = end.faceX() - start.faceX();
+            double dz = end.faceZ() - start.faceZ();
+            double lengthSq = dx * dx + dz * dz;
+            if (lengthSq <= 1.0E-8) continue;
+            double t = Math.max(0.0, Math.min(1.0,
+               ((projection.faceX() - start.faceX()) * dx + (projection.faceZ() - start.faceZ()) * dz) / lengthSq));
+            double nearestX = start.faceX() + t * dx;
+            double nearestZ = start.faceZ() + t * dz;
+            double distance = Math.hypot(projection.faceX() - nearestX, projection.faceZ() - nearestZ);
+            if (distance < bestDistance) {
+               bestDistance = distance;
+               bestDx = dx;
+               bestDz = dz;
+            }
+         }
+      }
+      if (Double.isFinite(bestDistance)) {
+         if (Math.abs(bestDx) >= Math.abs(bestDz)) return bestDx >= 0.0 ? Direction.EAST : Direction.WEST;
+         return bestDz >= 0.0 ? Direction.SOUTH : Direction.NORTH;
+      }
+      // Isolated infrastructure points still need a deterministic face-local orientation.
       boolean xAxis = Math.floorMod(featureId, 2L) == 0L;
       boolean positive = Math.floorMod(featureId, 4L) < 2L;
       if (xAxis) return positive ? Direction.EAST : Direction.WEST;
