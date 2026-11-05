@@ -1,6 +1,6 @@
 package com.yucareux.tellus.mixin;
 
-import com.yucareux.tellus.worldgen.EarthChunkGenerator;
+import com.yucareux.tellus.worldgen.WaterSourceConversionGuard;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
@@ -37,7 +37,7 @@ public class WaterSourceConversionMixin {
          && !current.isSource()
          && current.getType().isSame(Fluids.WATER)
          && level instanceof ServerLevel serverLevel
-         && serverLevel.getChunkSource().getGenerator() instanceof EarthChunkGenerator generator
+         && serverLevel.getChunkSource().getGenerator() instanceof WaterSourceConversionGuard generator
          && generator.shouldSuppressWaterSourceConversion(pos.getX(), pos.getY(), pos.getZ())) {
          // Returning the existing flowing state blocks only this attempted
          // conversion. The next vanilla tick still updates and spreads it.

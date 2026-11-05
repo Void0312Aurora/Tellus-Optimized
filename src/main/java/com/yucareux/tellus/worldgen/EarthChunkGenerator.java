@@ -156,7 +156,7 @@ import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemp
 import net.minecraft.world.level.material.Fluids;
 import net.minecraft.world.phys.Vec3;
 
-public final class EarthChunkGenerator extends TellusChunkGeneratorBridge {
+public final class EarthChunkGenerator extends TellusChunkGeneratorBridge implements WaterSourceConversionGuard {
    private static final TellusElevationSource ELEVATION_SOURCE = TellusWorldgenSources.elevation();
    private static final TellusCanopyHeightSource CANOPY_HEIGHT_SOURCE = TellusWorldgenSources.canopyHeight();
    private static final TellusResolveSource RESOLVE_SOURCE = TellusResolveSource.shared();

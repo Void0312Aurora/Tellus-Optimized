@@ -79,6 +79,7 @@ import net.minecraft.world.level.biome.FixedBiomeSource;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.world.level.block.state.properties.DoubleBlockHalf;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.animal.axolotl.Axolotl;
@@ -109,12 +110,14 @@ import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemp
  * chunks both read canonical face columns. Movement ownership is handled by
  * CubeNetRuntime.
  */
-public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeNetLodSurface {
+public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeNetLodSurface, WaterSourceConversionGuard {
    public static final int GEOMETRY_VERSION = 3;
    private static final float AXOLOTL_CHUNK_CHANCE = 0.55F;
    private static final float AXOLOTL_POND_CHANCE = 0.68F;
    private static final int MAX_AXOLOTLS_PER_CHUNK = 2;
-   private static final int CUBE_NET_SHORELINE_RADIUS = 8;
+   private static final int CUBE_NET_INLAND_SHORELINE_RADIUS = EarthGeneratorSettings.DEFAULT.riverLakeShorelineBlend();
+   private static final int CUBE_NET_OCEAN_SHORELINE_RADIUS = EarthGeneratorSettings.DEFAULT.oceanShorelineBlend();
+   private static final boolean CUBE_NET_SHORELINE_CLIFF_LIMIT = EarthGeneratorSettings.DEFAULT.shorelineBlendCliffLimit();
    private static final int CUBE_NET_SHORELINE_MIN_CLIFF = 3;
    private static final BlockState CUBE_NET_ROAD_POINT_BASE = Blocks.STONE_BRICK_WALL.defaultBlockState();
    private static final BlockState CUBE_NET_ROAD_SIGNAL_POLE = Blocks.IRON_BARS.defaultBlockState();
@@ -278,6 +281,16 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
    @Override public int minY() { return this.minY; }
    @Override public int maxY() { return this.minY + this.height; }
    SphereSingularityPolicy.Config singularityConfig() { return this.singularityConfig; }
+
+   @Override
+   public boolean shouldSuppressWaterSourceConversion(int blockX, int blockY, int blockZ) {
+      if (this.inlandWaterResolver == null) return false;
+      BlockAddress block = this.resolveBlock(blockX, blockZ).orElse(null);
+      if (block == null) return false;
+      SphereWorldModel.GeoPoint point = this.model.exactSurfacePoint(
+         block.address().face(), block.x() + 0.5, block.z() + 0.5);
+      return this.inlandWaterResolver.shouldSuppressWaterSourceConversion(point, blockY);
+   }
 
    @Override
    public ChunkGeneratorStructureState createState(
@@ -467,10 +480,11 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
             SphereWorldModel.SphereChunkAddress targetAddress = new SphereWorldModel.SphereChunkAddress(
                candidate.targetFace().index(), candidate.targetChunkX(), candidate.targetChunkZ());
             var canonical = this.faces[targetAddress.face()].terrainGrid(targetAddress);
-            var columns = new ArrayList<SphereChunkSampler.Column>(256);
+            List<SphereChunkSampler.Column> columns = new ArrayList<>(256);
             for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++) {
                columns.add(canonical.column(candidate.targetBlockX(x, z) & 15, candidate.targetBlockZ(x, z) & 15));
             }
+            columns = this.applyCubeNetLandmarkGround(columns);
             this.materializer.fill(chunk, new SphereChunkSampler.TerrainGrid(targetAddress,
                this.inlandWaterResolver == null ? columns : this.applyCubeNetShorelineBankRamp(chunk, columns)));
             this.applyCubeNetInlandFlow(chunk);
@@ -489,7 +503,7 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
 
    private void fillFromCanonical(ChunkAccess chunk, SphereWorldModel.SphereChunkAddress address) {
          var canonical = this.faces[address.face()].terrainGrid(address);
-         var columns = new ArrayList<SphereChunkSampler.Column>(256);
+         List<SphereChunkSampler.Column> columns = new ArrayList<>(256);
          var face = CubeNetLayout.Face.of(address.face());
          for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++) {
             // Chunk origins and all face offsets are section aligned. The
@@ -499,10 +513,37 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
             columns.add(canonical.column(Math.floorMod((int)Math.floor(local[0]), 16),
                Math.floorMod((int)Math.floor(local[1]), 16)));
          }
+         columns = this.applyCubeNetLandmarkGround(columns);
          this.materializer.fill(chunk, new SphereChunkSampler.TerrainGrid(address,
             this.inlandWaterResolver == null ? columns : this.applyCubeNetShorelineBankRamp(chunk, columns)));
          this.applyCubeNetInlandFlow(chunk);
          this.applyCubeNetBadlandsBands(chunk);
+   }
+
+   /** Applies Earth landmark flattening to canonical columns before materialization. */
+   private List<SphereChunkSampler.Column> applyCubeNetLandmarkGround(List<SphereChunkSampler.Column> columns) {
+      List<LandmarkPlacement> placements = this.landmarks.placements();
+      if (placements.isEmpty()) return columns;
+      List<SphereChunkSampler.Column> adjusted = null;
+      for (int index = 0; index < columns.size(); index++) {
+         SphereChunkSampler.Column column = columns.get(index);
+         SphereWorldModel.GeoPoint point = column.point();
+         int earthX = coordinateForEarth(EarthProjection.longitudeToBlockX(point.longitude(), this.worldScale()));
+         int earthZ = coordinateForEarth(EarthProjection.latToBlockZ(point.latitude(), this.worldScale()));
+         int flattened = Integer.MIN_VALUE;
+         for (LandmarkPlacement landmark : placements) {
+            int candidate = landmark.flattenedSurface(earthX, earthZ);
+            if (candidate != Integer.MIN_VALUE) {
+               flattened = candidate;
+               break;
+            }
+         }
+         if (flattened == Integer.MIN_VALUE) continue;
+         if (adjusted == null) adjusted = new ArrayList<>(columns);
+         double elevation = (flattened - this.seaLevel) * this.worldScale();
+         adjusted.set(index, column.withData(column.data().withoutWater().withElevation(elevation)));
+      }
+      return adjusted == null ? columns : List.copyOf(adjusted);
    }
 
    private void applyCubeNetInlandFlow(ChunkAccess chunk) {
@@ -534,6 +575,10 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
    private List<SphereChunkSampler.Column> applyCubeNetShorelineBankRamp(
       ChunkAccess chunk, List<SphereChunkSampler.Column> columns
    ) {
+      if (!CUBE_NET_SHORELINE_CLIFF_LIMIT
+         || Math.max(CUBE_NET_INLAND_SHORELINE_RADIUS, CUBE_NET_OCEAN_SHORELINE_RADIUS) <= 0) {
+         return columns;
+      }
       Map<Long, SphereChunkSampler.SurfaceData> cache = new HashMap<>();
       List<SphereChunkSampler.Column> adjusted = new ArrayList<>(columns);
       int minX = chunk.getPos().getMinBlockX();
@@ -543,16 +588,26 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
          SphereChunkSampler.Column column = columns.get(index);
          SphereChunkSampler.SurfaceData surface = column.data();
          if (!surface.elevationAvailable() || surface.waterAvailable()) continue;
+         BlockAddress resolved = this.resolveBlock(minX + localX, minZ + localZ).orElse(null);
+         if (resolved != null) {
+            SphereWorldModel.GeoPoint point = this.model.exactSurfacePoint(
+               resolved.address().face(), resolved.x() + 0.5, resolved.z() + 0.5);
+            if (this.inlandWaterResolver != null && this.inlandWaterResolver.isInlandBank(point)) continue;
+         }
          int terrainY = this.materializer.height(surface.elevationMeters());
          int allowedY = Integer.MAX_VALUE;
-         for (int dz = -CUBE_NET_SHORELINE_RADIUS; dz <= CUBE_NET_SHORELINE_RADIUS; dz++) {
-            for (int dx = -CUBE_NET_SHORELINE_RADIUS; dx <= CUBE_NET_SHORELINE_RADIUS; dx++) {
+         int searchRadius = Math.max(CUBE_NET_INLAND_SHORELINE_RADIUS, CUBE_NET_OCEAN_SHORELINE_RADIUS);
+         for (int dz = -searchRadius; dz <= searchRadius; dz++) {
+            for (int dx = -searchRadius; dx <= searchRadius; dx++) {
                if (dx == 0 && dz == 0) continue;
                int distance = Math.max(Math.abs(dx), Math.abs(dz));
-               if (distance > CUBE_NET_SHORELINE_RADIUS) continue;
+               if (distance > searchRadius) continue;
                SphereChunkSampler.SurfaceData neighbour = this.surfaceDataAtPlanar(
                   minX + localX + dx, minZ + localZ + dz, cache);
                if (neighbour == null || !neighbour.waterAvailable()) continue;
+               int radius = neighbour.inlandWater()
+                  ? CUBE_NET_INLAND_SHORELINE_RADIUS : CUBE_NET_OCEAN_SHORELINE_RADIUS;
+               if (distance > radius) continue;
                int waterY = this.materializer.height(neighbour.waterSurfaceMeters());
                allowedY = Math.min(allowedY, waterY + distance);
             }
@@ -589,14 +644,31 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
          if (localReliefBlocks < 3 && Double.isFinite(slope)) {
             localReliefBlocks = Math.max(0, (int)Math.round(slope / 9.0) * 3);
          }
-         if (localReliefBlocks < 3) continue;
+         BlockAddress resolved = this.resolveBlock(worldX, worldZ).orElse(null);
+         int materialX = worldX;
+         int materialZ = worldZ;
+         if (resolved != null) {
+            SphereWorldModel.GeoPoint point = this.model.exactSurfacePoint(
+               resolved.address().face(), resolved.x() + 0.5, resolved.z() + 0.5);
+            materialX = coordinateForEarth(EarthProjection.longitudeToBlockX(point.longitude(), this.worldScale()));
+            materialZ = coordinateForEarth(EarthProjection.latToBlockZ(point.latitude(), this.worldScale()));
+         }
+         if (localReliefBlocks < 3) {
+            cursor.set(worldX, surfaceY, worldZ);
+            MinecraftVersionCompat.setBlockState(chunk, cursor, this.cubeNetBadlandsPlateauTop(materialX, materialZ));
+            changed = true;
+            continue;
+         }
          int depth = BadlandsTerrainPolicy.cliffBandDepth(3, localReliefBlocks);
          int bottom = Math.max(this.minY + 1, surfaceY - depth + 1);
+         cursor.set(worldX, surfaceY, worldZ);
+         MinecraftVersionCompat.setBlockState(chunk, cursor, this.cubeNetBadlandsBand(materialX, materialZ, surfaceY));
          for (int y = surfaceY - 1; y >= bottom; y--) {
             cursor.set(worldX, y, worldZ);
-            MinecraftVersionCompat.setBlockState(chunk, cursor, this.cubeNetBadlandsBand(worldX, worldZ, y));
+            MinecraftVersionCompat.setBlockState(chunk, cursor, this.cubeNetBadlandsBand(materialX, materialZ, y));
             changed = true;
          }
+         changed = true;
       }
       if (changed) chunk.setUnsaved(true);
    }
@@ -610,6 +682,15 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
          case BadlandsTerrainPolicy.LIGHT_GRAY_TERRACOTTA -> TellusBlockReferences.terracottaState("LIGHT_GRAY");
          case BadlandsTerrainPolicy.WHITE_TERRACOTTA -> TellusBlockReferences.terracottaState("WHITE");
          default -> Blocks.TERRACOTTA.defaultBlockState();
+      };
+   }
+
+   private BlockState cubeNetBadlandsPlateauTop(int worldX, int worldZ) {
+      return switch (BadlandsTerrainPolicy.plateauMaterialIndex(worldX, worldZ)) {
+         case BadlandsTerrainPolicy.PLATEAU_TERRACOTTA,
+            BadlandsTerrainPolicy.PLATEAU_BROWN_TERRACOTTA -> Blocks.TERRACOTTA.defaultBlockState();
+         case BadlandsTerrainPolicy.PLATEAU_COARSE_DIRT -> Blocks.COARSE_DIRT.defaultBlockState();
+         default -> Blocks.RED_SAND.defaultBlockState();
       };
    }
 
@@ -1500,14 +1581,23 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
          int floorTop = blueprint.floorTopY(floorIndex);
          ArnisBuildingRules.ResidentialDecoration residential = ArnisBuildingRules.residentialWindowDecoration(
             blueprint, boundaryDistance, earthX, earthZ, floorIndex, floorBottom, floorTop);
+         if (floorIndex == 0 && blueprint.isEntranceCell(earthX, earthZ) && this.worldScale() <= 1.0) {
+            this.placeCubeNetApronEntranceDoor(level, chunk, apron, cell, facing, blueprint.floorY() + 1, local);
+         }
+         if (floorIndex == 0 && blueprint.nearEntranceApproach(earthX, earthZ)
+            && blueprint.isEntranceCell(earthX, earthZ)) {
+            this.placeApronFeatureBlock(level, chunk, apron, outside, palette.slab(), floorBottom + 3, local);
+            continue;
+         }
+         this.placeCubeNetApronFacadeDepth(level, chunk, apron, outside, blueprint, palette,
+            earthX, earthZ, floorIndex, floorBottom, floorTop, local);
          if (TellusBuildingFacade.shouldPlaceAwning(blueprint, boundaryDistance, earthX, earthZ, floorIndex)) {
             this.placeApronFeatureBlock(level, chunk, apron, outside, palette.awning(), floorBottom + 3, local);
          }
          int detailY = Math.min(floorTop, floorBottom + 2);
          if (TellusBuildingFacade.shouldPlaceBalcony(blueprint, boundaryDistance, earthX, earthZ, floorIndex, floorBottom, floorTop)
             || residential == ArnisBuildingRules.ResidentialDecoration.BALCONY) {
-            this.placeApronFeatureBlock(level, chunk, apron, outside, palette.slab(), detailY, local);
-            this.placeApronFeatureBlock(level, chunk, apron, outside, palette.railing(), detailY + 1, local);
+            this.placeCubeNetApronBalcony(level, chunk, apron, cell, palette, detailY, facing);
          } else if (TellusBuildingFacade.shouldPlaceFireEscape(blueprint, boundaryDistance, earthX, earthZ, floorIndex)) {
             this.placeApronFeatureBlock(level, chunk, apron, outside, palette.railing(), floorBottom + 1, local);
             this.placeApronFeatureBlock(level, chunk, apron, outside, palette.railing(), floorBottom + 2, local);
@@ -1532,6 +1622,57 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
          && blueprint.isFacadeCell(boundaryDistance, highestFloor)) {
          this.placeApronFeatureBlock(level, chunk, apron, outside, palette.trim(), roofTop, local);
          this.placeApronFeatureBlock(level, chunk, apron, outside, palette.slab(), roofTop + 1, local);
+      }
+      if (roofTop >= blueprint.roofBaseY(boundaryDistance)) {
+         this.placeCubeNetApronRooftopEquipment(level, chunk, apron, cell, blueprint,
+            boundaryDistance, earthX, earthZ, roofTop, local);
+      }
+   }
+
+   private void placeCubeNetApronEntranceDoor(WorldGenLevel level, ChunkAccess chunk,
+      CubeNetApronResolver.ChunkProjection apron, CubeNetFeatureRasterizer.FaceCell cell,
+      Direction facing, int lowerY, int[] local) {
+      if (lowerY < this.minY || lowerY + 1 >= this.maxY()) return;
+      BlockState lower = Blocks.OAK_DOOR.defaultBlockState()
+         .setValue(BlockStateProperties.HORIZONTAL_FACING, facing)
+         .setValue(BlockStateProperties.DOUBLE_BLOCK_HALF, DoubleBlockHalf.LOWER);
+      BlockState upper = lower.setValue(BlockStateProperties.DOUBLE_BLOCK_HALF, DoubleBlockHalf.UPPER);
+      this.placeApronFeatureBlock(level, chunk, apron, cell, lower, lowerY, local);
+      this.placeApronFeatureBlock(level, chunk, apron, cell, upper, lowerY + 1, local);
+   }
+
+   private void placeCubeNetApronRooftopEquipment(WorldGenLevel level, ChunkAccess chunk,
+      CubeNetApronResolver.ChunkProjection apron, CubeNetFeatureRasterizer.FaceCell cell,
+      BuildingBlueprint blueprint,
+      int boundaryDistance, int earthX, int earthZ, int roofTop, int[] local) {
+      if (blueprint.isFacadeCell(boundaryDistance, blueprint.highestActiveFloor(boundaryDistance))) return;
+      switch (ArnisBuildingRules.rooftopEquipmentAt(blueprint, boundaryDistance, earthX, earthZ)) {
+         case HVAC -> {
+            this.placeApronFeatureBlock(level, chunk, apron, cell, Blocks.IRON_BLOCK.defaultBlockState(), roofTop + 1, local);
+            this.placeApronFeatureBlock(level, chunk, apron, cell, Blocks.SMOOTH_STONE_SLAB.defaultBlockState(), roofTop + 2, local);
+         }
+         case SOLAR_PANEL -> this.placeApronFeatureBlock(level, chunk, apron, cell,
+            Blocks.DAYLIGHT_DETECTOR.defaultBlockState(), roofTop + 1, local);
+         case ANTENNA -> {
+            this.placeApronFeatureBlock(level, chunk, apron, cell, Blocks.IRON_BARS.defaultBlockState(), roofTop + 1, local);
+            this.placeApronFeatureBlock(level, chunk, apron, cell, Blocks.IRON_BARS.defaultBlockState(), roofTop + 2, local);
+            this.placeApronFeatureBlock(level, chunk, apron, cell, TellusBlockReferences.lightningRodState(), roofTop + 3, local);
+         }
+         case WATER_TANK -> {
+            this.placeApronFeatureBlock(level, chunk, apron, cell, Blocks.BARREL.defaultBlockState(), roofTop + 1, local);
+            this.placeApronFeatureBlock(level, chunk, apron, cell, Blocks.CAULDRON.defaultBlockState(), roofTop + 2, local);
+         }
+         case VENT_STACK -> {
+            this.placeApronFeatureBlock(level, chunk, apron, cell, Blocks.COBBLESTONE_WALL.defaultBlockState(), roofTop + 1, local);
+            this.placeApronFeatureBlock(level, chunk, apron, cell, Blocks.COBBLESTONE_WALL.defaultBlockState(), roofTop + 2, local);
+         }
+         case ROOF_ACCESS -> {
+            this.placeApronFeatureBlock(level, chunk, apron, cell, Blocks.STONE_BRICKS.defaultBlockState(), roofTop + 1, local);
+            this.placeApronFeatureBlock(level, chunk, apron, cell, Blocks.STONE_BRICKS.defaultBlockState(), roofTop + 2, local);
+            this.placeApronFeatureBlock(level, chunk, apron, cell, Blocks.STONE_BRICK_SLAB.defaultBlockState(), roofTop + 3, local);
+         }
+         case NONE -> {
+         }
       }
    }
 
@@ -1571,6 +1712,7 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
       }
       java.util.Set<Long> occupied = new java.util.HashSet<>();
       for (CubeNetFeatureRasterizer.FaceCell cell : cells) occupied.add(packFaceCell(cell.x(), cell.z()));
+      this.prepareCubeNetBuildingFoundation(level, chunk, cells, groundY);
       for (CubeNetFeatureRasterizer.FaceCell cell : cells) {
          if (cell.x() < minX || cell.x() > maxX || cell.z() < minZ || cell.z() > maxZ) continue;
          boolean boundary = !occupied.contains(packFaceCell(cell.x() - 1, cell.z()))
@@ -1600,6 +1742,33 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
       }
    }
 
+   /**
+    * Reuses Earth's flat building foundation contract on the canonical face.
+    * Buildings use one blueprint floor height, so the terrain inside the
+    * footprint is raised or cleared to that floor before the body is written.
+    * Apron chunks mirror this owner result and never perform a second edit.
+    */
+   private void prepareCubeNetBuildingFoundation(WorldGenLevel level, ChunkAccess chunk,
+      List<CubeNetFeatureRasterizer.FaceCell> cells, int groundY) {
+      for (CubeNetFeatureRasterizer.FaceCell cell : cells) {
+         CubeNetLayout.PlanarPoint point = this.adapter.layout().toPlanar(new CubeNetLayout.FacePoint(
+            CubeNetLayout.Face.of(cell.face()), cell.x() + 0.5, cell.z() + 0.5));
+         int worldX = (int)Math.floor(point.x());
+         int worldZ = (int)Math.floor(point.z());
+         if (Math.floorDiv(worldX, 16) != chunk.getPos().x || Math.floorDiv(worldZ, 16) != chunk.getPos().z) continue;
+         int currentSurface = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, worldX, worldZ) - 1;
+         if (currentSurface < groundY - 1) {
+            for (int y = currentSurface + 1; y < groundY; y++) {
+               this.placeFeatureBlock(level, chunk, cell, Blocks.STONE.defaultBlockState(), y);
+            }
+         } else if (currentSurface > groundY - 1) {
+            for (int y = groundY; y <= currentSurface; y++) {
+               this.placeFeatureBlock(level, chunk, cell, Blocks.AIR.defaultBlockState(), y);
+            }
+         }
+      }
+   }
+
    private void placeCubeNetBuildingExteriorDetails(WorldGenLevel level, ChunkAccess chunk,
       CubeNetFeatureRasterizer.FaceCell cell, java.util.Set<Long> occupied,
       BuildingBlueprint blueprint, TellusBuildingMaterials.BuildingMaterialPalette palette,
@@ -1618,13 +1787,23 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
          int floorTop = blueprint.floorTopY(floorIndex);
          ArnisBuildingRules.ResidentialDecoration residential = ArnisBuildingRules.residentialWindowDecoration(
             blueprint, boundaryDistance, earthX, earthZ, floorIndex, floorBottom, floorTop);
+         if (floorIndex == 0 && blueprint.isEntranceCell(earthX, earthZ) && this.worldScale() <= 1.0) {
+            this.placeCubeNetEntranceDoor(level, chunk, cell, facing, blueprint.floorY() + 1);
+         }
+         if (floorIndex == 0 && blueprint.nearEntranceApproach(earthX, earthZ)
+            && blueprint.isEntranceCell(earthX, earthZ)) {
+            this.placeCubeNetDecorationBlock(level, chunk, outside, palette.slab(), floorBottom + 3);
+            continue;
+         }
+         this.placeCubeNetFacadeDepth(level, chunk, outside, blueprint, palette,
+            earthX, earthZ, floorIndex, floorBottom, floorTop);
          if (TellusBuildingFacade.shouldPlaceAwning(blueprint, boundaryDistance, earthX, earthZ, floorIndex)) {
             this.placeCubeNetDecorationBlock(level, chunk, outside, palette.awning(), floorBottom + 3);
          }
          if (TellusBuildingFacade.shouldPlaceBalcony(blueprint, boundaryDistance, earthX, earthZ, floorIndex, floorBottom, floorTop)
             || residential == ArnisBuildingRules.ResidentialDecoration.BALCONY) {
-            this.placeCubeNetDecorationBlock(level, chunk, outside, palette.slab(), Math.min(floorTop, floorBottom + 2));
-            this.placeCubeNetDecorationBlock(level, chunk, outside, palette.railing(), Math.min(floorTop, floorBottom + 2) + 1);
+            this.placeCubeNetBalcony(level, chunk, cell, palette, Math.min(floorTop, floorBottom + 2), facing,
+               blueprint.blueprintSeed(), earthX, earthZ, floorIndex);
          } else if (TellusBuildingFacade.shouldPlaceFireEscape(blueprint, boundaryDistance, earthX, earthZ, floorIndex)) {
             this.placeCubeNetDecorationBlock(level, chunk, outside, palette.railing(), floorBottom + 1);
             this.placeCubeNetDecorationBlock(level, chunk, outside, palette.railing(), floorBottom + 2);
@@ -1649,6 +1828,248 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
          && blueprint.isFacadeCell(boundaryDistance, highestFloor)) {
          this.placeCubeNetDecorationBlock(level, chunk, outside, palette.trim(), roofTop);
          this.placeCubeNetDecorationBlock(level, chunk, outside, palette.slab(), roofTop + 1);
+      }
+      if (roofTop >= blueprint.roofBaseY(boundaryDistance)) {
+         this.placeCubeNetRooftopEquipment(level, chunk, cell, blueprint,
+            boundaryDistance, earthX, earthZ, roofTop);
+      }
+   }
+
+   private void placeCubeNetEntranceDoor(WorldGenLevel level, ChunkAccess chunk,
+      CubeNetFeatureRasterizer.FaceCell cell, Direction facing, int lowerY) {
+      if (lowerY < this.minY || lowerY + 1 >= this.maxY()) return;
+      BlockState lower = Blocks.OAK_DOOR.defaultBlockState()
+         .setValue(BlockStateProperties.HORIZONTAL_FACING, facing)
+         .setValue(BlockStateProperties.DOUBLE_BLOCK_HALF, DoubleBlockHalf.LOWER);
+      BlockState upper = lower.setValue(BlockStateProperties.DOUBLE_BLOCK_HALF, DoubleBlockHalf.UPPER);
+      this.placeFeatureBlock(level, chunk, cell, lower, lowerY);
+      this.placeFeatureBlock(level, chunk, cell, upper, lowerY + 1);
+   }
+
+   private void placeCubeNetRooftopEquipment(WorldGenLevel level, ChunkAccess chunk,
+      CubeNetFeatureRasterizer.FaceCell cell, BuildingBlueprint blueprint,
+      int boundaryDistance,
+      int earthX, int earthZ, int roofTop) {
+      if (!blueprint.isFacadeCell(boundaryDistance, blueprint.highestActiveFloor(boundaryDistance))) {
+         switch (ArnisBuildingRules.rooftopEquipmentAt(blueprint, boundaryDistance, earthX, earthZ)) {
+            case HVAC -> {
+               this.placeCubeNetDecorationBlock(level, chunk, cell, Blocks.IRON_BLOCK.defaultBlockState(), roofTop + 1);
+               this.placeCubeNetDecorationBlock(level, chunk, cell, Blocks.SMOOTH_STONE_SLAB.defaultBlockState(), roofTop + 2);
+            }
+            case SOLAR_PANEL -> this.placeCubeNetDecorationBlock(level, chunk, cell,
+               Blocks.DAYLIGHT_DETECTOR.defaultBlockState(), roofTop + 1);
+            case ANTENNA -> {
+               this.placeCubeNetDecorationBlock(level, chunk, cell, Blocks.IRON_BARS.defaultBlockState(), roofTop + 1);
+               this.placeCubeNetDecorationBlock(level, chunk, cell, Blocks.IRON_BARS.defaultBlockState(), roofTop + 2);
+               this.placeCubeNetDecorationBlock(level, chunk, cell, TellusBlockReferences.lightningRodState(), roofTop + 3);
+            }
+            case WATER_TANK -> {
+               this.placeCubeNetDecorationBlock(level, chunk, cell, Blocks.BARREL.defaultBlockState(), roofTop + 1);
+               this.placeCubeNetDecorationBlock(level, chunk, cell, Blocks.CAULDRON.defaultBlockState(), roofTop + 2);
+            }
+            case VENT_STACK -> {
+               this.placeCubeNetDecorationBlock(level, chunk, cell, Blocks.COBBLESTONE_WALL.defaultBlockState(), roofTop + 1);
+               this.placeCubeNetDecorationBlock(level, chunk, cell, Blocks.COBBLESTONE_WALL.defaultBlockState(), roofTop + 2);
+            }
+            case ROOF_ACCESS -> {
+               this.placeCubeNetDecorationBlock(level, chunk, cell, Blocks.STONE_BRICKS.defaultBlockState(), roofTop + 1);
+               this.placeCubeNetDecorationBlock(level, chunk, cell, Blocks.STONE_BRICKS.defaultBlockState(), roofTop + 2);
+               this.placeCubeNetDecorationBlock(level, chunk, cell, Blocks.STONE_BRICK_SLAB.defaultBlockState(), roofTop + 3);
+            }
+            case NONE -> {
+            }
+         }
+      }
+   }
+
+   private void placeCubeNetFacadeDepth(WorldGenLevel level, ChunkAccess chunk,
+      CubeNetFeatureRasterizer.FaceCell outside, BuildingBlueprint blueprint,
+      TellusBuildingMaterials.BuildingMaterialPalette palette, int earthX, int earthZ,
+      int floorIndex, int floorBottom, int floorTop) {
+      if (floorTop <= floorBottom) return;
+      int bay = ArnisBuildingRules.facadeBay(blueprint, earthX, earthZ);
+      BlockState lower = palette.accent();
+      switch (blueprint.style().wallDepthStyle()) {
+         case SUBTLE_PILASTERS -> { if (bay != 3) return; }
+         case MODERN_PILLARS, INSTITUTIONAL_BANDS -> {
+            if (bay == 3) {
+               // Continue with the full pilaster below.
+            } else if (bay < 3) {
+               this.placeCubeNetDecorationBlock(level, chunk, outside, lower, floorBottom + 1);
+               this.placeCubeNetDecorationBlock(level, chunk, outside, palette.trim(), floorTop);
+               return;
+            } else return;
+         }
+         case INDUSTRIAL_BEAMS, GLASS_CURTAIN -> {
+            if (!ArnisBuildingRules.isFacadeCorner(blueprint, earthX, earthZ, floorIndex)) return;
+         }
+         case HISTORIC_ORNATE -> {
+            this.placeCubeNetDecorationBlock(level, chunk, outside, lower, floorBottom + 1);
+            if (bay == 0 || bay == 2) {
+               this.placeCubeNetDecorationBlock(level, chunk, outside, palette.trim(), Math.max(floorBottom + 2, floorTop - 1));
+            }
+            this.placeCubeNetDecorationBlock(level, chunk, outside, palette.trim(), floorTop + 1);
+            return;
+         }
+         case RELIGIOUS_BUTTRESS -> {
+            if (bay != 0) {
+               this.placeCubeNetDecorationBlock(level, chunk, outside, palette.trim(), floorTop + 1);
+               return;
+            }
+         }
+         case SKYSCRAPER_FINS -> {
+            this.placeCubeNetDecorationBlock(level, chunk, outside, lower, floorBottom + 1);
+            if (bay != 3) {
+               this.placeCubeNetDecorationBlock(level, chunk, outside, palette.trim(), floorTop);
+               return;
+            }
+         }
+         case NONE -> { return; }
+      }
+      for (int y = floorBottom + 1; y <= floorTop; y++) {
+         this.placeCubeNetDecorationBlock(level, chunk, outside, y == floorTop ? palette.accent() : lower, y);
+      }
+   }
+
+   private void placeCubeNetBalcony(WorldGenLevel level, ChunkAccess chunk,
+      CubeNetFeatureRasterizer.FaceCell cell, TellusBuildingMaterials.BuildingMaterialPalette palette,
+      int balconyY, Direction facing, long blueprintSeed, int earthX, int earthZ, int floorIndex) {
+      Direction tangent = facing.getClockWise();
+      for (int offset = -1; offset <= 1; offset++) {
+         for (int depth = 1; depth <= 2; depth++) {
+            CubeNetFeatureRasterizer.FaceCell target = this.offsetFaceCell(cell,
+               facing.getStepX() * depth + tangent.getStepX() * offset,
+               facing.getStepZ() * depth + tangent.getStepZ() * offset);
+            if (target != null) this.placeCubeNetDecorationBlock(level, chunk, target, palette.slab(), balconyY);
+         }
+      }
+      for (int offset = -1; offset <= 1; offset++) {
+         CubeNetFeatureRasterizer.FaceCell target = this.offsetFaceCell(cell,
+            facing.getStepX() * 3 + tangent.getStepX() * offset,
+            facing.getStepZ() * 3 + tangent.getStepZ() * offset);
+         if (target != null) this.placeCubeNetDecorationBlock(level, chunk, target, palette.railing(), balconyY + 1);
+      }
+      for (int depth = 1; depth <= 2; depth++) {
+         CubeNetFeatureRasterizer.FaceCell left = this.offsetFaceCell(cell,
+            facing.getStepX() * depth - tangent.getStepX() * 2,
+            facing.getStepZ() * depth - tangent.getStepZ() * 2);
+         CubeNetFeatureRasterizer.FaceCell right = this.offsetFaceCell(cell,
+            facing.getStepX() * depth + tangent.getStepX() * 2,
+            facing.getStepZ() * depth + tangent.getStepZ() * 2);
+         if (left != null) this.placeCubeNetDecorationBlock(level, chunk, left, palette.railing(), balconyY + 1);
+         if (right != null) this.placeCubeNetDecorationBlock(level, chunk, right, palette.railing(), balconyY + 1);
+      }
+      int roll = Math.floorMod((int)(blueprintSeed ^ (long)earthX * 341873128712L
+         ^ (long)earthZ * 132897987541L ^ (long)floorIndex * 31L), 100);
+      CubeNetFeatureRasterizer.FaceCell furniture = this.offsetFaceCell(cell,
+         facing.getStepX() + tangent.getStepX() * (roll < 50 ? -1 : 1),
+         facing.getStepZ() + tangent.getStepZ() * (roll < 50 ? -1 : 1));
+      if (furniture != null) {
+         if (roll < 30) {
+            this.placeCubeNetDecorationBlock(level, chunk, furniture, Blocks.CAULDRON.defaultBlockState(), balconyY + 1);
+            this.placeCubeNetDecorationBlock(level, chunk, furniture, Blocks.OAK_LEAVES.defaultBlockState(), balconyY + 2);
+         } else if (roll < 55) {
+            this.placeCubeNetDecorationBlock(level, chunk, furniture,
+               Blocks.OAK_STAIRS.defaultBlockState().setValue(BlockStateProperties.HORIZONTAL_FACING, facing.getOpposite()), balconyY + 1);
+         }
+      }
+   }
+
+   private void placeCubeNetApronBalcony(WorldGenLevel level, ChunkAccess chunk,
+      CubeNetApronResolver.ChunkProjection apron, CubeNetFeatureRasterizer.FaceCell cell,
+      TellusBuildingMaterials.BuildingMaterialPalette palette, int balconyY, Direction facing) {
+      Direction tangent = facing.getClockWise();
+      for (int offset = -1; offset <= 1; offset++) {
+         for (int depth = 1; depth <= 2; depth++) {
+            this.placeCubeNetApronBalconyCell(level, chunk, apron, cell,
+               facing.getStepX() * depth + tangent.getStepX() * offset,
+               facing.getStepZ() * depth + tangent.getStepZ() * offset,
+               palette.slab(), balconyY);
+         }
+      }
+      for (int offset = -1; offset <= 1; offset++) {
+         this.placeCubeNetApronBalconyCell(level, chunk, apron, cell,
+            facing.getStepX() * 3 + tangent.getStepX() * offset,
+            facing.getStepZ() * 3 + tangent.getStepZ() * offset,
+            palette.railing(), balconyY + 1);
+      }
+      for (int depth = 1; depth <= 2; depth++) {
+         this.placeCubeNetApronBalconyCell(level, chunk, apron, cell,
+            facing.getStepX() * depth - tangent.getStepX() * 2,
+            facing.getStepZ() * depth - tangent.getStepZ() * 2,
+            palette.railing(), balconyY + 1);
+         this.placeCubeNetApronBalconyCell(level, chunk, apron, cell,
+            facing.getStepX() * depth + tangent.getStepX() * 2,
+            facing.getStepZ() * depth + tangent.getStepZ() * 2,
+            palette.railing(), balconyY + 1);
+      }
+   }
+
+   private void placeCubeNetApronBalconyCell(WorldGenLevel level, ChunkAccess chunk,
+      CubeNetApronResolver.ChunkProjection apron, CubeNetFeatureRasterizer.FaceCell origin,
+      int dx, int dz, BlockState state, int y) {
+      CubeNetFeatureRasterizer.FaceCell target = this.offsetFaceCell(origin, dx, dz);
+      if (target == null) return;
+      int[] local = this.sourceLocalForTarget(apron, target.x(), target.z());
+      if (local != null) this.placeApronFeatureBlock(level, chunk, apron, target, state, y, local);
+   }
+
+   private CubeNetFeatureRasterizer.FaceCell offsetFaceCell(
+      CubeNetFeatureRasterizer.FaceCell cell, int dx, int dz
+   ) {
+      int x = cell.x() + dx, z = cell.z() + dz;
+      int faceSize = this.adapter.layout().faceSize();
+      return x < 0 || x >= faceSize || z < 0 || z >= faceSize
+         ? null : new CubeNetFeatureRasterizer.FaceCell(cell.face(), x, z);
+   }
+
+   private void placeCubeNetApronFacadeDepth(WorldGenLevel level, ChunkAccess chunk,
+      CubeNetApronResolver.ChunkProjection apron, CubeNetFeatureRasterizer.FaceCell outside,
+      BuildingBlueprint blueprint, TellusBuildingMaterials.BuildingMaterialPalette palette,
+      int earthX, int earthZ, int floorIndex, int floorBottom, int floorTop, int[] local) {
+      if (floorTop <= floorBottom) return;
+      int bay = ArnisBuildingRules.facadeBay(blueprint, earthX, earthZ);
+      BlockState lower = palette.accent();
+      switch (blueprint.style().wallDepthStyle()) {
+         case SUBTLE_PILASTERS -> { if (bay != 3) return; }
+         case MODERN_PILLARS, INSTITUTIONAL_BANDS -> {
+            if (bay == 3) {
+               // Continue with the full pilaster below.
+            } else if (bay < 3) {
+               this.placeApronFeatureBlock(level, chunk, apron, outside, lower, floorBottom + 1, local);
+               this.placeApronFeatureBlock(level, chunk, apron, outside, palette.trim(), floorTop, local);
+               return;
+            } else return;
+         }
+         case INDUSTRIAL_BEAMS, GLASS_CURTAIN -> {
+            if (!ArnisBuildingRules.isFacadeCorner(blueprint, earthX, earthZ, floorIndex)) return;
+         }
+         case HISTORIC_ORNATE -> {
+            this.placeApronFeatureBlock(level, chunk, apron, outside, lower, floorBottom + 1, local);
+            if (bay == 0 || bay == 2) {
+               this.placeApronFeatureBlock(level, chunk, apron, outside, palette.trim(), Math.max(floorBottom + 2, floorTop - 1), local);
+            }
+            this.placeApronFeatureBlock(level, chunk, apron, outside, palette.trim(), floorTop + 1, local);
+            return;
+         }
+         case RELIGIOUS_BUTTRESS -> {
+            if (bay != 0) {
+               this.placeApronFeatureBlock(level, chunk, apron, outside, palette.trim(), floorTop + 1, local);
+               return;
+            }
+         }
+         case SKYSCRAPER_FINS -> {
+            this.placeApronFeatureBlock(level, chunk, apron, outside, lower, floorBottom + 1, local);
+            if (bay != 3) {
+               this.placeApronFeatureBlock(level, chunk, apron, outside, palette.trim(), floorTop, local);
+               return;
+            }
+         }
+         case NONE -> { return; }
+      }
+      for (int y = floorBottom + 1; y <= floorTop; y++) {
+         this.placeApronFeatureBlock(level, chunk, apron, outside,
+            y == floorTop ? palette.accent() : lower, y, local);
       }
    }
 

@@ -99,6 +99,55 @@ public final class CubeNetInlandWaterResolver {
       this.planner.clear();
    }
 
+   /**
+    * Mirrors Earth's infinite-source guard for a geodetic Cube-Net column.
+    * The planner already knows whether the column is a mapped flowing reach
+    * or a falling curtain; this method only applies the guard at the water
+    * surface (and inside a curtain), leaving ordinary vanilla spreading
+    * untouched.
+    */
+   public boolean shouldSuppressWaterSourceConversion(
+      SphereWorldModel.GeoPoint point, int blockY
+   ) {
+      Objects.requireNonNull(point, "point");
+      SphereChunkSampler.SurfaceData surface = this.terrain.samplePoint(point, this.worldScale);
+      if (!surface.elevationAvailable() || surface.oceanWater() || !waterCandidate(surface.coverClass())) {
+         return false;
+      }
+      int earthX = earthBlockX(point.longitude());
+      int earthZ = earthBlockZ(point.latitude());
+      InlandHydrologyPlanner.Column column;
+      try {
+         column = this.planner.sample(earthX, earthZ, height(surface.elevationMeters()));
+      } catch (RuntimeException unavailable) {
+         if (containsCoverageFailure(unavailable)) return false;
+         throw unavailable;
+      }
+      if (!column.managed() || !column.wet()) return false;
+      int waterY = column.water();
+      if (blockY != waterY && !(column.falling() && blockY > column.terrain() && blockY <= waterY)) {
+         return false;
+      }
+      return column.falling() || column.flowLevel() > 0 || column.bank();
+   }
+
+   /** Whether the projected point is one of the planner's inland bank columns. */
+   public boolean isInlandBank(SphereWorldModel.GeoPoint point) {
+      Objects.requireNonNull(point, "point");
+      SphereChunkSampler.SurfaceData surface = this.terrain.samplePoint(point, this.worldScale);
+      if (!surface.elevationAvailable() || surface.oceanWater() || !waterCandidate(surface.coverClass())) {
+         return false;
+      }
+      try {
+         InlandHydrologyPlanner.Column column = this.planner.sample(
+            earthBlockX(point.longitude()), earthBlockZ(point.latitude()), height(surface.elevationMeters()));
+         return column.managed() && column.bank();
+      } catch (RuntimeException unavailable) {
+         if (containsCoverageFailure(unavailable)) return false;
+         throw unavailable;
+      }
+   }
+
    private int height(double elevationMeters) {
       double blocks = elevationMeters / this.worldScale;
       double height = this.seaLevel + (elevationMeters >= 0.0 ? Math.ceil(blocks) : Math.floor(blocks));

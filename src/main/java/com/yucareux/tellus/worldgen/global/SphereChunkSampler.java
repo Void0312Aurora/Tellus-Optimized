@@ -179,6 +179,11 @@ public final class SphereChunkSampler {
          return new SurfaceData(value, this.coverClass, this.waterSurfaceMeters,
             this.waterKind, this.geology, this.neighbourhood);
       }
+      /** Returns this column as dry terrain while retaining its land-cover and geology metadata. */
+      public SurfaceData withoutWater() {
+         return new SurfaceData(this.elevationMeters, this.coverClass, Double.NaN,
+            WaterKind.NONE, this.geology, this.neighbourhood);
+      }
       public boolean elevationAvailable() { return Double.isFinite(this.elevationMeters); }
       public boolean waterAvailable() { return Double.isFinite(this.waterSurfaceMeters); }
       public boolean oceanWater() { return this.waterAvailable() && this.waterKind == WaterKind.OCEAN; }
@@ -211,6 +216,10 @@ public final class SphereChunkSampler {
 
       public SphereColumnContext context() {
          return new SphereColumnContext(this.address, this.point, this.data);
+      }
+
+      public Column withData(SurfaceData value) {
+         return new Column(this.address, this.point, Objects.requireNonNull(value, "data"));
       }
    }
 
