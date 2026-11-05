@@ -936,6 +936,7 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
 
    private void placeCubeNetInfrastructurePoints(WorldGenLevel level, ChunkAccess chunk,
       List<OsmStreetLightFeature> points) {
+      Map<Long, SphereChunkSampler.SurfaceData> surfaceCache = new HashMap<>();
       for (OsmStreetLightFeature point : points) {
          if (point.kind() == null || point.kind() == com.yucareux.tellus.world.data.osm.RoadPointKind.STREET_LIGHT) continue;
          CubeNetFeatureProjector.Projection projection = CubeNetFeatureProjector.project(
@@ -943,7 +944,9 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
          if (projection == null || !this.chunkOwnsPlanarPoint(chunk, projection.planarX(), projection.planarZ())) continue;
          int worldX = (int)Math.floor(projection.planarX());
          int worldZ = (int)Math.floor(projection.planarZ());
-         int surfaceY = this.surfaceYAtPlanar(worldX, worldZ, new HashMap<>(), new HashMap<>());
+         SphereChunkSampler.SurfaceData surface = this.surfaceDataAtPlanar(worldX, worldZ, surfaceCache);
+         if (surface == null || surface.waterAvailable() && surface.waterSurfaceMeters() > surface.elevationMeters()) continue;
+         int surfaceY = this.materializer.height(surface.elevationMeters());
          BlockState state = switch (point.kind()) {
             case TRAFFIC_SIGNAL -> Blocks.REDSTONE_TORCH.defaultBlockState();
             case BUS_STOP -> Blocks.OAK_SIGN.defaultBlockState();
@@ -979,7 +982,9 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
       if (projection == null || !this.chunkOwnsPlanarPoint(chunk, projection.planarX(), projection.planarZ())) return;
       int worldX = (int)Math.floor(projection.planarX());
       int worldZ = (int)Math.floor(projection.planarZ());
-      int baseY = this.surfaceYAtPlanar(worldX, worldZ, new HashMap<>(), new HashMap<>());
+      SphereChunkSampler.SurfaceData surface = this.surfaceDataAtPlanar(worldX, worldZ, new HashMap<>());
+      if (surface == null || surface.waterAvailable() && surface.waterSurfaceMeters() > surface.elevationMeters()) return;
+      int baseY = this.materializer.height(surface.elevationMeters());
       for (StreetLightModel.Part part : StreetLightModel.parts(lamp, baseY)) {
          double partLon = this.normalizeLongitude(
             EarthProjection.blockXToLongitude(part.position().getX(), this.worldScale()), centerLongitude);
@@ -1172,10 +1177,10 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
             || !occupied.contains(packFaceCell(cell.x(), cell.z() + 1));
          int[] local = this.sourceLocalForTarget(apron, cell.x(), cell.z());
          if (local == null) continue;
+         int[] earth = this.earthCoordinates(cell);
+         int boundaryDistance = interior.plan().boundaryDistanceAt(earth[0], earth[1]);
+         if (boundaryDistance < 0) boundaryDistance = boundary ? 0 : 2;
          for (int y = groundY; y <= groundY + height; y++) {
-            int[] earth = this.earthCoordinates(cell);
-            int boundaryDistance = interior.plan().boundaryDistanceAt(earth[0], earth[1]);
-            if (boundaryDistance < 0) boundaryDistance = boundary ? 0 : 2;
             int floorIndex = blueprint.floorIndexAtY(y);
             BlockState state = y == groundY ? palette.floor()
                : y >= blueprint.roofBaseY(boundaryDistance)
@@ -1188,6 +1193,8 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
                         : Blocks.AIR.defaultBlockState();
             this.placeApronFeatureBlock(level, chunk, apron, cell, state, y, local);
          }
+         this.placeCubeNetRoofDetail(level, chunk, apron, cell, local, blueprint, palette,
+            boundaryDistance, earth[0], earth[1], groundY + height + 1);
       }
    }
 
@@ -1233,10 +1240,10 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
             || !occupied.contains(packFaceCell(cell.x() + 1, cell.z()))
             || !occupied.contains(packFaceCell(cell.x(), cell.z() - 1))
             || !occupied.contains(packFaceCell(cell.x(), cell.z() + 1));
+         int[] earth = this.earthCoordinates(cell);
+         int boundaryDistance = interior.plan().boundaryDistanceAt(earth[0], earth[1]);
+         if (boundaryDistance < 0) boundaryDistance = boundary ? 0 : 2;
          for (int y = groundY; y <= groundY + height; y++) {
-            int[] earth = this.earthCoordinates(cell);
-            int boundaryDistance = interior.plan().boundaryDistanceAt(earth[0], earth[1]);
-            if (boundaryDistance < 0) boundaryDistance = boundary ? 0 : 2;
             int floorIndex = blueprint.floorIndexAtY(y);
             BlockState state = y == groundY ? palette.floor()
                : y >= blueprint.roofBaseY(boundaryDistance)
@@ -1249,6 +1256,34 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
                         : Blocks.AIR.defaultBlockState();
             this.placeFeatureBlock(level, chunk, cell, state, y);
          }
+         this.placeCubeNetRoofDetail(level, chunk, cell, blueprint, palette,
+            boundaryDistance, earth[0], earth[1], groundY + height + 1);
+      }
+   }
+
+   private void placeCubeNetRoofDetail(WorldGenLevel level, ChunkAccess chunk,
+      CubeNetApronResolver.ChunkProjection apron, CubeNetFeatureRasterizer.FaceCell cell, int[] local,
+      BuildingBlueprint blueprint, TellusBuildingMaterials.BuildingMaterialPalette palette,
+      int boundaryDistance, int earthX, int earthZ, int detailBaseY) {
+      BlockState detail = TellusBuildingMaterials.resolveLodRoofDetailBlock(
+         blueprint, palette, boundaryDistance, earthX, earthZ);
+      if (detail == null) return;
+      int height = TellusBuildingMaterials.resolveLodRoofDetailHeight(blueprint, boundaryDistance, earthX, earthZ);
+      for (int dy = 0; dy < Math.max(1, height); dy++) {
+         this.placeApronFeatureBlock(level, chunk, apron, cell, detail, detailBaseY + dy, local);
+      }
+   }
+
+   private void placeCubeNetRoofDetail(WorldGenLevel level, ChunkAccess chunk,
+      CubeNetFeatureRasterizer.FaceCell cell, BuildingBlueprint blueprint,
+      TellusBuildingMaterials.BuildingMaterialPalette palette, int boundaryDistance,
+      int earthX, int earthZ, int detailBaseY) {
+      BlockState detail = TellusBuildingMaterials.resolveLodRoofDetailBlock(
+         blueprint, palette, boundaryDistance, earthX, earthZ);
+      if (detail == null) return;
+      int height = TellusBuildingMaterials.resolveLodRoofDetailHeight(blueprint, boundaryDistance, earthX, earthZ);
+      for (int dy = 0; dy < Math.max(1, height); dy++) {
+         this.placeFeatureBlock(level, chunk, cell, detail, detailBaseY + dy);
       }
    }
 
