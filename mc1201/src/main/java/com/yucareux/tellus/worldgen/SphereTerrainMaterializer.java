@@ -179,8 +179,14 @@ public final class SphereTerrainMaterializer {
       return switch (material) {
          case GRASS -> Blocks.GRASS_BLOCK.defaultBlockState();
          case DIRT -> Blocks.DIRT.defaultBlockState();
+         case COARSE_DIRT -> Blocks.COARSE_DIRT.defaultBlockState();
+         case PODZOL -> Blocks.PODZOL.defaultBlockState();
+         case ROOTED_DIRT -> Blocks.ROOTED_DIRT.defaultBlockState();
+         case MOSS -> Blocks.MOSS_BLOCK.defaultBlockState();
+         case MYCELIUM -> Blocks.MYCELIUM.defaultBlockState();
          case SAND -> Blocks.SAND.defaultBlockState();
          case SANDSTONE -> Blocks.SANDSTONE.defaultBlockState();
+         case RED_SAND -> Blocks.RED_SAND.defaultBlockState();
          case SNOW -> Blocks.SNOW_BLOCK.defaultBlockState();
          case POWDER_SNOW -> Blocks.POWDER_SNOW.defaultBlockState();
          case STONE -> Blocks.STONE.defaultBlockState();
@@ -191,6 +197,8 @@ public final class SphereTerrainMaterializer {
          case PACKED_ICE -> Blocks.PACKED_ICE.defaultBlockState();
          case BLUE_ICE -> Blocks.BLUE_ICE.defaultBlockState();
          case MUD -> Blocks.MUD.defaultBlockState();
+         case PACKED_MUD -> Blocks.PACKED_MUD.defaultBlockState();
+         case TERRACOTTA -> Blocks.TERRACOTTA.defaultBlockState();
       };
    }
 
