@@ -79,7 +79,8 @@ public final class CubeNetInlandWaterResolver {
       if (!Double.isFinite(waterSurface) || !Double.isFinite(terrainSurface) || terrainSurface > waterSurface) {
          return Sample.dry();
       }
-      return new Sample(true, false, terrainSurface, waterSurface, column.terrain(), column.water());
+      return new Sample(true, false, terrainSurface, waterSurface, column.terrain(), column.water(),
+         column.flowLevel(), column.falling());
    }
 
    /** Applies the planner's bed and water levels to an existing canonical surface sample. */
@@ -134,9 +135,9 @@ public final class CubeNetInlandWaterResolver {
    }
 
    public record Sample(boolean hasWater, boolean ocean, double terrainSurfaceMeters,
-      double waterSurfaceMeters, int terrainSurface, int waterSurface) {
+      double waterSurfaceMeters, int terrainSurface, int waterSurface, int flowLevel, boolean falling) {
       static Sample dry() {
-         return new Sample(false, false, Double.NaN, Double.NaN, Integer.MIN_VALUE, Integer.MIN_VALUE);
+         return new Sample(false, false, Double.NaN, Double.NaN, Integer.MIN_VALUE, Integer.MIN_VALUE, 0, false);
       }
    }
 

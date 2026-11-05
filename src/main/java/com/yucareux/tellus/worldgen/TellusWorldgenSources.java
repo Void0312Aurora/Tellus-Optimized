@@ -115,6 +115,11 @@ public final class TellusWorldgenSources {
     * generator, so lake identity and river tiles do not split at face seams.
     */
    public static SphereChunkSampler.PointSampler cubeNetPointSampler(SphereWorldModel model, int seaLevel) {
+      return cubeNetSurfaceSampler(model, seaLevel).pointSampler();
+   }
+
+   /** Shared Cube-Net point sampler and the hydrology planner used for post-fill flow states. */
+   public static CubeNetSurfaceSampler cubeNetSurfaceSampler(SphereWorldModel model, int seaLevel) {
       SphereChunkSampler terrain = sphericalSampler(Objects.requireNonNull(model, "model"));
       CubeNetInlandWaterResolver water = new CubeNetInlandWaterResolver(model, seaLevel, terrain, OSM_WATER);
       CubeNetOceanSurfaceResolver ocean = new CubeNetOceanSurfaceResolver(
@@ -122,7 +127,7 @@ public final class TellusWorldgenSources {
          (point, scale, resolution) -> ELEVATION.sampleOpenWatersElevationMeters(point, scale, resolution)
       );
       boolean synthetic = Boolean.getBoolean("tellus.sphere.syntheticSampler");
-      return (point, resolutionMeters) -> {
+      SphereChunkSampler.PointSampler pointSampler = (point, resolutionMeters) -> {
          SphereChunkSampler.SurfaceData base = terrain.samplePoint(point, resolutionMeters);
          if (synthetic) return water.apply(point, base);
          SphereChunkSampler.SurfaceData inland = water.apply(point, base);
@@ -134,6 +139,17 @@ public final class TellusWorldgenSources {
             point, model.config().worldScale(), resolutionMeters
          ));
       };
+      return new CubeNetSurfaceSampler(pointSampler, water);
+   }
+
+   public record CubeNetSurfaceSampler(
+      SphereChunkSampler.PointSampler pointSampler,
+      CubeNetInlandWaterResolver inlandWater
+   ) {
+      public CubeNetSurfaceSampler {
+         Objects.requireNonNull(pointSampler, "pointSampler");
+         Objects.requireNonNull(inlandWater, "inlandWater");
+      }
    }
 
    /**

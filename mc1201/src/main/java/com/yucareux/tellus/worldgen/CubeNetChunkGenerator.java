@@ -164,6 +164,7 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
    private final int apronWidthChunks;
    private final SphereFaceChunkGenerator[] faces;
    private final SphereTerrainMaterializer materializer;
+   private final CubeNetInlandWaterResolver inlandWaterResolver;
    private final TellusLandmarks landmarks;
    private volatile long worldSeed;
    private final CubeNetSphericalCaveSampler cubeNetSphericalCaveSampler = new CubeNetSphericalCaveSampler();
@@ -237,8 +238,11 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
          (elevation, blockZ) -> this.materializer.height(elevation));
       this.singularityConfig = singularityConfig;
       this.singularityPolicy = new SphereSingularityPolicy(this.model, singularityConfig);
-      SphereChunkSampler.PointSampler effectivePointSampler = pointSampler == null
-         ? TellusWorldgenSources.cubeNetPointSampler(this.model, seaLevel) : pointSampler;
+      TellusWorldgenSources.CubeNetSurfaceSampler surfaceSampler = pointSampler == null
+         ? TellusWorldgenSources.cubeNetSurfaceSampler(this.model, seaLevel) : null;
+      SphereChunkSampler.PointSampler effectivePointSampler = surfaceSampler == null
+         ? pointSampler : surfaceSampler.pointSampler();
+      this.inlandWaterResolver = surfaceSampler == null ? null : surfaceSampler.inlandWater();
       this.faces = new SphereFaceChunkGenerator[CubeNetLayout.FACE_COUNT];
       for (CubeNetLayout.Face face : CubeNetLayout.Face.values()) {
          this.faces[face.index()] = new SphereFaceChunkGenerator(faceBiome, face.index(), scale, seaLevel, minY, height,
@@ -449,6 +453,7 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
                columns.add(canonical.column(candidate.targetBlockX(x, z) & 15, candidate.targetBlockZ(x, z) & 15));
             }
             this.materializer.fill(chunk, new SphereChunkSampler.TerrainGrid(targetAddress, columns));
+            this.applyCubeNetInlandFlow(chunk);
             return chunk;
          }, executor))
          .orElseGet(() -> CompletableFuture.completedFuture(chunk));
@@ -475,6 +480,33 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
                Math.floorMod((int)Math.floor(local[1]), 16)));
          }
          this.materializer.fill(chunk, new SphereChunkSampler.TerrainGrid(address, columns));
+         this.applyCubeNetInlandFlow(chunk);
+   }
+
+   private void applyCubeNetInlandFlow(ChunkAccess chunk) {
+      if (this.inlandWaterResolver == null) return;
+      for (int localZ = 0; localZ < 16; localZ++) for (int localX = 0; localX < 16; localX++) {
+         int worldX = chunk.getPos().getMinBlockX() + localX;
+         int worldZ = chunk.getPos().getMinBlockZ() + localZ;
+         BlockAddress block = this.resolveBlock(worldX, worldZ).orElse(null);
+         if (block == null) continue;
+         SphereWorldModel.GeoPoint point = this.model.exactSurfacePoint(
+            block.address().face(), block.x() + 0.5, block.z() + 0.5);
+         SphereChunkSampler.SurfaceData surface = this.faces[block.address().face()].terrainPoint(
+            new SphereWorldModel.SphereBlockAddress(block.address().face(), block.x(), block.z()), 1).data();
+         if (surface == null || !surface.inlandWater()) continue;
+         CubeNetInlandWaterResolver.Sample flow = this.inlandWaterResolver.sample(point, surface);
+         if (!flow.hasWater() || flow.flowLevel() <= 0) continue;
+         int waterY = this.materializer.height(surface.waterSurfaceMeters());
+         int bottom = flow.falling() ? this.materializer.height(flow.terrainSurfaceMeters()) + 1 : waterY;
+         BlockState state = Blocks.WATER.defaultBlockState().setValue(
+            net.minecraft.world.level.block.LiquidBlock.LEVEL, Math.max(1, Math.min(8, flow.flowLevel())));
+         for (int y = Math.max(this.minY, bottom); y <= Math.min(this.maxY() - 1, waterY); y++) {
+            BlockPos pos = new BlockPos(worldX, y, worldZ);
+            MinecraftVersionCompat.setBlockState(chunk, pos, state);
+            if (chunk instanceof ProtoChunk proto) MinecraftVersionCompat.markPosForPostProcessing(proto, pos);
+         }
+      }
    }
 
    @Override
