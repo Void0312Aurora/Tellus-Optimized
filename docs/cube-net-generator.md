@@ -138,10 +138,13 @@ Mapped inland rivers reuse the hydrology planner's flow levels and
 falling-water curtains after spherical materialization, including derived
 apron views.
 Shoreline columns now reuse the Earth generator's configurable river/lake and
-ocean bank-ramp settings through the same seam-aware planar lookup, and
-badlands biomes write Tellus's plateau and coloured terracotta band palette
-into canonical columns before the apron mirror. The three shoreline fields are
-optional; omitting them keeps the Earth defaults.
+ocean bank-ramp settings through the same seam-aware planar lookup. Canonical
+surface material decisions also reuse Earth's cover-driven palette, climate
+groups, shoreline classification and four-neighbour convexity; badlands biomes
+write Tellus's plateau and coloured terracotta band palette before the apron
+mirror. The three shoreline fields are optional; omitting them keeps the Earth
+defaults. Only building details that physically project across a face edge
+remain seam-specific.
 Mapped traffic signals, bus stops, benches, recycling points and bicycle racks
 use the corresponding multi-block point layouts; each point remains owned by
 the canonical chunk and an occupied block is never replaced.
