@@ -42,7 +42,10 @@ vertical limits as the face generator:
   "sea_level": 64,
   "min_y": -2032,
   "height": 4064,
-  "experimental_apron_chunks": 5
+  "experimental_apron_chunks": 5,
+  "river_lake_shoreline_blend": 5,
+  "ocean_shoreline_blend": 5,
+  "shoreline_blend_cliff_limit": true
 }
 ```
 
@@ -134,9 +137,11 @@ uses the same canonical-owner rule and never runs in a derived apron view.
 Mapped inland rivers reuse the hydrology planner's flow levels and
 falling-water curtains after spherical materialization, including derived
 apron views.
-Shoreline columns now reuse the Earth generator's short bank-ramp rule through
-the same seam-aware planar lookup, and badlands biomes write Tellus's coloured
-terracotta band palette into canonical cliff columns before the apron mirror.
+Shoreline columns now reuse the Earth generator's configurable river/lake and
+ocean bank-ramp settings through the same seam-aware planar lookup, and
+badlands biomes write Tellus's plateau and coloured terracotta band palette
+into canonical columns before the apron mirror. The three shoreline fields are
+optional; omitting them keeps the Earth defaults.
 Mapped traffic signals, bus stops, benches, recycling points and bicycle racks
 use the corresponding multi-block point layouts; each point remains owned by
 the canonical chunk and an occupied block is never replaced.
