@@ -1658,7 +1658,7 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
       if (cells.isEmpty()) return;
       var centroid = com.yucareux.tellus.worldgen.global.CubeNetFeatureProjector.project(
          this.model, this.adapter.layout(), building.centroidLat(), building.centroidLon()).orElse(null);
-      if (centroid == null || centroid.face() != face.index()) return;
+      if (centroid == null) return;
       int groundY;
       BuildingProfile profile;
       BuildingBlueprint blueprint;
@@ -1684,11 +1684,11 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
       for (var cell : cells) occupied.add(packFaceCell(cell.x(), cell.z()));
       for (var cell : cells) {
          if (cell.x() < minX || cell.x() > maxX || cell.z() < minZ || cell.z() > maxZ) continue;
-         boolean boundary = !occupied.contains(packFaceCell(cell.x() - 1, cell.z()))
-            || !occupied.contains(packFaceCell(cell.x() + 1, cell.z()))
-            || !occupied.contains(packFaceCell(cell.x(), cell.z() - 1))
-            || !occupied.contains(packFaceCell(cell.x(), cell.z() + 1));
-         int[] local = this.sourceLocalForTarget(apron, cell.x(), cell.z());
+         boolean boundary = !this.cubeNetBuildingOccupies(cell, -1, 0, occupied, building)
+            || !this.cubeNetBuildingOccupies(cell, 1, 0, occupied, building)
+            || !this.cubeNetBuildingOccupies(cell, 0, -1, occupied, building)
+            || !this.cubeNetBuildingOccupies(cell, 0, 1, occupied, building);
+         int[] local = this.sourceLocalForTarget(apron, cell);
          if (local == null) continue;
          int[] earth = this.earthCoordinates(cell);
          int boundaryDistance = interior.plan().boundaryDistanceAt(earth[0], earth[1]);
@@ -1706,7 +1706,7 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
                         : Blocks.AIR.defaultBlockState();
             this.placeApronFeatureBlock(level, chunk, apron, cell, state, y, local);
          }
-         this.placeCubeNetApronBuildingExteriorDetails(level, chunk, apron, cell, occupied, blueprint, palette,
+         this.placeCubeNetApronBuildingExteriorDetails(level, chunk, apron, cell, building, occupied, blueprint, palette,
             boundaryDistance, groundY, height, earth[0], earth[1]);
          this.placeCubeNetRoofDetail(level, chunk, apron, cell, local, blueprint, palette,
             boundaryDistance, earth[0], earth[1], groundY + height + 1);
@@ -1715,15 +1715,18 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
 
    private void placeCubeNetApronBuildingExteriorDetails(WorldGenLevel level, ChunkAccess chunk,
       CubeNetApronResolver.ChunkProjection apron, CubeNetFeatureRasterizer.FaceCell cell,
+      OsmBuildingFeature building,
       java.util.Set<Long> occupied, BuildingBlueprint blueprint,
       TellusBuildingMaterials.BuildingMaterialPalette palette, int boundaryDistance,
       int groundY, int height, int earthX, int earthZ) {
-      Direction facing = this.cubeNetFacadeFacing(cell, occupied);
+      Direction facing = this.cubeNetFacadeFacing(cell, occupied, building);
       if (facing == null) return;
-      CubeNetFeatureRasterizer.FaceCell outside = new CubeNetFeatureRasterizer.FaceCell(
-         cell.face(), cell.x() + facing.getStepX(), cell.z() + facing.getStepZ());
-      int[] local = this.sourceLocalForTarget(apron, outside.x(), outside.z());
+      CubeNetFeatureRasterizer.FaceCell outside = this.offsetFaceCell(
+         cell, facing.getStepX(), facing.getStepZ());
+      if (outside == null) return;
+      int[] local = this.sourceLocalForTarget(apron, outside);
       if (local == null) return;
+      Direction blockFacing = this.transportFaceDirection(cell, facing);
       int highestFloor = blueprint.highestActiveFloor(boundaryDistance);
       for (int floorIndex = 0; floorIndex <= highestFloor; floorIndex++) {
          if (!blueprint.isFacadeCell(boundaryDistance, floorIndex)) continue;
@@ -1732,7 +1735,7 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
          ArnisBuildingRules.ResidentialDecoration residential = ArnisBuildingRules.residentialWindowDecoration(
             blueprint, boundaryDistance, earthX, earthZ, floorIndex, floorBottom, floorTop);
          if (floorIndex == 0 && blueprint.isEntranceCell(earthX, earthZ) && this.worldScale() <= 1.0) {
-            this.placeCubeNetApronEntranceDoor(level, chunk, apron, cell, facing, blueprint.floorY() + 1, local);
+            this.placeCubeNetApronEntranceDoor(level, chunk, apron, cell, blockFacing, blueprint.floorY() + 1, local);
          }
          if (floorIndex == 0 && blueprint.nearEntranceApproach(earthX, earthZ)
             && blueprint.isEntranceCell(earthX, earthZ)) {
@@ -1758,7 +1761,7 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
          if (ArnisBuildingRules.shouldPlaceResidentialShutter(
             blueprint, boundaryDistance, earthX, earthZ, floorIndex, floorBottom, floorTop)) {
             BlockState shutter = Blocks.OAK_TRAPDOOR.defaultBlockState()
-               .setValue(BlockStateProperties.HORIZONTAL_FACING, facing)
+               .setValue(BlockStateProperties.HORIZONTAL_FACING, blockFacing)
                .setValue(BlockStateProperties.OPEN, Boolean.FALSE);
             for (int y = floorBottom + 1; y <= floorTop; y++) {
                if (y > blueprint.floorY() + 1 && ArnisBuildingRules.floorRow(y, blueprint.floorY()) != 0) {
@@ -1837,7 +1840,7 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
          building.centroidLat(), building.centroidLon(), 0.0);
       var centroidProjection = com.yucareux.tellus.worldgen.global.CubeNetFeatureProjector.project(
          this.model, this.adapter.layout(), centroid.latitude(), centroid.longitude()).orElse(null);
-      if (centroidProjection == null || centroidProjection.face() != face.index()) return;
+      if (centroidProjection == null) return;
       int groundY;
       BuildingProfile profile;
       BuildingBlueprint blueprint;
@@ -1865,10 +1868,10 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
       this.prepareCubeNetBuildingFoundation(level, chunk, cells, groundY);
       for (CubeNetFeatureRasterizer.FaceCell cell : cells) {
          if (cell.x() < minX || cell.x() > maxX || cell.z() < minZ || cell.z() > maxZ) continue;
-         boolean boundary = !occupied.contains(packFaceCell(cell.x() - 1, cell.z()))
-            || !occupied.contains(packFaceCell(cell.x() + 1, cell.z()))
-            || !occupied.contains(packFaceCell(cell.x(), cell.z() - 1))
-            || !occupied.contains(packFaceCell(cell.x(), cell.z() + 1));
+         boolean boundary = !this.cubeNetBuildingOccupies(cell, -1, 0, occupied, building)
+            || !this.cubeNetBuildingOccupies(cell, 1, 0, occupied, building)
+            || !this.cubeNetBuildingOccupies(cell, 0, -1, occupied, building)
+            || !this.cubeNetBuildingOccupies(cell, 0, 1, occupied, building);
          int[] earth = this.earthCoordinates(cell);
          int boundaryDistance = interior.plan().boundaryDistanceAt(earth[0], earth[1]);
          if (boundaryDistance < 0) boundaryDistance = boundary ? 0 : 2;
@@ -1885,10 +1888,65 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
                         : Blocks.AIR.defaultBlockState();
             this.placeFeatureBlock(level, chunk, cell, state, y);
          }
-         this.placeCubeNetBuildingExteriorDetails(level, chunk, cell, occupied, blueprint, palette,
+         this.placeCubeNetBuildingExteriorDetails(level, chunk, building, cell, occupied, blueprint, palette,
             boundaryDistance, groundY, height, earth[0], earth[1]);
          this.placeCubeNetRoofDetail(level, chunk, cell, blueprint, palette,
             boundaryDistance, earth[0], earth[1], groundY + height + 1);
+      }
+      this.placeCubeNetSeamBuildingExteriorDetails(level, chunk, building, face,
+         minX, minZ, maxX, maxZ, blueprint, palette, interior, groundY, height);
+   }
+
+   /**
+    * A source-face facade can project its outside block into a different
+    * canonical face. The source chunk intentionally cannot write that block;
+    * resolve it again from the target face so normal chunk ownership is kept.
+    */
+   private void placeCubeNetSeamBuildingExteriorDetails(WorldGenLevel level, ChunkAccess chunk,
+      OsmBuildingFeature building, CubeNetLayout.Face targetFace,
+      int minX, int minZ, int maxX, int maxZ, BuildingBlueprint blueprint,
+      TellusBuildingMaterials.BuildingMaterialPalette palette, TellusBuildingInteriors interior,
+      int groundY, int height) {
+      int faceSize = this.adapter.layout().faceSize();
+      int fromX = Math.max(0, minX), toX = Math.min(faceSize - 1, maxX);
+      int fromZ = Math.max(0, minZ), toZ = Math.min(faceSize - 1, maxZ);
+      java.util.Set<String> emitted = new java.util.HashSet<>();
+      for (int z = fromZ; z <= toZ; z++) for (int x = fromX; x <= toX; x++) {
+         boolean edgeX = x == 0 || x == faceSize - 1;
+         boolean edgeZ = z == 0 || z == faceSize - 1;
+         if (!edgeX && !edgeZ || edgeX && edgeZ) continue;
+         CubeNetFeatureRasterizer.FaceCell target = new CubeNetFeatureRasterizer.FaceCell(
+            targetFace.index(), x, z);
+         for (CubeNetLayout.Side targetSide : CubeNetLayout.Side.values()) {
+            if ((targetSide == CubeNetLayout.Side.WEST || targetSide == CubeNetLayout.Side.EAST) != edgeX) continue;
+            double edge = targetSide == CubeNetLayout.Side.WEST || targetSide == CubeNetLayout.Side.EAST
+               ? z + 0.5 : x + 0.5;
+            CubeNetLayout.FacePoint sourcePoint = this.adapter.layout().mapAcross(
+               targetFace, targetSide, edge, 0.5);
+            CubeNetFeatureRasterizer.FaceCell source = new CubeNetFeatureRasterizer.FaceCell(
+               sourcePoint.face().index(), (int)Math.floor(sourcePoint.u()), (int)Math.floor(sourcePoint.v()));
+            List<CubeNetFeatureRasterizer.FaceCell> sourceCells = CubeNetFeatureRasterizer.buildingCells(
+               this.model, this.adapter.layout(), building, sourcePoint.face(), source.x() - 1,
+               source.z() - 1, source.x() + 1, source.z() + 1);
+            if (!sourceCells.contains(source)) continue;
+            java.util.Set<Long> occupied = new java.util.HashSet<>();
+            for (CubeNetFeatureRasterizer.FaceCell cell : sourceCells) {
+               occupied.add(packFaceCell(cell.x(), cell.z()));
+            }
+            Direction facing = this.cubeNetFacadeFacing(source, occupied, building);
+            if (facing == null) continue;
+            CubeNetFeatureRasterizer.FaceCell projected = this.offsetFaceCell(
+               source, facing.getStepX(), facing.getStepZ());
+            if (projected == null || projected.face() != target.face()
+               || projected.x() != target.x() || projected.z() != target.z()) continue;
+            String key = source.face() + ":" + source.x() + ":" + source.z() + ":" + facing;
+            if (!emitted.add(key)) continue;
+            int[] earth = this.earthCoordinates(source);
+            int boundaryDistance = interior.plan().boundaryDistanceAt(earth[0], earth[1]);
+            if (boundaryDistance < 0) boundaryDistance = 0;
+            this.placeCubeNetBuildingExteriorDetails(level, chunk, building, source, occupied,
+               blueprint, palette, boundaryDistance, groundY, height, earth[0], earth[1]);
+         }
       }
    }
 
@@ -1920,16 +1978,15 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
    }
 
    private void placeCubeNetBuildingExteriorDetails(WorldGenLevel level, ChunkAccess chunk,
-      CubeNetFeatureRasterizer.FaceCell cell, java.util.Set<Long> occupied,
+      OsmBuildingFeature building, CubeNetFeatureRasterizer.FaceCell cell, java.util.Set<Long> occupied,
       BuildingBlueprint blueprint, TellusBuildingMaterials.BuildingMaterialPalette palette,
       int boundaryDistance, int groundY, int height, int earthX, int earthZ) {
-      Direction facing = this.cubeNetFacadeFacing(cell, occupied);
+      Direction facing = this.cubeNetFacadeFacing(cell, occupied, building);
       if (facing == null) return;
-      int outsideX = cell.x() + facing.getStepX();
-      int outsideZ = cell.z() + facing.getStepZ();
-      int faceSize = this.adapter.layout().faceSize();
-      if (outsideX < 0 || outsideX >= faceSize || outsideZ < 0 || outsideZ >= faceSize) return;
-      CubeNetFeatureRasterizer.FaceCell outside = new CubeNetFeatureRasterizer.FaceCell(cell.face(), outsideX, outsideZ);
+      CubeNetFeatureRasterizer.FaceCell outside = this.offsetFaceCell(
+         cell, facing.getStepX(), facing.getStepZ());
+      if (outside == null) return;
+      Direction blockFacing = this.transportFaceDirection(cell, facing);
       int highestFloor = blueprint.highestActiveFloor(boundaryDistance);
       for (int floorIndex = 0; floorIndex <= highestFloor; floorIndex++) {
          if (!blueprint.isFacadeCell(boundaryDistance, floorIndex)) continue;
@@ -1938,7 +1995,7 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
          ArnisBuildingRules.ResidentialDecoration residential = ArnisBuildingRules.residentialWindowDecoration(
             blueprint, boundaryDistance, earthX, earthZ, floorIndex, floorBottom, floorTop);
          if (floorIndex == 0 && blueprint.isEntranceCell(earthX, earthZ) && this.worldScale() <= 1.0) {
-            this.placeCubeNetEntranceDoor(level, chunk, cell, facing, blueprint.floorY() + 1);
+            this.placeCubeNetEntranceDoor(level, chunk, cell, blockFacing, blueprint.floorY() + 1);
          }
          if (floorIndex == 0 && blueprint.nearEntranceApproach(earthX, earthZ)
             && blueprint.isEntranceCell(earthX, earthZ)) {
@@ -1953,7 +2010,7 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
          if (TellusBuildingFacade.shouldPlaceBalcony(blueprint, boundaryDistance, earthX, earthZ, floorIndex, floorBottom, floorTop)
             || residential == ArnisBuildingRules.ResidentialDecoration.BALCONY) {
             this.placeCubeNetBalcony(level, chunk, cell, palette, Math.min(floorTop, floorBottom + 2), facing,
-               blueprint.blueprintSeed(), earthX, earthZ, floorIndex);
+               blockFacing, blueprint.blueprintSeed(), earthX, earthZ, floorIndex);
          } else if (TellusBuildingFacade.shouldPlaceFireEscape(blueprint, boundaryDistance, earthX, earthZ, floorIndex)) {
             this.placeCubeNetDecorationBlock(level, chunk, outside, palette.railing(), floorBottom + 1);
             this.placeCubeNetDecorationBlock(level, chunk, outside, palette.railing(), floorBottom + 2);
@@ -1964,7 +2021,7 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
          if (ArnisBuildingRules.shouldPlaceResidentialShutter(
             blueprint, boundaryDistance, earthX, earthZ, floorIndex, floorBottom, floorTop)) {
             BlockState shutter = Blocks.OAK_TRAPDOOR.defaultBlockState()
-               .setValue(BlockStateProperties.HORIZONTAL_FACING, facing)
+               .setValue(BlockStateProperties.HORIZONTAL_FACING, blockFacing)
                .setValue(BlockStateProperties.OPEN, Boolean.FALSE);
             for (int y = floorBottom + 1; y <= floorTop; y++) {
                if (y > blueprint.floorY() + 1 && ArnisBuildingRules.floorRow(y, blueprint.floorY()) != 0) {
@@ -2083,7 +2140,8 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
 
    private void placeCubeNetBalcony(WorldGenLevel level, ChunkAccess chunk,
       CubeNetFeatureRasterizer.FaceCell cell, TellusBuildingMaterials.BuildingMaterialPalette palette,
-      int balconyY, Direction facing, long blueprintSeed, int earthX, int earthZ, int floorIndex) {
+      int balconyY, Direction facing, Direction blockFacing,
+      long blueprintSeed, int earthX, int earthZ, int floorIndex) {
       Direction tangent = facing.getClockWise();
       for (int offset = -1; offset <= 1; offset++) {
          for (int depth = 1; depth <= 2; depth++) {
@@ -2120,7 +2178,7 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
             this.placeCubeNetDecorationBlock(level, chunk, furniture, Blocks.OAK_LEAVES.defaultBlockState(), balconyY + 2);
          } else if (roll < 55) {
             this.placeCubeNetDecorationBlock(level, chunk, furniture,
-               Blocks.OAK_STAIRS.defaultBlockState().setValue(BlockStateProperties.HORIZONTAL_FACING, facing.getOpposite()), balconyY + 1);
+               Blocks.OAK_STAIRS.defaultBlockState().setValue(BlockStateProperties.HORIZONTAL_FACING, blockFacing.getOpposite()), balconyY + 1);
          }
       }
    }
@@ -2160,17 +2218,45 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
       int dx, int dz, BlockState state, int y) {
       CubeNetFeatureRasterizer.FaceCell target = this.offsetFaceCell(origin, dx, dz);
       if (target == null) return;
-      int[] local = this.sourceLocalForTarget(apron, target.x(), target.z());
+      int[] local = this.sourceLocalForTarget(apron, target);
       if (local != null) this.placeApronFeatureBlock(level, chunk, apron, target, state, y, local);
    }
 
    private CubeNetFeatureRasterizer.FaceCell offsetFaceCell(
       CubeNetFeatureRasterizer.FaceCell cell, int dx, int dz
    ) {
-      int x = cell.x() + dx, z = cell.z() + dz;
       int faceSize = this.adapter.layout().faceSize();
-      return x < 0 || x >= faceSize || z < 0 || z >= faceSize
-         ? null : new CubeNetFeatureRasterizer.FaceCell(cell.face(), x, z);
+      CubeNetLayout.Face face = CubeNetLayout.Face.of(cell.face());
+      double u = cell.x() + 0.5 + dx;
+      double v = cell.z() + 0.5 + dz;
+      CubeNetLayout layout = this.adapter.layout();
+      for (int step = 0; step < CubeNetLayout.FACE_COUNT; step++) {
+         if (u >= 0.0 && u < faceSize && v >= 0.0 && v < faceSize) {
+            return new CubeNetFeatureRasterizer.FaceCell(face.index(),
+               (int)Math.floor(u), (int)Math.floor(v));
+         }
+         boolean outsideU = u < 0.0 || u >= faceSize;
+         boolean outsideV = v < 0.0 || v >= faceSize;
+         // A displacement that reaches two edges at once lands on a cube
+         // vertex. There is no unique tangent continuation at that point.
+         if (outsideU && outsideV) return null;
+         if (outsideU) {
+            CubeNetLayout.Side side = u < 0.0 ? CubeNetLayout.Side.WEST : CubeNetLayout.Side.EAST;
+            double penetration = u < 0.0 ? -u : u - faceSize;
+            CubeNetLayout.FacePoint mapped = layout.mapAcross(face, side, v, penetration);
+            face = mapped.face();
+            u = mapped.u();
+            v = mapped.v();
+         } else {
+            CubeNetLayout.Side side = v < 0.0 ? CubeNetLayout.Side.NORTH : CubeNetLayout.Side.SOUTH;
+            double penetration = v < 0.0 ? -v : v - faceSize;
+            CubeNetLayout.FacePoint mapped = layout.mapAcross(face, side, u, penetration);
+            face = mapped.face();
+            u = mapped.u();
+            v = mapped.v();
+         }
+      }
+      return null;
    }
 
    private void placeCubeNetApronFacadeDepth(WorldGenLevel level, ChunkAccess chunk,
@@ -2223,12 +2309,40 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
       }
    }
 
-   private Direction cubeNetFacadeFacing(CubeNetFeatureRasterizer.FaceCell cell, java.util.Set<Long> occupied) {
-      if (!occupied.contains(packFaceCell(cell.x() - 1, cell.z()))) return Direction.WEST;
-      if (!occupied.contains(packFaceCell(cell.x() + 1, cell.z()))) return Direction.EAST;
-      if (!occupied.contains(packFaceCell(cell.x(), cell.z() - 1))) return Direction.NORTH;
-      if (!occupied.contains(packFaceCell(cell.x(), cell.z() + 1))) return Direction.SOUTH;
+   private Direction cubeNetFacadeFacing(CubeNetFeatureRasterizer.FaceCell cell,
+      java.util.Set<Long> occupied, OsmBuildingFeature building) {
+      if (!this.cubeNetBuildingOccupies(cell, -1, 0, occupied, building)) return Direction.WEST;
+      if (!this.cubeNetBuildingOccupies(cell, 1, 0, occupied, building)) return Direction.EAST;
+      if (!this.cubeNetBuildingOccupies(cell, 0, -1, occupied, building)) return Direction.NORTH;
+      if (!this.cubeNetBuildingOccupies(cell, 0, 1, occupied, building)) return Direction.SOUTH;
       return null;
+   }
+
+   private boolean cubeNetBuildingOccupies(CubeNetFeatureRasterizer.FaceCell cell,
+      int dx, int dz, java.util.Set<Long> occupied, OsmBuildingFeature building) {
+      CubeNetFeatureRasterizer.FaceCell neighbor = this.offsetFaceCell(cell, dx, dz);
+      if (neighbor == null) return false;
+      if (neighbor.face() == cell.face()) return occupied.contains(packFaceCell(neighbor.x(), neighbor.z()));
+      SphereWorldModel.GeoPoint point = this.model.exactSurfacePoint(
+         neighbor.face(), neighbor.x() + 0.5, neighbor.z() + 0.5);
+      return building.containsLonLat(point.longitude(), point.latitude());
+   }
+
+   private Direction transportFaceDirection(CubeNetFeatureRasterizer.FaceCell cell, Direction direction) {
+      CubeNetLayout.Face face = CubeNetLayout.Face.of(cell.face());
+      int faceSize = this.adapter.layout().faceSize();
+      CubeNetLayout.Side side = null;
+      if (direction == Direction.WEST && cell.x() == 0) side = CubeNetLayout.Side.WEST;
+      else if (direction == Direction.EAST && cell.x() == faceSize - 1) side = CubeNetLayout.Side.EAST;
+      else if (direction == Direction.NORTH && cell.z() == 0) side = CubeNetLayout.Side.NORTH;
+      else if (direction == Direction.SOUTH && cell.z() == faceSize - 1) side = CubeNetLayout.Side.SOUTH;
+      if (side == null) return direction;
+      double[] transported = this.adapter.layout().transportVector(face, side,
+         direction.getStepX(), direction.getStepZ());
+      if (Math.abs(transported[0]) >= Math.abs(transported[1])) {
+         return transported[0] < 0.0 ? Direction.WEST : Direction.EAST;
+      }
+      return transported[1] < 0.0 ? Direction.NORTH : Direction.SOUTH;
    }
 
    private void placeCubeNetDecorationBlock(WorldGenLevel level, ChunkAccess chunk,
@@ -2317,6 +2431,12 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
          }
       }
       return null;
+   }
+
+   private int[] sourceLocalForTarget(CubeNetApronResolver.ChunkProjection apron,
+      CubeNetFeatureRasterizer.FaceCell target) {
+      if (target.face() != apron.targetFace().index()) return null;
+      return this.sourceLocalForTarget(apron, target.x(), target.z());
    }
 
    private BlockState cubeNetRoadState(RoadFeature road, int x, int z) {

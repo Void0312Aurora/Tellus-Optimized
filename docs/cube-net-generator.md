@@ -143,8 +143,13 @@ surface material decisions also reuse Earth's cover-driven palette, climate
 groups, shoreline classification and four-neighbour convexity; badlands biomes
 write Tellus's plateau and coloured terracotta band palette before the apron
 mirror. The three shoreline fields are optional; omitting them keeps the Earth
-defaults. Only building details that physically project across a face edge
-remain seam-specific.
+defaults. Building bodies, boundary tests and exterior details now use the
+same geodetic footprint on both sides of a cut seam; exterior offsets cross
+the seam table and retain their face orientation. Target-face chunks also
+replay a cross-face exterior detail when the source chunk cannot own its
+destination block. A displacement that reaches a cube vertex through two edges
+is deliberately omitted because that point has no unique face-local
+continuation.
 Mapped traffic signals, bus stops, benches, recycling points and bicycle racks
 use the corresponding multi-block point layouts; each point remains owned by
 the canonical chunk and an occupied block is never replaced.
