@@ -118,6 +118,13 @@ owner-to-source seam transform; apron decoration does not issue a second OSM
 query or select a different foundation height. Building edge tests include a
 one-cell owner halo so walls do not repeat at chunk boundaries.
 
+The same feature path also rasterizes polygonal road areas, places mapped road
+amenities and street lights through a geodetic infrastructure query, and
+projects Tellus landmark meshes onto the owning face. At world scale 1:1,
+building cells use Tellus's floor plans, stairwells, doors and furnishings;
+coarser scales keep the exterior LOD model. Overture sand polygons feed the
+shared spherical surface policy through a non-blocking cache lookup.
+
 Vanilla structure starts and references are likewise created only on canonical
 chunks; apron views do not create duplicate starts. When the canonical owner is
 inside the active worldgen region, its complete block state (including structure

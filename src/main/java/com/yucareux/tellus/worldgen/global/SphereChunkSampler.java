@@ -115,7 +115,7 @@ public final class SphereChunkSampler {
       );
    }
 
-   /** Fetches vector geometry in geodetic form; building/road block filling is a later step. */
+   /** Fetches vector geometry in geodetic form for the Cube-Net feature rasterizer. */
    public FeatureData sampleFeatures(
       SphereWorldModel.SphereChunkAddress address, double marginMeters, OsmQueryMode mode,
       TellusOsmBuildingSource buildings, TellusOsmRoadSource roads, TellusOsmWaterSource water
