@@ -126,6 +126,8 @@ deck heights. At world scale 1:1, building cells use Tellus's floor plans,
 stairwells, doors, furnishings, rooftop equipment and boundary-aware exterior
 details; coarser scales keep the exterior LOD model. Overture sand polygons feed the shared spherical surface
 policy through a non-blocking cache lookup. Dynamic historical/weather snow is
+外立面规则使用建筑蓝图对应的 Earth 投影坐标计算，住宅窗板也沿用同一
+Arnis 规则；面内坐标只负责决定 canonical 外侧方位和写入位置。
 also applied from the geographic point mapped by each canonical face column;
 apron views receive it through the owner mirror. Lush-cave axolotl decoration
 uses the same canonical-owner rule and never runs in a derived apron view.
