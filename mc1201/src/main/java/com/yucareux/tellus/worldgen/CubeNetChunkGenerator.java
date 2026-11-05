@@ -874,7 +874,9 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
          CubeNetLayout.Face.of(cell.face()), cell.x() + 0.5, cell.z() + 0.5));
       int worldX = (int)Math.floor(point.x());
       int worldZ = (int)Math.floor(point.z());
-      int surfaceY = this.surfaceYAtPlanar(worldX, worldZ, surfaceCache, columnCache);
+      SphereChunkSampler.SurfaceData surface = this.surfaceDataAtPlanar(worldX, worldZ, columnCache);
+      if (surface == null || surface.waterAvailable() && surface.waterSurfaceMeters() > surface.elevationMeters()) return;
+      int surfaceY = this.materializer.height(surface.elevationMeters());
       this.placeFeatureBlock(level, chunk, cell, this.cubeNetRoadAreaState(area, cell.x(), cell.z()), surfaceY);
    }
 
@@ -887,8 +889,11 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
       if (local == null) return;
       CubeNetLayout.PlanarPoint point = this.adapter.layout().toPlanar(new CubeNetLayout.FacePoint(
          CubeNetLayout.Face.of(cell.face()), cell.x() + 0.5, cell.z() + 0.5));
-      int surfaceY = this.surfaceYAtPlanar((int)Math.floor(point.x()), (int)Math.floor(point.z()),
-         surfaceCache, columnCache);
+      int pointX = (int)Math.floor(point.x());
+      int pointZ = (int)Math.floor(point.z());
+      SphereChunkSampler.SurfaceData surface = this.surfaceDataAtPlanar(pointX, pointZ, columnCache);
+      if (surface == null || surface.waterAvailable() && surface.waterSurfaceMeters() > surface.elevationMeters()) return;
+      int surfaceY = this.materializer.height(surface.elevationMeters());
       this.placeApronFeatureBlock(level, chunk, apron, cell,
          this.cubeNetRoadAreaState(area, cell.x(), cell.z()), surfaceY, local);
    }
@@ -1025,7 +1030,10 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
          CubeNetLayout.Face.of(cell.face()), cell.x() + 0.5, cell.z() + 0.5));
       int worldX = (int)Math.floor(point.x());
       int worldZ = (int)Math.floor(point.z());
-      int terrainSurface = this.surfaceYAtPlanar(worldX, worldZ, surfaceCache, columnCache);
+      SphereChunkSampler.SurfaceData surface = this.surfaceDataAtPlanar(worldX, worldZ, columnCache);
+      if (surface == null || road.mode() == RoadMode.NORMAL && surface.waterAvailable()
+         && surface.waterSurfaceMeters() > surface.elevationMeters()) return;
+      int terrainSurface = this.materializer.height(surface.elevationMeters());
       BlockState roadState = this.cubeNetRoadState(road, cell.x(), cell.z());
       switch (road.mode()) {
          case NORMAL -> this.placeFeatureBlock(level, chunk, cell, roadState);
@@ -1057,8 +1065,12 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
       if (local == null) return;
       CubeNetLayout.PlanarPoint point = this.adapter.layout().toPlanar(new CubeNetLayout.FacePoint(
          CubeNetLayout.Face.of(cell.face()), cell.x() + 0.5, cell.z() + 0.5));
-      int terrainSurface = this.surfaceYAtPlanar((int)Math.floor(point.x()), (int)Math.floor(point.z()),
-         surfaceCache, columnCache);
+      int pointX = (int)Math.floor(point.x());
+      int pointZ = (int)Math.floor(point.z());
+      SphereChunkSampler.SurfaceData surface = this.surfaceDataAtPlanar(pointX, pointZ, columnCache);
+      if (surface == null || road.mode() == RoadMode.NORMAL && surface.waterAvailable()
+         && surface.waterSurfaceMeters() > surface.elevationMeters()) return;
+      int terrainSurface = this.materializer.height(surface.elevationMeters());
       BlockState roadState = this.cubeNetRoadState(road, cell.x(), cell.z());
       switch (road.mode()) {
          case NORMAL -> this.placeApronFeatureBlock(level, chunk, apron, cell, roadState);
