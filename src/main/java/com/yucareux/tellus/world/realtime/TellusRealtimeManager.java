@@ -189,12 +189,12 @@ public final class TellusRealtimeManager {
 
    public boolean isRealtimeTimeEnabled(EarthGeneratorSettings settings) {
       Boolean override = this.realtimeTimeOverride;
-      return override != null ? override : settings.realtimeTime();
+      return override != null ? override : settings != null ? settings.realtimeTime() : CUBE_NET_REALTIME_TIME;
    }
 
    public boolean isRealtimeWeatherEnabled(EarthGeneratorSettings settings) {
       Boolean override = this.realtimeWeatherOverride;
-      return override != null ? override : settings.realtimeWeather();
+      return override != null ? override : settings != null ? settings.realtimeWeather() : CUBE_NET_REALTIME_WEATHER;
    }
 
    public TellusRealtimeManager.WeatherSnapshot lastWeatherSnapshot() {

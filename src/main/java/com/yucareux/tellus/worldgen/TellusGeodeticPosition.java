@@ -1,5 +1,8 @@
 package com.yucareux.tellus.worldgen;
 
+import java.util.Optional;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.LevelHeightAccessor;
 import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.chunk.ChunkAccess;
 
@@ -36,6 +39,13 @@ public interface TellusGeodeticPosition {
 
    /** Effective sea level in generator block coordinates. */
    int seaLevel();
+
+   /**
+    * Resolves a geodetic coordinate to a walkable surface block. Implementations
+    * return empty when the projection is outside their canonical world or when
+    * terrain data is unavailable.
+    */
+   Optional<BlockPos> surfacePosition(LevelHeightAccessor heightAccessor, double latitude, double longitude);
 
    /** Applies the realtime/historical snow state to a loaded chunk. */
    void applyRealtimeSnowCover(WorldGenLevel level, ChunkAccess chunk);

@@ -27,6 +27,7 @@ import com.yucareux.tellus.world.realtime.TellusRealtimeState;
 import com.yucareux.tellus.world.realtime.WeatherTemperaturePolicy;
 import com.yucareux.tellus.worldgen.EarthChunkGenerator;
 import com.yucareux.tellus.worldgen.EarthGeneratorSettings;
+import com.yucareux.tellus.worldgen.TellusGeodeticPosition;
 import com.yucareux.tellus.worldgen.global.GlobalMapModel;
 import com.yucareux.tellus.worldgen.ExperimentalHeightSupport;
 import com.yucareux.tellus.worldgen.TellusWorldgenSources;
@@ -103,7 +104,7 @@ public class TellusCommon {
    private static final boolean BENCHMARK_EXIT = Boolean.parseBoolean(
       System.getProperty("tellus.benchmark.exit", "false")
    );
-   private static final Map<UUID, CompletableFuture<BlockPos>> GEO_TELEPORT_LOOKUPS = new ConcurrentHashMap<>();
+   private static final Map<UUID, CompletableFuture<Optional<BlockPos>>> GEO_TELEPORT_LOOKUPS = new ConcurrentHashMap<>();
    private static final Map<UUID, TellusCommon.TeleportProgress> GEO_TELEPORT_PROGRESS = new ConcurrentHashMap<>();
    private static volatile Boolean teleportProgressOverride;
    public static final Logger LOGGER = LoggerFactory.getLogger("tellus");
@@ -327,9 +328,10 @@ public class TellusCommon {
          return 0;
       } else {
          ServerLevel level = MinecraftVersionCompat.serverLevel(player);
-         if (level.getChunkSource().getGenerator() instanceof EarthChunkGenerator earthGenerator) {
-            double latitude = clampLatitude(earthGenerator.latitudeFromBlock(player.getZ()));
-            double longitude = clampLongitude(earthGenerator.longitudeFromBlock(player.getX()));
+         ChunkGenerator generator = level.getChunkSource().getGenerator();
+          if (generator instanceof TellusGeodeticPosition geodetic) {
+            double latitude = clampLatitude(geodetic.latitudeFromBlock(player.getX(), player.getZ()));
+            double longitude = clampLongitude(geodetic.longitudeFromBlock(player.getX(), player.getZ()));
             TellusPlatform.sendGeoTpOpenMapPayload(player, new GeoTpOpenMapPayload(latitude, longitude));
             return 1;
          } else {
@@ -632,19 +634,22 @@ public class TellusCommon {
       }
 
       ServerLevel level = MinecraftVersionCompat.serverLevel(player);
-      if (!(level.getChunkSource().getGenerator() instanceof EarthChunkGenerator earthGenerator)) {
+      ChunkGenerator generator = level.getChunkSource().getGenerator();
+      if (!(generator instanceof TellusGeodeticPosition geodetic)) {
          source.sendFailure(Component.translatable("tellus.command.weather.tellus_world_only"));
          return 0;
       }
+       EarthGeneratorSettings settings = generator instanceof EarthChunkGenerator earthGenerator
+          ? earthGenerator.settings() : null;
 
       BlockPos pos = player.blockPosition();
       source.sendSuccess(() -> Component.translatable("tellus.command.weather.fetching").withStyle(ChatFormatting.GRAY), false);
       TellusRealtimeManager.WeatherReportRequestResult requestResult = REALTIME_MANAGER.requestWeatherReport(
          source.getServer(),
          player.getUUID(),
-         earthGenerator,
+         geodetic,
          pos,
-         report -> sendTellusWeatherReport(source, level, pos, earthGenerator.settings(), report)
+         report -> sendTellusWeatherReport(source, level, pos, settings, report)
       );
       if (requestResult == TellusRealtimeManager.WeatherReportRequestResult.RATE_LIMITED) {
          source.sendFailure(Component.translatable("tellus.command.weather.rate_limited"));
@@ -991,22 +996,26 @@ public class TellusCommon {
          }
 
          server.execute(() -> {
+            ServerLevel level = MinecraftVersionCompat.serverLevel(player);
             if (!TellusMinecraftCompat.hasGamemasterPermission(player.createCommandSourceStack())) {
                player.sendSystemMessage(Component.translatable("tellus.command.geotp.no_permission"));
                return;
             }
 
-            ServerLevel level = MinecraftVersionCompat.serverLevel(player);
-            if (level.getChunkSource().getGenerator() instanceof EarthChunkGenerator earthGenerator) {
+             ChunkGenerator generator = level.getChunkSource().getGenerator();
+          EarthGeneratorSettings settings = generator instanceof EarthChunkGenerator earthGenerator
+             ? earthGenerator.settings() : null;
+          if (generator instanceof TellusGeodeticPosition geodetic) {
                double latitude = clampLatitude(payload.latitude());
                double longitude = clampLongitude(payload.longitude());
                // The surface lookup downloads terrain data, so it must not run on the server thread.
-               CompletableFuture<BlockPos> lookup = MinecraftVersionCompat.supplyBackground(
-                  "tellus_geotp", () -> earthGenerator.getSurfacePosition(level, latitude, longitude)
+               CompletableFuture<Optional<BlockPos>> lookup = MinecraftVersionCompat.supplyBackground(
+                  "tellus_geotp", () -> geodetic.surfacePosition(level, latitude, longitude)
                );
                GEO_TELEPORT_LOOKUPS.put(player.getUUID(), lookup);
                Boolean override = teleportProgressOverride;
-               if (override != null ? override : earthGenerator.settings().teleportProgress()) {
+               if (override != null ? override : settings != null
+                   ? settings.teleportProgress() : EarthGeneratorSettings.DEFAULT.teleportProgress()) {
                   player.sendSystemMessage(Component.translatable("tellus.command.geotp.preparing").withStyle(ChatFormatting.GRAY));
                   showTeleportProgress(player);
                }
@@ -1022,11 +1031,12 @@ public class TellusCommon {
                      return;
                   }
 
-                  if (error != null) {
+                  if (error != null || target == null || target.isEmpty()) {
                      LOGGER.warn("Failed to find the teleport surface at lat={}, lon={}", latitude, longitude, error);
                      player.sendSystemMessage(Component.translatable("tellus.command.geotp.failed").withStyle(ChatFormatting.RED));
                   } else {
-                     player.teleportTo(target.getX() + 0.5, target.getY(), target.getZ() + 0.5);
+                     BlockPos destination = target.get();
+                      player.teleportTo(destination.getX() + 0.5, destination.getY(), destination.getZ() + 0.5);
                   }
                }, server);
             } else {

@@ -406,6 +406,38 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
        return this.seaLevel;
     }
 
+    @Override
+    public Optional<BlockPos> surfacePosition(LevelHeightAccessor heightAccessor, double latitude, double longitude) {
+       if (heightAccessor == null || !Double.isFinite(latitude) || !Double.isFinite(longitude)) {
+          return Optional.empty();
+       }
+       CubeNetFeatureProjector.Projection projection = CubeNetFeatureProjector.project(
+          this.model, this.adapter.layout(), latitude, longitude).orElse(null);
+       if (projection == null) return Optional.empty();
+       int planarX = (int)Math.floor(projection.planarX());
+       int planarZ = (int)Math.floor(projection.planarZ());
+       BlockAddress block = this.resolveBlock(planarX, planarZ).orElse(null);
+       if (block == null || block.address().face() != projection.face()) return Optional.empty();
+       int faceBlocks = this.model.config().faceBlocks();
+       if (block.x() < 0 || block.z() < 0 || block.x() >= faceBlocks || block.z() >= faceBlocks) {
+          return Optional.empty();
+       }
+       SphereChunkSampler.SurfaceData surface = this.faces[block.address().face()].terrainPoint(
+          new SphereWorldModel.SphereBlockAddress(block.address().face(), block.x(), block.z()), 1).data();
+       if (surface == null || !surface.elevationAvailable()) return Optional.empty();
+       SphereTerrainMaterializer.ColumnPlan plan;
+       try {
+          plan = this.materializer.plan(surface, this.minY, this.maxY());
+       } catch (RuntimeException error) {
+          return Optional.empty();
+       }
+       int minY = MinecraftVersionCompat.minY(heightAccessor);
+       int maxY = MinecraftVersionCompat.maxY(heightAccessor) - 1;
+       if (minY > maxY) return Optional.empty();
+       int targetY = Math.max(minY, Math.min(maxY, plan.topY() + 1));
+       return Optional.of(new BlockPos(planarX, targetY, planarZ));
+    }
+
     private SphereWorldModel.GeoPoint geodeticPointFromBlock(double blockX, double blockZ) {
        if (!Double.isFinite(blockX) || !Double.isFinite(blockZ)) {
           throw new IllegalArgumentException("block coordinates must be finite");

@@ -8,6 +8,7 @@ import com.yucareux.tellus.worldgen.global.SphereWorldModel;
 import java.nio.file.Path;
 import java.util.concurrent.atomic.AtomicInteger;
 import net.minecraft.SharedConstants;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.MappedRegistry;
@@ -90,6 +91,19 @@ class CubeNetChunkGeneratorTest {
       assertEquals(75, generator.getBaseHeight(planar.getMinBlockX(), planar.getMinBlockZ(),
          net.minecraft.world.level.levelgen.Heightmap.Types.WORLD_SURFACE_WG, chunk, null));
    }
+
+   @Test
+   void geodeticSurfacePositionUsesCanonicalFaceAndRoundTripsCoordinates() {
+       var generator = new CubeNetChunkGenerator(new FixedBiomeSource(plains), 1.0, 64, -64, 384,
+          (point, resolution) -> new SphereChunkSampler.SurfaceData(10.0, 30));
+       BlockPos target = generator.surfacePosition(LevelHeightAccessor.create(-64, 384), 0.0, 0.0).orElseThrow();
+       assertEquals(75, target.getY());
+       assertTrue(Math.abs(generator.latitudeFromBlock(target.getX(), target.getZ())) < 0.1);
+       assertTrue(Math.abs(generator.longitudeFromBlock(target.getX(), target.getZ())) < 0.1);
+       var projected = generator.adapter().layout().fromPlanar(
+          new CubeNetLayout.PlanarPoint(target.getX() + 0.5, target.getZ() + 0.5));
+       assertEquals(generator.model().blockForGeo(new SphereWorldModel.GeoPoint(0.0, 0.0, 0.0)).face(), projected.face().index());
+    }
 
    @Test
    void defaultGeneratorUsesTellusSphericalSourceFactoryForCanonicalColumns() {

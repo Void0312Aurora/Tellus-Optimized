@@ -562,6 +562,16 @@ public final class EarthChunkGenerator extends TellusChunkGeneratorBridge implem
       return this.getSurfacePosition(heightAccessor, this.settings.spawnLatitude(), this.settings.spawnLongitude(), false);
    }
 
+   @Override
+   public Optional<BlockPos> surfacePosition(LevelHeightAccessor heightAccessor, double latitude, double longitude) {
+      try {
+         return Optional.of(this.getSurfacePosition(heightAccessor, latitude, longitude));
+      } catch (RuntimeException error) {
+         Tellus.LOGGER.debug("Earth surface lookup unavailable at lat={}, lon={}: {}", latitude, longitude, error.getMessage());
+         return Optional.empty();
+      }
+   }
+
    public BlockPos getSurfacePosition(LevelHeightAccessor heightAccessor, double latitude, double longitude) {
       return this.getSurfacePosition(heightAccessor, latitude, longitude, true);
    }
