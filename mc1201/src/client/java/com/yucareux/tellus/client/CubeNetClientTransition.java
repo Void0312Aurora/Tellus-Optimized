@@ -47,9 +47,12 @@ public final class CubeNetClientTransition {
    private static final double MIN_MOTION_SAMPLE = 0.01;
    private static final double MAX_MOTION_SAMPLE = 0.8;
    private static final double MIN_RESTORE_RATIO = 0.75;
+   /** Opt-in handoff timing/frame diagnostics; normal clients stay quiet. */
+   private static final boolean DEBUG_HOLD = Boolean.getBoolean("tellus.cubeNet.debugHold");
    private static volatile Pending pending;
    private static PostCommitMotionTrace postCommitMotionTrace;
    private static OutboundMotionTrace outboundMotionTrace;
+   private static CommitRenderTrace commitRenderTrace;
    private static int traceFrames;
    /** Cumulative target-to-source chart rotation used by directional shading. */
    private static volatile int shadeQuarterTurns;
@@ -168,6 +171,7 @@ public final class CubeNetClientTransition {
       ClientChunkCache cache = client.level.getChunkSource();
       ChunkPos source = client.player.chunkPosition();
       pending = new Pending(payload, cache, client.options.getEffectiveRenderDistance());
+      debugPhase("prepare", pending, client);
       pending.dhTransitionActive = DistantHorizonsSeamClient.begin(payload);
       TellusCommon.LOGGER.info("Cube-net client preparing {} source={} target=({}, {})",
          payload.transitionId(), source, payload.centerChunkX(), payload.centerChunkZ());
@@ -181,6 +185,26 @@ public final class CubeNetClientTransition {
          ClientPlayNetworking.send(new CubeNetTransitionUnsupportedPayload(
             transitionId, TellusRenderCompatibility.backendId()));
       }
+   }
+
+   private static long clientTick(Minecraft client) {
+      return client.level == null ? -1L : client.level.getGameTime();
+   }
+
+   private static void debugPhase(String phase, Pending current, Minecraft client) {
+      if (!DEBUG_HOLD) return;
+      long now = System.nanoTime();
+      long readyToPhaseMs = current.readyNanos == 0L ? -1L : (now - current.readyNanos) / 1_000_000L;
+      TellusCommon.LOGGER.info(
+         "Cube-net zero-hold phase={} id={} tick={} nanoTime={} prepareTick={} prepareToPhaseMs={} "
+            + "readyTick={} readyToPhaseMs={} backend={} chunks={}/{} sections={} lightQueueEmpty={}",
+         phase, current.area.transitionId(), clientTick(client), now, current.prepareTick,
+         (now - current.startedNanos) / 1_000_000L, current.readyTick, readyToPhaseMs,
+         TellusRenderCompatibility.backendId(), current.remote.size(),
+         (current.area.radius() * 2 + 1) * (current.area.radius() * 2 + 1),
+         current.stagedSodium == null ? current.sections.size()
+            : CubeNetSodiumStaging.sectionCount(current.stagedSodium),
+         client.level == null || client.level.isLightUpdateQueueEmpty());
    }
 
    public static LevelChunk stagedChunk(ClientChunkCache cache, int x, int z) {
@@ -451,6 +475,10 @@ public final class CubeNetClientTransition {
       }
       ClientPlayNetworking.send(new CubeNetTransitionReadyPayload(current.area.transitionId()));
       current.readySent = true;
+      Minecraft client = Minecraft.getInstance();
+      current.readyNanos = System.nanoTime();
+      current.readyTick = clientTick(client);
+      debugPhase("ready", current, client);
       TellusCommon.LOGGER.info("Cube-net client render staging ready {} backend={} sections={} elapsedMs={}",
          current.area.transitionId(), TellusRenderCompatibility.backendId(),
          current.stagedSodium == null ? current.sections.size() : CubeNetSodiumStaging.sectionCount(current.stagedSodium),
@@ -526,6 +554,12 @@ public final class CubeNetClientTransition {
          TellusCommon.LOGGER.warn("Cube-net client committed native chart with DH render fallback {}",
             current.area.transitionId());
       }
+      current.commitNanos = System.nanoTime();
+      current.commitTick = clientTick(client);
+      debugPhase("commit", current, client);
+      if (DEBUG_HOLD) {
+         commitRenderTrace = new CommitRenderTrace(current);
+      }
       pending = null;
       current.cache.updateViewCenter(current.area.centerChunkX(), current.area.centerChunkZ());
       boolean lightQueueBeforeInstall = client.level.isLightUpdateQueueEmpty();
@@ -557,7 +591,7 @@ public final class CubeNetClientTransition {
       }
       int previousShade = shadeQuarterTurns;
       shadeQuarterTurns = current.targetShadeQuarterTurns;
-      traceFrames = 8;
+      traceFrames = DEBUG_HOLD ? 8 : 0;
       CubeNetIrisHistoryReset.request();
       TellusCommon.LOGGER.info("Cube-net client render chart committed {} player={} vehicle={} shadingTurns={} previous={}",
          current.area.transitionId(), position, client.player.getVehicle(), shadeQuarterTurns, previousShade);
@@ -747,11 +781,27 @@ public final class CubeNetClientTransition {
    public static void renderedFrame(Minecraft client) {
       if (traceFrames <= 0 || client.player == null) return;
       var camera = client.gameRenderer.getMainCamera();
+      int frame = 9 - traceFrames--;
+      long frameNanos = System.nanoTime();
+      CommitRenderTrace renderTrace = commitRenderTrace;
+      if (renderTrace != null && !renderTrace.firstFrameLogged) {
+         renderTrace.firstFrameLogged = true;
+         TellusCommon.LOGGER.info(
+            "Cube-net zero-hold first-render-frame id={} frame={} tick={} nanoTime={} commitTick={} "
+               + "commitToFrameMs={} commitToFrameTicks={} prepareToReadyMs={} readyToCommitMs={} "
+               + "camera={} yaw={} pitch={} chunks={}",
+            renderTrace.transitionId, frame, clientTick(client), frameNanos, renderTrace.commitTick,
+            (frameNanos - renderTrace.commitNanos) / 1_000_000L,
+            clientTick(client) - renderTrace.commitTick,
+            (renderTrace.readyNanos - renderTrace.prepareNanos) / 1_000_000L,
+            (renderTrace.commitNanos - renderTrace.readyNanos) / 1_000_000L,
+            camera.getPosition(), camera.getYRot(), camera.getXRot(), client.levelRenderer.getChunkStatistics());
+         commitRenderTrace = null;
+      }
       TellusCommon.LOGGER.info(
-         "Cube-net client committed frame={} camera={} yaw={} pitch={} viewDistance={} shadingTurns={} unfoldActive={} chunks={}",
-         9 - traceFrames--, camera.getPosition(), camera.getYRot(),
-         camera.getXRot(), client.options.getEffectiveRenderDistance(), shadeQuarterTurns,
-         CubeNetUnfoldClient.active(), client.levelRenderer.getChunkStatistics());
+         "Cube-net client committed frame={} camera={} yaw={} pitch={} viewDistance={} shadingTurns={} unfoldActive={} chunks={} ",
+         frame, camera.getPosition(), camera.getYRot(), camera.getXRot(), client.options.getEffectiveRenderDistance(),
+         shadeQuarterTurns, CubeNetUnfoldClient.active(), client.levelRenderer.getChunkStatistics());
    }
 
    public static void reset() {
@@ -767,6 +817,7 @@ public final class CubeNetClientTransition {
          for (LevelChunk chunk : old.remote.values()) client.level.unload(chunk);
       }
       traceFrames = 0;
+      commitRenderTrace = null;
       outboundMotionTrace = null;
    }
 
@@ -783,6 +834,11 @@ public final class CubeNetClientTransition {
       private final Map<Long, ClientboundLevelChunkWithLightPacket> packets = new java.util.LinkedHashMap<>();
       private final int viewDistance;
       private final long startedNanos = System.nanoTime();
+      private final long prepareTick;
+      private long readyNanos;
+      private long readyTick = -1L;
+      private long commitNanos;
+      private long commitTick = -1L;
       private final List<ChunkRenderDispatcher.RenderChunk> sections = new ArrayList<>();
       private final List<ChunkRenderDispatcher.RenderChunk> inFlight = new ArrayList<>();
       private final RenderRegionCache regions = new RenderRegionCache();
@@ -815,6 +871,7 @@ public final class CubeNetClientTransition {
 
       private Pending(CubeNetTransitionPreparePayload area, ClientChunkCache cache, int viewDistance) {
          this.area = area;
+         this.prepareTick = clientTick(Minecraft.getInstance());
          this.cache = cache;
          this.viewDistance = viewDistance;
          this.holdMovement = area.holdMovement();
@@ -838,6 +895,27 @@ public final class CubeNetClientTransition {
 
       private boolean hasPreparedRenderer() {
          return this.staged != null || this.stagedSodium != null;
+      }
+   }
+
+   private static final class CommitRenderTrace {
+      private final java.util.UUID transitionId;
+      private final long prepareTick;
+      private final long prepareNanos;
+      private final long readyTick;
+      private final long readyNanos;
+      private final long commitTick;
+      private final long commitNanos;
+      private boolean firstFrameLogged;
+
+      private CommitRenderTrace(Pending current) {
+         this.transitionId = current.area.transitionId();
+         this.prepareTick = current.prepareTick;
+         this.prepareNanos = current.startedNanos;
+         this.readyTick = current.readyTick;
+         this.readyNanos = current.readyNanos;
+         this.commitTick = current.commitTick;
+         this.commitNanos = current.commitNanos;
       }
    }
 
