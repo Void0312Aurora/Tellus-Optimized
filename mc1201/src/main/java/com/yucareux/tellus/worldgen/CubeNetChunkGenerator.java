@@ -1477,6 +1477,9 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
       int maxX = Math.min(chunkMinX + 111, box.maxX());
       int maxZ = Math.min(chunkMinZ + 111, box.maxZ());
       if (minX > maxX || minZ > maxZ) return false;
+      if (this.cubeNetBuildings && !this.landmarks.intersecting(box.minX(), box.minZ(), box.maxX(), box.maxZ()).isEmpty()) {
+         return true;
+      }
       if (this.cubeNetBuildings && !data.buildings().features().isEmpty()) {
          for (OsmBuildingFeature building : data.buildings().features()) {
             if (!CubeNetFeatureRasterizer.buildingCells(this.model, this.adapter.layout(), building,
