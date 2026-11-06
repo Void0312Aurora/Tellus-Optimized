@@ -191,6 +191,16 @@ public final class CubeNetClientTransition {
       return client.level == null ? -1L : client.level.getGameTime();
    }
 
+   private static boolean packetsCoverArea(Pending current) {
+      for (int dz = -current.area.radius(); dz <= current.area.radius(); dz++) {
+         for (int dx = -current.area.radius(); dx <= current.area.radius(); dx++) {
+            if (!current.packets.containsKey(ChunkPos.asLong(
+               current.area.centerChunkX() + dx, current.area.centerChunkZ() + dz))) return false;
+         }
+      }
+      return true;
+   }
+
    private static void debugPhase(String phase, Pending current, Minecraft client) {
       if (!DEBUG_HOLD) return;
       long now = System.nanoTime();
@@ -357,6 +367,13 @@ public final class CubeNetClientTransition {
                return;
             }
          }
+      }
+      if (!packetsCoverArea(current)) {
+         if (DEBUG_HOLD && current.remainingTicks % 20 == 0) TellusCommon.LOGGER.info(
+            "Cube-net zero-hold waiting for complete packet set {} packets={} expected={}",
+            current.area.transitionId(), current.packets.size(),
+            (current.area.radius() * 2 + 1) * (current.area.radius() * 2 + 1));
+         return;
       }
       if (!current.chunksReceivedSent && ClientPlayNetworking.canSend(CubeNetTransitionChunksReceivedPayload.TYPE)) {
          ClientPlayNetworking.send(new CubeNetTransitionChunksReceivedPayload(current.area.transitionId()));
