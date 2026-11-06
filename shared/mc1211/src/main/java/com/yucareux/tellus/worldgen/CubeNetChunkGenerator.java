@@ -2,6 +2,7 @@ package com.yucareux.tellus.worldgen;
 
 import com.google.common.base.Preconditions;
 import com.mojang.serialization.Codec;
+import com.mojang.serialization.MapCodec;
 import com.mojang.datafixers.util.Either;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import com.yucareux.tellus.world.data.canopy.TellusCanopyHeightSource;
@@ -131,7 +132,7 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
    private static final BlockState CUBE_NET_ROAD_FOUNTAIN = Blocks.WATER_CAULDRON.defaultBlockState();
    private static final BlockState CUBE_NET_ROAD_BOLLARD = Blocks.COBBLESTONE_WALL.defaultBlockState();
    private static final Codec<BiomeSource> BIOME_SOURCE_CODEC = Codec.either(
-      FixedBiomeSource.CODEC,
+      FixedBiomeSource.CODEC.codec(),
       CubeNetBiomeSource.CODEC.codec()
    ).xmap(
       either -> either.map(source -> (BiomeSource)source, source -> (BiomeSource)source),
@@ -139,7 +140,7 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
          ? Either.left(fixed)
          : Either.right((CubeNetBiomeSource)source)
    );
-   public static final Codec<CubeNetChunkGenerator> CODEC = RecordCodecBuilder.create(instance -> instance.group(
+   public static final MapCodec<CubeNetChunkGenerator> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
       Codec.intRange(GEOMETRY_VERSION, GEOMETRY_VERSION).fieldOf("geometry_version").forGetter(generator -> GEOMETRY_VERSION),
       Codec.STRING.fieldOf("mapping").forGetter(generator -> generator.model().mappingId()),
       Codec.DOUBLE.optionalFieldOf("excluded_radius_meters",
@@ -711,17 +712,29 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
    }
 
    @Override
-   protected Codec<? extends ChunkGenerator> codec() { return CODEC; }
+   protected MapCodec<? extends ChunkGenerator> codec() { return CODEC; }
 
-   @Override
    public CompletableFuture<ChunkAccess> createBiomes(
-      Executor executor, RandomState random, Blender blender, StructureManager structures, ChunkAccess chunk
+      RandomState random, Blender blender, StructureManager structures, ChunkAccess chunk
    ) {
       chunk.fillBiomesFromNoise(this.biomeSource, Climate.empty());
       return CompletableFuture.completedFuture(chunk);
    }
 
-   @Override
+   /** Compatibility overload retained for the 1.20.1 implementation shape. */
+   public CompletableFuture<ChunkAccess> createBiomes(
+      Executor executor, RandomState random, Blender blender, StructureManager structures, ChunkAccess chunk
+   ) {
+      return this.createBiomes(random, blender, structures, chunk);
+   }
+
+   public CompletableFuture<ChunkAccess> fillFromNoise(
+      Blender blender, RandomState random, StructureManager structures, ChunkAccess chunk
+   ) {
+      return this.fillFromNoise(Runnable::run, blender, random, structures, chunk);
+   }
+
+   /** Compatibility overload retained for the 1.20.1 implementation shape. */
    public CompletableFuture<ChunkAccess> fillFromNoise(
       Executor executor, Blender blender, RandomState random, StructureManager structures, ChunkAccess chunk
    ) {

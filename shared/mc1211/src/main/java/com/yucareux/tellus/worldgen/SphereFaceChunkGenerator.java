@@ -4,6 +4,7 @@ import com.google.common.base.Suppliers;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.mojang.serialization.Codec;
+import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import com.yucareux.tellus.worldgen.global.SphereChunkSampler;
 import com.yucareux.tellus.worldgen.global.SphereFaceTopology;
@@ -45,7 +46,7 @@ import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemp
  * storage. An explicit planet id connects six matching face dimensions.
  */
 public final class SphereFaceChunkGenerator extends ChunkGenerator {
-   public static final Codec<SphereFaceChunkGenerator> CODEC = RecordCodecBuilder.create(instance -> instance.group(
+   public static final MapCodec<SphereFaceChunkGenerator> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
       Codec.intRange(2, 2).fieldOf("geometry_version").forGetter(generator -> 2),
       Codec.STRING.fieldOf("mapping").forGetter(generator -> generator.model().mappingId()),
       Codec.DOUBLE.optionalFieldOf("excluded_radius_meters",
@@ -168,17 +169,29 @@ public final class SphereFaceChunkGenerator extends ChunkGenerator {
    }
 
    @Override
-   protected Codec<? extends ChunkGenerator> codec() { return CODEC; }
+   protected MapCodec<? extends ChunkGenerator> codec() { return CODEC; }
 
-   @Override
    public CompletableFuture<ChunkAccess> createBiomes(
-      Executor executor, RandomState random, Blender blender, StructureManager structures, ChunkAccess chunk
+      RandomState random, Blender blender, StructureManager structures, ChunkAccess chunk
    ) {
       chunk.fillBiomesFromNoise(this.biomeSource, Climate.empty());
       return CompletableFuture.completedFuture(chunk);
    }
 
-   @Override
+   /** Compatibility overload retained for the 1.20.1 implementation shape. */
+   public CompletableFuture<ChunkAccess> createBiomes(
+      Executor executor, RandomState random, Blender blender, StructureManager structures, ChunkAccess chunk
+   ) {
+      return this.createBiomes(random, blender, structures, chunk);
+   }
+
+   public CompletableFuture<ChunkAccess> fillFromNoise(
+      Blender blender, RandomState random, StructureManager structures, ChunkAccess chunk
+   ) {
+      return this.fillFromNoise(Runnable::run, blender, random, structures, chunk);
+   }
+
+   /** Compatibility overload retained for the 1.20.1 implementation shape. */
    public CompletableFuture<ChunkAccess> fillFromNoise(
       Executor executor, Blender blender, RandomState random, StructureManager structures, ChunkAccess chunk
    ) {
