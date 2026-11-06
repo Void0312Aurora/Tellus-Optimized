@@ -49,8 +49,61 @@ vertical limits as the face generator:
 }
 ```
 
-The helper uses the Cube-Net geodetic biome source by default. `--fixed-plains`
-is available only for a minimal compatibility world. The spherical source maps
+## 世界设置（`biome_source.settings` 字段）
+
+生成器现在把下列 CLI 选项写入 `biome_source.settings`；默认值与
+`CubeNetBiomeSource.Settings.DEFAULT` 一致：
+
+| CLI 参数 | JSON 字段 | 默认值 | 作用 |
+| --- | --- | ---: | --- |
+| `--caves` / `--no-caves` | `cave_generation` | `true` | Cube-Net 球面洞穴采样与洞穴生物群系路径 |
+| `--deep-dark` / `--no-deep-dark` | `deep_dark` | `false` | Deep Dark/sculk 相关生成 |
+| `--underground-depth N` | `underground_depth` | `256` | 地下壳、洞穴与地下采样深度（`64..512`） |
+| `--ore-veins` / `--no-ore-veins` | `ore_veins` | `true` | Cube-Net 自有矿脉采样 |
+| `--geological-stone-patches` / `--no-geological-stone-patches` | `geological_stone_patches` | `true` | Cube-Net 地质石块斑块采样 |
+| `--caves-reach-surface` / `--no-caves-reach-surface` | `caves_reach_surface` | `false` | 洞穴是否允许接近/连到地表 |
+| `--roads` / `--no-roads` | `roads` | `true` | 道路与道路相关投影 |
+| `--buildings` / `--no-buildings` | `buildings` | `true` | 建筑与建筑相关投影 |
+
+例如关闭建筑和原版洞穴、同时保留矿脉：
+
+```sh
+python3 tools/create_cube_net_datapack.py \
+  --output /path/to/test-world/datapacks/cube-net \
+  --no-buildings --no-caves --ore-veins
+```
+
+`CubeNetChunkGenerator` 从 `CubeNetBiomeSource.Settings` 解析这些值；没有
+Cube-Net biome source 时才回退到系统属性默认值。`TellusBiomeGenerationSettings`
+仍会按代码过滤复制的原版生成功能：树按生物群系保留（当前有红树林例外），
+矿石、地质石块、洞穴/峡谷、Deep Dark、熔岩泉/池等按对应过滤规则处理；
+`freeze_top_layer`/`snow_and_freeze` 会被过滤，因此结冰与树/矿/石层不是由这
+个复制过滤器直接生成。Cube-Net 自有球面采样器再依据上述设置决定洞穴、矿脉和
+地质石块路径。
+
+### 海陆权威与实时系统
+
+海陆分类使用 Overture `subtype=ocean` 面状要素：完整查询且点落在海洋多边形内
+才是海洋；完整查询但没有包含海洋多边形时按陆地处理；未完成、失败或异常时为
+`UNKNOWN`，沿用现有地形/陆地掩膜回退，不阻塞地形线程。Cube-Net 通过
+`CachingGeodeticOceanAuthority` 对按地理分辨率量化的查询做有界缓存；已知结果
+默认缓存 10 分钟，`UNKNOWN` 默认缓存 60 秒，最多 8192 项。
+
+Cube-Net 的实时系统属性是显式 opt-in：
+
+* `-Dtellus.cubeNet.realtimeTime=true`：无 Earth generator settings 的 Cube-Net
+  世界启用实时本地时间；
+* `-Dtellus.cubeNet.realtimeWeather=true`：启用 Open-Meteo 天气轮询与客户端天气
+  状态；
+* `-Dtellus.cubeNet.historicalSnow=true`：启用历史温度/降雪网格与积雪处理。
+
+这些属性只作为 Cube-Net 无 Earth 设置时的回退；实时管理器仍按玩家地理锚点、缓存
+刷新周期和天气/积雪状态运行。`/tellus map`（GeoTP）负责地图传送 UI；
+`/tellus weather` 当前显示所在位置的 Tellus 天气/时间状态，且需要已加载的
+实时数据才能反映其变化。它们不会把上述三个 JVM 属性写入 datapack，也不是生成器
+settings 字段。
+
+The spherical source maps
 canonical water through the available ocean climate sample and applies the same
 Tellus ESA + Köppen classification used by `EarthBiomeSource`, including random
 biome patches when enabled, badlands promotion, snow biome shape,

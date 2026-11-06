@@ -48,7 +48,14 @@ Entrances are selected on the rasterized footprint and must connect to the main 
 
 Street lighting uses steel poles, flat cantilever arms, and white light fixtures. Pedestrian streets get compact post lights; local streets use a regular row along one verge; collectors use alternating sides; wide boulevards use opposite pairs. Motorways and rural paths only receive mapped lights. Pole positions follow the complete road geometry, stay outside travel lanes and junction approaches, and remain consistent across chunk boundaries. Mapped lights take priority over generated ones. Whole fixtures are checked for ground support, water, buildings, and walking clearance before placement. Individual lamps are omitted above 1:8 scale; Distant Horizons uses the same layout at its finest detail levels. Existing generated chunks retain their previous lights.
 
-## Third-Party Code
+## Cube-Net datapack generator
+
+The single-Level Cube-Net test dimension can be generated with
+[`tools/create_cube_net_datapack.py`](tools/create_cube_net_datapack.py). Its
+world-setting flags and current integration boundaries are documented in
+[`docs/cube-net-generator.md`](docs/cube-net-generator.md) and
+[`docs/cube-net-integration-status.md`](docs/cube-net-integration-status.md).
+
 
 Tellus includes code derived from Arnis.
 

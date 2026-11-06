@@ -15,7 +15,11 @@ MAPPING = "rancic-ccam30-double-v1"
 
 
 def create_pack(output: Path, world: str, scale: float, sea: int, min_y: int, height: int,
-                apron_chunks: int = 5, geodetic_biomes: bool = True) -> list[Path]:
+                apron_chunks: int = 5, geodetic_biomes: bool = True,
+                caves: bool = True, deep_dark: bool = False, underground_depth: int = 256,
+                ore_veins: bool = True, geological_stone_patches: bool = True,
+                caves_reach_surface: bool = False, roads: bool = True,
+                buildings: bool = True) -> list[Path]:
     if not IDENTIFIER.fullmatch(world):
         raise ValueError("world must be a namespace:path identifier")
     namespace, name = world.split(":", 1)
@@ -29,6 +33,8 @@ def create_pack(output: Path, world: str, scale: float, sea: int, min_y: int, he
         raise ValueError("sea level must lie within the dimension height range")
     if not 0 <= apron_chunks <= 35:
         raise ValueError("apron width must be between 0 and 35 chunks")
+    if not 64 <= underground_depth <= 512:
+        raise ValueError("underground depth must be between 64 and 512")
     if output.exists() and (not output.is_dir() or any(output.iterdir())):
         raise ValueError("output must be a new or empty directory")
 
@@ -64,14 +70,14 @@ def create_pack(output: Path, world: str, scale: float, sea: int, min_y: int, he
                 "random_biome_density": 0.12,
                 "random_biome_seed": 0,
                 "random_biome_ids": [],
-                "cave_generation": True,
-                "deep_dark": False,
-                "underground_depth": 256,
-                "ore_veins": True,
-                "geological_stone_patches": True,
-                "caves_reach_surface": False,
-                "roads": True,
-                "buildings": True,
+                "cave_generation": caves,
+                "deep_dark": deep_dark,
+                "underground_depth": underground_depth,
+                "ore_veins": ore_veins,
+                "geological_stone_patches": geological_stone_patches,
+                "caves_reach_surface": caves_reach_surface,
+                "roads": roads,
+                "buildings": buildings,
             },
         }
     generator = {
@@ -127,10 +133,29 @@ def main() -> None:
                         help="Use the Cube-Net GeoPoint biome source (the default).")
     parser.add_argument("--fixed-plains", action="store_false", dest="geodetic_biomes",
                         help="Use fixed plains for a minimal compatibility world.")
+    parser.add_argument("--caves", action=argparse.BooleanOptionalAction, default=True,
+                        help="Enable Cube-Net cave generation (default: true).")
+    parser.add_argument("--deep-dark", action=argparse.BooleanOptionalAction, default=False,
+                        help="Enable Deep Dark generation (default: false).")
+    parser.add_argument("--underground-depth", type=int, default=256,
+                        help="Underground depth, 64..512 blocks (default: 256).")
+    parser.add_argument("--ore-veins", action=argparse.BooleanOptionalAction, default=True,
+                        help="Enable Cube-Net ore veins (default: true).")
+    parser.add_argument("--geological-stone-patches", action=argparse.BooleanOptionalAction, default=True,
+                        help="Enable Cube-Net geological stone patches (default: true).")
+    parser.add_argument("--caves-reach-surface", action=argparse.BooleanOptionalAction, default=False,
+                        help="Allow Cube-Net caves to reach the surface (default: false).")
+    parser.add_argument("--roads", action=argparse.BooleanOptionalAction, default=True,
+                        help="Enable geodetic road features (default: true).")
+    parser.add_argument("--buildings", action=argparse.BooleanOptionalAction, default=True,
+                        help="Enable geodetic building features (default: true).")
     args = parser.parse_args()
     try:
         files = create_pack(args.output, args.world, args.scale, args.sea_level, args.min_y, args.height,
-                            args.apron_chunks, args.geodetic_biomes)
+                            args.apron_chunks, args.geodetic_biomes,
+                            args.caves, args.deep_dark, args.underground_depth, args.ore_veins,
+                            args.geological_stone_patches, args.caves_reach_surface,
+                            args.roads, args.buildings)
     except ValueError as error:
         parser.error(str(error))
     print(f"Created {len(files)} files for {args.world}: {args.output}")
