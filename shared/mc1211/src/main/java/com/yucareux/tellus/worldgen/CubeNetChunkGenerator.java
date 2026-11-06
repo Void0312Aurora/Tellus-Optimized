@@ -506,6 +506,15 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
        return Optional.of(new BlockPos(planarX, targetY, planarZ));
     }
 
+    public BlockPos getInitialSpawnPosition(LevelHeightAccessor heightAccessor) {
+       CubeNetBiomeSource cubeNet = this.biomeSource instanceof CubeNetBiomeSource source ? source : null;
+       double latitude = cubeNet == null ? EarthGeneratorSettings.DEFAULT.spawnLatitude() : cubeNet.settings().spawnLatitude();
+       double longitude = cubeNet == null ? EarthGeneratorSettings.DEFAULT.spawnLongitude() : cubeNet.settings().spawnLongitude();
+       return this.surfacePosition(heightAccessor, latitude, longitude)
+          .orElseThrow(() -> new IllegalStateException("Cube-Net initial spawn surface is unavailable at lat="
+             + latitude + ", lon=" + longitude));
+    }
+
     private SphereWorldModel.GeoPoint geodeticPointFromBlock(double blockX, double blockZ) {
        if (!Double.isFinite(blockX) || !Double.isFinite(blockZ)) {
           throw new IllegalArgumentException("block coordinates must be finite");

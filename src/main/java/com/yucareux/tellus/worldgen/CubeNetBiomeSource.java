@@ -86,7 +86,9 @@ public final class CubeNetBiomeSource extends TellusBiomeSourceBridge {
        boolean geodes,
        boolean enableWater,
        boolean teleportProgress,
-       int heightOffset
+       int heightOffset,
+       double spawnLatitude,
+       double spawnLongitude
    ) {
       public static final Settings DEFAULT = new Settings(
          false,
@@ -124,7 +126,9 @@ public final class CubeNetBiomeSource extends TellusBiomeSourceBridge {
           EarthGeneratorSettings.DEFAULT.geodes(),
           EarthGeneratorSettings.DEFAULT.enableWater(),
           EarthGeneratorSettings.DEFAULT.teleportProgress(),
-          EarthGeneratorSettings.DEFAULT.heightOffset()
+          EarthGeneratorSettings.DEFAULT.heightOffset(),
+          EarthGeneratorSettings.DEFAULT.spawnLatitude(),
+          EarthGeneratorSettings.DEFAULT.spawnLongitude()
       );
        private record BaseSettings(boolean randomBiomes, double randomBiomeDensity, long randomBiomeSeed,
           List<String> randomBiomeIds, boolean caveGeneration, boolean deepDark, int undergroundDepth,
@@ -175,14 +179,16 @@ public final class CubeNetBiomeSource extends TellusBiomeSourceBridge {
        private record BaseAndA(BaseSettings base, StructureSettingsA structures) { }
        private record BaseAndB(BaseAndA baseAndA, StructureSettingsB structures) { }
         private record WorldSettings(boolean lakeFreezing, boolean lavaPools, boolean geodes, boolean enableWater,
-           boolean teleportProgress, int heightOffset) { }
+           boolean teleportProgress, int heightOffset, double spawnLatitude, double spawnLongitude) { }
         private static final MapCodec<WorldSettings> WORLD_CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
           Codec.BOOL.optionalFieldOf("lake_freezing", DEFAULT.lakeFreezing()).forGetter(WorldSettings::lakeFreezing),
           Codec.BOOL.optionalFieldOf("lava_pools", DEFAULT.lavaPools()).forGetter(WorldSettings::lavaPools),
           Codec.BOOL.optionalFieldOf("geodes", DEFAULT.geodes()).forGetter(WorldSettings::geodes),
           Codec.BOOL.optionalFieldOf("enable_water", DEFAULT.enableWater()).forGetter(WorldSettings::enableWater),
           Codec.BOOL.optionalFieldOf("teleport_progress", DEFAULT.teleportProgress()).forGetter(WorldSettings::teleportProgress),
-          Codec.INT.optionalFieldOf("height_offset", DEFAULT.heightOffset()).forGetter(WorldSettings::heightOffset)
+          Codec.INT.optionalFieldOf("height_offset", DEFAULT.heightOffset()).forGetter(WorldSettings::heightOffset),
+          Codec.DOUBLE.optionalFieldOf("spawn_latitude", DEFAULT.spawnLatitude()).forGetter(WorldSettings::spawnLatitude),
+          Codec.DOUBLE.optionalFieldOf("spawn_longitude", DEFAULT.spawnLongitude()).forGetter(WorldSettings::spawnLongitude)
        ).apply(instance, WorldSettings::new));
        public static final Codec<Settings> CODEC = MapCodec.of(
           new com.mojang.serialization.MapEncoder.Implementation<Settings>() {
@@ -195,7 +201,7 @@ public final class CubeNetBiomeSource extends TellusBiomeSourceBridge {
                 StructureSettingsB b = new StructureSettingsB(input.addShipwrecks(), input.addOceanRuins(), input.addBuriedTreasure(), input.addIgloos(),
                    input.addWitchHuts(), input.addAncientCities(), input.addTrialChambers(), input.addTrailRuins(), input.addAbandonedCamps());
                 WorldSettings world = new WorldSettings(input.lakeFreezing(), input.lavaPools(), input.geodes(), input.enableWater(),
-                   input.teleportProgress(), input.heightOffset());
+                   input.teleportProgress(), input.heightOffset(), input.spawnLatitude(), input.spawnLongitude());
                 return WORLD_CODEC.encode(world, ops, STRUCTURES_B_CODEC.encode(b, ops, STRUCTURES_A_CODEC.encode(a, ops, BASE_CODEC.encode(base, ops, prefix))));
              }
              public <T> Stream<T> keys(DynamicOps<T> ops) {
@@ -220,7 +226,8 @@ public final class CubeNetBiomeSource extends TellusBiomeSourceBridge {
                           baseAndB.structures().addOceanRuins(), baseAndB.structures().addBuriedTreasure(), baseAndB.structures().addIgloos(),
                           baseAndB.structures().addWitchHuts(), baseAndB.structures().addAncientCities(), baseAndB.structures().addTrialChambers(),
                           baseAndB.structures().addTrailRuins(), baseAndB.structures().addAbandonedCamps(),
-                          world.lakeFreezing(), world.lavaPools(), world.geodes(), world.enableWater(), world.teleportProgress(), world.heightOffset()), WORLD_CODEC.decode(ops, input));
+                          world.lakeFreezing(), world.lavaPools(), world.geodes(), world.enableWater(), world.teleportProgress(),
+                          world.heightOffset(), world.spawnLatitude(), world.spawnLongitude()), WORLD_CODEC.decode(ops, input));
              }
              public <T> Stream<T> keys(DynamicOps<T> ops) {
                 return Stream.concat(BASE_CODEC.keys(ops), Stream.concat(STRUCTURES_A_CODEC.keys(ops), Stream.concat(STRUCTURES_B_CODEC.keys(ops), WORLD_CODEC.keys(ops))));
@@ -259,6 +266,12 @@ public final class CubeNetBiomeSource extends TellusBiomeSourceBridge {
          if (undergroundDepth < EarthGeneratorSettings.MIN_UNDERGROUND_DEPTH
             || undergroundDepth > EarthGeneratorSettings.MAX_UNDERGROUND_DEPTH) {
             throw new IllegalArgumentException("underground_depth");
+         }
+         if (!Double.isFinite(spawnLatitude) || spawnLatitude < -90.0 || spawnLatitude > 90.0) {
+            throw new IllegalArgumentException("spawn_latitude");
+         }
+         if (!Double.isFinite(spawnLongitude) || spawnLongitude < -180.0 || spawnLongitude > 180.0) {
+            throw new IllegalArgumentException("spawn_longitude");
          }
       }
    }

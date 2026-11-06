@@ -31,6 +31,8 @@ class CubeNetDatapackWriterTest {
       assertTrue(settings.has("enable_water"));
       assertTrue(settings.has("teleport_progress"));
       assertTrue(settings.has("height_offset"));
+      assertTrue(settings.has("spawn_latitude"));
+      assertTrue(settings.has("spawn_longitude"));
       assertEquals(1000.0, dimension.getAsJsonObject("generator").get("world_scale").getAsDouble());
    }
 

@@ -149,6 +149,8 @@ public final class CubeNetDatapackWriter {
       json.addProperty("enable_water", settings.enableWater());
       json.addProperty("teleport_progress", settings.teleportProgress());
       json.addProperty("height_offset", settings.heightOffset());
+      json.addProperty("spawn_latitude", settings.spawnLatitude());
+      json.addProperty("spawn_longitude", settings.spawnLongitude());
    }
 
    private static boolean isSupportedScale(double scale) {

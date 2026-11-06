@@ -121,7 +121,15 @@ class CubeNetChunkGeneratorTest {
     }
 
    @Test
-   void defaultGeneratorUsesTellusSphericalSourceFactoryForCanonicalColumns() {
+   void initialSpawnPositionUsesEarthDefaultGeodeticCoordinates() {
+      var generator = new CubeNetChunkGenerator(new FixedBiomeSource(plains), 1.0, 64, -64, 384,
+         (point, resolution) -> new SphereChunkSampler.SurfaceData(10.0, 30));
+      BlockPos expected = generator.surfacePosition(LevelHeightAccessor.create(-64, 384),
+         EarthGeneratorSettings.DEFAULT.spawnLatitude(), EarthGeneratorSettings.DEFAULT.spawnLongitude()).orElseThrow();
+      assertEquals(expected, generator.getInitialSpawnPosition(LevelHeightAccessor.create(-64, 384)));
+   }
+
+
       String previous = System.getProperty("tellus.sphere.syntheticSampler");
       try {
          // Keep this test independent of local DEM/land-mask availability while
@@ -290,6 +298,8 @@ class CubeNetChunkGeneratorTest {
       settings.addProperty("enable_water", false);
       settings.addProperty("teleport_progress", false);
       settings.addProperty("height_offset", 96);
+      settings.addProperty("spawn_latitude", 35.3606);
+      settings.addProperty("spawn_longitude", 138.7274);
       source.add("settings", settings);
       var ops = RegistryOps.create(JsonOps.INSTANCE, provider);
       var decoded = CubeNetBiomeSource.CODEC.codec().parse(ops, source).getOrThrow(false, failure -> fail(failure));
@@ -299,6 +309,8 @@ class CubeNetChunkGeneratorTest {
       assertFalse(decoded.settings().enableWater());
       assertFalse(decoded.settings().teleportProgress());
       assertEquals(96, decoded.settings().heightOffset());
+      assertEquals(35.3606, decoded.settings().spawnLatitude(), 0.000001);
+      assertEquals(138.7274, decoded.settings().spawnLongitude(), 0.000001);
    }
    @Test
    void materializedColumnsFollowThePlanarOrientationOnEveryFace() {

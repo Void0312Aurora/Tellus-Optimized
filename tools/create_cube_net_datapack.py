@@ -30,7 +30,8 @@ def create_pack(output: Path, world: str, scale: float, sea: int, min_y: int, he
                  add_ocean_ruins: bool | None = None, add_buried_treasure: bool | None = None,
                  add_igloos: bool | None = None, add_witch_huts: bool | None = None,
                  add_ancient_cities: bool | None = None, add_trial_chambers: bool | None = None,
-                 add_trail_ruins: bool | None = None, add_abandoned_camps: bool | None = None) -> list[Path]:
+                 add_trail_ruins: bool | None = None, add_abandoned_camps: bool | None = None,
+                  spawn_latitude: float = 27.9881, spawn_longitude: float = 86.925) -> list[Path]:
     if not IDENTIFIER.fullmatch(world):
         raise ValueError("world must be a namespace:path identifier")
     namespace, name = world.split(":", 1)
@@ -46,6 +47,10 @@ def create_pack(output: Path, world: str, scale: float, sea: int, min_y: int, he
         raise ValueError("apron width must be between 0 and 35 chunks")
     if not 64 <= underground_depth <= 512:
         raise ValueError("underground depth must be between 64 and 512")
+    if not math.isfinite(spawn_latitude) or not -90.0 <= spawn_latitude <= 90.0:
+        raise ValueError("spawn_latitude must be finite and within [-90, 90]")
+    if not math.isfinite(spawn_longitude) or not -180.0 <= spawn_longitude <= 180.0:
+        raise ValueError("spawn_longitude must be finite and within [-180, 180]")
     if output.exists() and (not output.is_dir() or any(output.iterdir())):
         raise ValueError("output must be a new or empty directory")
 
@@ -116,6 +121,8 @@ def create_pack(output: Path, world: str, scale: float, sea: int, min_y: int, he
                 "enable_water": enable_water,
                 "teleport_progress": teleport_progress,
                 "height_offset": height_offset,
+                "spawn_latitude": spawn_latitude,
+                "spawn_longitude": spawn_longitude,
                 **structure_values,
             },
         }
@@ -200,6 +207,10 @@ def main() -> None:
                         help="Show GeoTP progress (default: true).")
     parser.add_argument("--height-offset", type=int, default=64,
                         help="Cube-Net terrain baseline offset (default: 64).")
+    parser.add_argument("--spawn-latitude", type=float, default=27.9881,
+                        help="Initial spawn latitude in degrees (default: 27.9881).")
+    parser.add_argument("--spawn-longitude", type=float, default=86.925,
+                        help="Initial spawn longitude in degrees (default: 86.925).")
     structure_group = parser.add_mutually_exclusive_group()
     structure_group.add_argument("--structures", dest="structures", action="store_true",
                                 help="Enable all Tellus structure sets.")
@@ -227,7 +238,8 @@ def main() -> None:
                              args.add_jungle_temples, args.add_pillager_outposts, args.add_ruined_portals,
                              args.add_shipwrecks, args.add_ocean_ruins, args.add_buried_treasure,
                              args.add_igloos, args.add_witch_huts, args.add_ancient_cities,
-                             args.add_trial_chambers, args.add_trail_ruins, args.add_abandoned_camps)
+                             args.add_trial_chambers, args.add_trail_ruins, args.add_abandoned_camps,
+                             args.spawn_latitude, args.spawn_longitude)
     except ValueError as error:
         parser.error(str(error))
     print(f"Created {len(files)} files for {args.world}: {args.output}")

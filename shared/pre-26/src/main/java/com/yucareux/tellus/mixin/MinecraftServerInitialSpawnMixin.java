@@ -1,6 +1,7 @@
 package com.yucareux.tellus.mixin;
 
 import com.yucareux.tellus.Tellus;
+import com.yucareux.tellus.worldgen.CubeNetChunkGenerator;
 import com.yucareux.tellus.worldgen.EarthChunkGenerator;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
@@ -21,11 +22,15 @@ public abstract class MinecraftServerInitialSpawnMixin {
       ServerLevel level, ServerLevelData levelData, boolean generateBonusChest, boolean debugWorld, CallbackInfo ci
    ) {
       ChunkGenerator generator = level.getChunkSource().getGenerator();
-      if (!(generator instanceof EarthChunkGenerator earthGenerator)) {
+      BlockPos spawn;
+      if (generator instanceof EarthChunkGenerator earthGenerator) {
+         spawn = earthGenerator.getInitialSpawnPosition(level);
+      } else if (generator instanceof CubeNetChunkGenerator cubeNetGenerator) {
+         spawn = cubeNetGenerator.getInitialSpawnPosition(level);
+      } else {
          return;
       }
 
-      BlockPos spawn = earthGenerator.getInitialSpawnPosition(level);
       levelData.setSpawn(spawn, 0.0F);
       if (generateBonusChest) {
          level.registryAccess()
