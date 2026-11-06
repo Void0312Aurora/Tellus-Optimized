@@ -1,6 +1,15 @@
 package com.yucareux.tellus;
 
 import com.yucareux.tellus.compat.MinecraftRelease;
+import com.yucareux.tellus.network.CubeNetBoundaryHintPayload;
+import com.yucareux.tellus.network.CubeNetLayoutPayload;
+import com.yucareux.tellus.network.CubeNetTransitionCancelPayload;
+import com.yucareux.tellus.network.CubeNetTransitionChunksReceivedPayload;
+import com.yucareux.tellus.network.CubeNetTransitionCommitPayload;
+import com.yucareux.tellus.network.CubeNetTransitionMotionPayload;
+import com.yucareux.tellus.network.CubeNetTransitionPreparePayload;
+import com.yucareux.tellus.network.CubeNetTransitionReadyPayload;
+import com.yucareux.tellus.network.CubeNetTransitionUnsupportedPayload;
 import com.yucareux.tellus.network.GeoTpOpenMapPayload;
 import com.yucareux.tellus.network.GeoTpTeleportPayload;
 import com.yucareux.tellus.network.ManagedTerrainStatusPayload;
@@ -37,6 +46,15 @@ public final class Tellus extends TellusCommon implements ModInitializer {
       PayloadTypeRegistry.playS2C().register(GeoTpOpenMapPayload.TYPE, Objects.requireNonNull(GeoTpOpenMapPayload.CODEC.cast(), "geoTpOpenMapCodec"));
       PayloadTypeRegistry.playS2C().register(TellusWeatherPayload.TYPE, Objects.requireNonNull(TellusWeatherPayload.CODEC.cast(), "tellusWeatherCodec"));
       PayloadTypeRegistry.playS2C().register(ManagedTerrainStatusPayload.TYPE, Objects.requireNonNull(ManagedTerrainStatusPayload.CODEC.cast(), "managedTerrainStatusCodec"));
+      PayloadTypeRegistry.playS2C().register(CubeNetTransitionPreparePayload.TYPE, CubeNetTransitionPreparePayload.CODEC);
+      PayloadTypeRegistry.playS2C().register(CubeNetTransitionCommitPayload.TYPE, CubeNetTransitionCommitPayload.CODEC);
+      PayloadTypeRegistry.playS2C().register(CubeNetTransitionCancelPayload.TYPE, CubeNetTransitionCancelPayload.CODEC);
+      PayloadTypeRegistry.playS2C().register(CubeNetLayoutPayload.TYPE, CubeNetLayoutPayload.CODEC);
+      PayloadTypeRegistry.playS2C().register(CubeNetBoundaryHintPayload.TYPE, CubeNetBoundaryHintPayload.CODEC);
+      PayloadTypeRegistry.playC2S().register(CubeNetTransitionReadyPayload.TYPE, CubeNetTransitionReadyPayload.CODEC);
+      PayloadTypeRegistry.playC2S().register(CubeNetTransitionChunksReceivedPayload.TYPE, CubeNetTransitionChunksReceivedPayload.CODEC);
+      PayloadTypeRegistry.playC2S().register(CubeNetTransitionMotionPayload.TYPE, CubeNetTransitionMotionPayload.CODEC);
+      PayloadTypeRegistry.playC2S().register(CubeNetTransitionUnsupportedPayload.TYPE, CubeNetTransitionUnsupportedPayload.CODEC);
       ServerPlayNetworking.registerGlobalReceiver(
          GeoTpTeleportPayload.TYPE, (payload, context) -> TellusCommon.handleGeoTeleport(payload, context.player())
       );
