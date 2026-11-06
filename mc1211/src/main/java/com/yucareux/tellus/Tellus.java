@@ -7,6 +7,8 @@ import com.yucareux.tellus.network.ManagedTerrainStatusPayload;
 import com.yucareux.tellus.network.ManagedTerrainViewPayload;
 import com.yucareux.tellus.network.TellusWeatherPayload;
 import com.yucareux.tellus.platform.FabricTellusRuntimePlatform;
+import com.yucareux.tellus.worldgen.CubeNetBiomeSource;
+import com.yucareux.tellus.worldgen.CubeNetChunkGenerator;
 import com.yucareux.tellus.worldgen.EarthBiomeSource;
 import com.yucareux.tellus.worldgen.EarthChunkGenerator;
 import java.util.Objects;
@@ -28,6 +30,8 @@ public final class Tellus extends TellusCommon implements ModInitializer {
       TellusCommon.validateRuntime();
       Registry.register(BuiltInRegistries.BIOME_SOURCE, id("earth"), EarthBiomeSource.CODEC);
       Registry.register(BuiltInRegistries.CHUNK_GENERATOR, id("earth"), EarthChunkGenerator.CODEC);
+      Registry.register(BuiltInRegistries.BIOME_SOURCE, id("cube_net"), CubeNetBiomeSource.CODEC);
+      Registry.register(BuiltInRegistries.CHUNK_GENERATOR, id("cube_net"), CubeNetChunkGenerator.CODEC);
       PayloadTypeRegistry.playC2S().register(GeoTpTeleportPayload.TYPE, Objects.requireNonNull(GeoTpTeleportPayload.CODEC.cast(), "geoTpTeleportCodec"));
       PayloadTypeRegistry.playC2S().register(ManagedTerrainViewPayload.TYPE, Objects.requireNonNull(ManagedTerrainViewPayload.CODEC.cast(), "managedTerrainViewCodec"));
       PayloadTypeRegistry.playS2C().register(GeoTpOpenMapPayload.TYPE, Objects.requireNonNull(GeoTpOpenMapPayload.CODEC.cast(), "geoTpOpenMapCodec"));

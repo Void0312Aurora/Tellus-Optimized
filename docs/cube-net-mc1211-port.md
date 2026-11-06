@@ -27,12 +27,12 @@
 
 ## 关键 API 对照
 
-1. **BiomeSource/Codec**：1.21.1 `BiomeSource.codec()` 返回 `MapCodec`，共享 `TellusBiomeSourceBridge` 已提供 `MapCodec`；`CubeNetBiomeSource.CODEC` 在注册处取 `.codec()`。1.20.1 入口使用 `CubeNetBiomeSource.CODEC.codec()` 同样保持兼容。
-2. **ChunkGenerator codec**：1.20.1 generator 直接实现 `Codec<? extends ChunkGenerator>`；1.21.1 应实现 `MapCodec<? extends ChunkGenerator>`。`shared/mc1211/TellusChunkGeneratorBridge` 已覆盖该入口。
+1. **BiomeSource/Codec**：1.21.1 `BuiltInRegistries.BIOME_SOURCE` 持有 `MapCodec<? extends BiomeSource>`，共享 `CubeNetBiomeSource.CODEC` 已是 `MapCodec`，入口直接注册它；调用 `.codec()` 会得到 `Codec` 并触发注册表泛型不匹配（已由编译验证）。1.20.1 的 `CubeNetBiomeSource.CODEC.codec()` 写法保持原样。
+2. **ChunkGenerator codec**：1.20.1 generator 直接实现 `Codec<? extends ChunkGenerator>`；1.21.1 `BuiltInRegistries.CHUNK_GENERATOR` 持有 `MapCodec<? extends ChunkGenerator>`，`shared/mc1211/TellusChunkGeneratorBridge` 与 `CubeNetChunkGenerator.CODEC` 均为 `MapCodec`，入口直接注册。
 3. **Structure state**：两版调用面不同。共享 bridge 保留 `createStructureState(...)` 内部实现；具体 generator 暴露 `createState(HolderLookup<StructureSet>, RandomState, long)` 以适配 1.21.1 调用，并在此注入结构开关过滤。
 4. **Structure creation**：1.21.1 增加带 `ResourceKey<Level>` 的 `createStructures` 变体；共享 bridge 将旧签名转发到带 level key 的版本。Cube-Net 生成器已有对应重载，需保留，不要改结构开关语义。
 5. **Chunk biome/noise methods**：1.20.1 与 1.21.1 的 `createBiomes`/`fillFromNoise` executor 包装方式由 bridge 分层；移植 generator 应复用 `shared/mc1211/TellusChunkGeneratorBridge` 的重载，不在两个目标复制主体。
-6. **Registry**：1.21.1 入口用 `BuiltInRegistries.BIOME_SOURCE/CHUNK_GENERATOR` + `Registry.register`；这与当前 Earth 注册一致。Cube-Net biome source 的 MapCodec 需 `.codec()`，generator 的 1.21 codec 由 `MapCodec` bridge 提供。
+6. **Registry**：1.21.1 入口用 `BuiltInRegistries.BIOME_SOURCE/CHUNK_GENERATOR` + `Registry.register`；这与当前 Earth 注册一致，且两个注册表都要求 `MapCodec`，因此 Cube-Net 的 biome source 与 chunk generator 均直接注册其 `CODEC`。
 7. **Payload**：当前 mc1211 已采用 `PayloadTypeRegistry`；Cube-Net transition payload 仍是 1.20.1 专用，暂不把它们带入服务端最小编译，避免提前耦合客户端状态机。
 8. **Sodium/DH**：`gradle/tellus-fabric.gradle` 仅给 `mc1201` 加 Sodium `0.5.13` compileOnly；DH 是所有 Fabric 目标的 compileOnly API，但 1.21.1 客户端 mixin/内部渲染类型没有适配。服务端生成链不引用这些客户端类。
 
@@ -44,9 +44,16 @@
 - 下一步最小移植：将 `SphereTerrainMaterializer` 与 `SphereFaceChunkGenerator` 放入 `shared/mc1211` 并按 MapCodec/1.21 ChunkGenerator 合约修正；再放入 `CubeNetChunkGenerator`，加入两个 apron 纯 helper，最后仅在 `mc1211/Tellus.java` 注册 Cube-Net biome/generator。
 - 后置阶段：完整 apron edit sync、Cube-Net transition payload/runtime、客户端 Sodium/DH/Sprint/mixin 与真实世界运行验证。
 
+## 阶段结论（本次落地）
+
+- 已移植到 `shared/mc1211`：`SphereFaceChunkGenerator`、`SphereTerrainMaterializer`、`CubeNetChunkGenerator`、`CubeNetApronChunkSync`（仅生成器所需的纯 helper）与 `TellusChunkGeneratorBridge`，主体逻辑复用根 `src/main` 的地理、采样、地表、洞穴、建筑、预载与结构策略。
+- 已在 `mc1211/Tellus.java` 注册 `tellus:cube_net` 的 biome source 与 chunk generator。
+- 编译验证：`:mc1211:compileJava --offline` **BUILD SUCCESSFUL**；`:mc1201:compileJava --offline` 回归 **BUILD SUCCESSFUL**（up-to-date）。
+- 仍未移植（后续阶段）：`CubeNetRuntime` 与 transition/layout/boundary payload、apron 编辑同步、传送/载具 mixin，以及客户端 Sodium/Iris/DH 接缝渲染。因此 mc1211 上目前是“可注册、可编译、可生成地形”的服务端最小路径，不是完整立方球体验。
+
 ## 阻塞点与不变项
 
-本评估没有发现阻止“服务端最小可编译”的 API 阻塞；主要代价是 generator 本身很大，且完整 runtime/client 路径不能在当前阶段一次移植。不得删除或回退前三个提交，也不改变结构开关、世界设置、预载和 datapack 命令语义。编译失败时保留当前半成品，并把具体 javac 首条错误、受影响类和下一适配层写入本文件。
+剩余阻塞点集中在运行时与客户端层：1.20.1 的 payload/receiver 形态、apron 编辑索引与 block-entity 同步、玩家跨面状态机，以及 Sodium/DH 内部 API 的 1.21.1 适配；这些都不能由 `compileJava` 验证，需要各自的验收夹具。不得删除或回退前三个提交，也不改变结构开关、世界设置、预载和 datapack 命令语义。
 
 ## 编译命令
 
