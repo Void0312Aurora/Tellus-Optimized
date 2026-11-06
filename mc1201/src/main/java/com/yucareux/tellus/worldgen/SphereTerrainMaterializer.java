@@ -18,16 +18,26 @@ import net.minecraft.world.level.levelgen.Heightmap;
 public final class SphereTerrainMaterializer {
    private final double worldScale;
    private final int seaLevel;
+   private final boolean enableWater;
    private volatile long worldSeed;
 
    public SphereTerrainMaterializer(double worldScale, int seaLevel) {
-      this(worldScale, seaLevel, 0L);
+      this(worldScale, seaLevel, true);
+   }
+
+   public SphereTerrainMaterializer(double worldScale, int seaLevel, boolean enableWater) {
+      this(worldScale, seaLevel, enableWater, 0L);
    }
 
    public SphereTerrainMaterializer(double worldScale, int seaLevel, long worldSeed) {
+      this(worldScale, seaLevel, true, worldSeed);
+   }
+
+   public SphereTerrainMaterializer(double worldScale, int seaLevel, boolean enableWater, long worldSeed) {
       if (!(worldScale > 0.0) || !Double.isFinite(worldScale)) throw new IllegalArgumentException("worldScale");
       this.worldScale = worldScale;
       this.seaLevel = seaLevel;
+      this.enableWater = enableWater;
       this.worldSeed = worldSeed;
    }
 
@@ -89,7 +99,7 @@ public final class SphereTerrainMaterializer {
       Objects.requireNonNull(data, "data");
       if (!data.elevationAvailable()) throw new IllegalStateException("spherical terrain elevation is unavailable");
       int surfaceY = this.height(data.elevationMeters());
-      int waterY = data.waterAvailable() ? this.height(data.waterSurfaceMeters()) : surfaceY;
+      int waterY = this.enableWater && data.waterAvailable() ? this.height(data.waterSurfaceMeters()) : surfaceY;
       if (surfaceY < minY + 1 || surfaceY >= maxY || waterY >= maxY) {
          throw new IllegalStateException("spherical terrain needs vertical range [" + surfaceY + ", " + waterY
             + "]; chunk supports [" + (minY + 1) + ", " + (maxY - 1) + "]");

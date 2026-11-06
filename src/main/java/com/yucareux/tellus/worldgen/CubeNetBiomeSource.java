@@ -80,7 +80,13 @@ public final class CubeNetBiomeSource extends TellusBiomeSourceBridge {
        boolean addAncientCities,
        boolean addTrialChambers,
        boolean addTrailRuins,
-       boolean addAbandonedCamps
+       boolean addAbandonedCamps,
+       boolean lakeFreezing,
+       boolean lavaPools,
+       boolean geodes,
+       boolean enableWater,
+       boolean teleportProgress,
+       int heightOffset
    ) {
       public static final Settings DEFAULT = new Settings(
          false,
@@ -112,7 +118,13 @@ public final class CubeNetBiomeSource extends TellusBiomeSourceBridge {
           EarthGeneratorSettings.DEFAULT.addAncientCities(),
           EarthGeneratorSettings.DEFAULT.addTrialChambers(),
           EarthGeneratorSettings.DEFAULT.addTrailRuins(),
-          EarthGeneratorSettings.DEFAULT.addAbandonedCamps()
+          EarthGeneratorSettings.DEFAULT.addAbandonedCamps(),
+          EarthGeneratorSettings.DEFAULT.lakeFreezing(),
+          EarthGeneratorSettings.DEFAULT.lavaPools(),
+          EarthGeneratorSettings.DEFAULT.geodes(),
+          EarthGeneratorSettings.DEFAULT.enableWater(),
+          EarthGeneratorSettings.DEFAULT.teleportProgress(),
+          EarthGeneratorSettings.DEFAULT.heightOffset()
       );
        private record BaseSettings(boolean randomBiomes, double randomBiomeDensity, long randomBiomeSeed,
           List<String> randomBiomeIds, boolean caveGeneration, boolean deepDark, int undergroundDepth,
@@ -161,6 +173,17 @@ public final class CubeNetBiomeSource extends TellusBiomeSourceBridge {
           Codec.BOOL.optionalFieldOf("add_abandoned_camps", DEFAULT.addAbandonedCamps()).forGetter(StructureSettingsB::addAbandonedCamps)
        ).apply(instance, StructureSettingsB::new));
        private record BaseAndA(BaseSettings base, StructureSettingsA structures) { }
+       private record BaseAndB(BaseAndA baseAndA, StructureSettingsB structures) { }
+        private record WorldSettings(boolean lakeFreezing, boolean lavaPools, boolean geodes, boolean enableWater,
+           boolean teleportProgress, int heightOffset) { }
+        private static final MapCodec<WorldSettings> WORLD_CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
+          Codec.BOOL.optionalFieldOf("lake_freezing", DEFAULT.lakeFreezing()).forGetter(WorldSettings::lakeFreezing),
+          Codec.BOOL.optionalFieldOf("lava_pools", DEFAULT.lavaPools()).forGetter(WorldSettings::lavaPools),
+          Codec.BOOL.optionalFieldOf("geodes", DEFAULT.geodes()).forGetter(WorldSettings::geodes),
+          Codec.BOOL.optionalFieldOf("enable_water", DEFAULT.enableWater()).forGetter(WorldSettings::enableWater),
+          Codec.BOOL.optionalFieldOf("teleport_progress", DEFAULT.teleportProgress()).forGetter(WorldSettings::teleportProgress),
+          Codec.INT.optionalFieldOf("height_offset", DEFAULT.heightOffset()).forGetter(WorldSettings::heightOffset)
+       ).apply(instance, WorldSettings::new));
        public static final Codec<Settings> CODEC = MapCodec.of(
           new com.mojang.serialization.MapEncoder.Implementation<Settings>() {
              public <T> RecordBuilder<T> encode(Settings input, DynamicOps<T> ops, RecordBuilder<T> prefix) {
@@ -171,26 +194,36 @@ public final class CubeNetBiomeSource extends TellusBiomeSourceBridge {
                    input.addWoodlandMansions(), input.addDesertTemples(), input.addJungleTemples(), input.addPillagerOutposts(), input.addRuinedPortals());
                 StructureSettingsB b = new StructureSettingsB(input.addShipwrecks(), input.addOceanRuins(), input.addBuriedTreasure(), input.addIgloos(),
                    input.addWitchHuts(), input.addAncientCities(), input.addTrialChambers(), input.addTrailRuins(), input.addAbandonedCamps());
-                return STRUCTURES_B_CODEC.encode(b, ops, STRUCTURES_A_CODEC.encode(a, ops, BASE_CODEC.encode(base, ops, prefix)));
+                WorldSettings world = new WorldSettings(input.lakeFreezing(), input.lavaPools(), input.geodes(), input.enableWater(),
+                   input.teleportProgress(), input.heightOffset());
+                return WORLD_CODEC.encode(world, ops, STRUCTURES_B_CODEC.encode(b, ops, STRUCTURES_A_CODEC.encode(a, ops, BASE_CODEC.encode(base, ops, prefix))));
              }
              public <T> Stream<T> keys(DynamicOps<T> ops) {
-                return Stream.concat(BASE_CODEC.keys(ops), Stream.concat(STRUCTURES_A_CODEC.keys(ops), STRUCTURES_B_CODEC.keys(ops)));
+                return Stream.concat(BASE_CODEC.keys(ops), Stream.concat(STRUCTURES_A_CODEC.keys(ops), Stream.concat(STRUCTURES_B_CODEC.keys(ops), WORLD_CODEC.keys(ops))));
              }
           },
           new com.mojang.serialization.MapDecoder.Implementation<Settings>() {
              public <T> com.mojang.serialization.DataResult<Settings> decode(DynamicOps<T> ops, com.mojang.serialization.MapLike<T> input) {
-                return BASE_CODEC.decode(ops, input).apply2(BaseAndA::new, STRUCTURES_A_CODEC.decode(ops, input)).apply2(
-                   (baseAndA, b) -> new Settings(baseAndA.base().randomBiomes(), baseAndA.base().randomBiomeDensity(), baseAndA.base().randomBiomeSeed(),
-                      baseAndA.base().randomBiomeIds(), baseAndA.base().caveGeneration(), baseAndA.base().deepDark(), baseAndA.base().undergroundDepth(),
-                      baseAndA.base().oreVeins(), baseAndA.base().geologicalStonePatches(), baseAndA.base().cavesReachSurface(), baseAndA.base().roads(),
-                      baseAndA.base().buildings(), baseAndA.structures().addStrongholds(), baseAndA.structures().addVillages(), baseAndA.structures().addMineshafts(),
-                      baseAndA.structures().addOceanMonuments(), baseAndA.structures().addWoodlandMansions(), baseAndA.structures().addDesertTemples(),
-                      baseAndA.structures().addJungleTemples(), baseAndA.structures().addPillagerOutposts(), baseAndA.structures().addRuinedPortals(),
-                      b.addShipwrecks(), b.addOceanRuins(), b.addBuriedTreasure(), b.addIgloos(), b.addWitchHuts(), b.addAncientCities(),
-                      b.addTrialChambers(), b.addTrailRuins(), b.addAbandonedCamps()), STRUCTURES_B_CODEC.decode(ops, input));
+                return BASE_CODEC.decode(ops, input).apply2(BaseAndA::new, STRUCTURES_A_CODEC.decode(ops, input))
+                   .apply2(BaseAndB::new, STRUCTURES_B_CODEC.decode(ops, input)).apply2(
+                      (baseAndB, world) -> new Settings(baseAndB.baseAndA().base().randomBiomes(), baseAndB.baseAndA().base().randomBiomeDensity(),
+                         baseAndB.baseAndA().base().randomBiomeSeed(), baseAndB.baseAndA().base().randomBiomeIds(),
+                         baseAndB.baseAndA().base().caveGeneration(), baseAndB.baseAndA().base().deepDark(),
+                         baseAndB.baseAndA().base().undergroundDepth(), baseAndB.baseAndA().base().oreVeins(),
+                         baseAndB.baseAndA().base().geologicalStonePatches(), baseAndB.baseAndA().base().cavesReachSurface(),
+                         baseAndB.baseAndA().base().roads(), baseAndB.baseAndA().base().buildings(),
+                         baseAndB.baseAndA().structures().addStrongholds(), baseAndB.baseAndA().structures().addVillages(),
+                          baseAndB.baseAndA().structures().addMineshafts(), baseAndB.baseAndA().structures().addOceanMonuments(),
+                          baseAndB.baseAndA().structures().addWoodlandMansions(), baseAndB.baseAndA().structures().addDesertTemples(),
+                          baseAndB.baseAndA().structures().addJungleTemples(), baseAndB.baseAndA().structures().addPillagerOutposts(),
+                          baseAndB.baseAndA().structures().addRuinedPortals(), baseAndB.structures().addShipwrecks(),
+                          baseAndB.structures().addOceanRuins(), baseAndB.structures().addBuriedTreasure(), baseAndB.structures().addIgloos(),
+                          baseAndB.structures().addWitchHuts(), baseAndB.structures().addAncientCities(), baseAndB.structures().addTrialChambers(),
+                          baseAndB.structures().addTrailRuins(), baseAndB.structures().addAbandonedCamps(),
+                          world.lakeFreezing(), world.lavaPools(), world.geodes(), world.enableWater(), world.teleportProgress(), world.heightOffset()), WORLD_CODEC.decode(ops, input));
              }
              public <T> Stream<T> keys(DynamicOps<T> ops) {
-                return Stream.concat(BASE_CODEC.keys(ops), Stream.concat(STRUCTURES_A_CODEC.keys(ops), STRUCTURES_B_CODEC.keys(ops)));
+                return Stream.concat(BASE_CODEC.keys(ops), Stream.concat(STRUCTURES_A_CODEC.keys(ops), Stream.concat(STRUCTURES_B_CODEC.keys(ops), WORLD_CODEC.keys(ops))));
              }
           }
        ).codec();
@@ -466,7 +499,7 @@ public final class CubeNetBiomeSource extends TellusBiomeSourceBridge {
       if (!surface.elevationAvailable()) return this.fallback.getNoiseBiome(quartX, quartY, quartZ);
       SphereWorldModel.GeoPoint point = this.model.surfacePoint(canonical);
       int[] noiseCoordinates = this.noiseCoordinates(point);
-      boolean surfaceWater = surface.waterAvailable();
+      boolean surfaceWater = this.settings.enableWater() && surface.waterAvailable();
       if (surfaceWater) {
          if (!surface.oceanWater()) return this.applyRandomRiverBiome(noiseCoordinates[0], noiseCoordinates[1]);
          ClimateData climate = Objects.requireNonNull(this.climateSampler.sample(

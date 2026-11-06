@@ -1003,8 +1003,6 @@ public class TellusCommon {
             }
 
              ChunkGenerator generator = level.getChunkSource().getGenerator();
-          EarthGeneratorSettings settings = generator instanceof EarthChunkGenerator earthGenerator
-             ? earthGenerator.settings() : null;
           if (generator instanceof TellusGeodeticPosition geodetic) {
                double latitude = clampLatitude(payload.latitude());
                double longitude = clampLongitude(payload.longitude());
@@ -1014,8 +1012,7 @@ public class TellusCommon {
                );
                GEO_TELEPORT_LOOKUPS.put(player.getUUID(), lookup);
                Boolean override = teleportProgressOverride;
-               if (override != null ? override : settings != null
-                   ? settings.teleportProgress() : EarthGeneratorSettings.DEFAULT.teleportProgress()) {
+               if (override != null ? override : geodetic.teleportProgress()) {
                   player.sendSystemMessage(Component.translatable("tellus.command.geotp.preparing").withStyle(ChatFormatting.GRAY));
                   showTeleportProgress(player);
                }

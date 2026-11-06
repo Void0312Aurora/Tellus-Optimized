@@ -274,6 +274,33 @@ class CubeNetChunkGeneratorTest {
    }
 
    @Test
+   void cubeNetBiomeSourceCodecParsesWorldGenerationToggles() {
+      var provider = VanillaRegistries.createLookup();
+      var lookup = provider.lookupOrThrow(Registries.BIOME);
+      JsonObject source = new JsonObject();
+      source.addProperty("world_scale", 1000.0);
+      source.addProperty("apron_chunks", 5);
+      JsonObject fallback = new JsonObject();
+      fallback.addProperty("biome", "minecraft:plains");
+      source.add("fallback", fallback);
+      JsonObject settings = new JsonObject();
+      settings.addProperty("lake_freezing", false);
+      settings.addProperty("lava_pools", true);
+      settings.addProperty("geodes", true);
+      settings.addProperty("enable_water", false);
+      settings.addProperty("teleport_progress", false);
+      settings.addProperty("height_offset", 96);
+      source.add("settings", settings);
+      var ops = RegistryOps.create(JsonOps.INSTANCE, provider);
+      var decoded = CubeNetBiomeSource.CODEC.codec().parse(ops, source).getOrThrow(false, failure -> fail(failure));
+      assertFalse(decoded.settings().lakeFreezing());
+      assertTrue(decoded.settings().lavaPools());
+      assertTrue(decoded.settings().geodes());
+      assertFalse(decoded.settings().enableWater());
+      assertFalse(decoded.settings().teleportProgress());
+      assertEquals(96, decoded.settings().heightOffset());
+   }
+   @Test
    void materializedColumnsFollowThePlanarOrientationOnEveryFace() {
       for (var face : CubeNetLayout.Face.values()) {
          AtomicInteger calls = new AtomicInteger();

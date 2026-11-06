@@ -210,6 +210,10 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
    private final int cubeNetUndergroundDepth;
    private final boolean cubeNetRoads;
    private final boolean cubeNetBuildings;
+   private final boolean cubeNetLakeFreezing;
+   private final boolean cubeNetEnableWater;
+   private final boolean cubeNetTeleportProgress;
+   private final int cubeNetHeightOffset;
    private static final boolean CUBE_NET_CAVES_DEFAULT = Boolean.parseBoolean(
       System.getProperty("tellus.cubeNet.caves", "true")
    );
@@ -266,6 +270,36 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
          ? cubeNet.settings().buildings() : CUBE_NET_BUILDINGS_DEFAULT;
    }
 
+   private static boolean resolveLakeFreezing(BiomeSource biomeSource) {
+      return biomeSource instanceof CubeNetBiomeSource cubeNet
+         ? cubeNet.settings().lakeFreezing() : EarthGeneratorSettings.DEFAULT.lakeFreezing();
+   }
+
+   private static boolean resolveLavaPools(BiomeSource biomeSource) {
+      return biomeSource instanceof CubeNetBiomeSource cubeNet
+         ? cubeNet.settings().lavaPools() : EarthGeneratorSettings.DEFAULT.lavaPools();
+   }
+
+   private static boolean resolveGeodes(BiomeSource biomeSource) {
+      return biomeSource instanceof CubeNetBiomeSource cubeNet
+         ? cubeNet.settings().geodes() : EarthGeneratorSettings.DEFAULT.geodes();
+   }
+
+   private static boolean resolveEnableWater(BiomeSource biomeSource) {
+      return biomeSource instanceof CubeNetBiomeSource cubeNet
+         ? cubeNet.settings().enableWater() : EarthGeneratorSettings.DEFAULT.enableWater();
+   }
+
+   private static boolean resolveTeleportProgress(BiomeSource biomeSource) {
+      return biomeSource instanceof CubeNetBiomeSource cubeNet
+         ? cubeNet.settings().teleportProgress() : EarthGeneratorSettings.DEFAULT.teleportProgress();
+   }
+
+   private static int resolveHeightOffset(BiomeSource biomeSource) {
+      return biomeSource instanceof CubeNetBiomeSource cubeNet
+         ? cubeNet.settings().heightOffset() : EarthGeneratorSettings.DEFAULT.heightOffset();
+   }
+
    private static TellusBiomeGenerationSettings.Settings cubeNetGenerationSettings(BiomeSource biomeSource) {
       boolean deepDark = biomeSource instanceof CubeNetBiomeSource cubeNetBiomeSource
          && cubeNetBiomeSource.settings().deepDark();
@@ -276,8 +310,8 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
          resolveCaveGeneration(biomeSource),
          true,
          true,
-         false,
-         false,
+         resolveLavaPools(biomeSource),
+         resolveGeodes(biomeSource),
          deepDark,
          false
       );
@@ -336,11 +370,15 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
       this.cubeNetUndergroundDepth = resolveUndergroundDepth(biome);
       this.cubeNetRoads = resolveRoads(biome);
       this.cubeNetBuildings = resolveBuildings(biome);
+      this.cubeNetLakeFreezing = resolveLakeFreezing(biome);
+      this.cubeNetEnableWater = resolveEnableWater(biome);
+      this.cubeNetTeleportProgress = resolveTeleportProgress(biome);
+      this.cubeNetHeightOffset = resolveHeightOffset(biome);
 
       Preconditions.checkArgument(minY % 16 == 0 && height % 16 == 0 && height >= 16
          && minY >= -2032 && (long)minY + height <= 2032,
          "vertical range must be section-aligned within [-2032, 2032)");
-      this.seaLevel = seaLevel;
+      this.seaLevel = seaLevel + this.cubeNetHeightOffset - EarthGeneratorSettings.DEFAULT.heightOffset();
       this.minY = minY;
       this.height = height;
       this.model = SphereWorldModel.forWorldScale(scale);
@@ -353,20 +391,20 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
       this.shorelineBlendCliffLimit = shorelineBlendCliffLimit;
       this.remoteProjection = new CubeNetRemoteProjection(this.adapter.layout(), apronChunks * 16.0);
       this.apronResolver = new CubeNetApronResolver(this.adapter.layout(), Math.max(16, apronChunks * 16));
-      this.materializer = new SphereTerrainMaterializer(scale, seaLevel);
+      this.materializer = new SphereTerrainMaterializer(scale, this.seaLevel, this.cubeNetEnableWater);
       this.landmarks = TellusLandmarks.create(
          scale, this.cubeNetBuildings, this::surfaceYAtEarthCoordinate,
          (elevation, blockZ) -> this.materializer.height(elevation));
       this.singularityConfig = singularityConfig;
       this.singularityPolicy = new SphereSingularityPolicy(this.model, singularityConfig);
       TellusWorldgenSources.CubeNetSurfaceSampler surfaceSampler = pointSampler == null
-         ? TellusWorldgenSources.cubeNetSurfaceSampler(this.model, seaLevel) : null;
+         ? TellusWorldgenSources.cubeNetSurfaceSampler(this.model, this.seaLevel) : null;
       SphereChunkSampler.PointSampler effectivePointSampler = surfaceSampler == null
          ? pointSampler : surfaceSampler.pointSampler();
       this.inlandWaterResolver = surfaceSampler == null ? null : surfaceSampler.inlandWater();
       this.faces = new SphereFaceChunkGenerator[CubeNetLayout.FACE_COUNT];
       for (CubeNetLayout.Face face : CubeNetLayout.Face.values()) {
-         this.faces[face.index()] = new SphereFaceChunkGenerator(faceBiome, face.index(), scale, seaLevel, minY, height,
+         this.faces[face.index()] = new SphereFaceChunkGenerator(faceBiome, face.index(), scale, this.seaLevel, minY, height,
             effectivePointSampler, singularityConfig);
       }
    }
@@ -402,7 +440,32 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
 
     @Override
     public int heightOffset() {
-       return this.seaLevel;
+       return this.cubeNetHeightOffset;
+    }
+
+    @Override
+    public boolean lakeFreezing() {
+       return this.cubeNetLakeFreezing;
+    }
+
+    @Override
+    public boolean enableWater() {
+       return this.cubeNetEnableWater;
+    }
+
+    @Override
+    public boolean teleportProgress() {
+       return this.cubeNetTeleportProgress;
+    }
+
+    @Override
+    public boolean lavaPools() {
+       return resolveLavaPools(this.biomeSource);
+    }
+
+    @Override
+    public boolean geodes() {
+       return resolveGeodes(this.biomeSource);
     }
 
     @Override

@@ -1,7 +1,7 @@
 package com.yucareux.tellus.mixin;
 
 import com.yucareux.tellus.world.realtime.TellusRealtimeState;
-import com.yucareux.tellus.worldgen.EarthChunkGenerator;
+import com.yucareux.tellus.worldgen.TellusGeodeticPosition;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.RandomSource;
@@ -26,8 +26,8 @@ public abstract class IceBlockMeltMixin {
       cancellable = true
    )
    private void tellus$thawLakeIce(BlockState state, ServerLevel level, BlockPos pos, RandomSource random, CallbackInfo ci) {
-      if (level.getChunkSource().getGenerator() instanceof EarthChunkGenerator generator
-         && generator.settings().lakeFreezing()
+      if (level.getChunkSource().getGenerator() instanceof TellusGeodeticPosition generator
+         && generator.lakeFreezing()
          && TellusRealtimeState.canLakeIceMelt(pos)
          && generator.isLakeWater(pos.getX(), pos.getZ())) {
          this.melt(state, level, pos);

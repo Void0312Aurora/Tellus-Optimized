@@ -63,7 +63,12 @@ vertical limits as the face generator:
 | `--geological-stone-patches` / `--no-geological-stone-patches` | `geological_stone_patches` | `true` | Cube-Net 地质石块斑块采样 |
 | `--caves-reach-surface` / `--no-caves-reach-surface` | `caves_reach_surface` | `false` | 洞穴是否允许接近/连到地表 |
 | `--roads` / `--no-roads` | `roads` | `true` | 道路与道路相关投影 |
-| `--buildings` / `--no-buildings` | `buildings` | `true` | 建筑与建筑相关投影 |
+| `--lake-freezing` / `--no-lake-freezing` | `lake_freezing` | `true` | Tellus inland lakes may freeze/thaw; shared geodetic toggle is honored by mixins. |
+| `--lava-pools` / `--no-lava-pools` | `lava_pools` | `false` | Retain vanilla lava-pool placed features in Cube-Net biome generation. |
+| `--geodes` / `--no-geodes` | `geodes` | `false` | Retain vanilla geode placed features in Cube-Net biome generation. |
+| `--enable-water` / `--no-enable-water` | `enable_water` | `true` | Classify and write sampled water columns; disabling leaves terrain dry. |
+| `--teleport-progress` / `--no-teleport-progress` | `teleport_progress` | `true` | GeoTP progress bar preference for this world. |
+| `--height-offset N` | `height_offset` | `64` | Applies a baseline shift relative to the Cube-Net sea-level protocol. |
 | `--structures` / `--no-structures` | 全部 `add_*` | `false` | 一键启用/关闭原版结构；逐项参数可覆盖 |
 | `--add-strongholds` / `--no-add-strongholds` | `add_strongholds` | `false` | 要塞 |
 | `--add-villages` / `--no-add-villages` | `add_villages` | `false` | 村庄 |
@@ -84,7 +89,8 @@ vertical limits as the face generator:
 | `--add-trail-ruins` / `--no-add-trail-ruins` | `add_trail_ruins` | `false` | Trail Ruins（此字段在 1.20.1 数据中通常没有结构集） |
 | `--add-abandoned-camps` / `--no-add-abandoned-camps` | `add_abandoned_camps` | `false` | Abandoned Camps（保留 TellusStructurePolicy 语义；1.20.1 数据中没有该结构集） |
 
-例如关闭建筑和原版洞穴、同时保留矿脉：
+`height_offset` 是当前实现的安全子集：它移动径向地形基线，并保持 `min_y`/`height` 的 section 协议；高度倍率、`min_altitude`/`max_altitude` 会改变共形球面采样与维度高度边界，当前 deferred。`spawn_latitude`/`spawn_longitude` 属于世界出生点所有者（不是 chunk generator），当前 deferred；生成器仅继续提供 `surfacePosition` 查询。
+
 
 ```sh
 python3 tools/create_cube_net_datapack.py \

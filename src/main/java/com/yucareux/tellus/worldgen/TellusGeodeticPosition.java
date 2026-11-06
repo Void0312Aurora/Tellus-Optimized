@@ -55,6 +55,31 @@ public interface TellusGeodeticPosition {
       return false;
    }
 
+   /** Whether Tellus-owned inland lakes participate in freeze/thaw handling. */
+   default boolean lakeFreezing() {
+      return EarthGeneratorSettings.DEFAULT.lakeFreezing();
+   }
+
+   /** Whether GeoTP displays its progress bar while resolving terrain. */
+   default boolean teleportProgress() {
+      return EarthGeneratorSettings.DEFAULT.teleportProgress();
+   }
+
+   /** Whether generated water columns are written into spherical terrain. */
+   default boolean enableWater() {
+      return EarthGeneratorSettings.DEFAULT.enableWater();
+   }
+
+   /** Whether vanilla lava-pool features are retained for this generator. */
+   default boolean lavaPools() {
+      return EarthGeneratorSettings.DEFAULT.lavaPools();
+   }
+
+   /** Whether vanilla geode features are retained for this generator. */
+   default boolean geodes() {
+      return EarthGeneratorSettings.DEFAULT.geodes();
+   }
+
    /** Applies the realtime/historical snow state to a loaded chunk. */
    void applyRealtimeSnowCover(WorldGenLevel level, ChunkAccess chunk);
 }

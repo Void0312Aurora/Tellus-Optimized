@@ -477,6 +477,30 @@ public final class EarthChunkGenerator extends TellusChunkGeneratorBridge implem
    public EarthGeneratorSettings settings() {
       return this.settings;
    }
+   @Override
+    public boolean lakeFreezing() {
+      return this.settings.lakeFreezing();
+   }
+
+   @Override
+   public boolean teleportProgress() {
+      return this.settings.teleportProgress();
+   }
+
+   @Override
+   public boolean enableWater() {
+      return this.settings.enableWater();
+   }
+
+   @Override
+   public boolean lavaPools() {
+      return this.settings.lavaPools();
+   }
+
+   @Override
+   public boolean geodes() {
+      return this.settings.geodes();
+   }
 
    /** Shared progressive chart and geodetic projection model for this generator. */
    public GlobalMapModel globalMapModel() {

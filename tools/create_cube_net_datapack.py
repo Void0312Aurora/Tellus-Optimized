@@ -20,6 +20,8 @@ def create_pack(output: Path, world: str, scale: float, sea: int, min_y: int, he
                 ore_veins: bool = True, geological_stone_patches: bool = True,
                 caves_reach_surface: bool = False, roads: bool = True,
                 buildings: bool = True, structures: bool = False,
+                 lake_freezing: bool = True, lava_pools: bool = False, geodes: bool = False,
+                 enable_water: bool = True, teleport_progress: bool = True, height_offset: int = 64,
                  add_strongholds: bool | None = None, add_villages: bool | None = None,
                  add_mineshafts: bool | None = None, add_ocean_monuments: bool | None = None,
                  add_woodland_mansions: bool | None = None, add_desert_temples: bool | None = None,
@@ -108,6 +110,12 @@ def create_pack(output: Path, world: str, scale: float, sea: int, min_y: int, he
                 "caves_reach_surface": caves_reach_surface,
                 "roads": roads,
                 "buildings": buildings,
+                "lake_freezing": lake_freezing,
+                "lava_pools": lava_pools,
+                "geodes": geodes,
+                "enable_water": enable_water,
+                "teleport_progress": teleport_progress,
+                "height_offset": height_offset,
                 **structure_values,
             },
         }
@@ -180,6 +188,18 @@ def main() -> None:
                         help="Enable geodetic road features (default: true).")
     parser.add_argument("--buildings", action=argparse.BooleanOptionalAction, default=True,
                         help="Enable geodetic building features (default: true).")
+    parser.add_argument("--lake-freezing", action=argparse.BooleanOptionalAction, default=True,
+                        help="Enable freezing Tellus inland lakes (default: true).")
+    parser.add_argument("--lava-pools", action=argparse.BooleanOptionalAction, default=False,
+                        help="Enable vanilla lava pools (default: false).")
+    parser.add_argument("--geodes", action=argparse.BooleanOptionalAction, default=False,
+                        help="Enable vanilla geodes (default: false).")
+    parser.add_argument("--enable-water", action=argparse.BooleanOptionalAction, default=True,
+                        help="Write sampled water columns (default: true).")
+    parser.add_argument("--teleport-progress", action=argparse.BooleanOptionalAction, default=True,
+                        help="Show GeoTP progress (default: true).")
+    parser.add_argument("--height-offset", type=int, default=64,
+                        help="Cube-Net terrain baseline offset (default: 64).")
     structure_group = parser.add_mutually_exclusive_group()
     structure_group.add_argument("--structures", dest="structures", action="store_true",
                                 help="Enable all Tellus structure sets.")
@@ -200,6 +220,8 @@ def main() -> None:
                             args.caves, args.deep_dark, args.underground_depth, args.ore_veins,
                             args.geological_stone_patches, args.caves_reach_surface,
                             args.roads, args.buildings, args.structures,
+                             args.lake_freezing, args.lava_pools, args.geodes, args.enable_water,
+                             args.teleport_progress, args.height_offset,
                              args.add_strongholds, args.add_villages, args.add_mineshafts,
                              args.add_ocean_monuments, args.add_woodland_mansions, args.add_desert_temples,
                              args.add_jungle_temples, args.add_pillager_outposts, args.add_ruined_portals,
