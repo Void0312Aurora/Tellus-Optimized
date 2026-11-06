@@ -129,7 +129,8 @@ class CubeNetChunkGeneratorTest {
       assertEquals(expected, generator.getInitialSpawnPosition(LevelHeightAccessor.create(-64, 384)));
    }
 
-
+   @Test
+   void defaultGeneratorUsesTellusSphericalSourceFactoryForCanonicalColumns() {
       String previous = System.getProperty("tellus.sphere.syntheticSampler");
       try {
          // Keep this test independent of local DEM/land-mask availability while
