@@ -1,0 +1,237 @@
+package com.yucareux.tellus.worldgen;
+
+import com.yucareux.tellus.world.data.geology.Lithology;
+import com.yucareux.tellus.world.data.geology.MapUnit;
+import com.yucareux.tellus.worldgen.global.SphereChunkSampler;
+import com.yucareux.tellus.worldgen.global.SphereColumnContext;
+import com.yucareux.tellus.worldgen.global.SphereWorldModel;
+import java.util.EnumSet;
+import java.util.Objects;
+import java.util.ArrayList;
+import java.util.List;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.chunk.ChunkAccess;
+import net.minecraft.world.level.levelgen.Heightmap;
+
+/** Radial column storage for spherical terrain, before chart-aware rendering and movement. */
+public final class SphereTerrainMaterializer {
+   private final double worldScale;
+   private final int seaLevel;
+   private final boolean enableWater;
+   private volatile long worldSeed;
+
+   public SphereTerrainMaterializer(double worldScale, int seaLevel) {
+      this(worldScale, seaLevel, true);
+   }
+
+   public SphereTerrainMaterializer(double worldScale, int seaLevel, boolean enableWater) {
+      this(worldScale, seaLevel, enableWater, 0L);
+   }
+
+   public SphereTerrainMaterializer(double worldScale, int seaLevel, long worldSeed) {
+      this(worldScale, seaLevel, true, worldSeed);
+   }
+
+   public SphereTerrainMaterializer(double worldScale, int seaLevel, boolean enableWater, long worldSeed) {
+      if (!(worldScale > 0.0) || !Double.isFinite(worldScale)) throw new IllegalArgumentException("worldScale");
+      this.worldScale = worldScale;
+      this.seaLevel = seaLevel;
+      this.enableWater = enableWater;
+      this.worldSeed = worldSeed;
+   }
+
+   public void setWorldSeed(long worldSeed) {
+      this.worldSeed = worldSeed;
+   }
+
+   /** Preflight every column before writing so missing/out-of-range data cannot leave half a chunk. */
+   public FillResult fill(ChunkAccess chunk, SphereChunkSampler.TerrainGrid terrain) {
+      return this.fill(chunk, terrain, null);
+   }
+
+   /** Fills a grid with an optional generator-specific surface decision resolver. */
+   public FillResult fill(ChunkAccess chunk, SphereChunkSampler.TerrainGrid terrain,
+      SurfaceDecisionResolver surfaceResolver) {
+      Objects.requireNonNull(chunk, "chunk");
+      Objects.requireNonNull(terrain, "terrain");
+      int minY = chunk.getMinBuildHeight();
+      int maxY = chunk.getMaxBuildHeight();
+      for (var section : chunk.getSections()) {
+         if (!section.hasOnlyAir()) throw new IllegalArgumentException("spherical fill requires a fresh terrain chunk");
+      }
+      ColumnPlan[] plans = new ColumnPlan[256];
+      int lowest = Integer.MAX_VALUE, highest = Integer.MIN_VALUE, wet = 0;
+      for (int i = 0; i < plans.length; i++) {
+         ColumnPlan plan = this.plan(terrain.columns().get(i).context(), minY, maxY, surfaceResolver);
+         plans[i] = plan;
+         lowest = Math.min(lowest, plan.surfaceY());
+         highest = Math.max(highest, plan.topY());
+         if (plan.waterY() > plan.surfaceY()) wet++;
+      }
+      int dirty;
+      var writer = new EarthChunkGenerator.ChunkSectionWriter(chunk.getSections(), minY);
+      try {
+         for (int i = 0; i < plans.length; i++) {
+            int x = i % 16, z = i / 16;
+            ColumnPlan plan = plans[i];
+            if (plan.strata() == null) {
+               writer.fillColumnConstant(x, z, minY, plan.surfaceY(), Blocks.STONE.defaultBlockState());
+            } else {
+               writer.fillStrataSpan(x, z, minY, plan.surfaceY() - 1, minY, plan.strata());
+            }
+            writer.fillSurfaceColumn(x, z, plan.surfaceY(), Math.max(minY + 1, plan.surfaceY() - plan.surfaceDepth()),
+               plan.top(), plan.filler());
+            writer.setBlock(x, z, minY, Blocks.BEDROCK.defaultBlockState());
+            writer.fillColumnConstant(x, z, plan.surfaceY() + 1, plan.waterY(), Blocks.WATER.defaultBlockState());
+         }
+         dirty = writer.finish().dirtySectionCount();
+      } finally {
+         writer.close();
+      }
+      // Direct section writes bypass ProtoChunk's per-block heightmap updates.
+      Heightmap.primeHeightmaps(chunk, EnumSet.allOf(Heightmap.Types.class));
+      chunk.setUnsaved(true);
+      return new FillResult(lowest, highest, wet, dirty);
+   }
+
+   ColumnPlan plan(SphereChunkSampler.SurfaceData data, int minY, int maxY) {
+      Objects.requireNonNull(data, "data");
+      if (!data.elevationAvailable()) throw new IllegalStateException("spherical terrain elevation is unavailable");
+      int surfaceY = this.height(data.elevationMeters());
+      int waterY = this.enableWater && data.waterAvailable() ? this.height(data.waterSurfaceMeters()) : surfaceY;
+      if (surfaceY < minY + 1 || surfaceY >= maxY || waterY >= maxY) {
+         throw new IllegalStateException("spherical terrain needs vertical range [" + surfaceY + ", " + waterY
+            + "]; chunk supports [" + (minY + 1) + ", " + (maxY - 1) + "]");
+      }
+      Palette palette = palette(data.coverClass());
+      return new ColumnPlan(surfaceY, waterY, palette.top(), palette.filler(), 3, null);
+   }
+
+   ColumnPlan plan(SphereColumnContext column, int minY, int maxY) {
+      return this.plan(column, minY, maxY, null);
+   }
+
+   ColumnPlan plan(SphereColumnContext column, int minY, int maxY,
+      SurfaceDecisionResolver surfaceResolver) {
+      Objects.requireNonNull(column, "column");
+      ColumnPlan base = this.plan(column.surface(), minY, maxY);
+      CubeNetSurfacePolicy.Decision surface = surfaceResolver == null
+         ? CubeNetSurfacePolicy.resolve(column.point(), column.surface(), this.worldScale, this.worldSeed)
+         : Objects.requireNonNull(surfaceResolver.resolve(column), "surfaceDecision");
+      Palette palette = palette(surface);
+      base = new ColumnPlan(base.surfaceY(), base.waterY(), palette.top(), palette.filler(),
+         surface.depth(), base.strata());
+      StrataPolicy.Column strata = this.strata(column);
+      return strata == null ? base : base.withStrata(strata);
+   }
+
+   private StrataPolicy.Column strata(SphereColumnContext column) {
+      SphereChunkSampler.SurfaceData.GeologyData geology = column.surface().geology();
+      if (geology == null || !column.surface().elevationAvailable()) return null;
+      SphereWorldModel.GeoPoint point = column.point();
+      boolean arid = column.surface().coverClass() == 60;
+      MapUnit unit = geology.mapUnit();
+      Lithology lithology = geology.lithology();
+      return unit != null
+         ? StrataPolicy.sphericalColumn(unit, point, this.worldScale, this.seaLevel, this.worldSeed)
+         : StrataPolicy.sphericalColumn(lithology, arid, point, this.worldScale, this.seaLevel, this.worldSeed);
+   }
+
+   /** Exact run lengths of the native column, including bedrock and sky air. */
+   List<CubeNetLodSurface.Layer> lodLayers(ColumnPlan plan, int minY, int maxY) {
+      List<CubeNetLodSurface.Layer> layers = new ArrayList<>(6);
+      int start = minY;
+      BlockState state = plan.stateAt(minY, minY);
+      // There are at most six changes; visit only their boundary positions.
+      var boundaries = new java.util.TreeSet<Integer>();
+      for (int boundary : new int[]{minY + 1, plan.surfaceY() - plan.surfaceDepth(), plan.surfaceY(),
+         plan.surfaceY() + 1, plan.waterY() + 1, maxY}) {
+         if (boundary > minY && boundary <= maxY) boundaries.add(boundary);
+      }
+      for (int boundary : boundaries) {
+         BlockState next = boundary == maxY ? null : plan.stateAt(boundary, minY);
+         if (next != state) {
+            layers.add(new CubeNetLodSurface.Layer(start, boundary, state));
+            start = boundary;
+            state = next;
+         }
+      }
+      return List.copyOf(layers);
+   }
+
+   /** No Mercator sec(latitude) correction: these are radial physical metres. */
+   public int height(double elevationMeters) {
+      if (!Double.isFinite(elevationMeters)) throw new IllegalArgumentException("elevation must be finite");
+      double blocks = elevationMeters / this.worldScale;
+      double height = this.seaLevel + (elevationMeters >= 0.0 ? Math.ceil(blocks) : Math.floor(blocks));
+      if (height < Integer.MIN_VALUE || height > Integer.MAX_VALUE || !Double.isFinite(height)) {
+         throw new IllegalArgumentException("elevation exceeds supported block heights");
+      }
+      return (int)height;
+   }
+
+   static Palette palette(int coverClass) {
+      return switch (coverClass) {
+         case 10, 20, 30, 40, 100 -> new Palette(Blocks.GRASS_BLOCK.defaultBlockState(), Blocks.DIRT.defaultBlockState());
+         case 60, 80 -> new Palette(Blocks.SAND.defaultBlockState(), Blocks.SANDSTONE.defaultBlockState());
+         case 70 -> new Palette(Blocks.SNOW_BLOCK.defaultBlockState(), Blocks.SNOW_BLOCK.defaultBlockState());
+         case 90, 95 -> new Palette(Blocks.MUD.defaultBlockState(), Blocks.MUD.defaultBlockState());
+         default -> new Palette(Blocks.STONE.defaultBlockState(), Blocks.STONE.defaultBlockState());
+      };
+   }
+
+   private static Palette palette(CubeNetSurfacePolicy.Decision decision) {
+      return new Palette(state(decision.top()), state(decision.filler()));
+   }
+
+   private static BlockState state(CubeNetSurfacePolicy.Material material) {
+      return switch (material) {
+         case GRASS -> Blocks.GRASS_BLOCK.defaultBlockState();
+         case DIRT -> Blocks.DIRT.defaultBlockState();
+         case COARSE_DIRT -> Blocks.COARSE_DIRT.defaultBlockState();
+         case PODZOL -> Blocks.PODZOL.defaultBlockState();
+         case ROOTED_DIRT -> Blocks.ROOTED_DIRT.defaultBlockState();
+         case MOSS -> Blocks.MOSS_BLOCK.defaultBlockState();
+         case MYCELIUM -> Blocks.MYCELIUM.defaultBlockState();
+         case SAND -> Blocks.SAND.defaultBlockState();
+         case SANDSTONE -> Blocks.SANDSTONE.defaultBlockState();
+         case RED_SAND -> Blocks.RED_SAND.defaultBlockState();
+         case SNOW -> Blocks.SNOW_BLOCK.defaultBlockState();
+         case POWDER_SNOW -> Blocks.POWDER_SNOW.defaultBlockState();
+         case STONE -> Blocks.STONE.defaultBlockState();
+         case GRAVEL -> Blocks.GRAVEL.defaultBlockState();
+         case ANDESITE -> Blocks.ANDESITE.defaultBlockState();
+         case DIORITE -> Blocks.DIORITE.defaultBlockState();
+         case COBBLESTONE -> Blocks.COBBLESTONE.defaultBlockState();
+         case PACKED_ICE -> Blocks.PACKED_ICE.defaultBlockState();
+         case BLUE_ICE -> Blocks.BLUE_ICE.defaultBlockState();
+         case MUD -> Blocks.MUD.defaultBlockState();
+         case PACKED_MUD -> Blocks.PACKED_MUD.defaultBlockState();
+         case TERRACOTTA -> Blocks.TERRACOTTA.defaultBlockState();
+      };
+   }
+
+   record Palette(BlockState top, BlockState filler) { }
+   record ColumnPlan(int surfaceY, int waterY, BlockState top, BlockState filler, int surfaceDepth,
+      StrataPolicy.Column strata) {
+      ColumnPlan withStrata(StrataPolicy.Column strata) {
+         return new ColumnPlan(this.surfaceY, this.waterY, this.top, this.filler, this.surfaceDepth, strata);
+      }
+      int topY() { return Math.max(this.surfaceY, this.waterY); }
+      BlockState stateAt(int y, int minY) {
+         if (y < minY || y > this.topY()) return Blocks.AIR.defaultBlockState();
+         if (y == minY) return Blocks.BEDROCK.defaultBlockState();
+         if (y > this.surfaceY) return Blocks.WATER.defaultBlockState();
+         if (y == this.surfaceY) return this.top;
+         if (y >= this.surfaceY - this.surfaceDepth) return this.filler;
+         return this.strata == null ? Blocks.STONE.defaultBlockState() : StrataMaterials.state(this.strata.material(y));
+      }
+   }
+   public record FillResult(int minimumSurfaceY, int maximumOccupiedY, int waterColumns, int dirtySections) { }
+
+   @FunctionalInterface
+   interface SurfaceDecisionResolver {
+      CubeNetSurfacePolicy.Decision resolve(SphereColumnContext column);
+   }
+}
