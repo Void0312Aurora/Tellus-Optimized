@@ -151,6 +151,8 @@ public final class CubeNetDatapackWriter {
       json.addProperty("height_offset", settings.heightOffset());
       json.addProperty("spawn_latitude", settings.spawnLatitude());
       json.addProperty("spawn_longitude", settings.spawnLongitude());
+      json.addProperty("terrestrial_height_scale", settings.terrestrialHeightScale());
+      json.addProperty("oceanic_height_scale", settings.oceanicHeightScale());
    }
 
    private static boolean isSupportedScale(double scale) {

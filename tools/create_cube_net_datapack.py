@@ -31,7 +31,8 @@ def create_pack(output: Path, world: str, scale: float, sea: int, min_y: int, he
                  add_igloos: bool | None = None, add_witch_huts: bool | None = None,
                  add_ancient_cities: bool | None = None, add_trial_chambers: bool | None = None,
                  add_trail_ruins: bool | None = None, add_abandoned_camps: bool | None = None,
-                  spawn_latitude: float = 27.9881, spawn_longitude: float = 86.925) -> list[Path]:
+                  spawn_latitude: float = 27.9881, spawn_longitude: float = 86.925,
+                   terrestrial_height_scale: float = 1.0, oceanic_height_scale: float = 1.0) -> list[Path]:
     if not IDENTIFIER.fullmatch(world):
         raise ValueError("world must be a namespace:path identifier")
     namespace, name = world.split(":", 1)
@@ -51,7 +52,10 @@ def create_pack(output: Path, world: str, scale: float, sea: int, min_y: int, he
         raise ValueError("spawn_latitude must be finite and within [-90, 90]")
     if not math.isfinite(spawn_longitude) or not -180.0 <= spawn_longitude <= 180.0:
         raise ValueError("spawn_longitude must be finite and within [-180, 180]")
-    if output.exists() and (not output.is_dir() or any(output.iterdir())):
+    if not math.isfinite(terrestrial_height_scale) or terrestrial_height_scale <= 0.0:
+        raise ValueError("terrestrial_height_scale must be finite and positive")
+    if not math.isfinite(oceanic_height_scale) or oceanic_height_scale <= 0.0:
+        raise ValueError("oceanic_height_scale must be finite and positive")
         raise ValueError("output must be a new or empty directory")
 
     dimension_type = {
@@ -123,6 +127,8 @@ def create_pack(output: Path, world: str, scale: float, sea: int, min_y: int, he
                 "height_offset": height_offset,
                 "spawn_latitude": spawn_latitude,
                 "spawn_longitude": spawn_longitude,
+                "terrestrial_height_scale": terrestrial_height_scale,
+                "oceanic_height_scale": oceanic_height_scale,
                 **structure_values,
             },
         }
@@ -211,6 +217,10 @@ def main() -> None:
                         help="Initial spawn latitude in degrees (default: 27.9881).")
     parser.add_argument("--spawn-longitude", type=float, default=86.925,
                         help="Initial spawn longitude in degrees (default: 86.925).")
+    parser.add_argument("--terrestrial-height-scale", type=float, default=1.0,
+                        help="Land elevation multiplier (default: 1.0).")
+    parser.add_argument("--oceanic-height-scale", type=float, default=1.0,
+                        help="Ocean elevation multiplier (default: 1.0).")
     structure_group = parser.add_mutually_exclusive_group()
     structure_group.add_argument("--structures", dest="structures", action="store_true",
                                 help="Enable all Tellus structure sets.")
@@ -239,7 +249,8 @@ def main() -> None:
                              args.add_shipwrecks, args.add_ocean_ruins, args.add_buried_treasure,
                              args.add_igloos, args.add_witch_huts, args.add_ancient_cities,
                              args.add_trial_chambers, args.add_trail_ruins, args.add_abandoned_camps,
-                             args.spawn_latitude, args.spawn_longitude)
+                             args.spawn_latitude, args.spawn_longitude,
+                             args.terrestrial_height_scale, args.oceanic_height_scale)
     except ValueError as error:
         parser.error(str(error))
     print(f"Created {len(files)} files for {args.world}: {args.output}")
