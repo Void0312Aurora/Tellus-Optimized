@@ -17,7 +17,31 @@ python3 tools/create_cube_net_datapack.py \
 ```
 
 Restart the server after copying the pack. The dimension id is
-`tellus:earth_cube_net`. The generator uses the same conformal mapping and
+`tellus:earth_cube_net`. On Fabric 1.20.1 the same writer is available from the
+server command (permission level 2):
+
+```text
+/tellus cube_net datapack <name> <scale> <sea_level>
+```
+
+`<name>` may be `namespace:path` (a bare name uses the `tellus` namespace). The
+command writes `world/datapacks/tellus-cube-net-<name>` and refuses an existing
+non-empty output directory; restart the world/server to load the new dimension.
+The writer uses `CubeNetBiomeSource.Settings.CODEC` and emits the explicit
+settings fields used by `tools/create_cube_net_datapack.py`, including the
+structure toggles and `lake_freezing`, `lava_pools`, `geodes`, `enable_water`,
+`teleport_progress`, and `height_offset`.
+
+The Cube-Net surface sampler checks terrain preload packages before live source
+sampling. Face-local coordinates are resolved by `SphereWorldModel` to a
+geodetic point, then projected to the preload package's Earth block grid using
+`longitudeToBlockX` and `latToBlockZ` at the Cube-Net world scale. This is not a
+face-local planar projection. The mapping is accepted only within the Web
+Mercator latitude limit (`|latitude| <= 85.05112878`); polar-cap points are
+cache misses and continue through the spherical source path. A package whose
+settings fingerprint or resolution does not match is also a miss.
+
+The generator uses the same conformal mapping and
 vertical limits as the face generator:
 
 ```json

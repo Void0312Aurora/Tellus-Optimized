@@ -129,14 +129,18 @@ public final class TellusWorldgenSources {
    /** Shared Cube-Net point sampler and the hydrology planner used for post-fill flow states. */
    public static CubeNetSurfaceSampler cubeNetSurfaceSampler(SphereWorldModel model, int seaLevel) {
       SphereChunkSampler terrain = sphericalSampler(Objects.requireNonNull(model, "model"));
-      CubeNetInlandWaterResolver water = new CubeNetInlandWaterResolver(model, seaLevel, terrain, OSM_WATER);
+      com.yucareux.tellus.preload.TerrainPreloadView preload = CubeNetPreloadAdapter.viewFor(model.config().worldScale(), seaLevel);
+      SphereChunkSampler preloadedTerrain = new SphereChunkSampler(model, (point, resolutionMeters) ->
+         CubeNetPreloadAdapter.sample(preload, point, model.config().worldScale(), seaLevel, resolutionMeters,
+            () -> terrain.samplePoint(point, resolutionMeters)));
+      CubeNetInlandWaterResolver water = new CubeNetInlandWaterResolver(model, seaLevel, preloadedTerrain, OSM_WATER);
       CubeNetOceanSurfaceResolver ocean = new CubeNetOceanSurfaceResolver(
          model.config().worldScale(),
          (point, scale, resolution) -> ELEVATION.sampleOpenWatersElevationMeters(point, scale, resolution)
       );
       boolean synthetic = Boolean.getBoolean("tellus.sphere.syntheticSampler");
       SphereChunkSampler.PointSampler pointSampler = (point, resolutionMeters) -> {
-         SphereChunkSampler.SurfaceData base = terrain.samplePoint(point, resolutionMeters);
+         SphereChunkSampler.SurfaceData base = preloadedTerrain.samplePoint(point, resolutionMeters);
          if (synthetic) return water.apply(point, base);
          SphereChunkSampler.SurfaceData inland = water.apply(point, base);
          SphereChunkSampler.SurfaceData resolved = ocean.apply(point, inland, resolutionMeters);

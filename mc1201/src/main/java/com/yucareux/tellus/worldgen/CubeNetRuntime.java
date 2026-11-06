@@ -14,6 +14,8 @@ import com.yucareux.tellus.network.CubeNetTransitionMotionPayload;
 import com.yucareux.tellus.network.CubeNetTransitionChunksReceivedPayload;
 import com.yucareux.tellus.network.CubeNetBoundaryHintPayload;
 import com.yucareux.tellus.worldgen.global.CubeNetSeamApproach;
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -33,8 +35,11 @@ import net.fabricmc.fabric.api.entity.event.v1.ServerEntityWorldChangeEvents;
 import net.fabricmc.fabric.api.entity.event.v1.ServerPlayerEvents;
 import net.minecraft.Util;
 import net.minecraft.core.BlockPos;
+import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.coordinates.BlockPosArgument;
+import com.mojang.brigadier.arguments.DoubleArgumentType;
+import com.mojang.brigadier.arguments.StringArgumentType;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.game.ClientboundLevelChunkWithLightPacket;
 import net.minecraft.network.protocol.game.ClientboundAddEntityPacket;
@@ -52,6 +57,7 @@ import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.chunk.ChunkStatus;
 import net.minecraft.world.level.chunk.LevelChunk;
+import net.minecraft.world.level.storage.LevelResource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.Mob;
@@ -149,7 +155,17 @@ public final class CubeNetRuntime {
                   + "; correction counters: " + runtime.correctionSummary()), false);
                return runtime.level == null ? 0 : 1;
             }))
-            .then(Commands.literal("mount_probe").executes(context ->
+            .then(Commands.literal("datapack")
+                .then(Commands.argument("name", StringArgumentType.word())
+                   .then(Commands.argument("scale", DoubleArgumentType.doubleArg(0.0001))
+                      .then(Commands.argument("sea_level", com.mojang.brigadier.arguments.IntegerArgumentType.integer(-2032, 2031))
+                         .executes(context -> writeDatapack(
+                            context.getSource(),
+                            StringArgumentType.getString(context, "name"),
+                            DoubleArgumentType.getDouble(context, "scale"),
+                            com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(context, "sea_level")
+                         ))))))
+             .then(Commands.literal("mount_probe").executes(context ->
                runtime.mountProbe(context.getSource().getPlayerOrException())))
             .then(Commands.literal("trace_motion").executes(context ->
                runtime.armMotionTrace(context.getSource().getPlayerOrException())));
@@ -176,6 +192,21 @@ public final class CubeNetRuntime {
          }
          dispatcher.register(Commands.literal("tellus").then(root));
       });
+   }
+
+   private static int writeDatapack(CommandSourceStack source, String requestedName, double scale, int seaLevel) {
+      String world = requestedName.indexOf(':') >= 0 ? requestedName : "tellus:" + requestedName;
+      String directoryName = "tellus-cube-net-" + world.replace(':', '_').replace('/', '_');
+      Path output = source.getServer().getWorldPath(LevelResource.DATAPACK_DIR).resolve(directoryName);
+      try {
+         CubeNetDatapackWriter.Result result = CubeNetDatapackWriter.write(output, world, scale, seaLevel);
+         source.sendSuccess(() -> Component.literal("Cube-Net datapack written to " + result.output()
+            + "; restart the world to load " + world + "_cube_net"), false);
+         return 1;
+      } catch (IOException | IllegalArgumentException error) {
+         source.sendFailure(Component.literal("Cube-Net datapack was not written: " + error.getMessage()));
+         return 0;
+      }
    }
 
    /** Tells the client how to unfold the far view of the level it is in. */

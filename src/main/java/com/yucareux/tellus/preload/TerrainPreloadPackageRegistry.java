@@ -1,6 +1,5 @@
 package com.yucareux.tellus.preload;
 
-import com.google.gson.JsonElement;
 import com.yucareux.tellus.Tellus;
 import com.yucareux.tellus.worldgen.EarthGeneratorSettings;
 import java.io.IOException;
@@ -29,7 +28,7 @@ public final class TerrainPreloadPackageRegistry {
    private static final ExecutorService REFRESH_EXECUTOR = Executors.newSingleThreadExecutor(daemonFactory("tellus-preload-index-"));
    private static final ExecutorService LOAD_EXECUTOR = Executors.newSingleThreadExecutor(daemonFactory("tellus-preload-load-"));
    private static final TerrainPreloadPackageRegistry INSTANCE = new TerrainPreloadPackageRegistry();
-   private final ConcurrentMap<EarthGeneratorSettings, TerrainPreloadPackageRegistry.SettingsView> settingsViews = new ConcurrentHashMap<>();
+   private final ConcurrentMap<String, TerrainPreloadPackageRegistry.SettingsView> fingerprintViews = new ConcurrentHashMap<>();
    private final AtomicBoolean refreshScheduled = new AtomicBoolean();
    private final AtomicLong invalidationGeneration = new AtomicLong();
    private final AtomicLong snapshotGeneration = new AtomicLong();
@@ -46,8 +45,22 @@ public final class TerrainPreloadPackageRegistry {
 
    public TerrainPreloadPackageRegistry.SettingsView viewFor(EarthGeneratorSettings settings) {
       Objects.requireNonNull(settings, "settings");
+      TerrainPreloadStorage storage = TerrainPreloadStorage.instance();
+      String settingsFingerprint = storage.settingsFingerprint(storage.encodeSettings(settings));
       this.requestRefreshIfNeeded();
-      return this.settingsViews.computeIfAbsent(settings, this::createSettingsView);
+      return this.fingerprintViews.computeIfAbsent(settingsFingerprint, fingerprint -> this.createSettingsView(fingerprint));
+   }
+
+   /**
+    * Returns a preload view without exposing EarthGeneratorSettings to the
+    * consumer. The fingerprint is the stable SHA-256 of the encoded package
+    * settings and therefore still prevents using a package for another scale
+    * or terrain configuration.
+    */
+   public TerrainPreloadView viewForFingerprint(String settingsFingerprint) {
+      Objects.requireNonNull(settingsFingerprint, "settingsFingerprint");
+      this.requestRefreshIfNeeded();
+      return this.fingerprintViews.computeIfAbsent(settingsFingerprint, fingerprint -> this.createSettingsView(fingerprint));
    }
 
    public void invalidate() {
@@ -56,12 +69,9 @@ public final class TerrainPreloadPackageRegistry {
       this.requestRefreshIfNeeded();
    }
 
-   private TerrainPreloadPackageRegistry.SettingsView createSettingsView(EarthGeneratorSettings settings) {
-      TerrainPreloadStorage storage = TerrainPreloadStorage.instance();
-      JsonElement settingsJson = storage.encodeSettings(settings);
-      String settingsFingerprint = storage.settingsFingerprint(settingsJson);
-      return new TerrainPreloadPackageRegistry.SettingsView(this, settingsFingerprint);
-   }
+    private TerrainPreloadPackageRegistry.SettingsView createSettingsView(String settingsFingerprint) {
+       return new TerrainPreloadPackageRegistry.SettingsView(this, settingsFingerprint);
+    }
 
    private void requestRefreshIfNeeded() {
       long invalidation = this.invalidationGeneration.get();
@@ -194,7 +204,7 @@ public final class TerrainPreloadPackageRegistry {
       };
    }
 
-   public static final class SettingsView {
+   public static final class SettingsView implements TerrainPreloadView {
       private final TerrainPreloadPackageRegistry registry;
       private final String settingsFingerprint;
       private volatile TerrainPreloadPackageRegistry.CachedIndex cachedIndex = TerrainPreloadPackageRegistry.CachedIndex.empty();
