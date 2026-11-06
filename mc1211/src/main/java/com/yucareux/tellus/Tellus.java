@@ -18,6 +18,7 @@ import com.yucareux.tellus.network.TellusWeatherPayload;
 import com.yucareux.tellus.platform.FabricTellusRuntimePlatform;
 import com.yucareux.tellus.worldgen.CubeNetBiomeSource;
 import com.yucareux.tellus.worldgen.CubeNetChunkGenerator;
+import com.yucareux.tellus.worldgen.CubeNetRuntime;
 import com.yucareux.tellus.worldgen.EarthBiomeSource;
 import com.yucareux.tellus.worldgen.EarthChunkGenerator;
 import java.util.Objects;
@@ -61,6 +62,23 @@ public final class Tellus extends TellusCommon implements ModInitializer {
       ServerPlayNetworking.registerGlobalReceiver(
          ManagedTerrainViewPayload.TYPE, (payload, context) -> TellusCommon.handleManagedTerrainView(payload, context.player())
       );
+       ServerPlayNetworking.registerGlobalReceiver(
+          CubeNetTransitionReadyPayload.TYPE, (payload, context) ->
+             CubeNetRuntime.acceptClientReady(context.player(), payload.transitionId())
+       );
+       ServerPlayNetworking.registerGlobalReceiver(
+          CubeNetTransitionChunksReceivedPayload.TYPE, (payload, context) ->
+             CubeNetRuntime.acceptClientChunksReceived(context.player(), payload.transitionId())
+       );
+       ServerPlayNetworking.registerGlobalReceiver(
+          CubeNetTransitionMotionPayload.TYPE, (payload, context) ->
+             CubeNetRuntime.acceptClientMotion(context.player(), payload)
+       );
+       ServerPlayNetworking.registerGlobalReceiver(
+          CubeNetTransitionUnsupportedPayload.TYPE, (payload, context) ->
+             CubeNetRuntime.acceptClientUnsupported(context.player(), payload.transitionId(), payload.backend())
+       );
       TellusCommon.initializeRuntime(new FabricTellusRuntimePlatform());
+       CubeNetRuntime.register();
    }
 }

@@ -28,6 +28,12 @@ public final class CubeNetApronChunkSync {
          Math.floorDiv((int)Math.floor(targetCenter.z()), 16));
    }
 
+    /** 1.21.1 minimum port has no persistent edit index yet. */
+    public static boolean readyForStaging(net.minecraft.server.level.ServerLevel level,
+       ChunkPos center, int radius) {
+       return true;
+    }
+
    public static Rotation rotation(int clockwiseQuarterTurns) {
       return switch (Math.floorMod(clockwiseQuarterTurns, 4)) {
          case 0 -> Rotation.NONE;
