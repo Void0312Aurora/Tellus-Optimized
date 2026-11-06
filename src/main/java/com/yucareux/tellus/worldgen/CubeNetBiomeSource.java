@@ -2,6 +2,8 @@ package com.yucareux.tellus.worldgen;
 
 import com.google.common.base.Suppliers;
 import com.mojang.serialization.MapCodec;
+import com.mojang.serialization.DynamicOps;
+import com.mojang.serialization.RecordBuilder;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import com.yucareux.tellus.world.data.biome.BiomeClassification;
@@ -60,7 +62,25 @@ public final class CubeNetBiomeSource extends TellusBiomeSourceBridge {
       boolean geologicalStonePatches,
       boolean cavesReachSurface,
       boolean roads,
-      boolean buildings
+       boolean buildings,
+       boolean addStrongholds,
+       boolean addVillages,
+       boolean addMineshafts,
+       boolean addOceanMonuments,
+       boolean addWoodlandMansions,
+       boolean addDesertTemples,
+       boolean addJungleTemples,
+       boolean addPillagerOutposts,
+       boolean addRuinedPortals,
+       boolean addShipwrecks,
+       boolean addOceanRuins,
+       boolean addBuriedTreasure,
+       boolean addIgloos,
+       boolean addWitchHuts,
+       boolean addAncientCities,
+       boolean addTrialChambers,
+       boolean addTrailRuins,
+       boolean addAbandonedCamps
    ) {
       public static final Settings DEFAULT = new Settings(
          false,
@@ -74,27 +94,131 @@ public final class CubeNetBiomeSource extends TellusBiomeSourceBridge {
          Boolean.parseBoolean(System.getProperty("tellus.cubeNet.geologicalStonePatches", "true")),
          Boolean.parseBoolean(System.getProperty("tellus.cubeNet.cavesReachSurface", "false")),
          Boolean.parseBoolean(System.getProperty("tellus.cubeNet.roads", "true")),
-         Boolean.parseBoolean(System.getProperty("tellus.cubeNet.buildings", "true"))
+         Boolean.parseBoolean(System.getProperty("tellus.cubeNet.buildings", "true")),
+          EarthGeneratorSettings.DEFAULT.addStrongholds(),
+          EarthGeneratorSettings.DEFAULT.addVillages(),
+          EarthGeneratorSettings.DEFAULT.addMineshafts(),
+          EarthGeneratorSettings.DEFAULT.addOceanMonuments(),
+          EarthGeneratorSettings.DEFAULT.addWoodlandMansions(),
+          EarthGeneratorSettings.DEFAULT.addDesertTemples(),
+          EarthGeneratorSettings.DEFAULT.addJungleTemples(),
+          EarthGeneratorSettings.DEFAULT.addPillagerOutposts(),
+          EarthGeneratorSettings.DEFAULT.addRuinedPortals(),
+          EarthGeneratorSettings.DEFAULT.addShipwrecks(),
+          EarthGeneratorSettings.DEFAULT.addOceanRuins(),
+          EarthGeneratorSettings.DEFAULT.addBuriedTreasure(),
+          EarthGeneratorSettings.DEFAULT.addIgloos(),
+          EarthGeneratorSettings.DEFAULT.addWitchHuts(),
+          EarthGeneratorSettings.DEFAULT.addAncientCities(),
+          EarthGeneratorSettings.DEFAULT.addTrialChambers(),
+          EarthGeneratorSettings.DEFAULT.addTrailRuins(),
+          EarthGeneratorSettings.DEFAULT.addAbandonedCamps()
       );
-      public static final Codec<Settings> CODEC = RecordCodecBuilder.create(instance -> instance.group(
-         Codec.BOOL.optionalFieldOf("random_biomes", DEFAULT.randomBiomes()).forGetter(Settings::randomBiomes),
-         Codec.DOUBLE.optionalFieldOf("random_biome_density", DEFAULT.randomBiomeDensity()).forGetter(Settings::randomBiomeDensity),
-         Codec.LONG.optionalFieldOf("random_biome_seed", DEFAULT.randomBiomeSeed()).forGetter(Settings::randomBiomeSeed),
-         Codec.STRING.listOf().optionalFieldOf("random_biome_ids", DEFAULT.randomBiomeIds()).forGetter(Settings::randomBiomeIds),
-         Codec.BOOL.optionalFieldOf("cave_generation", DEFAULT.caveGeneration()).forGetter(Settings::caveGeneration),
-         Codec.BOOL.optionalFieldOf("deep_dark", DEFAULT.deepDark()).forGetter(Settings::deepDark),
-         Codec.intRange(EarthGeneratorSettings.MIN_UNDERGROUND_DEPTH, EarthGeneratorSettings.MAX_UNDERGROUND_DEPTH)
-            .optionalFieldOf("underground_depth", DEFAULT.undergroundDepth()).forGetter(Settings::undergroundDepth),
-         Codec.BOOL.optionalFieldOf("ore_veins", DEFAULT.oreVeins()).forGetter(Settings::oreVeins),
-         Codec.BOOL.optionalFieldOf("geological_stone_patches", DEFAULT.geologicalStonePatches())
-            .forGetter(Settings::geologicalStonePatches),
-         Codec.BOOL.optionalFieldOf("caves_reach_surface", DEFAULT.cavesReachSurface())
-            .forGetter(Settings::cavesReachSurface),
-         Codec.BOOL.optionalFieldOf("roads", DEFAULT.roads()).forGetter(Settings::roads),
-         Codec.BOOL.optionalFieldOf("buildings", DEFAULT.buildings()).forGetter(Settings::buildings)
-      ).apply(instance, Settings::new));
+       private record BaseSettings(boolean randomBiomes, double randomBiomeDensity, long randomBiomeSeed,
+          List<String> randomBiomeIds, boolean caveGeneration, boolean deepDark, int undergroundDepth,
+          boolean oreVeins, boolean geologicalStonePatches, boolean cavesReachSurface, boolean roads, boolean buildings) { }
+       private record StructureSettingsA(boolean addStrongholds, boolean addVillages, boolean addMineshafts,
+          boolean addOceanMonuments, boolean addWoodlandMansions, boolean addDesertTemples,
+          boolean addJungleTemples, boolean addPillagerOutposts, boolean addRuinedPortals) { }
+       private record StructureSettingsB(boolean addShipwrecks, boolean addOceanRuins, boolean addBuriedTreasure,
+          boolean addIgloos, boolean addWitchHuts, boolean addAncientCities, boolean addTrialChambers,
+          boolean addTrailRuins, boolean addAbandonedCamps) { }
+       private static final MapCodec<BaseSettings> BASE_CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
+          Codec.BOOL.optionalFieldOf("random_biomes", DEFAULT.randomBiomes()).forGetter(BaseSettings::randomBiomes),
+          Codec.DOUBLE.optionalFieldOf("random_biome_density", DEFAULT.randomBiomeDensity()).forGetter(BaseSettings::randomBiomeDensity),
+          Codec.LONG.optionalFieldOf("random_biome_seed", DEFAULT.randomBiomeSeed()).forGetter(BaseSettings::randomBiomeSeed),
+          Codec.STRING.listOf().optionalFieldOf("random_biome_ids", DEFAULT.randomBiomeIds()).forGetter(BaseSettings::randomBiomeIds),
+          Codec.BOOL.optionalFieldOf("cave_generation", DEFAULT.caveGeneration()).forGetter(BaseSettings::caveGeneration),
+          Codec.BOOL.optionalFieldOf("deep_dark", DEFAULT.deepDark()).forGetter(BaseSettings::deepDark),
+          Codec.intRange(EarthGeneratorSettings.MIN_UNDERGROUND_DEPTH, EarthGeneratorSettings.MAX_UNDERGROUND_DEPTH)
+             .optionalFieldOf("underground_depth", DEFAULT.undergroundDepth()).forGetter(BaseSettings::undergroundDepth),
+          Codec.BOOL.optionalFieldOf("ore_veins", DEFAULT.oreVeins()).forGetter(BaseSettings::oreVeins),
+          Codec.BOOL.optionalFieldOf("geological_stone_patches", DEFAULT.geologicalStonePatches()).forGetter(BaseSettings::geologicalStonePatches),
+          Codec.BOOL.optionalFieldOf("caves_reach_surface", DEFAULT.cavesReachSurface()).forGetter(BaseSettings::cavesReachSurface),
+          Codec.BOOL.optionalFieldOf("roads", DEFAULT.roads()).forGetter(BaseSettings::roads),
+          Codec.BOOL.optionalFieldOf("buildings", DEFAULT.buildings()).forGetter(BaseSettings::buildings)
+       ).apply(instance, BaseSettings::new));
+       private static final MapCodec<StructureSettingsA> STRUCTURES_A_CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
+          Codec.BOOL.optionalFieldOf("add_strongholds", DEFAULT.addStrongholds()).forGetter(StructureSettingsA::addStrongholds),
+          Codec.BOOL.optionalFieldOf("add_villages", DEFAULT.addVillages()).forGetter(StructureSettingsA::addVillages),
+          Codec.BOOL.optionalFieldOf("add_mineshafts", DEFAULT.addMineshafts()).forGetter(StructureSettingsA::addMineshafts),
+          Codec.BOOL.optionalFieldOf("add_ocean_monuments", DEFAULT.addOceanMonuments()).forGetter(StructureSettingsA::addOceanMonuments),
+          Codec.BOOL.optionalFieldOf("add_woodland_mansions", DEFAULT.addWoodlandMansions()).forGetter(StructureSettingsA::addWoodlandMansions),
+          Codec.BOOL.optionalFieldOf("add_desert_temples", DEFAULT.addDesertTemples()).forGetter(StructureSettingsA::addDesertTemples),
+          Codec.BOOL.optionalFieldOf("add_jungle_temples", DEFAULT.addJungleTemples()).forGetter(StructureSettingsA::addJungleTemples),
+          Codec.BOOL.optionalFieldOf("add_pillager_outposts", DEFAULT.addPillagerOutposts()).forGetter(StructureSettingsA::addPillagerOutposts),
+          Codec.BOOL.optionalFieldOf("add_ruined_portals", DEFAULT.addRuinedPortals()).forGetter(StructureSettingsA::addRuinedPortals)
+       ).apply(instance, StructureSettingsA::new));
+       private static final MapCodec<StructureSettingsB> STRUCTURES_B_CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
+          Codec.BOOL.optionalFieldOf("add_shipwrecks", DEFAULT.addShipwrecks()).forGetter(StructureSettingsB::addShipwrecks),
+          Codec.BOOL.optionalFieldOf("add_ocean_ruins", DEFAULT.addOceanRuins()).forGetter(StructureSettingsB::addOceanRuins),
+          Codec.BOOL.optionalFieldOf("add_buried_treasure", DEFAULT.addBuriedTreasure()).forGetter(StructureSettingsB::addBuriedTreasure),
+          Codec.BOOL.optionalFieldOf("add_igloos", DEFAULT.addIgloos()).forGetter(StructureSettingsB::addIgloos),
+          Codec.BOOL.optionalFieldOf("add_witch_huts", DEFAULT.addWitchHuts()).forGetter(StructureSettingsB::addWitchHuts),
+          Codec.BOOL.optionalFieldOf("add_ancient_cities", DEFAULT.addAncientCities()).forGetter(StructureSettingsB::addAncientCities),
+          Codec.BOOL.optionalFieldOf("add_trial_chambers", DEFAULT.addTrialChambers()).forGetter(StructureSettingsB::addTrialChambers),
+          Codec.BOOL.optionalFieldOf("add_trail_ruins", DEFAULT.addTrailRuins()).forGetter(StructureSettingsB::addTrailRuins),
+          Codec.BOOL.optionalFieldOf("add_abandoned_camps", DEFAULT.addAbandonedCamps()).forGetter(StructureSettingsB::addAbandonedCamps)
+       ).apply(instance, StructureSettingsB::new));
+       private record BaseAndA(BaseSettings base, StructureSettingsA structures) { }
+       public static final Codec<Settings> CODEC = MapCodec.of(
+          new com.mojang.serialization.MapEncoder.Implementation<Settings>() {
+             public <T> RecordBuilder<T> encode(Settings input, DynamicOps<T> ops, RecordBuilder<T> prefix) {
+                BaseSettings base = new BaseSettings(input.randomBiomes(), input.randomBiomeDensity(), input.randomBiomeSeed(), input.randomBiomeIds(),
+                   input.caveGeneration(), input.deepDark(), input.undergroundDepth(), input.oreVeins(), input.geologicalStonePatches(),
+                   input.cavesReachSurface(), input.roads(), input.buildings());
+                StructureSettingsA a = new StructureSettingsA(input.addStrongholds(), input.addVillages(), input.addMineshafts(), input.addOceanMonuments(),
+                   input.addWoodlandMansions(), input.addDesertTemples(), input.addJungleTemples(), input.addPillagerOutposts(), input.addRuinedPortals());
+                StructureSettingsB b = new StructureSettingsB(input.addShipwrecks(), input.addOceanRuins(), input.addBuriedTreasure(), input.addIgloos(),
+                   input.addWitchHuts(), input.addAncientCities(), input.addTrialChambers(), input.addTrailRuins(), input.addAbandonedCamps());
+                return STRUCTURES_B_CODEC.encode(b, ops, STRUCTURES_A_CODEC.encode(a, ops, BASE_CODEC.encode(base, ops, prefix)));
+             }
+             public <T> Stream<T> keys(DynamicOps<T> ops) {
+                return Stream.concat(BASE_CODEC.keys(ops), Stream.concat(STRUCTURES_A_CODEC.keys(ops), STRUCTURES_B_CODEC.keys(ops)));
+             }
+          },
+          new com.mojang.serialization.MapDecoder.Implementation<Settings>() {
+             public <T> com.mojang.serialization.DataResult<Settings> decode(DynamicOps<T> ops, com.mojang.serialization.MapLike<T> input) {
+                return BASE_CODEC.decode(ops, input).apply2(BaseAndA::new, STRUCTURES_A_CODEC.decode(ops, input)).apply2(
+                   (baseAndA, b) -> new Settings(baseAndA.base().randomBiomes(), baseAndA.base().randomBiomeDensity(), baseAndA.base().randomBiomeSeed(),
+                      baseAndA.base().randomBiomeIds(), baseAndA.base().caveGeneration(), baseAndA.base().deepDark(), baseAndA.base().undergroundDepth(),
+                      baseAndA.base().oreVeins(), baseAndA.base().geologicalStonePatches(), baseAndA.base().cavesReachSurface(), baseAndA.base().roads(),
+                      baseAndA.base().buildings(), baseAndA.structures().addStrongholds(), baseAndA.structures().addVillages(), baseAndA.structures().addMineshafts(),
+                      baseAndA.structures().addOceanMonuments(), baseAndA.structures().addWoodlandMansions(), baseAndA.structures().addDesertTemples(),
+                      baseAndA.structures().addJungleTemples(), baseAndA.structures().addPillagerOutposts(), baseAndA.structures().addRuinedPortals(),
+                      b.addShipwrecks(), b.addOceanRuins(), b.addBuriedTreasure(), b.addIgloos(), b.addWitchHuts(), b.addAncientCities(),
+                      b.addTrialChambers(), b.addTrailRuins(), b.addAbandonedCamps()), STRUCTURES_B_CODEC.decode(ops, input));
+             }
+             public <T> Stream<T> keys(DynamicOps<T> ops) {
+                return Stream.concat(BASE_CODEC.keys(ops), Stream.concat(STRUCTURES_A_CODEC.keys(ops), STRUCTURES_B_CODEC.keys(ops)));
+             }
+          }
+       ).codec();
+       TellusStructurePolicy.StructureToggles structureToggles() {
+          return new TellusStructurePolicy.StructureToggles(
+             EarthGeneratorSettings.DEFAULT.suppressesUndergroundGenerationForTerrainShell(),
+             this.addStrongholds(),
+             this.addVillages(),
+             this.addMineshafts(),
+             this.addOceanMonuments(),
+             this.addWoodlandMansions(),
+             this.addDesertTemples(),
+             this.addJungleTemples(),
+             this.addPillagerOutposts(),
+             this.addRuinedPortals(),
+             this.addShipwrecks(),
+             this.addOceanRuins(),
+             this.addBuriedTreasure(),
+             this.addIgloos(),
+             this.addWitchHuts(),
+             this.addAncientCities(),
+             this.addTrialChambers(),
+             this.addTrailRuins(),
+             this.addAbandonedCamps()
+          );
+       }
 
-      public Settings {
+       public Settings {
          randomBiomeIds = List.copyOf(randomBiomeIds == null ? List.of() : randomBiomeIds);
          if (!Double.isFinite(randomBiomeDensity) || randomBiomeDensity < 0.0 || randomBiomeDensity > 0.4) {
             throw new IllegalArgumentException("random_biome_density");

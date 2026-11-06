@@ -64,6 +64,25 @@ vertical limits as the face generator:
 | `--caves-reach-surface` / `--no-caves-reach-surface` | `caves_reach_surface` | `false` | 洞穴是否允许接近/连到地表 |
 | `--roads` / `--no-roads` | `roads` | `true` | 道路与道路相关投影 |
 | `--buildings` / `--no-buildings` | `buildings` | `true` | 建筑与建筑相关投影 |
+| `--structures` / `--no-structures` | 全部 `add_*` | `false` | 一键启用/关闭原版结构；逐项参数可覆盖 |
+| `--add-strongholds` / `--no-add-strongholds` | `add_strongholds` | `false` | 要塞 |
+| `--add-villages` / `--no-add-villages` | `add_villages` | `false` | 村庄 |
+| `--add-mineshafts` / `--no-add-mineshafts` | `add_mineshafts` | `false` | 废弃矿井 |
+| `--add-ocean-monuments` / `--no-add-ocean-monuments` | `add_ocean_monuments` | `false` | 海洋 monument |
+| `--add-woodland-mansions` / `--no-add-woodland-mansions` | `add_woodland_mansions` | `false` | 林地府邸 |
+| `--add-desert-temples` / `--no-add-desert-temples` | `add_desert_temples` | `false` | 沙漠神殿 |
+| `--add-jungle-temples` / `--no-add-jungle-temples` | `add_jungle_temples` | `false` | 丛林神庙 |
+| `--add-pillager-outposts` / `--no-add-pillager-outposts` | `add_pillager_outposts` | `false` | 掠夺者前哨 |
+| `--add-ruined-portals` / `--no-add-ruined-portals` | `add_ruined_portals` | `false` | 废弃传送门 |
+| `--add-shipwrecks` / `--no-add-shipwrecks` | `add_shipwrecks` | `false` | 沉船 |
+| `--add-ocean-ruins` / `--no-add-ocean-ruins` | `add_ocean_ruins` | `false` | 海底废墟 |
+| `--add-buried-treasure` / `--no-add-buried-treasure` | `add_buried_treasure` | `false` | 埋藏的宝藏 |
+| `--add-igloos` / `--no-add-igloos` | `add_igloos` | `false` | 雪屋 |
+| `--add-witch-huts` / `--no-add-witch-huts` | `add_witch_huts` | `false` | 女巫小屋 |
+| `--add-ancient-cities` / `--no-add-ancient-cities` | `add_ancient_cities` | `false` | 远古城市 |
+| `--add-trial-chambers` / `--no-add-trial-chambers` | `add_trial_chambers` | `false` | 试炼密室（此字段在 1.20.1 数据中通常没有结构集） |
+| `--add-trail-ruins` / `--no-add-trail-ruins` | `add_trail_ruins` | `false` | Trail Ruins（此字段在 1.20.1 数据中通常没有结构集） |
+| `--add-abandoned-camps` / `--no-add-abandoned-camps` | `add_abandoned_camps` | `false` | Abandoned Camps（保留 TellusStructurePolicy 语义；1.20.1 数据中没有该结构集） |
 
 例如关闭建筑和原版洞穴、同时保留矿脉：
 

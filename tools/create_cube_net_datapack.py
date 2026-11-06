@@ -19,7 +19,16 @@ def create_pack(output: Path, world: str, scale: float, sea: int, min_y: int, he
                 caves: bool = True, deep_dark: bool = False, underground_depth: int = 256,
                 ore_veins: bool = True, geological_stone_patches: bool = True,
                 caves_reach_surface: bool = False, roads: bool = True,
-                buildings: bool = True) -> list[Path]:
+                buildings: bool = True, structures: bool = False,
+                 add_strongholds: bool | None = None, add_villages: bool | None = None,
+                 add_mineshafts: bool | None = None, add_ocean_monuments: bool | None = None,
+                 add_woodland_mansions: bool | None = None, add_desert_temples: bool | None = None,
+                 add_jungle_temples: bool | None = None, add_pillager_outposts: bool | None = None,
+                 add_ruined_portals: bool | None = None, add_shipwrecks: bool | None = None,
+                 add_ocean_ruins: bool | None = None, add_buried_treasure: bool | None = None,
+                 add_igloos: bool | None = None, add_witch_huts: bool | None = None,
+                 add_ancient_cities: bool | None = None, add_trial_chambers: bool | None = None,
+                 add_trail_ruins: bool | None = None, add_abandoned_camps: bool | None = None) -> list[Path]:
     if not IDENTIFIER.fullmatch(world):
         raise ValueError("world must be a namespace:path identifier")
     namespace, name = world.split(":", 1)
@@ -57,6 +66,27 @@ def create_pack(output: Path, world: str, scale: float, sea: int, min_y: int, he
         "monster_spawn_block_light_limit": 0,
         "monster_spawn_light_level": 0,
     }
+    structure_values = {
+        "add_strongholds": structures if add_strongholds is None else add_strongholds,
+        "add_villages": structures if add_villages is None else add_villages,
+        "add_mineshafts": structures if add_mineshafts is None else add_mineshafts,
+        "add_ocean_monuments": structures if add_ocean_monuments is None else add_ocean_monuments,
+        "add_woodland_mansions": structures if add_woodland_mansions is None else add_woodland_mansions,
+        "add_desert_temples": structures if add_desert_temples is None else add_desert_temples,
+        "add_jungle_temples": structures if add_jungle_temples is None else add_jungle_temples,
+        "add_pillager_outposts": structures if add_pillager_outposts is None else add_pillager_outposts,
+        "add_ruined_portals": structures if add_ruined_portals is None else add_ruined_portals,
+        "add_shipwrecks": structures if add_shipwrecks is None else add_shipwrecks,
+        "add_ocean_ruins": structures if add_ocean_ruins is None else add_ocean_ruins,
+        "add_buried_treasure": structures if add_buried_treasure is None else add_buried_treasure,
+        "add_igloos": structures if add_igloos is None else add_igloos,
+        "add_witch_huts": structures if add_witch_huts is None else add_witch_huts,
+        "add_ancient_cities": structures if add_ancient_cities is None else add_ancient_cities,
+        "add_trial_chambers": structures if add_trial_chambers is None else add_trial_chambers,
+        "add_trail_ruins": structures if add_trail_ruins is None else add_trail_ruins,
+        "add_abandoned_camps": structures if add_abandoned_camps is None else add_abandoned_camps,
+    }
+
     biome_source = {"biome": "minecraft:plains"}
     if geodetic_biomes:
         biome_source = {
@@ -78,6 +108,7 @@ def create_pack(output: Path, world: str, scale: float, sea: int, min_y: int, he
                 "caves_reach_surface": caves_reach_surface,
                 "roads": roads,
                 "buildings": buildings,
+                **structure_values,
             },
         }
     generator = {
@@ -149,13 +180,32 @@ def main() -> None:
                         help="Enable geodetic road features (default: true).")
     parser.add_argument("--buildings", action=argparse.BooleanOptionalAction, default=True,
                         help="Enable geodetic building features (default: true).")
+    structure_group = parser.add_mutually_exclusive_group()
+    structure_group.add_argument("--structures", dest="structures", action="store_true",
+                                help="Enable all Tellus structure sets.")
+    structure_group.add_argument("--no-structures", dest="structures", action="store_false",
+                                help="Disable all Tellus structure sets (the default).")
+    parser.set_defaults(structures=False)
+    for name in ("strongholds", "villages", "mineshafts", "ocean-monuments", "woodland-mansions",
+                 "desert-temples", "jungle-temples", "pillager-outposts", "ruined-portals", "shipwrecks",
+                 "ocean-ruins", "buried-treasure", "igloos", "witch-huts", "ancient-cities",
+                 "trial-chambers", "trail-ruins", "abandoned-camps"):
+        parser.add_argument(f"--add-{name}", f"--{name}",
+                            action=argparse.BooleanOptionalAction, dest=f"add_{name.replace('-', '_')}", default=None,
+                            help=f"Override the structure toggle add_{name.replace('-', '_')}.")
     args = parser.parse_args()
     try:
         files = create_pack(args.output, args.world, args.scale, args.sea_level, args.min_y, args.height,
                             args.apron_chunks, args.geodetic_biomes,
                             args.caves, args.deep_dark, args.underground_depth, args.ore_veins,
                             args.geological_stone_patches, args.caves_reach_surface,
-                            args.roads, args.buildings)
+                            args.roads, args.buildings, args.structures,
+                             args.add_strongholds, args.add_villages, args.add_mineshafts,
+                             args.add_ocean_monuments, args.add_woodland_mansions, args.add_desert_temples,
+                             args.add_jungle_temples, args.add_pillager_outposts, args.add_ruined_portals,
+                             args.add_shipwrecks, args.add_ocean_ruins, args.add_buried_treasure,
+                             args.add_igloos, args.add_witch_huts, args.add_ancient_cities,
+                             args.add_trial_chambers, args.add_trail_ruins, args.add_abandoned_camps)
     except ValueError as error:
         parser.error(str(error))
     print(f"Created {len(files)} files for {args.world}: {args.output}")

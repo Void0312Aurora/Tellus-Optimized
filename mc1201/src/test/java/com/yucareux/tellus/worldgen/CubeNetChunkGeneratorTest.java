@@ -26,6 +26,7 @@ import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.Biomes;
 import net.minecraft.world.level.biome.FixedBiomeSource;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.levelgen.structure.StructureSet;
 import net.minecraft.world.level.chunk.ChunkStatus;
 import net.minecraft.world.level.chunk.ProtoChunk;
 import net.minecraft.world.level.chunk.UpgradeData;
@@ -71,7 +72,21 @@ class CubeNetChunkGeneratorTest {
    }
 
    @Test
-   void resolvesAndGeneratesAnInteriorPlanarChunkThroughItsCanonicalFace() {
+   void filteredStructureLookupExcludesDisabledStructureSets() {
+       var provider = VanillaRegistries.createLookup();
+       var structureSets = provider.lookupOrThrow(Registries.STRUCTURE_SET);
+       var disabled = new TellusStructurePolicy.StructureToggles(
+          false, false, false, false, false, false, false, false, false, false,
+          false, false, false, false, false, false, false, false, false);
+       var filtered = new FilteredStructureLookup(structureSets, new TellusStructurePolicy(disabled)::enabledSet);
+       ResourceKey<StructureSet> villages = ResourceKey.create(Registries.STRUCTURE_SET,
+          new net.minecraft.resources.ResourceLocation("minecraft", "villages"));
+       assertTrue(structureSets.get(villages).isPresent());
+       assertTrue(filtered.listElements().noneMatch(holder -> holder.key().equals(villages)));
+    }
+
+    @Test
+    void resolvesAndGeneratesAnInteriorPlanarChunkThroughItsCanonicalFace() {
       AtomicInteger calls = new AtomicInteger();
       var generator = new CubeNetChunkGenerator(new FixedBiomeSource(plains), 1.0, 64, -64, 384,
          (point, resolution) -> {

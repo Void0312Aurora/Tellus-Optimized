@@ -202,6 +202,7 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
    private final CubeNetSphericalCaveSampler cubeNetSphericalCaveSampler = new CubeNetSphericalCaveSampler();
    private volatile long sphericalCaveSeed = Long.MIN_VALUE;
    private volatile CubeNetSphericalCaveField sphericalCaveField;
+   private final TellusStructurePolicy structurePolicy;
    private final boolean cubeNetCaves;
    private final boolean cubeNetOreVeins;
    private final boolean cubeNetGeologicalStonePatches;
@@ -325,7 +326,10 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
       SphereSingularityPolicy.Config singularityConfig, SphereChunkSampler.PointSampler pointSampler, int apronChunks,
       int inlandShorelineRadius, int oceanShorelineRadius, boolean shorelineBlendCliffLimit) {
       super(biome, holder -> TellusBiomeGenerationSettings.forBiome(holder, cubeNetGenerationSettings(biome)));
-      this.cubeNetCaves = resolveCaveGeneration(biome);
+      this.structurePolicy = biome instanceof CubeNetBiomeSource cubeNet
+          ? new TellusStructurePolicy(cubeNet.settings().structureToggles())
+          : new TellusStructurePolicy(EarthGeneratorSettings.DEFAULT);
+       this.cubeNetCaves = resolveCaveGeneration(biome);
       this.cubeNetOreVeins = resolveOreVeins(biome);
       this.cubeNetGeologicalStonePatches = resolveGeologicalStonePatches(biome);
       this.cubeNetCavesReachSurface = resolveCavesReachSurface(biome);
@@ -494,7 +498,8 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
       this.worldSeed = seed;
       this.materializer.setWorldSeed(seed);
       for (SphereFaceChunkGenerator face : this.faces) face.setWorldSeed(seed);
-      return ChunkGeneratorStructureState.createForNormal(randomState, seed, this.biomeSource, structureSets);
+       HolderLookup<StructureSet> filtered = new FilteredStructureLookup(structureSets, this.structurePolicy::enabledSet);
+       return ChunkGeneratorStructureState.createForNormal(randomState, seed, this.biomeSource, filtered);
    }
 
    boolean admitsOrdinaryMaterialization(SphereWorldModel.SphereChunkAddress address) {

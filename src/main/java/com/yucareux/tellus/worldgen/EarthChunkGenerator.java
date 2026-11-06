@@ -528,7 +528,7 @@ public final class EarthChunkGenerator extends TellusChunkGeneratorBridge implem
 
    public ChunkGeneratorStructureState createState( HolderLookup<StructureSet> structureSets,  RandomState randomState, long seed) {
       this.worldSeed = seed;
-      HolderLookup<StructureSet> filtered = new EarthChunkGenerator.FilteredStructureLookup(structureSets, this.structurePolicy::enabledSet);
+      HolderLookup<StructureSet> filtered = new FilteredStructureLookup(structureSets, this.structurePolicy::enabledSet);
       return this.createStructureState(randomState, seed, filtered);
    }
 
@@ -12199,36 +12199,6 @@ public final class EarthChunkGenerator extends TellusChunkGeneratorBridge implem
    }
 
    private record ColumnHeights(int terrainSurface, int waterSurface, boolean hasWater) {
-   }
-
-   private static final class FilteredStructureLookup implements HolderLookup<StructureSet> {
-      private final HolderLookup<StructureSet> delegate;
-      private final Predicate<Holder<StructureSet>> predicate;
-
-      private FilteredStructureLookup(HolderLookup<StructureSet> delegate, Predicate<Holder<StructureSet>> predicate) {
-         this.delegate = delegate;
-         this.predicate = predicate;
-      }
-
-
-      public Stream<Reference<StructureSet>> listElements() {
-         return Objects.requireNonNull(this.delegate.listElements().filter(this.predicate), "listElements");
-      }
-
-
-      public Stream<Named<StructureSet>> listTags() {
-         return Objects.requireNonNull(this.delegate.listTags(), "listTags");
-      }
-
-
-      public Optional<Reference<StructureSet>> get( ResourceKey<StructureSet> key) {
-         return Objects.requireNonNull(this.delegate.get(key), "getStructureSet");
-      }
-
-
-      public Optional<Named<StructureSet>> get( TagKey<StructureSet> tag) {
-         return Objects.requireNonNull(this.delegate.get(tag), "getStructureSetTag");
-      }
    }
 
    /** @param strata bare bedrock; Distant Horizons draws its sides from {@link #resolveStrataColumn} */
