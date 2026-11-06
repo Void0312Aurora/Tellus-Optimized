@@ -149,7 +149,6 @@ import net.minecraft.world.level.levelgen.structure.StructurePiece;
 import net.minecraft.world.level.levelgen.structure.StructureSet;
 import net.minecraft.world.level.levelgen.structure.StructureStart;
 import net.minecraft.world.level.levelgen.structure.TerrainAdjustment;
-import net.minecraft.world.level.levelgen.structure.StructureSet.StructureSelectionEntry;
 import net.minecraft.world.level.levelgen.structure.pieces.PiecesContainer;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplateManager;
 import net.minecraft.world.level.material.Fluids;
@@ -384,6 +383,7 @@ public final class EarthChunkGenerator extends TellusChunkGeneratorBridge implem
    private static final AtomicBoolean LOGGED_CHUNK_LAYOUT = new AtomicBoolean(false);
    private static final Map<EarthChunkGenerator.TreeFeatureSettingsKey, List<TreeFeatureHandle>> TREE_FEATURES = new ConcurrentHashMap<>();
    private final EarthGeneratorSettings settings;
+    private final TellusStructurePolicy structurePolicy;
    private final GlobalMapModel globalMapModel;
    private final int seaLevel;
    private final int minY;
@@ -429,6 +429,7 @@ public final class EarthChunkGenerator extends TellusChunkGeneratorBridge implem
    public EarthChunkGenerator(BiomeSource biomeSource, EarthGeneratorSettings settings) {
       super(biomeSource, biome -> generationSettingsForBiome(biome, settings));
       this.settings = settings;
+       this.structurePolicy = new TellusStructurePolicy(settings);
       this.globalMapModel = GlobalMapModel.forWorldScale(settings.worldScale());
       this.seaLevel = settings.effectiveHeightOffset();
       EarthGeneratorSettings.HeightLimits limits = EarthGeneratorSettings.resolveHeightLimits(settings);
@@ -527,7 +528,7 @@ public final class EarthChunkGenerator extends TellusChunkGeneratorBridge implem
 
    public ChunkGeneratorStructureState createState( HolderLookup<StructureSet> structureSets,  RandomState randomState, long seed) {
       this.worldSeed = seed;
-      HolderLookup<StructureSet> filtered = new EarthChunkGenerator.FilteredStructureLookup(structureSets, this::isStructureSetEnabled);
+      HolderLookup<StructureSet> filtered = new EarthChunkGenerator.FilteredStructureLookup(structureSets, this.structurePolicy::enabledSet);
       return this.createStructureState(randomState, seed, filtered);
    }
 
@@ -11675,70 +11676,6 @@ public final class EarthChunkGenerator extends TellusChunkGeneratorBridge implem
 
    private static BiomeGenerationSettings generationSettingsForBiome(Holder<Biome> biome, EarthGeneratorSettings settings) {
       return TellusBiomeGenerationSettings.forBiome(biome, TellusBiomeGenerationSettings.from(settings));
-   }
-
-   private boolean isStructureSetEnabled(Holder<StructureSet> structureSet) {
-      for (StructureSelectionEntry entry : ((StructureSet)structureSet.value()).structures()) {
-         if (!this.isStructureEnabled(entry.structure())) {
-            return false;
-         }
-      }
-
-      return true;
-   }
-
-   private boolean isStructureEnabled(Holder<Structure> structure) {
-      return structure.unwrapKey().map(MinecraftVersionCompat::keyPath).map(path -> this.isStructureEnabled(path)).orElse(true);
-   }
-
-   private boolean isStructureEnabled(String path) {
-      if (this.settings.suppressesUndergroundGenerationForTerrainShell() && isThinShellUndergroundStructureId(path)) {
-         return false;
-      } else if (path.startsWith("village")) {
-         return this.settings.addVillages();
-      } else if (path.equals("stronghold")) {
-         return this.settings.addStrongholds();
-      } else if (path.startsWith("mineshaft")) {
-         return this.settings.addMineshafts();
-      } else if (path.equals("igloo")) {
-         return this.settings.addIgloos();
-      } else if (path.equals("ocean_monument") || path.equals("monument")) {
-         return this.settings.addOceanMonuments();
-      } else if (VanillaStructurePlacement.isWoodlandMansionPath(path)) {
-         return this.settings.addWoodlandMansions();
-      } else if (path.equals("desert_pyramid") || path.equals("desert_temple")) {
-         return this.settings.addDesertTemples();
-      } else if (path.equals("jungle_pyramid") || path.equals("jungle_temple")) {
-         return this.settings.addJungleTemples();
-      } else if (path.equals("pillager_outpost")) {
-         return this.settings.addPillagerOutposts();
-      } else if (path.startsWith("ruined_portal")) {
-         return this.settings.addRuinedPortals();
-      } else if (path.startsWith("shipwreck")) {
-         return this.settings.addShipwrecks();
-      } else if (path.startsWith("ocean_ruin")) {
-         return this.settings.addOceanRuins();
-      } else if (path.equals("buried_treasure")) {
-         return this.settings.addBuriedTreasure();
-      } else if (path.equals("swamp_hut") || path.equals("witch_hut")) {
-         return this.settings.addWitchHuts();
-      } else if (path.equals("ancient_city")) {
-         return this.settings.addAncientCities();
-      } else if (path.equals("trial_chambers")) {
-         return this.settings.addTrialChambers();
-      } else if (VanillaStructurePlacement.isAbandonedCampPath(path)) {
-         return this.settings.addAbandonedCamps();
-      } else {
-         return path.startsWith("trail_ruins") ? this.settings.addTrailRuins() : true;
-      }
-   }
-
-   private static boolean isThinShellUndergroundStructureId(String path) {
-      return path.equals("stronghold")
-         || path.startsWith("mineshaft")
-         || path.equals("ancient_city")
-         || path.equals("trial_chambers")
-         || path.equals("buried_treasure");
    }
 
    private static List<TreeFeatureHandle> treeFeaturesForBiome(Holder<Biome> biome, boolean hugeRedMushrooms) {
