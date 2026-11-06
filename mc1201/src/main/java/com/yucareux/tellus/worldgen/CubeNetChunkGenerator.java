@@ -93,6 +93,7 @@ import net.minecraft.world.level.chunk.UpgradeData;
 import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.level.chunk.ChunkGeneratorStructureState;
 import net.minecraft.world.level.levelgen.structure.StructureSet;
+import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.StructureStart;
 import net.minecraft.world.level.levelgen.structure.StructurePiece;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
@@ -1358,12 +1359,71 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
       // projection later and never create a second start at the seam view.
       if (this.address(chunk.getPos()).filter(this.singularityPolicy::admitsTerrainMaterialization).isPresent()) {
          super.createStructures(registry, state, structures, chunk, templates);
+         this.filterCubeNetSurfaceStructureStarts(registry, chunk);
       }
    }
    @Override public void createReferences(WorldGenLevel level, StructureManager structures, ChunkAccess chunk) {
       if (this.address(chunk.getPos()).filter(this.singularityPolicy::admitsTerrainMaterialization).isPresent()) {
          super.createReferences(level, structures, chunk);
       }
+   }
+
+   private void filterCubeNetSurfaceStructureStarts(RegistryAccess registryAccess, ChunkAccess chunk) {
+      Registry<Structure> registry = MinecraftVersionCompat.registry(registryAccess, Registries.STRUCTURE);
+      Map<Long, SphereChunkSampler.SurfaceData> cache = new HashMap<>();
+      for (var entry : new ArrayList<>(chunk.getAllStarts().entrySet())) {
+         StructureStart start = entry.getValue();
+         if (start == null || !start.isValid()) continue;
+         String path = MinecraftVersionCompat.registryKeyPath(registry, entry.getKey());
+         if (path == null) continue;
+         BoundingBox box = start.getBoundingBox();
+         boolean invalid = false;
+         if (path.startsWith("village")) {
+            invalid = this.structureStartTooSteep(box, 4, 4, 6, cache)
+               || CubeNetStructurePlacement.footprintTouchesWater(
+                  box.minX() - 2, box.maxX() + 2, box.minZ() - 2, box.maxZ() + 2, 8,
+                  (x, z) -> this.structureWaterColumn(x, z, cache));
+         } else if (VanillaStructurePlacement.isWoodlandMansionPath(path)) {
+            invalid = this.structureStartTooSteep(box, 8, 6, 8, cache);
+         } else if (VanillaStructurePlacement.isAbandonedCampPath(path)) {
+            // Path-based discovery also guards versions without an abandoned-camp registry entry.
+            invalid = !this.abandonedCampSiteUsable(start, cache);
+         }
+         if (invalid) chunk.setStartForStructure(entry.getKey(), StructureStart.INVALID_START);
+      }
+   }
+
+   private boolean structureStartTooSteep(BoundingBox box, int margin, int step, int maxDelta,
+      Map<Long, SphereChunkSampler.SurfaceData> cache) {
+      return CubeNetStructurePlacement.surfaceTooSteep(
+         box.minX() - margin, box.maxX() + margin, box.minZ() - margin, box.maxZ() + margin, step, maxDelta,
+         (x, z) -> this.structureSurfaceY(x, z, cache));
+   }
+
+   private int structureSurfaceY(int x, int z, Map<Long, SphereChunkSampler.SurfaceData> cache) {
+      SphereChunkSampler.SurfaceData surface = this.surfaceDataAtPlanar(x, z, cache);
+      return surface == null || !surface.elevationAvailable() ? this.minY : this.materializer.height(surface.elevationMeters());
+   }
+
+   private boolean structureWaterColumn(int x, int z, Map<Long, SphereChunkSampler.SurfaceData> cache) {
+      SphereChunkSampler.SurfaceData surface = this.surfaceDataAtPlanar(x, z, cache);
+      return this.cubeNetEnableWater && surface != null && surface.waterAvailable()
+         && this.materializer.height(surface.waterSurfaceMeters()) > this.materializer.height(surface.elevationMeters());
+   }
+
+   private boolean abandonedCampSiteUsable(StructureStart start, Map<Long, SphereChunkSampler.SurfaceData> cache) {
+      if (start.getPieces().isEmpty()) return false;
+      int floorY = start.getPieces().get(0).getBoundingBox().minY();
+      for (StructurePiece piece : start.getPieces()) {
+         BoundingBox box = piece.getBoundingBox();
+         for (int z = box.minZ(); z <= box.maxZ(); z++) {
+            for (int x = box.minX(); x <= box.maxX(); x++) {
+               if (this.structureWaterColumn(x, z, cache)
+                  || !VanillaStructurePlacement.supportsRigidFloor(this.structureSurfaceY(x, z, cache), floorY)) return false;
+            }
+         }
+      }
+      return true;
    }
 
    private int surfaceYAtPlanar(
