@@ -46,7 +46,7 @@
 ## 验证状态
 
 - `./gradlew.bat :mc1201:compileJava --offline`：PASS（2026-11-06，本地离线缓存）。
-- `./gradlew.bat :mc1201:test --tests "com.yucareux.tellus.worldgen.CubeNet*" --offline`：待本轮执行。
+- `./gradlew.bat :mc1201:test --tests "com.yucareux.tellus.worldgen.CubeNet*" --offline`：PASS（2026-11-06，本地离线缓存；BUILD SUCCESSFUL）。
 - Minecraft 客户端未启动；没有新增实机录屏或逐帧截图，因此 M11 仍是 **open**。
 
 ## 仍待实机验证
