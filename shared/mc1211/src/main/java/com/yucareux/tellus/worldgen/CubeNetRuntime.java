@@ -111,14 +111,11 @@ public final class CubeNetRuntime {
    private static final double BOUNDARY_HINT_SEARCH_RADIUS = 96.0;
    private static final double BOUNDARY_HINT_SEARCH_STEP = 4.0;
    private static final int BOUNDARY_HINT_DIRECTIONS = 32;
-
-   private enum TransitionState { PREPARE, STAGED, COMMIT, RELEASE }
-
-   private final Map<UUID, Transfer> pending = new ConcurrentHashMap<>();
+private final Map<UUID, Transfer> pending = new ConcurrentHashMap<>();
    private final Map<UUID, Preparation> preparations = new ConcurrentHashMap<>();
    private final Map<UUID, DeferredTransfer> deferred = new ConcurrentHashMap<>();
    private final Map<UUID, Correction> correctionGates = new ConcurrentHashMap<>();
-   private final Map<UUID, TransitionState> transitionStates = new ConcurrentHashMap<>();
+   private final Map<UUID, CubeNetTransitionState.Phase> transitionStates = new ConcurrentHashMap<>();
    private final Map<UUID, CorrectionCounters> correctionCounters = new ConcurrentHashMap<>();
    private final Map<UUID, MotionCapture> motionCaptures = new ConcurrentHashMap<>();
    private final Map<UUID, ApproachMotion> approachMotions = new ConcurrentHashMap<>();
@@ -676,7 +673,7 @@ public final class CubeNetRuntime {
       UUID playerId = player.getUUID();
       if (this.pending.containsKey(playerId)) return true;
       if (this.deferred.containsKey(playerId)) {
-         this.transitionStates.put(playerId, TransitionState.PREPARE);
+         this.transitionStates.put(playerId, CubeNetTransitionState.Phase.PREPARE);
          this.hold(player);
          return true;
       }
@@ -747,7 +744,7 @@ public final class CubeNetRuntime {
          this.deferred.put(playerId, snapshotDeferred(player, destination[0], player.getY() + movement.y,
             destination[1], new Vec3(planarVelocity[0], player.getDeltaMovement().y, planarVelocity[1]), yaw,
             shadingQuarterTurns));
-         this.transitionStates.put(playerId, TransitionState.PREPARE);
+         this.transitionStates.put(playerId, CubeNetTransitionState.Phase.PREPARE);
          TellusCommon.LOGGER.info("Cube-net seam deferred for {} source=({}, {}) target=({}, {})",
             player.getGameProfile().getName(), player.getX(), player.getZ(), destination[0], destination[1]);
          this.hold(player);
@@ -906,7 +903,7 @@ public final class CubeNetRuntime {
    private void startDeferred(ServerPlayer player) {
       DeferredTransfer deferredTransfer = this.deferred.remove(player.getUUID());
       if (deferredTransfer == null) return;
-      this.transitionStates.put(player.getUUID(), TransitionState.PREPARE);
+      this.transitionStates.put(player.getUUID(), CubeNetTransitionState.Phase.PREPARE);
       TellusCommon.LOGGER.info("Cube-net seam starting deferred transfer for {}",
          player.getGameProfile().getName());
       this.begin(player, deferredTransfer);
@@ -1041,7 +1038,7 @@ public final class CubeNetRuntime {
          new Vec3(planarVelocity[0], player.getDeltaMovement().y, planarVelocity[1]), yaw,
          shadingQuarterTurns(layout, layout.seam(apron.sourceFace(), apron.sourceSide())));
       if (this.deferred.putIfAbsent(player.getUUID(), deferredTransfer) == null) {
-         this.transitionStates.put(player.getUUID(), TransitionState.PREPARE);
+         this.transitionStates.put(player.getUUID(), CubeNetTransitionState.Phase.PREPARE);
          TellusCommon.LOGGER.info("Cube-net apron rebase deferred for {} source=({}, {}) target=({}, {})",
             player.getGameProfile().getName(), player.getX(), player.getZ(), destination[0], destination[1]);
          this.hold(player);
@@ -1180,7 +1177,7 @@ public final class CubeNetRuntime {
          return;
       }
       if (mountedPlayer != null) {
-         this.transitionStates.put(mountedPlayer.getUUID(), TransitionState.STAGED);
+         this.transitionStates.put(mountedPlayer.getUUID(), CubeNetTransitionState.Phase.STAGED);
          if (clientStaging) {
             ServerPlayNetworking.send(mountedPlayer, new CubeNetTransitionPreparePayload(
                transitionId, clientCenter.x, clientCenter.z, radius, true,
@@ -1254,14 +1251,14 @@ public final class CubeNetRuntime {
                   player.connection.teleport(member.x(), member.y(), member.z(),
                      member.yaw(), member.sourcePitch());
                   player.connection.resetPosition();
-                  this.transitionStates.put(player.getUUID(), TransitionState.COMMIT);
+                  this.transitionStates.put(player.getUUID(), CubeNetTransitionState.Phase.COMMIT);
                    this.armCorrection(player, member.x(), member.y(), member.z(),
                       member.yaw(), member.sourcePitch());
                 }
              }
             restoreLeashes(transfer.leashes());
             if (transfer.playerId() != null) {
-               this.transitionStates.put(transfer.playerId(), TransitionState.RELEASE);
+               this.transitionStates.put(transfer.playerId(), CubeNetTransitionState.Phase.RELEASE);
             }
             this.entityRebaseHysteresis.add(entity.getUUID());
             EntityPose root = transfer.members().get(0);
@@ -1455,7 +1452,7 @@ public final class CubeNetRuntime {
       if (transfer.ready().isDone() && transfer.clientReady().isDone()) {
          try {
             transfer.ready().join();
-            this.transitionStates.put(player.getUUID(), TransitionState.COMMIT);
+            this.transitionStates.put(player.getUUID(), CubeNetTransitionState.Phase.COMMIT);
              AABB targetBox = player.getBoundingBox().move(
                 transfer.x() - player.getX(), transfer.y() - player.getY(), transfer.z() - player.getZ());
              if (!transfer.level().noCollision(player, targetBox)) {
@@ -1505,7 +1502,7 @@ public final class CubeNetRuntime {
             this.armCorrection(player, transfer.x(), transfer.y(), transfer.z(),
                transfer.yaw(), transfer.sourcePitch(), !atomicCommit,
                atomicCommit ? transfer.transitionId() : null);
-            this.transitionStates.put(player.getUUID(), TransitionState.RELEASE);
+            this.transitionStates.put(player.getUUID(), CubeNetTransitionState.Phase.RELEASE);
             TellusCommon.LOGGER.info("Cube-net seam transfer complete for {} target=({}, {}, {}) "
                   + "elapsedMs={} clientReady={}",
                player.getGameProfile().getName(), transfer.x(), transfer.y(), transfer.z(),
@@ -1560,7 +1557,7 @@ public final class CubeNetRuntime {
          deferredTransfer.sourceVelocity(), deferredTransfer.fallDistance(), ready, transitionId, clientReady,
          preparation == null ? new ClientChunkDelivery() : preparation.clientChunks(), radius);
       this.pending.put(id, transfer);
-      this.transitionStates.put(id, TransitionState.STAGED);
+      this.transitionStates.put(id, CubeNetTransitionState.Phase.STAGED);
       if (clientStaging) {
          ServerPlayNetworking.send(player, new CubeNetTransitionPreparePayload(transitionId,
             clientCenter.x, clientCenter.z, radius, true, shadingQuarterTurns));
