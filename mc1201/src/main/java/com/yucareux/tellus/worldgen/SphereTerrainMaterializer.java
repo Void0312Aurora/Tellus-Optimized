@@ -19,6 +19,8 @@ public final class SphereTerrainMaterializer {
    private final double worldScale;
    private final int seaLevel;
    private final boolean enableWater;
+   private final double terrestrialHeightScale;
+   private final double oceanicHeightScale;
    private volatile long worldSeed;
 
    public SphereTerrainMaterializer(double worldScale, int seaLevel) {
@@ -26,18 +28,36 @@ public final class SphereTerrainMaterializer {
    }
 
    public SphereTerrainMaterializer(double worldScale, int seaLevel, boolean enableWater) {
-      this(worldScale, seaLevel, enableWater, 0L);
+      this(worldScale, seaLevel, enableWater, 1.0, 1.0, 0L);
+   }
+
+   public SphereTerrainMaterializer(double worldScale, int seaLevel, boolean enableWater,
+      double terrestrialHeightScale, double oceanicHeightScale) {
+      this(worldScale, seaLevel, enableWater, terrestrialHeightScale, oceanicHeightScale, 0L);
    }
 
    public SphereTerrainMaterializer(double worldScale, int seaLevel, long worldSeed) {
-      this(worldScale, seaLevel, true, worldSeed);
+      this(worldScale, seaLevel, true, 1.0, 1.0, worldSeed);
    }
 
    public SphereTerrainMaterializer(double worldScale, int seaLevel, boolean enableWater, long worldSeed) {
+      this(worldScale, seaLevel, enableWater, 1.0, 1.0, worldSeed);
+   }
+
+   public SphereTerrainMaterializer(double worldScale, int seaLevel, boolean enableWater,
+      double terrestrialHeightScale, double oceanicHeightScale, long worldSeed) {
       if (!(worldScale > 0.0) || !Double.isFinite(worldScale)) throw new IllegalArgumentException("worldScale");
+      if (!(terrestrialHeightScale > 0.0) || !Double.isFinite(terrestrialHeightScale)) {
+         throw new IllegalArgumentException("terrestrialHeightScale");
+      }
+      if (!(oceanicHeightScale > 0.0) || !Double.isFinite(oceanicHeightScale)) {
+         throw new IllegalArgumentException("oceanicHeightScale");
+      }
       this.worldScale = worldScale;
       this.seaLevel = seaLevel;
       this.enableWater = enableWater;
+      this.terrestrialHeightScale = terrestrialHeightScale;
+      this.oceanicHeightScale = oceanicHeightScale;
       this.worldSeed = worldSeed;
    }
 
@@ -163,8 +183,11 @@ public final class SphereTerrainMaterializer {
    /** No Mercator sec(latitude) correction: these are radial physical metres. */
    public int height(double elevationMeters) {
       if (!Double.isFinite(elevationMeters)) throw new IllegalArgumentException("elevation must be finite");
-      double blocks = elevationMeters / this.worldScale;
-      double height = this.seaLevel + (elevationMeters >= 0.0 ? Math.ceil(blocks) : Math.floor(blocks));
+      double scaled = elevationMeters >= 0.0
+         ? elevationMeters * this.terrestrialHeightScale
+         : elevationMeters * this.oceanicHeightScale;
+      double blocks = scaled / this.worldScale;
+      double height = this.seaLevel + (scaled >= 0.0 ? Math.ceil(blocks) : Math.floor(blocks));
       if (height < Integer.MIN_VALUE || height > Integer.MAX_VALUE || !Double.isFinite(height)) {
          throw new IllegalArgumentException("elevation exceeds supported block heights");
       }

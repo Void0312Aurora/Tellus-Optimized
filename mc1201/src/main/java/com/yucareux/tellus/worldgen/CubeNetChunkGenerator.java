@@ -214,6 +214,8 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
    private final boolean cubeNetEnableWater;
    private final boolean cubeNetTeleportProgress;
    private final int cubeNetHeightOffset;
+   private final double cubeNetTerrestrialHeightScale;
+   private final double cubeNetOceanicHeightScale;
    private static final boolean CUBE_NET_CAVES_DEFAULT = Boolean.parseBoolean(
       System.getProperty("tellus.cubeNet.caves", "true")
    );
@@ -300,6 +302,16 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
          ? cubeNet.settings().heightOffset() : EarthGeneratorSettings.DEFAULT.heightOffset();
    }
 
+   private static double resolveTerrestrialHeightScale(BiomeSource biomeSource) {
+      return biomeSource instanceof CubeNetBiomeSource cubeNet
+         ? cubeNet.settings().terrestrialHeightScale() : EarthGeneratorSettings.DEFAULT.terrestrialHeightScale();
+   }
+
+   private static double resolveOceanicHeightScale(BiomeSource biomeSource) {
+      return biomeSource instanceof CubeNetBiomeSource cubeNet
+         ? cubeNet.settings().oceanicHeightScale() : EarthGeneratorSettings.DEFAULT.oceanicHeightScale();
+   }
+
    private static TellusBiomeGenerationSettings.Settings cubeNetGenerationSettings(BiomeSource biomeSource) {
       boolean deepDark = biomeSource instanceof CubeNetBiomeSource cubeNetBiomeSource
          && cubeNetBiomeSource.settings().deepDark();
@@ -374,6 +386,8 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
       this.cubeNetEnableWater = resolveEnableWater(biome);
       this.cubeNetTeleportProgress = resolveTeleportProgress(biome);
       this.cubeNetHeightOffset = resolveHeightOffset(biome);
+      this.cubeNetTerrestrialHeightScale = resolveTerrestrialHeightScale(biome);
+      this.cubeNetOceanicHeightScale = resolveOceanicHeightScale(biome);
 
       Preconditions.checkArgument(minY % 16 == 0 && height % 16 == 0 && height >= 16
          && minY >= -2032 && (long)minY + height <= 2032,
@@ -391,7 +405,8 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
       this.shorelineBlendCliffLimit = shorelineBlendCliffLimit;
       this.remoteProjection = new CubeNetRemoteProjection(this.adapter.layout(), apronChunks * 16.0);
       this.apronResolver = new CubeNetApronResolver(this.adapter.layout(), Math.max(16, apronChunks * 16));
-      this.materializer = new SphereTerrainMaterializer(scale, this.seaLevel, this.cubeNetEnableWater);
+      this.materializer = new SphereTerrainMaterializer(scale, this.seaLevel, this.cubeNetEnableWater,
+         this.cubeNetTerrestrialHeightScale, this.cubeNetOceanicHeightScale, 0L);
       this.landmarks = TellusLandmarks.create(
          scale, this.cubeNetBuildings, this::surfaceYAtEarthCoordinate,
          (elevation, blockZ) -> this.materializer.height(elevation));

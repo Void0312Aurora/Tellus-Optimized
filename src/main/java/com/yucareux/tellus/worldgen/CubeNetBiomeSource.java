@@ -88,7 +88,9 @@ public final class CubeNetBiomeSource extends TellusBiomeSourceBridge {
        boolean teleportProgress,
        int heightOffset,
        double spawnLatitude,
-       double spawnLongitude
+       double spawnLongitude,
+       double terrestrialHeightScale,
+       double oceanicHeightScale
    ) {
       public static final Settings DEFAULT = new Settings(
          false,
@@ -128,7 +130,9 @@ public final class CubeNetBiomeSource extends TellusBiomeSourceBridge {
           EarthGeneratorSettings.DEFAULT.teleportProgress(),
           EarthGeneratorSettings.DEFAULT.heightOffset(),
           EarthGeneratorSettings.DEFAULT.spawnLatitude(),
-          EarthGeneratorSettings.DEFAULT.spawnLongitude()
+          EarthGeneratorSettings.DEFAULT.spawnLongitude(),
+          EarthGeneratorSettings.DEFAULT.terrestrialHeightScale(),
+          EarthGeneratorSettings.DEFAULT.oceanicHeightScale()
       );
        private record BaseSettings(boolean randomBiomes, double randomBiomeDensity, long randomBiomeSeed,
           List<String> randomBiomeIds, boolean caveGeneration, boolean deepDark, int undergroundDepth,
@@ -179,7 +183,8 @@ public final class CubeNetBiomeSource extends TellusBiomeSourceBridge {
        private record BaseAndA(BaseSettings base, StructureSettingsA structures) { }
        private record BaseAndB(BaseAndA baseAndA, StructureSettingsB structures) { }
         private record WorldSettings(boolean lakeFreezing, boolean lavaPools, boolean geodes, boolean enableWater,
-           boolean teleportProgress, int heightOffset, double spawnLatitude, double spawnLongitude) { }
+           boolean teleportProgress, int heightOffset, double spawnLatitude, double spawnLongitude,
+          double terrestrialHeightScale, double oceanicHeightScale) { }
         private static final MapCodec<WorldSettings> WORLD_CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
           Codec.BOOL.optionalFieldOf("lake_freezing", DEFAULT.lakeFreezing()).forGetter(WorldSettings::lakeFreezing),
           Codec.BOOL.optionalFieldOf("lava_pools", DEFAULT.lavaPools()).forGetter(WorldSettings::lavaPools),
@@ -188,7 +193,9 @@ public final class CubeNetBiomeSource extends TellusBiomeSourceBridge {
           Codec.BOOL.optionalFieldOf("teleport_progress", DEFAULT.teleportProgress()).forGetter(WorldSettings::teleportProgress),
           Codec.INT.optionalFieldOf("height_offset", DEFAULT.heightOffset()).forGetter(WorldSettings::heightOffset),
           Codec.DOUBLE.optionalFieldOf("spawn_latitude", DEFAULT.spawnLatitude()).forGetter(WorldSettings::spawnLatitude),
-          Codec.DOUBLE.optionalFieldOf("spawn_longitude", DEFAULT.spawnLongitude()).forGetter(WorldSettings::spawnLongitude)
+          Codec.DOUBLE.optionalFieldOf("spawn_longitude", DEFAULT.spawnLongitude()).forGetter(WorldSettings::spawnLongitude),
+          Codec.DOUBLE.optionalFieldOf("terrestrial_height_scale", DEFAULT.terrestrialHeightScale()).forGetter(WorldSettings::terrestrialHeightScale),
+          Codec.DOUBLE.optionalFieldOf("oceanic_height_scale", DEFAULT.oceanicHeightScale()).forGetter(WorldSettings::oceanicHeightScale)
        ).apply(instance, WorldSettings::new));
        public static final Codec<Settings> CODEC = MapCodec.of(
           new com.mojang.serialization.MapEncoder.Implementation<Settings>() {
@@ -201,7 +208,8 @@ public final class CubeNetBiomeSource extends TellusBiomeSourceBridge {
                 StructureSettingsB b = new StructureSettingsB(input.addShipwrecks(), input.addOceanRuins(), input.addBuriedTreasure(), input.addIgloos(),
                    input.addWitchHuts(), input.addAncientCities(), input.addTrialChambers(), input.addTrailRuins(), input.addAbandonedCamps());
                 WorldSettings world = new WorldSettings(input.lakeFreezing(), input.lavaPools(), input.geodes(), input.enableWater(),
-                   input.teleportProgress(), input.heightOffset(), input.spawnLatitude(), input.spawnLongitude());
+                   input.teleportProgress(), input.heightOffset(), input.spawnLatitude(), input.spawnLongitude(),
+                   input.terrestrialHeightScale(), input.oceanicHeightScale());
                 return WORLD_CODEC.encode(world, ops, STRUCTURES_B_CODEC.encode(b, ops, STRUCTURES_A_CODEC.encode(a, ops, BASE_CODEC.encode(base, ops, prefix))));
              }
              public <T> Stream<T> keys(DynamicOps<T> ops) {
@@ -227,7 +235,8 @@ public final class CubeNetBiomeSource extends TellusBiomeSourceBridge {
                           baseAndB.structures().addWitchHuts(), baseAndB.structures().addAncientCities(), baseAndB.structures().addTrialChambers(),
                           baseAndB.structures().addTrailRuins(), baseAndB.structures().addAbandonedCamps(),
                           world.lakeFreezing(), world.lavaPools(), world.geodes(), world.enableWater(), world.teleportProgress(),
-                          world.heightOffset(), world.spawnLatitude(), world.spawnLongitude()), WORLD_CODEC.decode(ops, input));
+                          world.heightOffset(), world.spawnLatitude(), world.spawnLongitude(),
+                          world.terrestrialHeightScale(), world.oceanicHeightScale()), WORLD_CODEC.decode(ops, input));
              }
              public <T> Stream<T> keys(DynamicOps<T> ops) {
                 return Stream.concat(BASE_CODEC.keys(ops), Stream.concat(STRUCTURES_A_CODEC.keys(ops), Stream.concat(STRUCTURES_B_CODEC.keys(ops), WORLD_CODEC.keys(ops))));
@@ -272,6 +281,12 @@ public final class CubeNetBiomeSource extends TellusBiomeSourceBridge {
          }
          if (!Double.isFinite(spawnLongitude) || spawnLongitude < -180.0 || spawnLongitude > 180.0) {
             throw new IllegalArgumentException("spawn_longitude");
+         }
+         if (!Double.isFinite(terrestrialHeightScale) || terrestrialHeightScale <= 0.0) {
+            throw new IllegalArgumentException("terrestrial_height_scale");
+         }
+         if (!Double.isFinite(oceanicHeightScale) || oceanicHeightScale <= 0.0) {
+            throw new IllegalArgumentException("oceanic_height_scale");
          }
       }
    }
