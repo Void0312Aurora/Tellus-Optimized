@@ -55,6 +55,29 @@
 
 剩余阻塞点集中在运行时与客户端层：1.20.1 的 payload/receiver 形态、apron 编辑索引与 block-entity 同步、玩家跨面状态机，以及 Sodium/DH 内部 API 的 1.21.1 适配；这些都不能由 `compileJava` 验证，需要各自的验收夹具。不得删除或回退前三个提交，也不改变结构开关、世界设置、预载和 datapack 命令语义。
 
+## T6 运行时与网络移植落地
+
+本阶段已提交：
+
+- `e34cb38c3`：将 transition/layout/boundary 的 9 个 Cube-Net payload 改为 1.21.1 `CustomPacketPayload` + `StreamCodec`，并在 `mc1211/Tellus.java` 注册 C2S/S2C codec。
+- `e092b0bf2`：移植服务端 `CubeNetRuntime`，接入 PREPARE/STAGED/COMMIT/RELEASE 状态记录、chunk staging、same-level seam commit、layout/boundary hint 推送、`/tellus cube_net status|datapack|mount_probe|trace_motion` 命令与 receiver；补充 1.21.1 datapack writer。
+- `e092b0bf2`：保留 `CubeNetApronChunkSync` 的 canonical chunk/rotation 纯 helper，并提供最小 `readyForStaging` 合约。
+
+### 明确缺口
+
+- 完整 apron edit index、mutation router、block entity sync 尚未移植；mc1211 当前生成 apron 可参与 staging，但不会恢复/广播持久化编辑覆盖层。
+- 传送/载具 mixin、客户端 Sodium/DH seam renderer、客户端 payload 消费端尚未移植；runtime 对 1.20.1 的 teleport/view-distance mixin 依赖已移除，使用 mc1211 原生 connection API 与服务器 view distance 作为最小适配。
+- 未启动 Minecraft；真实客户端接缝跨面移动仍需后续验收。
+
+### T6 验证
+
+```powershell
+.\\gradlew.bat :mc1211:compileJava --offline
+.\\gradlew.bat :mc1211:compileTestJava --offline
+.\\gradlew.bat :mc1211:test --tests "com.yucareux.tellus.*CubeNet*" --offline
+.\\gradlew.bat :mc1201:compileJava --offline
+```
+
 ## 编译命令
 
 ```powershell
