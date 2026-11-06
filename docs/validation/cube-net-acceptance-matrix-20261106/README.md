@@ -50,7 +50,7 @@ python tools/check_cube_net_acceptance.py --with-gradle   # 追加契约测试
 | M8 | Iris 1.7.6，开启 shader | 与 M5 同标准 | **未验收** |
 | M9 | DH chunk 模式 | 远处地形与近处接缝同向、无缺口 | 部分记录，未矩阵化 |
 | M10 | DH direct 模式（`-Dtellus.dhCubeNetSeamLod`） | 同上，且日志出现 `path=direct seamAware=true` | 未跑 |
-| M11 | 逐帧零跳变（zero-hold） | 切面帧间无位置空档 | **仍未通过（open）** |
+| M11 | 逐帧零跳变（zero-hold） | 切面帧间无位置空档 | **仍未通过（open；已加诊断与 READY packet 门控，待实机）** |
 
 ## 人工执行步骤
 
@@ -64,4 +64,4 @@ python tools/check_cube_net_acceptance.py --with-gradle   # 追加契约测试
 
 - 自动层是源码断言：Sodium 门禁是精确字符串匹配，升级 Sodium 必须同步修改 `TellusRenderCompatibility`，否则 A2 会先失败。
 - DH direct 模式需要服务端同时满足 `generationGateAvailable()` 与生成器实现 `CubeNetLodSurface`，否则静默退回 chunk 模式（日志 `path=chunk`）。
-- M11 的 zero-hold 是当前唯一已知未通过的视觉门槛；在它之前，任何「矩阵全绿」的表述都不成立。
+- M11 的 zero-hold 是当前唯一已知未通过的视觉门槛；本轮新增的诊断和 READY packet 门控记录在 [`cube-net-zero-hold-20261106`](../cube-net-zero-hold-20261106/README.md)，在它之前，任何「矩阵全绿」的表述都不成立。
