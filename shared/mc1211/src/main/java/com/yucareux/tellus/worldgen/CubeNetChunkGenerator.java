@@ -1373,12 +1373,73 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
       if (this.address(chunk.getPos()).filter(this.singularityPolicy::admitsTerrainMaterialization).isPresent()) {
          super.createStructures(registry, state, structures, chunk, templates);
          this.filterCubeNetSurfaceStructureStarts(registry, chunk);
+         this.filterCubeNetOsmCollisions(registry, chunk);
       }
    }
    @Override public void createReferences(WorldGenLevel level, StructureManager structures, ChunkAccess chunk) {
       if (this.address(chunk.getPos()).filter(this.singularityPolicy::admitsTerrainMaterialization).isPresent()) {
          super.createReferences(level, structures, chunk);
       }
+   }
+
+   private void filterCubeNetOsmCollisions(RegistryAccess registryAccess, ChunkAccess chunk) {
+      if (!this.cubeNetRoads && !this.cubeNetBuildings) return;
+      SphereWorldModel.SphereChunkAddress address = this.address(chunk.getPos())
+         .filter(this.singularityPolicy::admitsTerrainMaterialization).orElse(null);
+      if (address == null) return;
+      SphereChunkSampler.FeatureData data = this.faces[address.face()].sampleFeatures(address, 96.0, OsmQueryMode.NON_BLOCKING);
+      boolean buildingsMiss = data.buildings().hadCacheMiss() && data.buildings().features().isEmpty();
+      boolean roadsMiss = data.roads().hadCacheMiss() && data.roads().features().isEmpty();
+      if (buildingsMiss && roadsMiss) return;
+      Registry<Structure> registry = MinecraftVersionCompat.registry(registryAccess, Registries.STRUCTURE);
+      for (var entry : new ArrayList<>(chunk.getAllStarts().entrySet())) {
+         StructureStart start = entry.getValue();
+         if (start == null || !start.isValid() || !cubeNetOsmCollisionStructure(registry, entry.getKey())) continue;
+         BoundingBox box = start.getBoundingBox();
+         if (this.cubeNetStructureCollides(box, data, address)) {
+            chunk.setStartForStructure(entry.getKey(), StructureStart.INVALID_START);
+         }
+      }
+   }
+
+   private boolean cubeNetOsmCollisionStructure(Registry<Structure> registry, Structure structure) {
+      String path = MinecraftVersionCompat.registryKeyPath(registry, structure);
+      if (path == null) return false;
+      return path.startsWith("village") || VanillaStructurePlacement.isWoodlandMansionPath(path)
+         || path.equals("desert_pyramid") || path.equals("desert_temple")
+         || path.equals("jungle_pyramid") || path.equals("jungle_temple")
+         || path.equals("pillager_outpost") || path.equals("igloo") || path.equals("swamp_hut")
+         || path.equals("witch_hut") || path.startsWith("ruined_portal") || path.startsWith("trail_ruins")
+         || VanillaStructurePlacement.isAbandonedCampPath(path);
+   }
+
+   private boolean cubeNetStructureCollides(BoundingBox box, SphereChunkSampler.FeatureData data,
+      SphereWorldModel.SphereChunkAddress address) {
+      CubeNetLayout.Face face = CubeNetLayout.Face.of(address.face());
+      int chunkMinX = Math.toIntExact(address.blockX() * 16L);
+      int chunkMinZ = Math.toIntExact(address.blockZ() * 16L);
+      int minX = Math.max(chunkMinX - 96, box.minX());
+      int minZ = Math.max(chunkMinZ - 96, box.minZ());
+      int maxX = Math.min(chunkMinX + 111, box.maxX());
+      int maxZ = Math.min(chunkMinZ + 111, box.maxZ());
+      if (minX > maxX || minZ > maxZ) return false;
+      if (this.cubeNetBuildings && !data.buildings().features().isEmpty()) {
+         for (OsmBuildingFeature building : data.buildings().features()) {
+            if (!CubeNetFeatureRasterizer.buildingCells(this.model, this.adapter.layout(), building,
+               face, minX, minZ, maxX, maxZ).isEmpty()) return true;
+         }
+      }
+      if (this.cubeNetRoads && !data.roads().features().isEmpty()) {
+         for (RoadFeature road : data.roads().features()) {
+            if (!CubeNetFeatureRasterizer.roadCells(this.model, this.adapter.layout(), road,
+               face, minX, minZ, maxX, maxZ, this.worldScale()).isEmpty()) return true;
+         }
+         for (RoadAreaFeature area : data.roadAreas().features()) {
+            if (!CubeNetFeatureRasterizer.roadAreaCells(this.model, this.adapter.layout(), area,
+               face, minX, minZ, maxX, maxZ).isEmpty()) return true;
+         }
+      }
+      return false;
    }
 
    private void filterCubeNetSurfaceStructureStarts(RegistryAccess registryAccess, ChunkAccess chunk) {
