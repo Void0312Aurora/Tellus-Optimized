@@ -33,6 +33,8 @@ class CubeNetDatapackWriterTest {
       assertTrue(settings.has("height_offset"));
       assertTrue(settings.has("spawn_latitude"));
       assertTrue(settings.has("spawn_longitude"));
+      assertTrue(settings.has("terrestrial_height_scale"));
+      assertTrue(settings.has("oceanic_height_scale"));
       assertEquals(1000.0, dimension.getAsJsonObject("generator").get("world_scale").getAsDouble());
    }
 
