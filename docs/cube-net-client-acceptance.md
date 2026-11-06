@@ -5,6 +5,10 @@ the ordinary Minecraft renderer. Passing the server packet-sink check does not
 establish client movement or rendering acceptance. Distant Horizons, Sodium and
 other renderer combinations need separate runs.
 
+The renderer/version matrix and its automated contract checks live in
+[`validation/cube-net-acceptance-matrix-20261106/README.md`](validation/cube-net-acceptance-matrix-20261106/README.md);
+run `python tools/check_cube_net_acceptance.py` for the static layer.
+
 ## Current status and rendering handoff (2026-10-26)
 
 Ordinary Fabric/Indigo runs now cover walking/sprinting in both directions,
