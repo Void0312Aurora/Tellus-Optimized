@@ -2,6 +2,7 @@ package com.yucareux.tellus.mixin;
 
 import com.yucareux.tellus.world.realtime.TellusRealtimeState;
 import com.yucareux.tellus.worldgen.EarthChunkGenerator;
+import com.yucareux.tellus.worldgen.TellusGeodeticPosition;
 import net.minecraft.core.BlockPos;
 import net.minecraft.tags.BiomeTags;
 import net.minecraft.server.level.ServerLevel;
@@ -23,21 +24,37 @@ public class BiomeFreezeMixin {
       cancellable = true
    )
    private void tellus$freezeOnlyLakes(LevelReader level, BlockPos pos, boolean mustBeAtEdge, CallbackInfoReturnable<Boolean> cir) {
-      if (level instanceof ServerLevel serverLevel && serverLevel.getChunkSource().getGenerator() instanceof EarthChunkGenerator generator) {
-         // Tellus answers in full: its lakes use the temperate river biome, whose temperature vanilla would never
-         // let freeze. The other checks are vanilla's: still water, dim block light, freezing from the edge inward.
-         cir.setReturnValue(
-            generator.settings().lakeFreezing()
-               && TellusRealtimeState.canLakeFreeze(pos)
-               && level.getFluidState(pos).is(Fluids.WATER)
-               && level.getBlockState(pos).getBlock() instanceof LiquidBlock
-               && (!mustBeAtEdge
-                  || !level.isWaterAt(pos.west()) || !level.isWaterAt(pos.east())
-                  || !level.isWaterAt(pos.north()) || !level.isWaterAt(pos.south()))
-               && level.getBrightness(LightLayer.BLOCK, pos) < 10
-               && !level.getBiome(pos).is(BiomeTags.IS_OCEAN)
-               && generator.isLakeWater(pos.getX(), pos.getZ())
-         );
+      if (level instanceof ServerLevel serverLevel) {
+         if (serverLevel.getChunkSource().getGenerator() instanceof EarthChunkGenerator generator) {
+            // Tellus answers in full: its lakes use the temperate river biome, whose temperature vanilla would never
+            // let freeze. The other checks are vanilla's: still water, dim block light, freezing from the edge inward.
+            cir.setReturnValue(
+               generator.settings().lakeFreezing()
+                  && TellusRealtimeState.canLakeFreeze(pos)
+                  && level.getFluidState(pos).is(Fluids.WATER)
+                  && level.getBlockState(pos).getBlock() instanceof LiquidBlock
+                  && (!mustBeAtEdge
+                     || !level.isWaterAt(pos.west()) || !level.isWaterAt(pos.east())
+                     || !level.isWaterAt(pos.north()) || !level.isWaterAt(pos.south()))
+                  && level.getBrightness(LightLayer.BLOCK, pos) < 10
+                  && !level.getBiome(pos).is(BiomeTags.IS_OCEAN)
+                  && generator.isLakeWater(pos.getX(), pos.getZ())
+            );
+         } else if (serverLevel.getChunkSource().getGenerator() instanceof TellusGeodeticPosition generator) {
+            // Cube-Net has no Earth settings toggle; its geodetic generator owns the lake/river distinction.
+            cir.setReturnValue(
+               TellusRealtimeState.canLakeFreeze(pos)
+                  && level.getFluidState(pos).is(Fluids.WATER)
+                  && level.getFluidState(pos).isSource()
+                  && level.getBlockState(pos).getBlock() instanceof LiquidBlock
+                  && (!mustBeAtEdge
+                     || !level.isWaterAt(pos.west()) || !level.isWaterAt(pos.east())
+                     || !level.isWaterAt(pos.north()) || !level.isWaterAt(pos.south()))
+                  && level.getBrightness(LightLayer.BLOCK, pos) < 10
+                  && !level.getBiome(pos).is(BiomeTags.IS_OCEAN)
+                  && generator.isLakeWater(pos.getX(), pos.getZ())
+            );
+         }
       }
    }
 }

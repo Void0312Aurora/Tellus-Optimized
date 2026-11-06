@@ -452,6 +452,27 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
           new CubeNetLayout.PlanarPoint(blockX + 0.5, blockZ + 0.5));
        return this.model.exactSurfacePoint(point.face().index(), point.u(), point.v());
     }
+   @Override
+   public boolean isLakeWater(double blockX, double blockZ) {
+      if (this.inlandWaterResolver == null || !Double.isFinite(blockX) || !Double.isFinite(blockZ)) return false;
+      int worldX = (int)Math.floor(blockX);
+      int worldZ = (int)Math.floor(blockZ);
+      ChunkPos chunkPos = new ChunkPos(Math.floorDiv(worldX, 16), Math.floorDiv(worldZ, 16));
+      SphereWorldModel.SphereChunkAddress owner = this.address(chunkPos)
+         .filter(this.singularityPolicy::admitsTerrainMaterialization).orElse(null);
+      if (owner == null) return false;
+      BlockAddress block = this.resolveBlock(worldX, worldZ).orElse(null);
+      if (block == null || block.address().face() != owner.face()) return false;
+      SphereChunkSampler.SurfaceData surface = this.faces[owner.face()].terrainPoint(
+         new SphereWorldModel.SphereBlockAddress(owner.face(), block.x(), block.z()), 1).data();
+      if (surface == null || !surface.elevationAvailable() || surface.oceanWater()) return false;
+      SphereWorldModel.GeoPoint point = this.model.exactSurfacePoint(
+         owner.face(), block.x() + 0.5, block.z() + 0.5);
+      CubeNetInlandWaterResolver.Sample sample = this.inlandWaterResolver.sample(point, surface);
+      // Flowing reaches and falling curtains are rivers/waterfalls, not frozen lakes.
+      return sample.hasWater() && !sample.ocean() && sample.flowLevel() <= 0 && !sample.falling();
+   }
+
    @Override public int minY() { return this.minY; }
    @Override public int maxY() { return this.minY + this.height; }
    SphereSingularityPolicy.Config singularityConfig() { return this.singularityConfig; }

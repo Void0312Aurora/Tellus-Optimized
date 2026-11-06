@@ -47,6 +47,14 @@ public interface TellusGeodeticPosition {
     */
    Optional<BlockPos> surfacePosition(LevelHeightAccessor heightAccessor, double latitude, double longitude);
 
+   /**
+    * Whether a planar block belongs to an inland lake or pond suitable for freezing.
+    * Generators without inland-water ownership return false by default.
+    */
+   default boolean isLakeWater(double blockX, double blockZ) {
+      return false;
+   }
+
    /** Applies the realtime/historical snow state to a loaded chunk. */
    void applyRealtimeSnowCover(WorldGenLevel level, ChunkAccess chunk);
 }
