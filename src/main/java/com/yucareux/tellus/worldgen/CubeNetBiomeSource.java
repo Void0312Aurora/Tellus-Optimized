@@ -346,6 +346,7 @@ public final class CubeNetBiomeSource extends TellusBiomeSourceBridge {
    private final Settings settings;
    private final RandomBiomeMixer randomBiomeMixer;
    private final BadlandsRegionField badlandsRegion;
+    private final ThreadLocal<Integer> structureBiomeQueryDepth = new ThreadLocal<>();
 
    @FunctionalInterface
    interface ClimateSampler {
@@ -451,6 +452,16 @@ public final class CubeNetBiomeSource extends TellusBiomeSourceBridge {
       this(biomes, scale, apronChunks, SphereSingularityPolicy.DEFAULT_CONFIG, fallback, null, null, null, settings);
    }
 
+   void beginStructureBiomeQueries() {
+      Integer depth = this.structureBiomeQueryDepth.get();
+      this.structureBiomeQueryDepth.set(depth == null ? 1 : depth + 1);
+   }
+
+   void endStructureBiomeQueries() {
+      Integer depth = this.structureBiomeQueryDepth.get();
+      if (depth == null || depth <= 1) this.structureBiomeQueryDepth.remove();
+      else this.structureBiomeQueryDepth.set(depth - 1);
+   }
    Settings settings() {
       return this.settings;
    }
@@ -525,7 +536,14 @@ public final class CubeNetBiomeSource extends TellusBiomeSourceBridge {
       }
       SphereChunkSampler.SurfaceData surface = this.sampler.get().samplePoint(this.model.surfacePoint(canonical));
       if (!surface.elevationAvailable()) return this.fallback.getNoiseBiome(quartX, quartY, quartZ);
-      SphereWorldModel.GeoPoint point = this.model.surfacePoint(canonical);
+      SphereWorldModel.GeoPoint point = this.model.surfacePoint(canonical);      Integer structureQueryDepth = this.structureBiomeQueryDepth.get();
+      if (structureQueryDepth != null && structureQueryDepth > 0 && this.deepDark != null && this.settings.deepDark()) {
+         int blockY = QuartPos.toBlock(quartY);
+         double topMeters = surface.waterAvailable() ? Math.max(surface.elevationMeters(), surface.waterSurfaceMeters())
+            : surface.elevationMeters();
+         int surfaceY = (int)Math.round(topMeters / Math.max(0.0001, this.model.config().worldScale()));
+         if (blockY <= surfaceY - this.settings.undergroundDepth() / 2) return this.deepDark;
+      }
       int[] noiseCoordinates = this.noiseCoordinates(point);
       boolean surfaceWater = this.settings.enableWater() && surface.waterAvailable();
       if (surfaceWater) {

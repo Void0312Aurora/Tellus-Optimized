@@ -1,6 +1,7 @@
 package com.yucareux.tellus.worldgen;
 
 import com.google.common.base.Preconditions;
+import com.mojang.datafixers.util.Pair;
 import com.mojang.serialization.Codec;
 import com.mojang.datafixers.util.Either;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
@@ -62,6 +63,7 @@ import net.minecraft.core.Direction;
 import net.minecraft.core.QuartPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.HolderLookup;
+import net.minecraft.core.HolderSet;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.Registries;
@@ -1355,7 +1357,25 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
       random.setDecorationSeed(level.getSeed(), center.getMinBlockX(), center.getMinBlockZ());
       WorldgenApi.spawnMobs(level, center, random);
    }
-   @Override public void createStructures(RegistryAccess registry, ChunkGeneratorStructureState state,
+       @Override
+    public Pair<BlockPos, Holder<Structure>> findNearestMapStructure(ServerLevel level, HolderSet<Structure> structures,
+       BlockPos position, int searchRadius, boolean skipKnownStructures) {
+       if (skipKnownStructures) return null;
+       boolean ancientCityQuery = this.structurePolicy.enabled("ancient_city")
+          && structures.stream().anyMatch(holder -> holder.unwrapKey().map(MinecraftVersionCompat::keyPath)
+             .filter("ancient_city"::equals).isPresent());
+       CubeNetBiomeSource source = this.biomeSource instanceof CubeNetBiomeSource value ? value : null;
+       if (!ancientCityQuery || source == null || !source.settings().caveGeneration() || !source.settings().deepDark()) {
+          return super.findNearestMapStructure(level, structures, position, searchRadius, false);
+       }
+       source.beginStructureBiomeQueries();
+       try {
+          return super.findNearestMapStructure(level, structures, position, searchRadius, false);
+       } finally {
+          source.endStructureBiomeQueries();
+       }
+    }
+@Override public void createStructures(RegistryAccess registry, ChunkGeneratorStructureState state,
       StructureManager structures, ChunkAccess chunk, StructureTemplateManager templates) {
       // Structures have one canonical owner. Aprons receive the owner's block
       // projection later and never create a second start at the seam view.
