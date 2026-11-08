@@ -6,10 +6,13 @@ import com.yucareux.tellus.worldgen.sample.SampleStatus;
 import com.yucareux.tellus.worldgen.sample.TellusSample;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.OptionalInt;
 
 /**
- * Pure Earth column kernel over an already resolved surface palette.
+ * Earth decisions over caller-resolved native facts, without source access in the kernel.
+ * resolvedColumns preserves supplied integer heights and geological layers. The surface-only
+ * constructors retain the legacy generic height/stone bridge for caller compatibility.
  * Source access, biome registry lookup and generator state remain in the injected resolver.
  */
 public final class TellusEarthColumnDecisionKernel {
@@ -19,8 +22,26 @@ public final class TellusEarthColumnDecisionKernel {
                                   int terrainY, boolean underwater);
    }
 
+   @FunctionalInterface
+   public interface ResolvedColumnResolver {
+      Optional<TellusEarthColumnSnapshot> resolve(TellusGenerationContext generation,
+         TellusCoordinateContext coordinate, TellusSample sample, String koppenCode);
+   }
+
    private final SurfaceResolver surfaceResolver;
    private final TellusEarthBiomeDecisionKernel biomeKernel;
+   private final ResolvedColumnResolver resolvedResolver;
+
+   private TellusEarthColumnDecisionKernel(ResolvedColumnResolver resolver) {
+      this.surfaceResolver = null;
+      this.biomeKernel = null;
+      this.resolvedResolver = Objects.requireNonNull(resolver, "resolver");
+   }
+
+   /** Resolved native/source inputs bypass the legacy generic height and stone fallback. */
+   public static TellusEarthColumnDecisionKernel resolvedColumns(ResolvedColumnResolver resolver) {
+      return new TellusEarthColumnDecisionKernel(resolver);
+   }
 
    public TellusEarthColumnDecisionKernel(SurfaceResolver surfaceResolver) {
       this(surfaceResolver, new TellusEarthBiomeDecisionKernel((cover, koppen, x, z, scale) -> null));
@@ -31,6 +52,7 @@ public final class TellusEarthColumnDecisionKernel {
    ) {
       this.surfaceResolver = Objects.requireNonNull(surfaceResolver, "surfaceResolver");
       this.biomeKernel = Objects.requireNonNull(biomeKernel, "biomeKernel");
+      this.resolvedResolver = null;
    }
 
    public ColumnDecision decide(
@@ -45,10 +67,30 @@ public final class TellusEarthColumnDecisionKernel {
          || !generation.geometry().equals(sample.request().geometry())) {
          throw new IllegalArgumentException("Earth decision context does not match sample identity");
       }
+      if (this.resolvedResolver != null && sample.request().cacheKey().worldSeed() != generation.worldSeed()) {
+         throw new IllegalArgumentException("resolved Earth sample seed differs from generation identity");
+      }
       if (sample.status() == SampleStatus.QUEUED) {
          return ColumnDecision.unavailable(coordinate, DecisionStatus.QUEUED, "Earth sample queued");
       }
-      if (sample.status() == SampleStatus.UNKNOWN || !sample.elevation().complete()) {
+      if (sample.status() == SampleStatus.UNKNOWN) return ColumnDecision.unknown(coordinate, "Earth sample unavailable");
+      if (this.resolvedResolver != null) {
+         if ((long)generation.maxYExclusive() - generation.minY() > 1_048_576L) {
+            return ColumnDecision.unknown(coordinate, "resolved Earth column exceeds cell budget");
+         }
+         Optional<TellusEarthColumnSnapshot> resolved = Objects.requireNonNull(
+            this.resolvedResolver.resolve(generation, coordinate, sample, koppenCode), "resolved snapshot");
+         if (resolved.isEmpty()) return ColumnDecision.unknown(coordinate, "native Earth column unavailable");
+         TellusEarthColumnSnapshot snapshot = resolved.orElseThrow();
+         if (!generation.equals(snapshot.generation()) || !coordinate.equals(snapshot.coordinate())) {
+            throw new IllegalArgumentException("resolved Earth snapshot identity differs from request");
+         }
+         DecisionStatus status = sample.complete() && snapshot.completeLayers()
+            ? DecisionStatus.AVAILABLE : DecisionStatus.PARTIAL;
+         return new ColumnDecision(coordinate, status, OptionalInt.of(snapshot.terrainY()),
+            snapshot.surface(), snapshot.water(), snapshot.biome(), snapshot.strata(), snapshot.diagnostics());
+      }
+      if (!sample.elevation().complete()) {
          return ColumnDecision.unknown(coordinate, "Earth elevation unavailable");
       }
       int terrainY = height(generation, sample.elevation().metres());

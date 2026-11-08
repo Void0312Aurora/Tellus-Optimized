@@ -84,7 +84,8 @@ public final class TellusColumnMaterializer {
          }
       }
       boolean bottomBedrock = cells.get(minY) == SemanticMaterial.BEDROCK;
-      if (bottomBedrock && terrainY == minY) {
+      if (bottomBedrock && terrainY == minY
+         && (decision.surface().top() != SemanticMaterial.BEDROCK || decision.surface().depth() != 0)) {
          return WriteResult.<SemanticColumnCell>invalid("terrain top collides with explicit bottom bedrock")
             .withPersistenceIdentity(identity);
       }

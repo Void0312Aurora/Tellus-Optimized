@@ -24,6 +24,12 @@ import com.yucareux.tellus.world.data.osm.RoadAreaFeature;
 import com.yucareux.tellus.world.data.osm.RoadClass;
 import com.yucareux.tellus.world.data.osm.RoadFeature;
 import com.yucareux.tellus.worldgen.decision.TellusEarthSurfaceDecisionKernel;
+import com.yucareux.tellus.worldgen.decision.TellusEarthColumnRules;
+import com.yucareux.tellus.worldgen.decision.TellusEarthColumnSnapshot;
+import com.yucareux.tellus.worldgen.decision.TellusEarthColumnDecisionKernel;
+import com.yucareux.tellus.worldgen.decision.BiomeDecision;
+import com.yucareux.tellus.worldgen.decision.WaterDecision;
+import com.yucareux.tellus.worldgen.global.EarthOwnerView;
 import com.yucareux.tellus.world.data.osm.RoadMode;
 import com.yucareux.tellus.world.data.osm.RoadPointKind;
 import com.yucareux.tellus.world.data.osm.RoadSurfaceStyle;
@@ -5018,51 +5024,61 @@ public final class EarthChunkGenerator extends TellusChunkGeneratorBridge implem
    }
 
 
-   public NoiseColumn getBaseColumn(int x, int z,  LevelHeightAccessor heightAccessor,  RandomState random) {
+   public NoiseColumn getBaseColumn(int x, int z, LevelHeightAccessor heightAccessor, RandomState random) {
       int minY = MinecraftVersionCompat.minY(heightAccessor);
       int height = heightAccessor.getHeight();
-      BlockState[] states = new BlockState[height];
-      Arrays.fill(states, AIR_STATE);
       int coverClass = this.sampleCoverClass(x, z);
       EarthChunkGenerator.ColumnHeights column = this.resolveFastColumnHeights(x, z, minY, minY + height, coverClass);
-      int surface = column.terrainSurface();
-      int surfaceIndex = surface - minY;
+      return this.materializeResolvedBaseColumn(minY, height, column);
+   }
 
-      if (this.settings.usesTerrainShell()) {
-         int supportBottomY = Math.max(minY, surface - this.settings.undergroundDepth());
-         int deepslateBoundaryY = TellusCaveDepthMapper.actualDeepslateBoundaryY(surface, supportBottomY + 1, this.seaLevel);
-         for (int y = supportBottomY; y <= surface; y++) {
-            int index = y - minY;
-            if (index >= 0 && index < states.length) {
-               states[index] = y == supportBottomY ? BEDROCK_STATE : y < deepslateBoundaryY ? DEEPSLATE_STATE : STONE_STATE;
-            }
-         }
-      } else {
-         for (int i = 0; i <= surfaceIndex; i++) {
-            if (i >= 0 && i < states.length) {
-               int y = minY + i;
-               states[i] = y < 0 ? DEEPSLATE_STATE : STONE_STATE;
-            }
-         }
+   private TellusEarthColumnRules.Input baseColumnInput(int minY, int maxYExclusive, EarthChunkGenerator.ColumnHeights column) {
+      int support = Math.max(minY, column.terrainSurface() - this.settings.undergroundDepth());
+      int deepslate = this.settings.usesTerrainShell()
+         ? TellusCaveDepthMapper.actualDeepslateBoundaryY(column.terrainSurface(), support + 1, this.seaLevel) : 0;
+      return new TellusEarthColumnRules.Input(minY, maxYExclusive, column.terrainSurface(),
+         column.hasWater() ? java.util.OptionalInt.of(column.waterSurface()) : java.util.OptionalInt.empty(),
+         this.settings.usesTerrainShell(), this.minY, this.settings.undergroundDepth(), deepslate);
+   }
 
-         int bedrockIndex = this.minY - minY;
-         if (bedrockIndex >= 0 && bedrockIndex < states.length) {
-            states[bedrockIndex] = BEDROCK_STATE;
-         }
+   private NoiseColumn materializeResolvedBaseColumn(int minY, int height, EarthChunkGenerator.ColumnHeights column) {
+      TellusEarthColumnRules.Input input = this.baseColumnInput(minY, Math.addExact(minY, height), column);
+      BlockState[] states = new BlockState[height];
+      for (int offset = 0; offset < height; offset++) {
+         states[offset] = switch (TellusEarthColumnRules.materialAt(input, minY + offset)) {
+            case AIR -> AIR_STATE;
+            case BEDROCK -> BEDROCK_STATE;
+            case DEEPSLATE -> DEEPSLATE_STATE;
+            case STONE -> STONE_STATE;
+            case WATER -> WATER_STATE;
+            default -> throw new IllegalStateException("unexpected Earth base material");
+         };
       }
+      return new NoiseColumn(minY, states);
+   }
 
-      if (column.hasWater()) {
-         int waterTop = column.waterSurface();
-         int waterIndex = waterTop - minY;
-
-         for (int ix = surfaceIndex + 1; ix <= waterIndex; ix++) {
-            if (ix >= 0 && ix < states.length) {
-               states[ix] = WATER_STATE;
-            }
+   /** Explicit bridge to the same native source/height resolver as getBaseColumn. No registration. */
+   public TellusEarthColumnDecisionKernel semanticBaseColumnKernel() {
+      return TellusEarthColumnDecisionKernel.resolvedColumns((generation, coordinate, sample, koppenCode) -> {
+         EarthOwnerView owner = (EarthOwnerView)coordinate.owner();
+         if (Double.compare(generation.worldScale(), this.settings.worldScale()) != 0
+            || Double.compare(owner.point().worldScale(), this.settings.worldScale()) != 0
+            || generation.seaLevel() != this.seaLevel || generation.minY() != this.minY
+            || (long)generation.maxYExclusive() != (long)this.minY + this.height) {
+            throw new IllegalArgumentException("native Earth source context differs from generation profile");
          }
-      }
-
-      return Objects.requireNonNull(new NoiseColumn(minY, states), "noiseColumn");
+         if (!sample.elevation().complete() || !sample.water().known()) return java.util.Optional.empty();
+         int x = Math.toIntExact(owner.point().floorBlockX());
+         int z = Math.toIntExact(owner.point().floorBlockZ());
+         int coverClass = this.sampleCoverClass(x, z);
+         EarthChunkGenerator.ColumnHeights column = this.resolveFastColumnHeights(
+            x, z, generation.minY(), generation.maxYExclusive(), coverClass);
+         if (column.hasWater() != sample.water().hasWater()) return java.util.Optional.empty();
+         WaterDecision.Kind kind = !column.hasWater() ? WaterDecision.Kind.NONE
+            : sample.water().ocean() ? WaterDecision.Kind.OCEAN : WaterDecision.Kind.INLAND;
+         return TellusEarthColumnSnapshot.baseColumn(generation, coordinate,
+            this.baseColumnInput(generation.minY(), generation.maxYExclusive(), column), kind, BiomeDecision.unknown());
+      });
    }
 
    protected void addTellusDebugInfo( List<String> info,  RandomState random,  BlockPos pos) {
