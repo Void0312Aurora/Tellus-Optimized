@@ -1,6 +1,7 @@
 package com.yucareux.tellus.worldgen;
 
 import com.yucareux.tellus.world.data.osm.OsmQueryMode;
+import com.yucareux.tellus.worldgen.decision.TellusEarthSurfaceDecisionKernel;
 import com.yucareux.tellus.worldgen.global.SphereChunkSampler;
 import com.yucareux.tellus.worldgen.global.SphereWorldModel;
 import com.yucareux.tellus.worldgen.global.SphericalNoisePoint;
@@ -171,68 +172,26 @@ public final class CubeNetSurfacePolicy {
       };
    }
 
-   /** Direct counterpart of Earth's coverDrivenSurfacePalette. */
+   /** Shared Earth cover thresholds, with the original native Cube material/depth mapping. */
    private static Decision coverDrivenPalette(int coverClass, byte climateGroup, int zoneHeight,
       int earthX, int earthZ, int slopeDiff, double slopeDegrees,
       MountainSurfaceRules.MountainForm form) {
       int roll = TellusSurfaceVariantRoll.percent(earthX, earthZ, 23L);
-      return switch (coverClass) {
-         case MountainSurfaceRules.ESA_TREE_COVER -> climateGroup != 4 && climateGroup != 5
-            ? climateGroup == 2
-               ? (roll < 70 ? decision(Material.COARSE_DIRT, Material.DIRT, 4, slopeDiff, slopeDegrees, form)
-                  : decision(Material.GRASS, Material.DIRT, 4, slopeDiff, slopeDegrees, form))
-               : climateGroup == 1
-                  ? (roll < 35 ? decision(Material.ROOTED_DIRT, Material.DIRT, 4, slopeDiff, slopeDegrees, form)
-                     : decision(Material.GRASS, Material.DIRT, 4, slopeDiff, slopeDegrees, form))
-                  : (roll < 20 ? decision(Material.ROOTED_DIRT, Material.DIRT, 4, slopeDiff, slopeDegrees, form)
-                     : decision(Material.GRASS, Material.DIRT, 4, slopeDiff, slopeDegrees, form))
-            : (roll < 65 ? decision(Material.PODZOL, Material.DIRT, 4, slopeDiff, slopeDegrees, form)
-               : decision(Material.GRASS, Material.DIRT, 4, slopeDiff, slopeDegrees, form));
-         case MountainSurfaceRules.ESA_SHRUBLAND -> zoneHeight >= MountainSurfaceRules.SURFACE_ALPINE_HEIGHT_ABOVE_SEA && roll < 70
-            ? decision(Material.GRAVEL, Material.STONE, 4, slopeDiff, slopeDegrees, form)
-            : climateGroup == 2
-               ? decision(Material.COARSE_DIRT, Material.DIRT, 4, slopeDiff, slopeDegrees, form)
-               : climateGroup != 4 && climateGroup != 5
-                  ? (roll < 40 ? decision(Material.COARSE_DIRT, Material.DIRT, 4, slopeDiff, slopeDegrees, form)
-                     : decision(Material.GRASS, Material.DIRT, 4, slopeDiff, slopeDegrees, form))
-                  : decision(Material.PODZOL, Material.DIRT, 4, slopeDiff, slopeDegrees, form);
-         case MountainSurfaceRules.ESA_GRASSLAND -> zoneHeight >= MountainSurfaceRules.SURFACE_ALPINE_HEIGHT_ABOVE_SEA && roll < 35
-            ? decision(Material.GRAVEL, Material.STONE, 4, slopeDiff, slopeDegrees, form)
-            : climateGroup == 2
-               ? (roll < 65 ? decision(Material.COARSE_DIRT, Material.DIRT, 4, slopeDiff, slopeDegrees, form)
-                  : decision(Material.GRASS, Material.DIRT, 4, slopeDiff, slopeDegrees, form))
-               : climateGroup != 4 && climateGroup != 5
-                  ? decision(Material.GRASS, Material.DIRT, 4, slopeDiff, slopeDegrees, form)
-                  : (roll < 40 ? decision(Material.PODZOL, Material.DIRT, 4, slopeDiff, slopeDegrees, form)
-                     : decision(Material.GRASS, Material.DIRT, 4, slopeDiff, slopeDegrees, form));
-         case MountainSurfaceRules.ESA_CROPLAND -> climateGroup == 2
-            ? decision(Material.COARSE_DIRT, Material.DIRT, 4, slopeDiff, slopeDegrees, form)
-            : decision(roll < 65 ? Material.ROOTED_DIRT : Material.GRASS, Material.DIRT, 4,
-               slopeDiff, slopeDegrees, form);
-         case MountainSurfaceRules.ESA_BUILT -> roll < 45
-            ? decision(Material.GRAVEL, Material.STONE, 4, slopeDiff, slopeDegrees, form)
-            : decision(Material.STONE, Material.STONE, 12, slopeDiff, slopeDegrees, form);
-         case MountainSurfaceRules.ESA_BARE -> zoneHeight >= MountainSurfaceRules.SURFACE_ALPINE_HEIGHT_ABOVE_SEA
-            ? decision(Material.STONE, Material.STONE, 12, slopeDiff, slopeDegrees, form)
-            : climateGroup == 2
-               ? (roll < 55 ? decision(Material.SAND, Material.SANDSTONE, 5, slopeDiff, slopeDegrees, form)
-                  : decision(Material.RED_SAND, Material.TERRACOTTA, 4, slopeDiff, slopeDegrees, form))
-               : climateGroup != 4 && climateGroup != 5
-                  ? decision(Material.GRAVEL, Material.STONE, 4, slopeDiff, slopeDegrees, form)
-                  : (roll < 70 ? decision(Material.GRAVEL, Material.STONE, 4, slopeDiff, slopeDegrees, form)
-                     : decision(Material.STONE, Material.STONE, 12, slopeDiff, slopeDegrees, form));
-         case MountainSurfaceRules.ESA_SNOW_ICE -> decision(Material.SNOW, Material.SNOW, 4, slopeDiff, slopeDegrees, form);
-         case MountainSurfaceRules.ESA_WETLAND -> roll < 40
-            ? decision(Material.GRASS, Material.DIRT, 4, slopeDiff, slopeDegrees, form)
-            : decision(Material.MUD, Material.PACKED_MUD, 4, slopeDiff, slopeDegrees, form);
-         case MountainSurfaceRules.ESA_MANGROVES -> decision(Material.MUD, Material.DIRT, 4, slopeDiff, slopeDegrees, form);
-         case MountainSurfaceRules.ESA_MOSS_LICHEN -> zoneHeight >= MountainSurfaceRules.SURFACE_ALPINE_HEIGHT_ABOVE_SEA && roll < 60
-            ? decision(Material.STONE, Material.STONE, 12, slopeDiff, slopeDegrees, form)
-            : (roll < 35 ? decision(Material.MOSS, Material.DIRT, 4, slopeDiff, slopeDegrees, form)
-               : decision(Material.GRASS, Material.DIRT, 4, slopeDiff, slopeDegrees, form));
-         default -> climateGroup != 4 && climateGroup != 5
-            ? decision(Material.GRASS, Material.DIRT, 4, slopeDiff, slopeDegrees, form)
-            : decision(Material.PODZOL, Material.DIRT, 4, slopeDiff, slopeDegrees, form);
+      return switch (TellusEarthSurfaceDecisionKernel.cover(coverClass, climateGroup, roll, zoneHeight)) {
+         case STEPPE -> decision(Material.COARSE_DIRT, Material.DIRT, 4, slopeDiff, slopeDegrees, form);
+         case DEFAULT_OVERWORLD -> decision(Material.GRASS, Material.DIRT, 4, slopeDiff, slopeDegrees, form);
+         case ROOTED -> decision(Material.ROOTED_DIRT, Material.DIRT, 4, slopeDiff, slopeDegrees, form);
+         case PODZOLIC -> decision(Material.PODZOL, Material.DIRT, 4, slopeDiff, slopeDegrees, form);
+         case GRAVELLY -> decision(Material.GRAVEL, Material.STONE, 4, slopeDiff, slopeDegrees, form);
+         case STONY_PEAKS, STRATA -> decision(Material.STONE, Material.STONE, 12, slopeDiff, slopeDegrees, form);
+         case DESERT -> decision(Material.SAND, Material.SANDSTONE, 5, slopeDiff, slopeDegrees, form);
+         case BADLANDS -> decision(Material.RED_SAND, Material.TERRACOTTA, 4, slopeDiff, slopeDegrees, form);
+         case SNOWY -> decision(Material.SNOW, Material.SNOW, 4, slopeDiff, slopeDegrees, form);
+         case SWAMP -> decision(Material.GRASS, Material.DIRT, 4, slopeDiff, slopeDegrees, form);
+         case WETLAND -> decision(Material.MUD, Material.PACKED_MUD, 4, slopeDiff, slopeDegrees, form);
+         case MANGROVE -> decision(Material.MUD, Material.DIRT, 4, slopeDiff, slopeDegrees, form);
+         case MOSSY -> decision(Material.MOSS, Material.DIRT, 4, slopeDiff, slopeDegrees, form);
+         default -> throw new IllegalStateException("unexpected Cube cover palette");
       };
    }
 

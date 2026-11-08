@@ -11553,13 +11553,21 @@ public final class EarthChunkGenerator extends TellusChunkGeneratorBridge implem
    private EarthChunkGenerator.SurfacePalette coverDrivenSurfacePalette(int coverClass, byte climateGroup, int worldX, int worldZ, int surface) {
       int roll = surfaceVariant(worldX, worldZ, 23);
       int zoneHeight = this.mountainZoneHeight(surface, worldX, worldZ);
-      return switch (TellusEarthSurfaceDecisionKernel.cover(coverClass, climateGroup, roll, zoneHeight)) {
+      return surfacePaletteForCoverDecision(
+         TellusEarthSurfaceDecisionKernel.cover(coverClass, climateGroup, roll, zoneHeight), worldX, worldZ);
+   }
+
+   private static EarthChunkGenerator.SurfacePalette surfacePaletteForCoverDecision(
+      TellusEarthSurfaceDecisionKernel.PaletteKind selected, int worldX, int worldZ
+   ) {
+      return switch (selected) {
          case GRAVELLY -> EarthChunkGenerator.SurfacePalette.gravelly();
          case STEPPE -> EarthChunkGenerator.SurfacePalette.steppe();
          case DEFAULT_OVERWORLD -> EarthChunkGenerator.SurfacePalette.defaultOverworld();
          case PODZOLIC -> EarthChunkGenerator.SurfacePalette.podzolic();
          case ROOTED -> EarthChunkGenerator.SurfacePalette.rooted();
-         case STONY_PEAKS, STRATA -> EarthChunkGenerator.SurfacePalette.strata(12);
+         case STONY_PEAKS -> EarthChunkGenerator.SurfacePalette.stonyPeaks();
+         case STRATA -> EarthChunkGenerator.SurfacePalette.strata(12);
          case DESERT -> EarthChunkGenerator.SurfacePalette.desert();
          case BADLANDS -> EarthChunkGenerator.SurfacePalette.badlands(badlandsPlateauTop(worldX, worldZ));
          case SNOWY -> EarthChunkGenerator.SurfacePalette.snowy();
@@ -11642,11 +11650,12 @@ private static byte climateGroupForBiome(Holder<Biome> biome) {
 
    private EarthChunkGenerator.SurfacePalette oceanFloorPalette(int worldX, int worldZ) {
       int roll = TellusSurfaceVariantRoll.percent(worldX, worldZ, OCEAN_FLOOR_SALT);
-      if (roll < 10) {
-         return EarthChunkGenerator.SurfacePalette.ocean(GRAVEL_STATE);
-      } else {
-         return roll < 15 ? EarthChunkGenerator.SurfacePalette.ocean(CLAY_STATE) : EarthChunkGenerator.SurfacePalette.ocean(SAND_STATE);
-      }
+      return switch (TellusEarthSurfaceDecisionKernel.oceanFloor(roll)) {
+         case GRAVEL -> EarthChunkGenerator.SurfacePalette.ocean(GRAVEL_STATE);
+         case CLAY -> EarthChunkGenerator.SurfacePalette.ocean(CLAY_STATE);
+         case SAND -> EarthChunkGenerator.SurfacePalette.ocean(SAND_STATE);
+         default -> throw new IllegalStateException("unexpected Earth ocean-floor material");
+      };
    }
 
    private static BiomeGenerationSettings generationSettingsForBiome(Holder<Biome> biome, EarthGeneratorSettings settings) {

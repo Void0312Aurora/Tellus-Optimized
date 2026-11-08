@@ -1,0 +1,178 @@
+{
+  "recordedAt": "2026-11-08T11:25:23.319997+00:00",
+  "scope": "actual native Earth and Cube surface kernel migration with frozen pre-migration oracles",
+  "baseline": "49a8f88c194f2a0b58c8c8a7a87bab446cc2944a",
+  "regressionBeforeFix": {
+    "tests": 3,
+    "failures": 3,
+    "errors": 0,
+    "assertions": [
+      "org.opentest4j.AssertionFailedError: Baseline stonyPeaks(): stone12, strata=false ==> expected: <Palette[top=Block{minecraft:stone}, underwaterTop=Block{minecraft:stone}, filler=Block{minecraft:stone}, depth=12, landformSurface=false, strata=false]> but was: <Palette[top=Block{minecraft:stone}, underwaterTop=Block{minecraft:stone}, filler=Block{minecraft:stone}, depth=12, landformSurface=false, strata=true]>",
+      "org.opentest4j.AssertionFailedError: native cover=50 climate=-128 roll=45 column=Column[x=-5546, z=-6784] expected=Palette[top=Block{minecraft:stone}, underwaterTop=Block{minecraft:stone}, filler=Block{minecraft:stone}, depth=12, landformSurface=false, strata=false] actual=Palette[top=Block{minecraft:stone}, underwaterTop=Block{minecraft:stone}, filler=Block{minecraft:stone}, depth=12, landformSurface=false, strata=true]\nnative cover=50 climate=-1 roll=45 column=Column[x=-5546, z=-6784] expected=Palette[top=Block{minecraft:stone}, underwaterTop=Block{minecraft:stone}, filler=Block{minecraft:stone}, depth=12, landformSurface=false, strata=false] actual=Palette[top=Block{minecraft:stone}, underwaterTop=Block{minecraft:stone}, filler=Block{minecraft:stone}, depth=12, landformSurface=false, strata=true]\nnative cover=50 climate=0 roll=45 column=Column[x=-5546, z=-6784] expected=Palette[top=Block{minecraft:stone}, underwaterTop=Block{minecraft:stone}, filler=Block{minecraft:stone}, depth=12, landformSurface=false, strata=false] actual=Palette[top=Block{minecraft:stone}, underwaterTop=Block{minecraft:stone}, filler=Block{minecraft:stone}, depth=12, landformSurface=false, strata=true]\nnative cover=50 climate=1 roll=45 column=Column[x=-5546, z=-6784] expected=Palette[top=Block{minecraft:stone}, underwaterTop=Block{minecraft:stone}, filler=Block{minecraft:stone}, depth=12, landformSurface=false, strata=false] actual=Palette[top=Block{minecraft:stone}, underwaterTop=Block{minecraft:stone}, filler=Block{minecraft:stone}, depth=12, landformSurface=false, strata=true]\nnative cover=50 climate=2 roll=45 column=Column[x=-5546, z=-6784] expected=Palette[top=Block{minecraft:stone}, underwaterTop=Block{minecraft:stone}, filler=Block{minecraft:stone}, depth=12, landformSurface=false, strata=false] actual=Palette[top=Block{minecraft:stone}, underwaterTop=Block{minecraft:stone}, filler=Block{minecraft:stone}, depth=12, landformSurface=false, strata=true]\nnative cover=50 climate=3 roll=45 column=Column[x=-5546, z=-6784] expected=Palette[top=Block{minecraft:stone}, underwaterTop=Block{minecraft:stone}, filler=Block{minecraft:stone}, depth=12, landformSurface=false, strata=false] actual=Palette[top=Block{minecraft:stone}, underwaterTop=Block{minecraft:stone}, filler=Block{minecraft:stone}, depth=12, landformSurface=false, strata=true]\nnative cover=50 climate=4 roll=45 column=Column[x=-5546, z=-6784] expected=Palette[top=Block{minecraft:stone}, underwaterTop=Block{minecraft:stone}, filler=Block{minecraft:stone}, depth=12, landformSurface=false, strata=false] actual=Palette[top=Block{minecraft:stone}, underwaterTop=Block{minecraft:stone}, filler=Block{minecraft:stone}, depth=12, landformSurface=false, strata=true]\nnative cover=50 climate=5 roll=45 column=Column[x=-5546, z=-6784] expected=Palette[top=Block{minecraft:stone}, underwaterTop=Block{minecraft:stone}, filler=Block{minecraft:stone}, depth=12, landformSurface=false, strata=false] actual=Palette[top=Block{minecraft:stone}, underwaterTop=Block{minecraft:stone}, filler=Block{minecraft:stone}, depth=12, landformSurface=false, strata=true] ==> expected: <0> but was: <100>",
+      "org.opentest4j.AssertionFailedError: cover=50 climate=-128 roll=45 zone=199 column=Column[x=0, z=0] selected=STONY_PEAKS expected=Palette[top=Block{minecraft:stone}, underwaterTop=Block{minecraft:stone}, filler=Block{minecraft:stone}, depth=12, landformSurface=false, strata=false] actual=Palette[top=Block{minecraft:stone}, underwaterTop=Block{minecraft:stone}, filler=Block{minecraft:stone}, depth=12, landformSurface=false, strata=true]\ncover=50 climate=-128 roll=46 zone=199 column=Column[x=0, z=0] selected=STONY_PEAKS expected=Palette[top=Block{minecraft:stone}, underwaterTop=Block{minecraft:stone}, filler=Block{minecraft:stone}, depth=12, landformSurface=false, strata=false] actual=Palette[top=Block{minecraft:stone}, underwaterTop=Block{minecraft:stone}, filler=Block{minecraft:stone}, depth=12, landformSurface=false, strata=true]\ncover=50 climate=-128 roll=47 zone=199 column=Column[x=0, z=0] selected=STONY_PEAKS expected=Palette[top=Block{minecraft:stone}, underwaterTop=Block{minecraft:stone}, filler=Block{minecraft:stone}, depth=12, landformSurface=false, strata=false] actual=Palette[top=Block{minecraft:stone}, underwaterTop=Block{minecraft:stone}, filler=Block{minecraft:stone}, depth=12, landformSurface=false, strata=true]\ncover=50 climate=-128 roll=48 zone=199 column=Column[x=0, z=0] selected=STONY_PEAKS expected=Palette[top=Block{minecraft:stone}, underwaterTop=Block{minecraft:stone}, filler=Block{minecraft:stone}, depth=12, landformSurface=false, strata=false] actual=Palette[top=Block{minecraft:stone}, underwaterTop=Block{minecraft:stone}, filler=Block{minecraft:stone}, depth=12, landformSurface=false, strata=true]\ncover=50 climate=-128 roll=49 zone=199 column=Column[x=0, z=0] selected=STONY_PEAKS expected=Palette[top=Block{minecraft:stone}, underwaterTop=Block{minecraft:stone}, filler=Block{minecraft:stone}, depth=12, landformSurface=false, strata=false] actual=Palette[top=Block{minecraft:stone}, underwaterTop=Block{minecraft:stone}, filler=Block{minecraft:stone}, depth=12, landformSurface=false, strata=true]\ncover=50 climate=-128 roll=50 zone=199 column=Column[x=0, z=0] selected=STONY_PEAKS expected=Palette[top=Block{minecraft:stone}, underwaterTop=Block{minecraft:stone}, filler=Block{minecraft:stone}, depth=12, landformSurface=false, strata=false] actual=Palette[top=Block{minecraft:stone}, underwaterTop=Block{minecraft:stone}, filler=Block{minecraft:stone}, depth=12, landformSurface=false, strata=true]\ncover=50 climate=-128 roll=51 zone=199 column=Column[x=0, z=0] selected=STONY_PEAKS expected=Palette[top=Block{minecraft:stone}, underwaterTop=Block{minecraft:stone}, filler=Block{minecraft:stone}, depth=12, landformSurface=false, strata=false] actual=Palette[top=Block{minecraft:stone}, underwaterTop=Block{minecraft:stone}, filler=Block{minecraft:stone}, depth=12, landformSurface=false, strata=true]\ncover=50 climate=-128 roll=52 zone=199 column=Column[x=0, z=0] selected=STONY_PEAKS expected=Palette[top=Block{minecraft:stone}, underwaterTop=Block{minecraft:stone}, filler=Block{minecraft:stone}, depth=12, landformSurface=false, strata=false] actual=Palette[top=Block{minecraft:stone}, underwaterTop=Block{minecraft:stone}, filler=Block{minecraft:stone}, depth=12, landformSurface=false, strata=true] ==> expected: <0> but was: <6600>"
+    ]
+  },
+  "versions": {
+    "mc1201": {
+      "tests": 184,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "suites": [
+        "com.yucareux.tellus.worldgen.CubeNetSurfaceKernelMigrationTest",
+        "com.yucareux.tellus.worldgen.CubeNetSurfacePolicyTest",
+        "com.yucareux.tellus.worldgen.decision.CubeNetSurfaceDecisionAdapterTest",
+        "com.yucareux.tellus.worldgen.decision.EarthSurfacePaletteTest",
+        "com.yucareux.tellus.worldgen.decision.TellusBiomeDecisionAdapterTest",
+        "com.yucareux.tellus.worldgen.decision.TellusColumnDecisionContractTest",
+        "com.yucareux.tellus.worldgen.decision.TellusColumnDecisionEarthOptInTest",
+        "com.yucareux.tellus.worldgen.decision.TellusColumnPipelineContractTest",
+        "com.yucareux.tellus.worldgen.decision.TellusEarthBiomeClassifierAdapterTest",
+        "com.yucareux.tellus.worldgen.decision.TellusEarthBiomeDecisionKernelTest",
+        "com.yucareux.tellus.worldgen.decision.TellusEarthColumnDecisionKernelTest",
+        "com.yucareux.tellus.worldgen.decision.TellusEarthSurfaceDecisionKernelTest",
+        "com.yucareux.tellus.worldgen.decision.TellusSphericalDecisionKernelTest",
+        "com.yucareux.tellus.worldgen.EarthCubeBiomeParityProbeTest",
+        "com.yucareux.tellus.worldgen.EarthSurfaceKernelNativeParityTest",
+        "com.yucareux.tellus.worldgen.feature.FeaturePlacementSinkGuardTest",
+        "com.yucareux.tellus.worldgen.feature.TellusFeaturePlannerContractTest",
+        "com.yucareux.tellus.worldgen.feature.TellusMinecraft1201FeaturePlacementSinkTest",
+        "com.yucareux.tellus.worldgen.GeneratorConsistencyProbeTest",
+        "com.yucareux.tellus.worldgen.GeneratorParityProbeTest",
+        "com.yucareux.tellus.worldgen.LodBiomeSnowTest",
+        "com.yucareux.tellus.worldgen.sample.TellusClimateSampleContractTest",
+        "com.yucareux.tellus.worldgen.sample.TellusSampleContractTest",
+        "com.yucareux.tellus.worldgen.sample.TellusSphericalSampleProviderTest",
+        "com.yucareux.tellus.worldgen.TellusMinecraft1201MaterializerParityTest",
+        "com.yucareux.tellus.worldgen.TellusMinecraft1201SphericalKernelParityTest",
+        "com.yucareux.tellus.worldgen.TellusSurfaceVariantRollTest",
+        "com.yucareux.tellus.worldgen.write.CanonicalColumnPositionTest",
+        "com.yucareux.tellus.worldgen.write.StorageTransactionCoordinatorTest",
+        "com.yucareux.tellus.worldgen.write.TellusColumnMaterializerExpansionTest",
+        "com.yucareux.tellus.worldgen.write.TellusColumnWriteContractTest",
+        "com.yucareux.tellus.worldgen.write.TellusCompositeColumnWriterTest",
+        "com.yucareux.tellus.worldgen.write.TellusMinecraft1201CanonicalPipelineClassifierTest",
+        "com.yucareux.tellus.worldgen.write.TellusMinecraft1201CanonicalPipelineTest",
+        "com.yucareux.tellus.worldgen.write.TellusMinecraft1201ColumnExpansionTest",
+        "com.yucareux.tellus.worldgen.write.TellusMinecraft1201CompositePipelineTest",
+        "com.yucareux.tellus.worldgen.write.TellusMinecraft1201WriteAdapterTest"
+      ],
+      "observations": [
+        "CUBE_COVER_KERNEL_PARITY columns=81900 mismatches=0",
+        "[19:22:01] [Test worker/INFO]: [STDOUT]: BIOME_PROBE case=forest earth=minecraft:old_growth_birch_forest cube=minecraft:old_growth_birch_forest equal=true",
+        "[19:22:01] [Test worker/INFO]: [STDOUT]: BIOME_PROBE case=grassland earth=minecraft:plains cube=minecraft:plains equal=true",
+        "[19:22:01] [Test worker/INFO]: [STDOUT]: BIOME_PROBE case=cropland earth=minecraft:plains cube=minecraft:plains equal=true",
+        "[19:22:02] [Test worker/INFO]: [STDOUT]: BIOME_PROBE case=bare earth=minecraft:desert cube=minecraft:stony_peaks equal=false",
+        "[19:22:03] [Test worker/INFO]: [STDOUT]: BIOME_PROBE case=snow earth=minecraft:frozen_peaks cube=minecraft:frozen_peaks equal=true",
+        "[19:22:03] [Test worker/INFO]: [STDOUT]: BIOME_PROBE case=wetland earth=minecraft:swamp cube=minecraft:swamp equal=true",
+        "[19:22:03] [Test worker/INFO]: [STDOUT]: BIOME_PROBE case=mangrove earth=minecraft:mangrove_swamp cube=minecraft:mangrove_swamp equal=true",
+        "[19:22:03] [Test worker/INFO]: [STDOUT]: BIOME_PROBE cases=7 mismatches=1",
+        "[19:22:00] [Test worker/INFO]: [STDOUT]: EARTH_SURFACE_NATIVE_DRIVER_PARITY columns=3160 mismatches=0",
+        "[19:22:00] [Test worker/INFO]: [STDOUT]: EARTH_SURFACE_KERNEL_PARITY columns=204000 mismatches=0",
+        "[19:22:05] [Test worker/INFO]: [STDOUT]: CONSISTENCY_PROBE faces=6 locations=9 columns=13824 mismatchColumns=0 mismatchBlocks=0",
+        "[19:22:05] [Test worker/INFO]: [STDOUT]: PARITY_PROBE canonicalColumns=256 mismatches=0 maxHeightDifference=0",
+        "[19:22:27] [Test worker/INFO]: [STDOUT]: SEMANTIC_MATERIALIZER_PARITY columns=128 mismatchBlocks=0",
+        "[19:22:28] [Test worker/INFO]: [STDOUT]: SPHERICAL_KERNEL_PARITY columns=1176 mismatchBlocks=0"
+      ],
+      "biomeCases": {
+        "forest": {
+          "earth": "minecraft:old_growth_birch_forest",
+          "cube": "minecraft:old_growth_birch_forest",
+          "equal": true
+        },
+        "grassland": {
+          "earth": "minecraft:plains",
+          "cube": "minecraft:plains",
+          "equal": true
+        },
+        "cropland": {
+          "earth": "minecraft:plains",
+          "cube": "minecraft:plains",
+          "equal": true
+        },
+        "bare": {
+          "earth": "minecraft:desert",
+          "cube": "minecraft:stony_peaks",
+          "equal": false
+        },
+        "snow": {
+          "earth": "minecraft:frozen_peaks",
+          "cube": "minecraft:frozen_peaks",
+          "equal": true
+        },
+        "wetland": {
+          "earth": "minecraft:swamp",
+          "cube": "minecraft:swamp",
+          "equal": true
+        },
+        "mangrove": {
+          "earth": "minecraft:mangrove_swamp",
+          "cube": "minecraft:mangrove_swamp",
+          "equal": true
+        }
+      }
+    },
+    "mc1211": {
+      "tests": 177,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "suites": [
+        "com.yucareux.tellus.worldgen.CubeNetSurfaceKernelMigrationTest",
+        "com.yucareux.tellus.worldgen.CubeNetSurfacePolicyTest",
+        "com.yucareux.tellus.worldgen.decision.CubeNetSurfaceDecisionAdapterTest",
+        "com.yucareux.tellus.worldgen.decision.EarthSurfacePaletteTest",
+        "com.yucareux.tellus.worldgen.decision.TellusBiomeDecisionAdapterTest",
+        "com.yucareux.tellus.worldgen.decision.TellusColumnDecisionContractTest",
+        "com.yucareux.tellus.worldgen.decision.TellusColumnDecisionEarthOptInTest",
+        "com.yucareux.tellus.worldgen.decision.TellusColumnPipelineContractTest",
+        "com.yucareux.tellus.worldgen.decision.TellusEarthBiomeClassifierAdapterTest",
+        "com.yucareux.tellus.worldgen.decision.TellusEarthBiomeDecisionKernelTest",
+        "com.yucareux.tellus.worldgen.decision.TellusEarthColumnDecisionKernelTest",
+        "com.yucareux.tellus.worldgen.decision.TellusEarthSurfaceDecisionKernelTest",
+        "com.yucareux.tellus.worldgen.decision.TellusSphericalDecisionKernelTest",
+        "com.yucareux.tellus.worldgen.EarthSurfaceKernelNativeParityTest",
+        "com.yucareux.tellus.worldgen.feature.FeaturePlacementSinkGuardTest",
+        "com.yucareux.tellus.worldgen.feature.TellusFeaturePlannerContractTest",
+        "com.yucareux.tellus.worldgen.feature.TellusMinecraft1211FeaturePlacementSinkTest",
+        "com.yucareux.tellus.worldgen.LodBiomeSnowTest",
+        "com.yucareux.tellus.worldgen.sample.TellusClimateSampleContractTest",
+        "com.yucareux.tellus.worldgen.sample.TellusSampleContractTest",
+        "com.yucareux.tellus.worldgen.sample.TellusSphericalSampleProviderTest",
+        "com.yucareux.tellus.worldgen.TellusMinecraft1211MaterializerParityTest",
+        "com.yucareux.tellus.worldgen.TellusMinecraft1211SphericalKernelParityTest",
+        "com.yucareux.tellus.worldgen.TellusSurfaceVariantRollTest",
+        "com.yucareux.tellus.worldgen.write.CanonicalColumnPositionTest",
+        "com.yucareux.tellus.worldgen.write.StorageTransactionCoordinatorTest",
+        "com.yucareux.tellus.worldgen.write.TellusColumnMaterializerExpansionTest",
+        "com.yucareux.tellus.worldgen.write.TellusColumnWriteContractTest",
+        "com.yucareux.tellus.worldgen.write.TellusCompositeColumnWriterTest",
+        "com.yucareux.tellus.worldgen.write.TellusMinecraft1211CanonicalPipelineClassifierTest",
+        "com.yucareux.tellus.worldgen.write.TellusMinecraft1211ColumnExpansionTest",
+        "com.yucareux.tellus.worldgen.write.TellusMinecraft1211CompositePipelineTest",
+        "com.yucareux.tellus.worldgen.write.TellusMinecraft1211WriteAdapterTest"
+      ],
+      "observations": [
+        "CUBE_COVER_KERNEL_PARITY columns=81900 mismatches=0",
+        "[19:24:08] [Test worker/INFO]: [STDOUT]: EARTH_SURFACE_NATIVE_DRIVER_PARITY columns=3160 mismatches=0",
+        "[19:24:08] [Test worker/INFO]: [STDOUT]: EARTH_SURFACE_KERNEL_PARITY columns=204000 mismatches=0",
+        "[19:24:46] [Test worker/INFO]: [STDOUT]: SEMANTIC_MATERIALIZER_PARITY columns=128 mismatchBlocks=0",
+        "[19:24:48] [Test worker/INFO]: [STDOUT]: SPHERICAL_KERNEL_PARITY columns=1176 mismatchBlocks=0"
+      ],
+      "biomeCases": {}
+    }
+  },
+  "sourceSha256": {
+    "src/main/java/com/yucareux/tellus/worldgen/EarthChunkGenerator.java": "9aa687b2b5194d681e5b563076613a4d5b2364da76002d3f7546cf4bebb46357",
+    "src/main/java/com/yucareux/tellus/worldgen/CubeNetSurfacePolicy.java": "b53175b059d068d036479265108a6aedd5548b8d68ecf05f00ff895b62d98fe3",
+    "src/main/java/com/yucareux/tellus/worldgen/decision/TellusEarthSurfaceDecisionKernel.java": "ce4b1a471cc07f8d80640d11a831ff6c21a210b88a0fb38cc96b26a33745bf62",
+    "src/test/java/com/yucareux/tellus/worldgen/EarthSurfaceKernelNativeParityTest.java": "f2f6b84a4f351e1fe47388b947c72d0d73e0f04c84f43539a716fb07658bdf3a",
+    "src/test/java/com/yucareux/tellus/worldgen/CubeNetSurfaceKernelMigrationTest.java": "2c133f2cd62bfcf57a66dadbead8030fb1c7835162d5efd4aa07096d5e226cb4"
+  },
+  "limitations": [
+    "native fixtures and literal old-rule oracles do not establish full GIS coverage",
+    "semantic Earth full-column source/height/geology migration still pending",
+    "source-aware Cube semantic provider/biome context integration still pending",
+    "real persistent save/reload and default lifecycle remain gated"
+  ]
+}
