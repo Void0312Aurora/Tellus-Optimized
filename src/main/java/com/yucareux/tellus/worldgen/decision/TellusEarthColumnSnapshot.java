@@ -36,6 +36,60 @@ public record TellusEarthColumnSnapshot(
          && water.kind() != WaterDecision.Kind.UNKNOWN;
    }
 
+   /** Overlays exact resolved native cells on a complete depth-zero body; no fallback materials. */
+   public Optional<TellusEarthColumnSnapshot> withResolvedSurface(
+      List<TellusEarthSurfaceColumnRules.Cell<SemanticMaterial>> patch, BiomeDecision resolvedBiome
+   ) {
+      Objects.requireNonNull(patch, "patch");
+      Objects.requireNonNull(resolvedBiome, "resolvedBiome");
+      if ((long)generation.maxYExclusive() - generation.minY() > 1_048_576L || patch.size() > 1_048_576) {
+         throw new IllegalArgumentException("resolved surface exceeds cell budget");
+      }
+      java.util.Set<Integer> positions = new java.util.HashSet<>();
+      boolean known = true;
+      for (var cell : patch) {
+         Objects.requireNonNull(cell, "surface cell");
+         if (cell.y() < generation.minY() || cell.y() > terrainY || !positions.add(cell.y())) {
+            throw new IllegalArgumentException("resolved surface coordinate duplicate or outside body");
+         }
+         known &= cell.material() != SemanticMaterial.UNKNOWN;
+      }
+      if (!known || surface.depth() != 0 || !completeLayers()) return Optional.empty();
+      java.util.TreeMap<Integer, SemanticMaterial> cells = new java.util.TreeMap<>();
+      var ordered = new java.util.ArrayList<>(strata.layers());
+      ordered.sort(java.util.Comparator.comparingInt(StrataDecision.Layer::minimumY));
+      long previous = Long.MIN_VALUE;
+      for (var layer : ordered) {
+         if (layer.minimumY() <= previous) throw new IllegalArgumentException("resolved body strata overlap");
+         previous = layer.maximumY();
+         for (long y = Math.max((long)generation.minY(), layer.minimumY()); y <= Math.min((long)terrainY, layer.maximumY()); y++) {
+            cells.put((int)y, layer.material());
+         }
+      }
+      if (cells.size() != (long)terrainY - generation.minY() + 1L) return Optional.empty();
+      if (terrainY == generation.minY() && cells.get(terrainY) == SemanticMaterial.BEDROCK
+         && surface.top() != SemanticMaterial.BEDROCK) return Optional.empty();
+      cells.put(terrainY, surface.top());
+      if (patch.isEmpty()) return Optional.of(new TellusEarthColumnSnapshot(generation, coordinate, terrainY,
+         surface, water, resolvedBiome, strata, diagnostics));
+      for (var cell : patch) cells.put(cell.y(), cell.material());
+      var layers = new java.util.ArrayList<StrataDecision.Layer>();
+      int start = generation.minY();
+      SemanticMaterial material = cells.get(start);
+      for (var entry : cells.entrySet()) {
+         if (entry.getValue() != material) {
+            layers.add(new StrataDecision.Layer(start, entry.getKey() - 1, material));
+            start = entry.getKey(); material = entry.getValue();
+         }
+      }
+      layers.add(new StrataDecision.Layer(start, terrainY, material));
+      var messages = new java.util.ArrayList<>(diagnostics);
+      messages.add("resolved exact native surface patch");
+      SemanticMaterial top = cells.get(terrainY);
+      return Optional.of(new TellusEarthColumnSnapshot(generation, coordinate, terrainY,
+         new SurfaceDecision(top, top, 0), water, resolvedBiome, new StrataDecision(layers, true), messages));
+   }
+
    public static Optional<TellusEarthColumnSnapshot> baseColumn(
       TellusGenerationContext generation, TellusCoordinateContext coordinate,
       TellusEarthColumnRules.Input input, WaterDecision.Kind waterKind, BiomeDecision biome

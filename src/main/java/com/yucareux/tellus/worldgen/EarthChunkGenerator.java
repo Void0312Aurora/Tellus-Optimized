@@ -25,6 +25,11 @@ import com.yucareux.tellus.world.data.osm.RoadClass;
 import com.yucareux.tellus.world.data.osm.RoadFeature;
 import com.yucareux.tellus.worldgen.decision.TellusEarthSurfaceDecisionKernel;
 import com.yucareux.tellus.worldgen.decision.TellusEarthColumnRules;
+import com.yucareux.tellus.worldgen.decision.TellusEarthSurfaceColumnRules;
+import com.yucareux.tellus.worldgen.decision.TellusGenerationContext;
+import com.yucareux.tellus.worldgen.global.TellusCoordinateContext;
+import com.yucareux.tellus.worldgen.sample.TellusSample;
+import com.yucareux.tellus.worldgen.write.TellusNativeSemanticMaterials;
 import com.yucareux.tellus.worldgen.decision.TellusEarthColumnSnapshot;
 import com.yucareux.tellus.worldgen.decision.TellusEarthColumnDecisionKernel;
 import com.yucareux.tellus.worldgen.decision.BiomeDecision;
@@ -5937,22 +5942,12 @@ public final class EarthChunkGenerator extends TellusChunkGeneratorBridge implem
          StrataPolicy.Column strata = palette != null && palette.strata() && !underwater ? this.resolveStrataColumn(worldX, worldZ, biome) : null;
          BlockState top = strata != null ? resolveStrataBlock(strata, surface) : this.resolveThinShellTopBlock(palette, surface, underwater);
          top = ThinShellSurfaceOre.resolve(top, this.settings.oreDistribution(), underwater, snowCovered, worldX, surface, worldZ);
+         boolean badlands = palette != null && !underwater && biome.is(BiomeTags.IS_BADLANDS) && slopeDiff >= 3;
+         ResolvedSurfacePlan plan = this.prepareResolvedSurfacePlan(palette, strata, top, true,
+            underwater, badlands, slopeDiff, worldX, worldZ, surface, minY);
          long blockWriteStartNs = beginFullChunkProfiling();
-         if (palette != null && !underwater && biome.is(BiomeTags.IS_BADLANDS) && slopeDiff >= 3) {
-            long badlandsStartNs = beginFullChunkProfiling();
-            this.applyBadlandsBands(chunk, cursor, worldX, worldZ, surface, minY, palette, slopeDiff, true);
-            profiler.badlandsNs += elapsedFullChunkProfilingSince(badlandsStartNs);
-         } else if (strata != null) {
-            int bottom = this.thinShellSurfaceBottomY(minY, surface, palette.depth());
-            fillStrataSurfaceColumn(chunk, cursor, worldX, worldZ, surface, bottom, top, strata);
-         } else if (palette != null) {
-            int depth = this.resolveSurfaceMaterialDepth(palette, top, worldX, worldZ);
-            int bottom = this.thinShellSurfaceBottomY(minY, surface, depth);
-            fillSurfaceMaterialColumn(chunk, cursor, worldX, worldZ, surface, bottom, top, palette.filler());
-         } else {
-            cursor.set(worldX, surface, worldZ);
-            setChunkBlockStateDiscardingBlockEntity(chunk, cursor, top);
-         }
+         this.applyResolvedSurfacePlan(chunk, cursor, worldX, worldZ, plan);
+         if (badlands) profiler.badlandsNs += elapsedFullChunkProfilingSince(blockWriteStartNs);
          profiler.blockWriteNs += elapsedFullChunkProfilingSince(blockWriteStartNs);
       }
    }
@@ -5984,23 +5979,144 @@ public final class EarthChunkGenerator extends TellusChunkGeneratorBridge implem
          StrataPolicy.Column strata = palette != null && palette.strata() && !underwater ? this.resolveStrataColumn(worldX, worldZ, biome) : null;
          BlockState top = strata != null ? resolveStrataBlock(strata, surface) : this.resolveThinShellTopBlock(palette, surface, underwater);
          top = ThinShellSurfaceOre.resolve(top, this.settings.oreDistribution(), underwater, snowCovered, worldX, surface, worldZ);
+         boolean badlands = palette != null && !underwater && biome.is(BiomeTags.IS_BADLANDS) && slopeDiff >= 3;
+         ResolvedSurfacePlan plan = this.prepareResolvedSurfacePlan(palette, strata, top, true,
+            underwater, badlands, slopeDiff, worldX, worldZ, surface, minY);
          long blockWriteStartNs = beginFullChunkProfiling();
-         if (palette != null && !underwater && biome.is(BiomeTags.IS_BADLANDS) && slopeDiff >= 3) {
-            long badlandsStartNs = beginFullChunkProfiling();
-            this.applyBadlandsBands(writer, localX, localZ, worldX, worldZ, surface, minY, palette, slopeDiff, true);
-            profiler.badlandsNs += elapsedFullChunkProfilingSince(badlandsStartNs);
-         } else if (strata != null) {
-            int bottom = this.thinShellSurfaceBottomY(minY, surface, palette.depth());
-            writer.fillStrataSpan(localX, localZ, bottom, surface - 1, Integer.MIN_VALUE, strata);
-            writer.setBlock(localX, localZ, surface, top);
-         } else if (palette != null) {
-            int depth = this.resolveSurfaceMaterialDepth(palette, top, worldX, worldZ);
-            int bottom = this.thinShellSurfaceBottomY(minY, surface, depth);
-            fillSurfaceMaterialColumn(writer, localX, localZ, surface, bottom, top, palette.filler());
-         } else {
-            writer.setBlock(localX, localZ, surface, top);
-         }
+         this.applyResolvedSurfacePlan(writer, localX, localZ, plan);
+         if (badlands) profiler.badlandsNs += elapsedFullChunkProfilingSince(blockWriteStartNs);
          profiler.blockWriteNs += elapsedFullChunkProfilingSince(blockWriteStartNs);
+      }
+   }
+
+   /** Exact resolved palette at the native source boundary, after every source override/cache. */
+   public record ResolvedSurfacePalette(BlockState top, BlockState underwaterTop, BlockState filler,
+                                        int depth, boolean landformSurface, boolean strata) {
+      public ResolvedSurfacePalette {
+         Objects.requireNonNull(top, "top"); Objects.requireNonNull(underwaterTop, "underwaterTop");
+         Objects.requireNonNull(filler, "filler");
+         if (depth < 0) throw new IllegalArgumentException("surface depth");
+      }
+   }
+   /** Top is already resolved, including native thin-shell ore/snow decisions. */
+   public record ResolvedSurfaceContext(ResolvedSurfacePalette palette, StrataPolicy.Column strata,
+      BlockState top, boolean thinShell, boolean underwater, boolean badlands, int relief, BiomeDecision biome) {
+      public ResolvedSurfaceContext { Objects.requireNonNull(biome, "biome"); }
+   }
+   @FunctionalInterface
+   public interface SurfaceContextResolver {
+      Optional<ResolvedSurfaceContext> resolve(TellusGenerationContext generation, TellusCoordinateContext coordinate,
+         TellusSample sample, TellusEarthColumnSnapshot body);
+   }
+
+   /** Caller must supply the real filled-body snapshot, not substitute the base-query definition. */
+   public TellusEarthColumnDecisionKernel semanticSurfaceColumnKernel(
+      TellusEarthColumnDecisionKernel.ResolvedColumnResolver bodyResolver, SurfaceContextResolver surfaceResolver
+   ) {
+      Objects.requireNonNull(bodyResolver, "bodyResolver"); Objects.requireNonNull(surfaceResolver, "surfaceResolver");
+      return TellusEarthColumnDecisionKernel.resolvedColumns((generation, coordinate, sample, koppenCode) -> {
+         EarthOwnerView owner = (EarthOwnerView)coordinate.owner();
+         if (generation.worldSeed() != this.worldSeed || generation.seaLevel() != this.seaLevel
+            || Double.compare(generation.worldScale(), this.settings.worldScale()) != 0
+            || Double.compare(owner.point().worldScale(), this.settings.worldScale()) != 0
+            || !owner.point().projectionModeId().equalsIgnoreCase(EarthProjection.projectionModeId())
+            || generation.minY() != this.minY || (long)generation.maxYExclusive() != (long)this.minY + this.height) {
+            throw new IllegalArgumentException("native surface source context differs from generation profile");
+         }
+         Optional<TellusEarthColumnSnapshot> resolved = Objects.requireNonNull(
+            bodyResolver.resolve(generation, coordinate, sample, koppenCode), "resolved native body");
+         if (resolved.isEmpty()) return Optional.empty();
+         TellusEarthColumnSnapshot body = resolved.orElseThrow();
+         if (!generation.equals(body.generation()) || !coordinate.equals(body.coordinate())) {
+            throw new IllegalArgumentException("native surface body identity differs from request");
+         }
+         if (!body.completeLayers() || body.surface().depth() != 0) return Optional.empty();
+         Optional<ResolvedSurfaceContext> context = Objects.requireNonNull(
+            surfaceResolver.resolve(generation, coordinate, sample, body), "resolved surface context");
+         if (context.isEmpty()) return Optional.empty();
+         ResolvedSurfaceContext facts = context.orElseThrow();
+         boolean underwater = body.water().surfaceY().isPresent() && body.water().surfaceY().getAsInt() > body.terrainY();
+         if (facts.underwater() != underwater) return Optional.empty();
+         ResolvedSurfacePalette source = facts.palette();
+         SurfacePalette palette = source == null ? null : new SurfacePalette(source.top(), source.underwaterTop(),
+            source.filler(), source.depth(), source.landformSurface(), source.strata());
+         ResolvedSurfacePlan plan = this.prepareResolvedSurfacePlan(palette, facts.strata(), facts.top(), facts.thinShell(),
+            underwater, facts.badlands(), facts.relief(), Math.toIntExact(owner.point().floorBlockX()),
+            Math.toIntExact(owner.point().floorBlockZ()), body.terrainY(), generation.minY());
+         List<TellusEarthSurfaceColumnRules.Cell<com.yucareux.tellus.worldgen.decision.SemanticMaterial>> patch = new ArrayList<>();
+         if (plan != null) {
+            for (var cell : plan.rule().cells()) {
+               var material = TellusNativeSemanticMaterials.material(cell.material());
+               if (material.isEmpty()) return Optional.empty();
+               patch.add(new TellusEarthSurfaceColumnRules.Cell<>(cell.y(), material.orElseThrow()));
+            }
+         }
+         return body.withResolvedSurface(patch, facts.biome());
+      });
+   }
+
+   private record ResolvedSurfacePlan(TellusEarthSurfaceColumnRules.Plan<BlockState> rule,
+                                      StrataPolicy.Column strata, int worldX, int worldZ) { }
+
+   private ResolvedSurfacePlan prepareResolvedSurfacePlan(
+      EarthChunkGenerator.SurfacePalette palette, StrataPolicy.Column strata, BlockState resolvedTop,
+      boolean thinShell, boolean underwater, boolean badlands, int slopeDiff,
+      int worldX, int worldZ, int surface, int minY
+   ) {
+      if (surface < minY) return null;
+      var mode = TellusEarthSurfaceColumnRules.select(thinShell, palette != null, underwater, badlands,
+         slopeDiff, thinShell ? strata != null : palette != null && palette.strata());
+      if (mode == TellusEarthSurfaceColumnRules.Mode.NONE) return null;
+      if (mode == TellusEarthSurfaceColumnRules.Mode.TOP_ONLY) {
+         return new ResolvedSurfacePlan(TellusEarthSurfaceColumnRules.topOnly(surface, resolvedTop), null, worldX, worldZ);
+      }
+      int depth = mode == TellusEarthSurfaceColumnRules.Mode.BADLANDS
+         ? BadlandsTerrainPolicy.cliffBandDepth(palette.depth(), slopeDiff)
+         : mode == TellusEarthSurfaceColumnRules.Mode.STRATA ? palette.depth()
+         : this.resolveSurfaceMaterialDepth(palette, resolvedTop, worldX, worldZ);
+      var span = new TellusEarthSurfaceColumnRules.Span(surface,
+         TellusEarthSurfaceColumnRules.bottomY(minY, surface, depth, thinShell, this.settings.undergroundDepth()));
+      TellusEarthSurfaceColumnRules.Plan<BlockState> rule = switch (mode) {
+         case STANDARD -> TellusEarthSurfaceColumnRules.standard(span, resolvedTop,
+            shallowSurfaceFiller(resolvedTop, palette.filler()), palette.filler());
+         case STRATA -> TellusEarthSurfaceColumnRules.layered(mode, span, resolvedTop,
+            y -> resolveStrataBlock(Objects.requireNonNull(strata, "resolved strata"), y));
+         case BADLANDS -> TellusEarthSurfaceColumnRules.layered(mode, span, palette.top(),
+            y -> badlandsBand(worldX, worldZ, y));
+         default -> throw new IllegalStateException("unexpected resolved surface mode");
+      };
+      return new ResolvedSurfacePlan(rule, strata, worldX, worldZ);
+   }
+
+   private void applyResolvedSurfacePlan(ChunkAccess chunk, MutableBlockPos cursor,
+      int worldX, int worldZ, ResolvedSurfacePlan plan) {
+      if (plan == null) return;
+      plan.rule().forEach((y, state) -> {
+         cursor.set(worldX, y, worldZ);
+         setChunkBlockStateDiscardingBlockEntity(chunk, cursor, state);
+      });
+   }
+
+   private void applyResolvedSurfacePlan(EarthChunkGenerator.ChunkSectionWriter writer,
+      int localX, int localZ, ResolvedSurfacePlan plan) {
+      if (plan == null || plan.rule().span().cellCount() == 0) return;
+      var rule = plan.rule();
+      int surface = rule.span().surfaceY();
+      int bottom = rule.span().bottomY();
+      switch (rule.mode()) {
+         case STANDARD -> {
+            writer.fillSurfaceColumn(localX, localZ, surface, bottom, rule.top(), rule.shallowFiller());
+            if (bottom < surface && !rule.shallowFiller().equals(rule.bottomFiller())) {
+               writer.setBlock(localX, localZ, bottom, rule.bottomFiller());
+            }
+         }
+         case STRATA -> {
+            writer.fillStrataSpan(localX, localZ, bottom, surface - 1, Integer.MIN_VALUE, plan.strata());
+            writer.setBlock(localX, localZ, surface, rule.top());
+         }
+         case BADLANDS -> writer.fillBadlandsBands(localX, localZ, plan.worldX(), plan.worldZ(), surface, bottom, rule.top());
+         case TOP_ONLY -> writer.setBlock(localX, localZ, surface, rule.top());
+         default -> throw new IllegalStateException("unexpected surface write mode");
       }
    }
 
@@ -6013,9 +6129,7 @@ public final class EarthChunkGenerator extends TellusChunkGeneratorBridge implem
    }
 
    private int thinShellSurfaceBottomY(int minY, int surface, int depth) {
-      int supportBottomY = Math.max(minY, surface - this.settings.undergroundDepth());
-      int surfaceBottomY = surfaceMaterialBottomY(minY, surface, depth);
-      return Math.min(surface, Math.max(supportBottomY + 1, surfaceBottomY));
+      return TellusEarthSurfaceColumnRules.bottomY(minY, surface, depth, true, this.settings.undergroundDepth());
    }
 
    private void applySurface(
@@ -6040,28 +6154,16 @@ public final class EarthChunkGenerator extends TellusChunkGeneratorBridge implem
             biome, worldX, worldZ, surface, underwater, slopeDiff, convexity, coverClass, oceanBeachCache, profiler, useFastSurfacePalette
          );
          profiler.paletteResolveNs += elapsedFullChunkProfilingSince(paletteResolveStartNs);
-         if (palette != null) {
-            if (!underwater && biome.is(BiomeTags.IS_BADLANDS) && slopeDiff >= 3) {
-               long badlandsStartNs = beginFullChunkProfiling();
-               this.applyBadlandsBands(chunk, cursor, worldX, worldZ, surface, minY, palette, slopeDiff, false);
-               profiler.badlandsNs += elapsedFullChunkProfilingSince(badlandsStartNs);
-            } else if (palette.strata() && !underwater) {
-               long blockWriteStartNs = beginFullChunkProfiling();
-               StrataPolicy.Column strata = this.resolveStrataColumn(worldX, worldZ, biome);
-               int bottom = surfaceMaterialBottomY(minY, surface, palette.depth());
-               fillStrataSurfaceColumn(chunk, cursor, worldX, worldZ, surface, bottom, resolveStrataBlock(strata, surface), strata);
-               profiler.blockWriteNs += elapsedFullChunkProfilingSince(blockWriteStartNs);
-            } else {
-               BlockState top = underwater ? palette.underwaterTop() : palette.top();
-               BlockState filler = palette.filler();
-               int depth = this.resolveSurfaceMaterialDepth(palette, top, worldX, worldZ);
-               int bottom = surfaceMaterialBottomY(minY, surface, depth);
-
-               long blockWriteStartNs = beginFullChunkProfiling();
-               fillSurfaceMaterialColumn(chunk, cursor, worldX, worldZ, surface, bottom, top, filler);
-               profiler.blockWriteNs += elapsedFullChunkProfilingSince(blockWriteStartNs);
-            }
-         }
+         if (palette == null) return;
+         boolean badlands = !underwater && biome.is(BiomeTags.IS_BADLANDS) && slopeDiff >= 3;
+         StrataPolicy.Column strata = !badlands && palette.strata() && !underwater ? this.resolveStrataColumn(worldX, worldZ, biome) : null;
+         BlockState top = strata != null ? resolveStrataBlock(strata, surface) : underwater ? palette.underwaterTop() : palette.top();
+         ResolvedSurfacePlan plan = this.prepareResolvedSurfacePlan(palette, strata, top, false,
+            underwater, badlands, slopeDiff, worldX, worldZ, surface, minY);
+         long blockWriteStartNs = beginFullChunkProfiling();
+         this.applyResolvedSurfacePlan(chunk, cursor, worldX, worldZ, plan);
+         if (badlands) profiler.badlandsNs += elapsedFullChunkProfilingSince(blockWriteStartNs);
+         else profiler.blockWriteNs += elapsedFullChunkProfilingSince(blockWriteStartNs);
       }
    }
 
@@ -6088,27 +6190,16 @@ public final class EarthChunkGenerator extends TellusChunkGeneratorBridge implem
             biome, worldX, worldZ, surface, underwater, slopeDiff, convexity, coverClass, oceanBeachCache, profiler, useFastSurfacePalette
          );
          profiler.paletteResolveNs += elapsedFullChunkProfilingSince(paletteResolveStartNs);
-         if (palette != null) {
-            if (!underwater && biome.is(BiomeTags.IS_BADLANDS) && slopeDiff >= 3) {
-               long badlandsStartNs = beginFullChunkProfiling();
-               this.applyBadlandsBands(writer, localX, localZ, worldX, worldZ, surface, minY, palette, slopeDiff, false);
-               profiler.badlandsNs += elapsedFullChunkProfilingSince(badlandsStartNs);
-            } else if (palette.strata() && !underwater) {
-               long blockWriteStartNs = beginFullChunkProfiling();
-               StrataPolicy.Column strata = this.resolveStrataColumn(worldX, worldZ, biome);
-               writer.fillStrataSpan(localX, localZ, surfaceMaterialBottomY(minY, surface, palette.depth()), surface, Integer.MIN_VALUE, strata);
-               profiler.blockWriteNs += elapsedFullChunkProfilingSince(blockWriteStartNs);
-            } else {
-               BlockState top = underwater ? palette.underwaterTop() : palette.top();
-               BlockState filler = palette.filler();
-               int depth = this.resolveSurfaceMaterialDepth(palette, top, worldX, worldZ);
-               int bottom = surfaceMaterialBottomY(minY, surface, depth);
-
-               long blockWriteStartNs = beginFullChunkProfiling();
-               fillSurfaceMaterialColumn(writer, localX, localZ, surface, bottom, top, filler);
-               profiler.blockWriteNs += elapsedFullChunkProfilingSince(blockWriteStartNs);
-            }
-         }
+         if (palette == null) return;
+         boolean badlands = !underwater && biome.is(BiomeTags.IS_BADLANDS) && slopeDiff >= 3;
+         StrataPolicy.Column strata = !badlands && palette.strata() && !underwater ? this.resolveStrataColumn(worldX, worldZ, biome) : null;
+         BlockState top = strata != null ? resolveStrataBlock(strata, surface) : underwater ? palette.underwaterTop() : palette.top();
+         ResolvedSurfacePlan plan = this.prepareResolvedSurfacePlan(palette, strata, top, false,
+            underwater, badlands, slopeDiff, worldX, worldZ, surface, minY);
+         long blockWriteStartNs = beginFullChunkProfiling();
+         this.applyResolvedSurfacePlan(writer, localX, localZ, plan);
+         if (badlands) profiler.badlandsNs += elapsedFullChunkProfilingSince(blockWriteStartNs);
+         else profiler.blockWriteNs += elapsedFullChunkProfilingSince(blockWriteStartNs);
       }
    }
 
@@ -6259,7 +6350,7 @@ public final class EarthChunkGenerator extends TellusChunkGeneratorBridge implem
 
    private static int surfaceMaterialBottomY(int minY, int surface, int depth) {
       // Bedrock is placed at minY during terrain fill; keep falling fillers one block above it.
-      return Math.max(minY + 1, surface - depth + 1);
+      return TellusEarthSurfaceColumnRules.bottomY(minY, surface, depth, false, 0);
    }
 
    private int resolveSurfaceMaterialDepth(
