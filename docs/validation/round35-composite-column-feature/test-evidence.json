@@ -1,0 +1,149 @@
+{
+  "recordedAt": "2026-11-08T11:02:04.690438+00:00",
+  "scope": "single block-state commit for terrain and complete feature plan via explicit version pipelines",
+  "versions": {
+    "mc1201": {
+      "tests": 122,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "suites": [
+        "com.yucareux.tellus.worldgen.decision.CubeNetSurfaceDecisionAdapterTest",
+        "com.yucareux.tellus.worldgen.decision.EarthSurfacePaletteTest",
+        "com.yucareux.tellus.worldgen.decision.TellusBiomeDecisionAdapterTest",
+        "com.yucareux.tellus.worldgen.decision.TellusColumnDecisionContractTest",
+        "com.yucareux.tellus.worldgen.decision.TellusColumnDecisionEarthOptInTest",
+        "com.yucareux.tellus.worldgen.decision.TellusColumnPipelineContractTest",
+        "com.yucareux.tellus.worldgen.decision.TellusEarthBiomeClassifierAdapterTest",
+        "com.yucareux.tellus.worldgen.decision.TellusEarthBiomeDecisionKernelTest",
+        "com.yucareux.tellus.worldgen.decision.TellusEarthColumnDecisionKernelTest",
+        "com.yucareux.tellus.worldgen.decision.TellusEarthSurfaceDecisionKernelTest",
+        "com.yucareux.tellus.worldgen.decision.TellusSphericalDecisionKernelTest",
+        "com.yucareux.tellus.worldgen.EarthCubeBiomeParityProbeTest",
+        "com.yucareux.tellus.worldgen.feature.FeaturePlacementSinkGuardTest",
+        "com.yucareux.tellus.worldgen.feature.TellusFeaturePlannerContractTest",
+        "com.yucareux.tellus.worldgen.feature.TellusMinecraft1201FeaturePlacementSinkTest",
+        "com.yucareux.tellus.worldgen.GeneratorConsistencyProbeTest",
+        "com.yucareux.tellus.worldgen.GeneratorParityProbeTest",
+        "com.yucareux.tellus.worldgen.TellusMinecraft1201MaterializerParityTest",
+        "com.yucareux.tellus.worldgen.TellusMinecraft1201SphericalKernelParityTest",
+        "com.yucareux.tellus.worldgen.write.CanonicalColumnPositionTest",
+        "com.yucareux.tellus.worldgen.write.StorageTransactionCoordinatorTest",
+        "com.yucareux.tellus.worldgen.write.TellusColumnMaterializerExpansionTest",
+        "com.yucareux.tellus.worldgen.write.TellusColumnWriteContractTest",
+        "com.yucareux.tellus.worldgen.write.TellusCompositeColumnWriterTest",
+        "com.yucareux.tellus.worldgen.write.TellusMinecraft1201CanonicalPipelineClassifierTest",
+        "com.yucareux.tellus.worldgen.write.TellusMinecraft1201CanonicalPipelineTest",
+        "com.yucareux.tellus.worldgen.write.TellusMinecraft1201ColumnExpansionTest",
+        "com.yucareux.tellus.worldgen.write.TellusMinecraft1201CompositePipelineTest",
+        "com.yucareux.tellus.worldgen.write.TellusMinecraft1201WriteAdapterTest"
+      ],
+      "observations": [
+        "[18:59:16] [Test worker/INFO]: [STDOUT]: BIOME_PROBE case=forest earth=minecraft:old_growth_birch_forest cube=minecraft:old_growth_birch_forest equal=true",
+        "[18:59:17] [Test worker/INFO]: [STDOUT]: BIOME_PROBE case=grassland earth=minecraft:plains cube=minecraft:plains equal=true",
+        "[18:59:17] [Test worker/INFO]: [STDOUT]: BIOME_PROBE case=cropland earth=minecraft:plains cube=minecraft:plains equal=true",
+        "[18:59:17] [Test worker/INFO]: [STDOUT]: BIOME_PROBE case=bare earth=minecraft:desert cube=minecraft:stony_peaks equal=false",
+        "[18:59:18] [Test worker/INFO]: [STDOUT]: BIOME_PROBE case=snow earth=minecraft:frozen_peaks cube=minecraft:frozen_peaks equal=true",
+        "[18:59:18] [Test worker/INFO]: [STDOUT]: BIOME_PROBE case=wetland earth=minecraft:swamp cube=minecraft:swamp equal=true",
+        "[18:59:18] [Test worker/INFO]: [STDOUT]: BIOME_PROBE case=mangrove earth=minecraft:mangrove_swamp cube=minecraft:mangrove_swamp equal=true",
+        "[18:59:18] [Test worker/INFO]: [STDOUT]: BIOME_PROBE cases=7 mismatches=1",
+        "[18:59:20] [Test worker/INFO]: [STDOUT]: CONSISTENCY_PROBE faces=6 locations=9 columns=13824 mismatchColumns=0 mismatchBlocks=0",
+        "[18:59:20] [Test worker/INFO]: [STDOUT]: PARITY_PROBE canonicalColumns=256 mismatches=0 maxHeightDifference=0",
+        "[18:59:21] [Test worker/INFO]: [STDOUT]: SEMANTIC_MATERIALIZER_PARITY columns=128 mismatchBlocks=0",
+        "[18:59:22] [Test worker/INFO]: [STDOUT]: SPHERICAL_KERNEL_PARITY columns=1176 mismatchBlocks=0"
+      ],
+      "biomeCases": {
+        "forest": {
+          "earth": "minecraft:old_growth_birch_forest",
+          "cube": "minecraft:old_growth_birch_forest",
+          "equal": true
+        },
+        "grassland": {
+          "earth": "minecraft:plains",
+          "cube": "minecraft:plains",
+          "equal": true
+        },
+        "cropland": {
+          "earth": "minecraft:plains",
+          "cube": "minecraft:plains",
+          "equal": true
+        },
+        "bare": {
+          "earth": "minecraft:desert",
+          "cube": "minecraft:stony_peaks",
+          "equal": false
+        },
+        "snow": {
+          "earth": "minecraft:frozen_peaks",
+          "cube": "minecraft:frozen_peaks",
+          "equal": true
+        },
+        "wetland": {
+          "earth": "minecraft:swamp",
+          "cube": "minecraft:swamp",
+          "equal": true
+        },
+        "mangrove": {
+          "earth": "minecraft:mangrove_swamp",
+          "cube": "minecraft:mangrove_swamp",
+          "equal": true
+        }
+      }
+    },
+    "mc1211": {
+      "tests": 115,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "suites": [
+        "com.yucareux.tellus.worldgen.decision.CubeNetSurfaceDecisionAdapterTest",
+        "com.yucareux.tellus.worldgen.decision.EarthSurfacePaletteTest",
+        "com.yucareux.tellus.worldgen.decision.TellusBiomeDecisionAdapterTest",
+        "com.yucareux.tellus.worldgen.decision.TellusColumnDecisionContractTest",
+        "com.yucareux.tellus.worldgen.decision.TellusColumnDecisionEarthOptInTest",
+        "com.yucareux.tellus.worldgen.decision.TellusColumnPipelineContractTest",
+        "com.yucareux.tellus.worldgen.decision.TellusEarthBiomeClassifierAdapterTest",
+        "com.yucareux.tellus.worldgen.decision.TellusEarthBiomeDecisionKernelTest",
+        "com.yucareux.tellus.worldgen.decision.TellusEarthColumnDecisionKernelTest",
+        "com.yucareux.tellus.worldgen.decision.TellusEarthSurfaceDecisionKernelTest",
+        "com.yucareux.tellus.worldgen.decision.TellusSphericalDecisionKernelTest",
+        "com.yucareux.tellus.worldgen.feature.FeaturePlacementSinkGuardTest",
+        "com.yucareux.tellus.worldgen.feature.TellusFeaturePlannerContractTest",
+        "com.yucareux.tellus.worldgen.feature.TellusMinecraft1211FeaturePlacementSinkTest",
+        "com.yucareux.tellus.worldgen.TellusMinecraft1211MaterializerParityTest",
+        "com.yucareux.tellus.worldgen.TellusMinecraft1211SphericalKernelParityTest",
+        "com.yucareux.tellus.worldgen.write.CanonicalColumnPositionTest",
+        "com.yucareux.tellus.worldgen.write.StorageTransactionCoordinatorTest",
+        "com.yucareux.tellus.worldgen.write.TellusColumnMaterializerExpansionTest",
+        "com.yucareux.tellus.worldgen.write.TellusColumnWriteContractTest",
+        "com.yucareux.tellus.worldgen.write.TellusCompositeColumnWriterTest",
+        "com.yucareux.tellus.worldgen.write.TellusMinecraft1211CanonicalPipelineClassifierTest",
+        "com.yucareux.tellus.worldgen.write.TellusMinecraft1211ColumnExpansionTest",
+        "com.yucareux.tellus.worldgen.write.TellusMinecraft1211CompositePipelineTest",
+        "com.yucareux.tellus.worldgen.write.TellusMinecraft1211WriteAdapterTest"
+      ],
+      "observations": [
+        "[19:00:39] [Test worker/INFO]: [STDOUT]: SEMANTIC_MATERIALIZER_PARITY columns=128 mismatchBlocks=0",
+        "[19:00:41] [Test worker/INFO]: [STDOUT]: SPHERICAL_KERNEL_PARITY columns=1176 mismatchBlocks=0"
+      ],
+      "biomeCases": {}
+    }
+  },
+  "sourceSha256": {
+    "src/main/java/com/yucareux/tellus/worldgen/write/TellusCompositeColumnWriter.java": "ce811be6aa242ebf07d1e6a262d21681ea0e2b3963d575a0d8003f0e85e6d18a",
+    "src/test/java/com/yucareux/tellus/worldgen/write/TellusCompositeColumnWriterTest.java": "12e00669683bee27874e48f5bf1dd4f5b91c36fbcdc2a3331fbc96050ceccfb7",
+    "shared/mc1201/src/main/java/com/yucareux/tellus/worldgen/write/TellusMinecraft1201CompositeColumnWriter.java": "b6addc9ff746f2cd2c370f473bc613980e5eb8253fb60407aa6121fdf4649a93",
+    "shared/mc1201/src/main/java/com/yucareux/tellus/worldgen/write/TellusMinecraft1201CanonicalPipeline.java": "bc1e0b93333f202927e2b4e6c06c5f25ec82c8aef1301b0b7e795157ae3969f5",
+    "shared/mc1201/src/test/java/com/yucareux/tellus/worldgen/write/TellusMinecraft1201CompositePipelineTest.java": "278939da5a22ed283d446424930309a3bc7783e860371c2f77dc6499d3117602",
+    "shared/mc1211/src/main/java/com/yucareux/tellus/worldgen/write/TellusMinecraft1211CompositeColumnWriter.java": "08824a863fd6b667cc9f3c9b35aadfe21ecf6b548ccc6c8b712dcaf13e0cf619",
+    "shared/mc1211/src/main/java/com/yucareux/tellus/worldgen/write/TellusMinecraft1211CanonicalPipeline.java": "b849e3cda8b70b59edd1152f2411c859fce8784f6e9cf31d68fb79cdc8fd2545",
+    "shared/mc1211/src/test/java/com/yucareux/tellus/worldgen/write/TellusMinecraft1211CompositePipelineTest.java": "472175631b66cf5c22a3fe0f6c1ea504899d101903fc8397899b130b64b5c1f4"
+  },
+  "limitations": [
+    "caller-owned exclusive synchronous block-state access; no disk/save or metadata atomicity",
+    "cross-chunk feature plans require caller partitioning",
+    "default semantic generator/lifecycle hooks remain gated",
+    "deterministic parity fixtures do not establish full GIS coverage",
+    "pipeline UNKNOWN/QUEUED early returns retain their previous empty persistence identity"
+  ]
+}

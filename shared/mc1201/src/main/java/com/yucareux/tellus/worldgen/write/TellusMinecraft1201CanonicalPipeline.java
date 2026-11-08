@@ -135,6 +135,9 @@ public final class TellusMinecraft1201CanonicalPipeline {
       Objects.requireNonNull(generation, "generation");
       Objects.requireNonNull(coordinate, "coordinate");
       Objects.requireNonNull(request, "request");
+      if (!context.generation().equals(generation)) {
+         return WriteResult.invalid("pipeline generation does not match write context");
+      }
       if (context.apronMirror() || context.targetOwner() == GeneratorOwner.CUBE_NET_APRON) {
          return WriteResult.invalid("canonical pipeline does not write apron targets");
       }
@@ -154,10 +157,10 @@ public final class TellusMinecraft1201CanonicalPipeline {
 
       ColumnDecision decision = plan.decision().orElseThrow(
          () -> new IllegalStateException("known column plan has no decision"));
-      // The target is passed only after every read-only stage has accepted the
-      // request. The column writer performs the final semantic guard/policy.
-      TellusMinecraft1201ColumnWriter writer = new TellusMinecraft1201ColumnWriter(target, this.materializer);
-      return writer.write(context, decision, this.mapper);
+      var features = plan.featurePlan().orElseGet(() ->
+         com.yucareux.tellus.worldgen.feature.FeaturePlan.empty("no feature plan supplied"));
+      return new TellusMinecraft1201CompositeColumnWriter(this.materializer)
+         .write(target, context, decision, features, this.mapper);
    }
 
    private static String diagnostic(TellusColumnPlan plan, String fallback) {
