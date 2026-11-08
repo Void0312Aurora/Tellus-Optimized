@@ -11401,7 +11401,7 @@ public final class EarthChunkGenerator extends TellusChunkGeneratorBridge implem
             return alpineMeadowSurfacePalette(worldX, worldZ, slopeDiff);
          } else {
             // Steep turf keeps its land cover but breaks into rock outcrops as it steepens.
-            return SurfacePatchNoise.covers(worldX, worldZ, EXPOSED_ROCK_SALT, MountainSurfaceRules.exposedRockPercent(slopeDiff))
+            return TellusSurfaceVariantRoll.covers(worldX, worldZ, EXPOSED_ROCK_SALT, MountainSurfaceRules.exposedRockPercent(slopeDiff))
                ? EarthChunkGenerator.SurfacePalette.strata(12)
                : palette;
          }
@@ -11658,7 +11658,7 @@ public final class EarthChunkGenerator extends TellusChunkGeneratorBridge implem
 
    private static EarthChunkGenerator.SurfacePalette alpineMeadowSurfacePalette(int worldX, int worldZ, int slopeDiff) {
       // Steeper highland turf carries scree patches rather than turning to gravel outright.
-      return SurfacePatchNoise.covers(worldX, worldZ, ALPINE_SCREE_SALT, MountainSurfaceRules.alpineMeadowScreePercent(slopeDiff))
+      return TellusSurfaceVariantRoll.covers(worldX, worldZ, ALPINE_SCREE_SALT, MountainSurfaceRules.alpineMeadowScreePercent(slopeDiff))
          ? EarthChunkGenerator.SurfacePalette.gravelly()
          : EarthChunkGenerator.SurfacePalette.alpineMeadow();
    }
@@ -11686,11 +11686,11 @@ public final class EarthChunkGenerator extends TellusChunkGeneratorBridge implem
     * shares, but the materials form patches instead of per-block speckle.
     */
    private static int surfaceVariant(int worldX, int worldZ, int salt) {
-      return SurfacePatchNoise.percent(worldX, worldZ, SURFACE_VARIANT_SALT ^ (long)salt * -7046029254386353131L);
+      return TellusSurfaceVariantRoll.percent(worldX, worldZ, SURFACE_VARIANT_SALT ^ (long)salt * -7046029254386353131L);
    }
 
    private EarthChunkGenerator.SurfacePalette oceanFloorPalette(int worldX, int worldZ) {
-      int roll = SurfacePatchNoise.percent(worldX, worldZ, OCEAN_FLOOR_SALT);
+      int roll = TellusSurfaceVariantRoll.percent(worldX, worldZ, OCEAN_FLOOR_SALT);
       if (roll < 10) {
          return EarthChunkGenerator.SurfacePalette.ocean(GRAVEL_STATE);
       } else {

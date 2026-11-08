@@ -3,6 +3,7 @@ package com.yucareux.tellus.worldgen;
 import com.yucareux.tellus.world.data.osm.OsmQueryMode;
 import com.yucareux.tellus.worldgen.global.SphereChunkSampler;
 import com.yucareux.tellus.worldgen.global.SphereWorldModel;
+import com.yucareux.tellus.worldgen.global.SphericalNoisePoint;
 
 /**
  * Shared spherical surface decision.  It deliberately returns version-neutral
@@ -174,7 +175,7 @@ public final class CubeNetSurfacePolicy {
    private static Decision coverDrivenPalette(int coverClass, byte climateGroup, int zoneHeight,
       int earthX, int earthZ, int slopeDiff, double slopeDegrees,
       MountainSurfaceRules.MountainForm form) {
-      int roll = SurfacePatchNoise.percent(earthX, earthZ, 23L);
+      int roll = TellusSurfaceVariantRoll.percent(earthX, earthZ, 23L);
       return switch (coverClass) {
          case MountainSurfaceRules.ESA_TREE_COVER -> climateGroup != 4 && climateGroup != 5
             ? climateGroup == 2
@@ -286,16 +287,8 @@ public final class CubeNetSurfacePolicy {
 
    /** ECEF-derived coordinates stay continuous across the ±180° meridian and cube-face seams. */
    private static int[] canonicalNoiseCoordinates(SphereWorldModel.GeoPoint point) {
-      double latitude = Math.toRadians(point.latitude());
-      double longitude = Math.toRadians(point.longitude());
-      double cos = Math.cos(latitude);
-      double x = cos * Math.cos(longitude);
-      double y = Math.sin(latitude);
-      double z = cos * Math.sin(longitude);
-      return new int[]{
-         safeCoordinate(x * 1_000_000.0 + y * 37_000.0),
-         safeCoordinate(z * 1_000_000.0 + y * 91_000.0)
-      };
+      SphericalNoisePoint noise = SphericalNoisePoint.fromGeoPoint(point);
+      return new int[]{noise.noiseX(), noise.noiseZ()};
    }
 
    private static int safeCoordinate(double value) {

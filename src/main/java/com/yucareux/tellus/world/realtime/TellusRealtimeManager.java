@@ -9,6 +9,8 @@ import com.yucareux.tellus.world.data.source.OpenMeteoClient;
 import com.yucareux.tellus.worldgen.EarthChunkGenerator;
 import com.yucareux.tellus.worldgen.EarthGeneratorSettings;
 import com.yucareux.tellus.worldgen.TellusGeodeticPosition;
+import com.yucareux.tellus.worldgen.runtime.EarthGeneratorSettingsViewAdapter;
+import com.yucareux.tellus.worldgen.runtime.TellusGeneratorSettingsView;
 import it.unimi.dsi.fastutil.longs.LongArrayFIFOQueue;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import java.io.IOException;
@@ -196,6 +198,27 @@ public final class TellusRealtimeManager {
       Boolean override = this.realtimeWeatherOverride;
       return override != null ? override : settings != null ? settings.realtimeWeather() : CUBE_NET_REALTIME_WEATHER;
    }
+    private boolean isRealtimeTimeEnabled(TellusGeneratorSettingsView settingsView) {
+       Boolean override = this.realtimeTimeOverride;
+       if (override != null) return override;
+       return settingsView != null
+          ? settingsView.realtime().map(TellusGeneratorSettingsView.RealtimeOptions::time).orElse(CUBE_NET_REALTIME_TIME)
+          : CUBE_NET_REALTIME_TIME;
+    }
+
+    private boolean isRealtimeWeatherEnabled(TellusGeneratorSettingsView settingsView) {
+       Boolean override = this.realtimeWeatherOverride;
+       if (override != null) return override;
+       return settingsView != null
+          ? settingsView.realtime().map(TellusGeneratorSettingsView.RealtimeOptions::weather).orElse(CUBE_NET_REALTIME_WEATHER)
+          : CUBE_NET_REALTIME_WEATHER;
+    }
+
+    private boolean isHistoricalSnowEnabled(TellusGeneratorSettingsView settingsView) {
+       return settingsView != null
+          ? settingsView.realtime().map(TellusGeneratorSettingsView.RealtimeOptions::historicalSnow).orElse(CUBE_NET_HISTORICAL_SNOW)
+          : CUBE_NET_HISTORICAL_SNOW;
+    }
 
    public TellusRealtimeManager.WeatherSnapshot lastWeatherSnapshot() {
       return this.lastWeatherSnapshot;
@@ -226,10 +249,11 @@ public final class TellusRealtimeManager {
          return;
       }
 
-      EarthGeneratorSettings settings = geodetic instanceof EarthChunkGenerator earthGenerator ? earthGenerator.settings() : null;
-      boolean enableTime = settings != null ? this.isRealtimeTimeEnabled(settings) : CUBE_NET_REALTIME_TIME;
-      boolean enableWeather = settings != null ? this.isRealtimeWeatherEnabled(settings) : CUBE_NET_REALTIME_WEATHER;
-      boolean enableSnow = settings != null ? settings.historicalSnow() : CUBE_NET_HISTORICAL_SNOW;
+      TellusGeneratorSettingsView settingsView = geodetic instanceof EarthChunkGenerator earthGenerator
+          ? new EarthGeneratorSettingsViewAdapter(earthGenerator) : null;
+      boolean enableTime = this.isRealtimeTimeEnabled(settingsView);
+      boolean enableWeather = this.isRealtimeWeatherEnabled(settingsView);
+      boolean enableSnow = this.isHistoricalSnowEnabled(settingsView);
 
       if (!enableWeather && !enableSnow) {
          boolean weatherWasActive = this.hasRealtimeWeatherState();

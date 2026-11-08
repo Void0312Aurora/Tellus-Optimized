@@ -1,0 +1,70 @@
+{
+  "kind": "fresh rerun of recovered original injected deterministic probes, not a GIS coverage audit",
+  "columns": {
+    "faces": 6,
+    "locationsPerFace": 9,
+    "columns": 13824,
+    "mismatchColumns": 0,
+    "mismatchBlocks": 0,
+    "verticalMinY": -1024,
+    "verticalHeight": 3056
+  },
+  "singleChunk": {
+    "columns": 256,
+    "mismatches": 0,
+    "maxHeightDifference": 0
+  },
+  "biomes": {
+    "cases": [
+      {
+        "case": "forest",
+        "earth": "minecraft:old_growth_birch_forest",
+        "cube": "minecraft:old_growth_birch_forest",
+        "equal": true
+      },
+      {
+        "case": "grassland",
+        "earth": "minecraft:plains",
+        "cube": "minecraft:plains",
+        "equal": true
+      },
+      {
+        "case": "cropland",
+        "earth": "minecraft:plains",
+        "cube": "minecraft:plains",
+        "equal": true
+      },
+      {
+        "case": "bare",
+        "earth": "minecraft:desert",
+        "cube": "minecraft:stony_peaks",
+        "equal": false
+      },
+      {
+        "case": "snow",
+        "earth": "minecraft:frozen_peaks",
+        "cube": "minecraft:frozen_peaks",
+        "equal": true
+      },
+      {
+        "case": "wetland",
+        "earth": "minecraft:swamp",
+        "cube": "minecraft:swamp",
+        "equal": true
+      },
+      {
+        "case": "mangrove",
+        "earth": "minecraft:mangrove_swamp",
+        "cube": "minecraft:mangrove_swamp",
+        "equal": true
+      }
+    ],
+    "mismatches": 1,
+    "knownMismatch": "bare/BWh"
+  },
+  "probeSourceSha256": {
+    "GeneratorParityProbeTest.java": "84351302e5c47b0fbbfe4266b54f0d82bca12921fbb572f34c852c394ad0093d",
+    "GeneratorConsistencyProbeTest.java": "eb705a83810020c76f07f31d8f470bd85a3fde6a8dfa67a8df38f3a28fc2f30f",
+    "EarthCubeBiomeParityProbeTest.java": "9c6f3a1e40b703f38a985a06da56ace2a104d44261fdace3f506ed1c2b625d05"
+  }
+}

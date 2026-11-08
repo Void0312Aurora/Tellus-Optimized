@@ -1,0 +1,191 @@
+{
+  "generatedAt": "2026-11-08T06:09:48.806187+00:00",
+  "head": "1c35ccbb2441fd146ceb28ee35700f684dec8ed3",
+  "backup": "C:\\Users\\30483\\AppData\\Local\\Temp\\tellus-rescue-20261108-134156",
+  "originalRecovery": {
+    "fullRecordedTexts": 223,
+    "exactWriteAndLiteralEdits": 200,
+    "completeObservedTextNewlinesUnverified": 19,
+    "historicalCompleteLatestChainHasGaps": 4,
+    "partialOnly": 2,
+    "totalManifestPaths": 225,
+    "nonemptyFullRecordedTexts": 220,
+    "emptyFinalRecordedStates": [
+      "mc1201/src/test/java/com/yucareux/tellus/worldgen/EarthCubeBiomeParityProbeTest.java",
+      "mc1201/src/test/java/com/yucareux/tellus/worldgen/GeneratorConsistencyProbeTest.java",
+      "mc1201/src/test/java/com/yucareux/tellus/worldgen/GeneratorParityProbeTest.java"
+    ]
+  },
+  "versions": {
+    "mc1201": {
+      "tests": 129,
+      "failures": 1,
+      "errors": 0,
+      "skipped": 0,
+      "passed": 128,
+      "suites": [
+        "com.yucareux.tellus.world.realtime.TellusRealtimeSettingsViewContractTest",
+        "com.yucareux.tellus.worldgen.decision.CubeNetSurfaceDecisionAdapterTest",
+        "com.yucareux.tellus.worldgen.decision.EarthSurfacePaletteTest",
+        "com.yucareux.tellus.worldgen.decision.TellusBiomeDecisionAdapterTest",
+        "com.yucareux.tellus.worldgen.decision.TellusColumnDecisionContractTest",
+        "com.yucareux.tellus.worldgen.decision.TellusColumnDecisionEarthOptInTest",
+        "com.yucareux.tellus.worldgen.decision.TellusColumnPipelineContractTest",
+        "com.yucareux.tellus.worldgen.decision.TellusEarthBiomeClassifierAdapterTest",
+        "com.yucareux.tellus.worldgen.decision.TellusEarthBiomeDecisionKernelTest",
+        "com.yucareux.tellus.worldgen.EarthCubeBiomeParityProbeTest",
+        "com.yucareux.tellus.worldgen.feature.FeaturePlacementSinkGuardTest",
+        "com.yucareux.tellus.worldgen.feature.TellusFeaturePlannerContractTest",
+        "com.yucareux.tellus.worldgen.feature.TellusMinecraft1201FeaturePlacementSinkTest",
+        "com.yucareux.tellus.worldgen.GeneratorConsistencyProbeTest",
+        "com.yucareux.tellus.worldgen.GeneratorParityProbeTest",
+        "com.yucareux.tellus.worldgen.global.TellusCoordinateContextContractTest",
+        "com.yucareux.tellus.worldgen.global.TellusCoordinateContextFactoryTest",
+        "com.yucareux.tellus.worldgen.runtime.TellusGeneratorRuntimeDescriptorTest",
+        "com.yucareux.tellus.worldgen.runtime.TellusGeneratorRuntimeLifecycleBridgeTest",
+        "com.yucareux.tellus.worldgen.runtime.TellusGeneratorRuntimeLifecycleManagerTest",
+        "com.yucareux.tellus.worldgen.runtime.TellusGeneratorRuntimeRegistryTest",
+        "com.yucareux.tellus.worldgen.runtime.TellusGeneratorSettingsViewAdapterTest",
+        "com.yucareux.tellus.worldgen.runtime.TellusMinecraft1201RuntimeDescriptorOrderTest",
+        "com.yucareux.tellus.worldgen.runtime.TellusRuntimeRolloutGateTest",
+        "com.yucareux.tellus.worldgen.sample.TellusClimateSampleContractTest",
+        "com.yucareux.tellus.worldgen.sample.TellusSampleContractTest",
+        "com.yucareux.tellus.worldgen.sample.TellusSphericalSampleProviderTest",
+        "com.yucareux.tellus.worldgen.TellusSurfaceVariantRollTest",
+        "com.yucareux.tellus.worldgen.TellusWorldgenEarthSampleClimateTest",
+        "com.yucareux.tellus.worldgen.write.StorageTransactionCoordinatorTest",
+        "com.yucareux.tellus.worldgen.write.TellusColumnWriteContractTest",
+        "com.yucareux.tellus.worldgen.write.TellusMinecraft1201CanonicalPipelineClassifierTest",
+        "com.yucareux.tellus.worldgen.write.TellusMinecraft1201CanonicalPipelineTest",
+        "com.yucareux.tellus.worldgen.write.TellusMinecraft1201WriteAdapterTest"
+      ],
+      "failureDetails": [
+        {
+          "suite": "com.yucareux.tellus.worldgen.TellusWorldgenEarthSampleClimateTest",
+          "test": "attachesExistingDitheredKoppenWithoutChangingAggregateOrLocalOnlyProvenance()",
+          "message": "com.google.common.util.concurrent.UncheckedExecutionException: com.yucareux.tellus.worldgen.OceanCoverageUnavailableException: Overture ocean coverage FAILED near 0:0"
+        }
+      ]
+    },
+    "mc1211": {
+      "tests": 121,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "passed": 121,
+      "suites": [
+        "com.yucareux.tellus.world.realtime.TellusRealtimeSettingsViewContractTest",
+        "com.yucareux.tellus.worldgen.decision.CubeNetSurfaceDecisionAdapterTest",
+        "com.yucareux.tellus.worldgen.decision.EarthSurfacePaletteTest",
+        "com.yucareux.tellus.worldgen.decision.TellusBiomeDecisionAdapterTest",
+        "com.yucareux.tellus.worldgen.decision.TellusColumnDecisionContractTest",
+        "com.yucareux.tellus.worldgen.decision.TellusColumnDecisionEarthOptInTest",
+        "com.yucareux.tellus.worldgen.decision.TellusColumnPipelineContractTest",
+        "com.yucareux.tellus.worldgen.decision.TellusEarthBiomeClassifierAdapterTest",
+        "com.yucareux.tellus.worldgen.decision.TellusEarthBiomeDecisionKernelTest",
+        "com.yucareux.tellus.worldgen.feature.FeaturePlacementSinkGuardTest",
+        "com.yucareux.tellus.worldgen.feature.TellusFeaturePlannerContractTest",
+        "com.yucareux.tellus.worldgen.feature.TellusMinecraft1211FeaturePlacementSinkTest",
+        "com.yucareux.tellus.worldgen.global.TellusCoordinateContextContractTest",
+        "com.yucareux.tellus.worldgen.global.TellusCoordinateContextFactoryTest",
+        "com.yucareux.tellus.worldgen.runtime.TellusGeneratorRuntimeDescriptorTest",
+        "com.yucareux.tellus.worldgen.runtime.TellusGeneratorRuntimeLifecycleBridgeTest",
+        "com.yucareux.tellus.worldgen.runtime.TellusGeneratorRuntimeLifecycleManagerTest",
+        "com.yucareux.tellus.worldgen.runtime.TellusGeneratorSettingsViewAdapterTest",
+        "com.yucareux.tellus.worldgen.runtime.TellusMinecraft1211RuntimeRegistrationTest",
+        "com.yucareux.tellus.worldgen.runtime.TellusRuntimeRolloutGateTest",
+        "com.yucareux.tellus.worldgen.sample.TellusClimateSampleContractTest",
+        "com.yucareux.tellus.worldgen.sample.TellusSampleContractTest",
+        "com.yucareux.tellus.worldgen.sample.TellusSphericalSampleProviderTest",
+        "com.yucareux.tellus.worldgen.TellusSurfaceVariantRollTest",
+        "com.yucareux.tellus.worldgen.TellusWorldgenEarthSampleClimateTest",
+        "com.yucareux.tellus.worldgen.write.StorageTransactionCoordinatorTest",
+        "com.yucareux.tellus.worldgen.write.TellusColumnWriteContractTest",
+        "com.yucareux.tellus.worldgen.write.TellusMinecraft1211CanonicalPipelineClassifierTest",
+        "com.yucareux.tellus.worldgen.write.TellusMinecraft1211WriteAdapterTest"
+      ],
+      "failureDetails": []
+    }
+  },
+  "probes": {
+    "kind": "fresh rerun of recovered original injected deterministic probes, not a GIS coverage audit",
+    "columns": {
+      "faces": 6,
+      "locationsPerFace": 9,
+      "columns": 13824,
+      "mismatchColumns": 0,
+      "mismatchBlocks": 0,
+      "verticalMinY": -1024,
+      "verticalHeight": 3056
+    },
+    "singleChunk": {
+      "columns": 256,
+      "mismatches": 0,
+      "maxHeightDifference": 0
+    },
+    "biomes": {
+      "cases": [
+        {
+          "case": "forest",
+          "earth": "minecraft:old_growth_birch_forest",
+          "cube": "minecraft:old_growth_birch_forest",
+          "equal": true
+        },
+        {
+          "case": "grassland",
+          "earth": "minecraft:plains",
+          "cube": "minecraft:plains",
+          "equal": true
+        },
+        {
+          "case": "cropland",
+          "earth": "minecraft:plains",
+          "cube": "minecraft:plains",
+          "equal": true
+        },
+        {
+          "case": "bare",
+          "earth": "minecraft:desert",
+          "cube": "minecraft:stony_peaks",
+          "equal": false
+        },
+        {
+          "case": "snow",
+          "earth": "minecraft:frozen_peaks",
+          "cube": "minecraft:frozen_peaks",
+          "equal": true
+        },
+        {
+          "case": "wetland",
+          "earth": "minecraft:swamp",
+          "cube": "minecraft:swamp",
+          "equal": true
+        },
+        {
+          "case": "mangrove",
+          "earth": "minecraft:mangrove_swamp",
+          "cube": "minecraft:mangrove_swamp",
+          "equal": true
+        }
+      ],
+      "mismatches": 1,
+      "knownMismatch": "bare/BWh"
+    },
+    "probeSourceSha256": {
+      "GeneratorParityProbeTest.java": "84351302e5c47b0fbbfe4266b54f0d82bca12921fbb572f34c852c394ad0093d",
+      "GeneratorConsistencyProbeTest.java": "eb705a83810020c76f07f31d8f470bd85a3fde6a8dfa67a8df38f3a28fc2f30f",
+      "EarthCubeBiomeParityProbeTest.java": "9c6f3a1e40b703f38a985a06da56ace2a104d44261fdace3f506ed1c2b625d05"
+    }
+  },
+  "parserTests": {
+    "tests": 4,
+    "result": "OK",
+    "logEvidence": "python tools/test_tellus_parity_compare.py, collected by Lead"
+  },
+  "limits": [
+    "original newline bytes not established for complete read snapshots",
+    "six latest code gaps reconstructed from HEAD, recorded snippets or preserved bytecode",
+    "fresh probes exercise original injected deterministic fixtures; default lifecycle/storage remains opt-in",
+    "one mc1201 climate test failed after external Overture PMTiles HTTP 404; mc1211 selected suite excludes that data-dependent method"
+  ]
+}
