@@ -23,6 +23,7 @@ import com.yucareux.tellus.world.data.osm.OsmStreetLightFeature;
 import com.yucareux.tellus.world.data.osm.RoadAreaFeature;
 import com.yucareux.tellus.world.data.osm.RoadClass;
 import com.yucareux.tellus.world.data.osm.RoadFeature;
+import com.yucareux.tellus.worldgen.decision.TellusEarthSurfaceDecisionKernel;
 import com.yucareux.tellus.world.data.osm.RoadMode;
 import com.yucareux.tellus.world.data.osm.RoadPointKind;
 import com.yucareux.tellus.world.data.osm.RoadSurfaceStyle;
@@ -11513,111 +11514,62 @@ public final class EarthChunkGenerator extends TellusChunkGeneratorBridge implem
       return this.antarcticSnowPolicy.shouldUseSnowFallback(coverClass, worldZ);
    }
 
-   private EarthChunkGenerator.SurfacePalette selectBaseSurfacePalette(Holder<Biome> biome, int worldX, int worldZ, int surface, int coverClass) {
+      private EarthChunkGenerator.SurfacePalette selectBaseSurfacePalette(Holder<Biome> biome, int worldX, int worldZ, int surface, int coverClass) {
       if (this.settings.climateBasedBuiltUpTerrain() && coverClass == MountainSurfaceRules.ESA_BUILT) {
          coverClass = climateBasedBuiltUpCoverClass(biome);
       }
 
       boolean randomLandPatch = this.settings.randomBiomes() && RandomBiomeMixer.isLandPatchActive(this.settings, worldX, worldZ);
-      if (biome.is(BiomeTags.IS_OCEAN) || (biome.is(BiomeTags.IS_RIVER) && MountainSurfaceRules.isWaterLikeCoverClass(coverClass))) {
-         return this.oceanFloorPalette(worldX, worldZ);
-      } else if (!randomLandPatch && coverClass == MountainSurfaceRules.ESA_TREE_COVER) {
-         return this.coverDrivenSurfacePalette(coverClass, climateGroupForBiome(biome), worldX, worldZ, surface);
-      } else if (biome.is(Biomes.MUSHROOM_FIELDS)) {
-         return EarthChunkGenerator.SurfacePalette.mushroomFields();
-      } else if (biome.is(Biomes.BEACH) || biome.is(Biomes.SNOWY_BEACH)) {
-         return EarthChunkGenerator.SurfacePalette.beach();
-      } else if (biome.is(Biomes.STONY_SHORE)) {
-         return EarthChunkGenerator.SurfacePalette.strata(12);
-      } else if (biome.is(BiomeTags.IS_BADLANDS)) {
-         return EarthChunkGenerator.SurfacePalette.badlands(badlandsPlateauTop(worldX, worldZ));
-      } else if (biome.is(Biomes.DESERT)) {
-         return EarthChunkGenerator.SurfacePalette.desert();
-      } else if (biome.is(Biomes.MANGROVE_SWAMP)) {
-         return EarthChunkGenerator.SurfacePalette.mangrove();
-      } else if (biome.is(Biomes.SWAMP)) {
-         return EarthChunkGenerator.SurfacePalette.swamp();
-      } else if (biome.is(Biomes.STONY_PEAKS)) {
-         return EarthChunkGenerator.SurfacePalette.strata(12);
-      } else if (biome.is(Biomes.WINDSWEPT_GRAVELLY_HILLS)) {
-         return EarthChunkGenerator.SurfacePalette.gravelly();
-      } else {
-         // Cold biomes describe climate; only mapped snow cover supplies snow.
-         byte climateGroup = climateGroupForBiome(biome);
-         EarthChunkGenerator.SurfacePalette coverPalette = this.coverDrivenSurfacePalette(coverClass, climateGroup, worldX, worldZ, surface);
-         return isGravellyPalette(coverPalette) && shouldUseDefaultForGrassGravel(biome, coverClass, worldX, worldZ)
-            ? EarthChunkGenerator.SurfacePalette.defaultOverworld()
-            : coverPalette;
-      }
+      TellusEarthSurfaceDecisionKernel.PaletteKind selected = TellusEarthSurfaceDecisionKernel.selectBase(
+         new TellusEarthSurfaceDecisionKernel.BaseInput(
+            coverClass, randomLandPatch, biome.is(BiomeTags.IS_OCEAN), biome.is(BiomeTags.IS_RIVER),
+            biome.is(Biomes.MUSHROOM_FIELDS), biome.is(Biomes.BEACH) || biome.is(Biomes.SNOWY_BEACH),
+            biome.is(Biomes.STONY_SHORE), biome.is(BiomeTags.IS_BADLANDS), biome.is(Biomes.DESERT),
+            biome.is(Biomes.MANGROVE_SWAMP), biome.is(Biomes.SWAMP), biome.is(Biomes.STONY_PEAKS),
+            biome.is(Biomes.WINDSWEPT_GRAVELLY_HILLS)));
+      return switch (selected) {
+         case OCEAN_FLOOR -> this.oceanFloorPalette(worldX, worldZ);
+         case COVER -> this.coverDrivenSurfacePalette(coverClass, climateGroupForBiome(biome), worldX, worldZ, surface);
+         case MUSHROOM_FIELDS -> EarthChunkGenerator.SurfacePalette.mushroomFields();
+         case BEACH -> EarthChunkGenerator.SurfacePalette.beach();
+         case STRATA, STONY_PEAKS -> EarthChunkGenerator.SurfacePalette.strata(12);
+         case BADLANDS -> EarthChunkGenerator.SurfacePalette.badlands(badlandsPlateauTop(worldX, worldZ));
+         case DESERT -> EarthChunkGenerator.SurfacePalette.desert();
+         case MANGROVE -> EarthChunkGenerator.SurfacePalette.mangrove();
+         case SWAMP -> EarthChunkGenerator.SurfacePalette.swamp();
+         case GRAVELLY -> EarthChunkGenerator.SurfacePalette.gravelly();
+         case COVER_WITH_GRASS_GRAVEL_CHECK -> {
+            byte climateGroup = climateGroupForBiome(biome);
+            EarthChunkGenerator.SurfacePalette coverPalette = this.coverDrivenSurfacePalette(
+               coverClass, climateGroup, worldX, worldZ, surface);
+            yield isGravellyPalette(coverPalette) && shouldUseDefaultForGrassGravel(
+               biome, coverClass, worldX, worldZ)
+               ? EarthChunkGenerator.SurfacePalette.defaultOverworld() : coverPalette;
+         }
+         default -> throw new IllegalStateException("unexpected base Earth palette: " + selected);
+      };
    }
 
    private EarthChunkGenerator.SurfacePalette coverDrivenSurfacePalette(int coverClass, byte climateGroup, int worldX, int worldZ, int surface) {
       int roll = surfaceVariant(worldX, worldZ, 23);
       int zoneHeight = this.mountainZoneHeight(surface, worldX, worldZ);
-
-      return switch (coverClass) {
-         case 10 -> climateGroup != 4 && climateGroup != 5
-            ? (
-               climateGroup == 2
-                  ? (roll < 70 ? EarthChunkGenerator.SurfacePalette.steppe() : EarthChunkGenerator.SurfacePalette.defaultOverworld())
-                  : (
-                     climateGroup == 1
-                        ? (roll < 35 ? EarthChunkGenerator.SurfacePalette.rooted() : EarthChunkGenerator.SurfacePalette.defaultOverworld())
-                        : (roll < 20 ? EarthChunkGenerator.SurfacePalette.rooted() : EarthChunkGenerator.SurfacePalette.defaultOverworld())
-                  )
-            )
-            : (roll < 65 ? EarthChunkGenerator.SurfacePalette.podzolic() : EarthChunkGenerator.SurfacePalette.defaultOverworld());
-         case 20 -> zoneHeight >= MountainSurfaceRules.SURFACE_ALPINE_HEIGHT_ABOVE_SEA && roll < 70
-            ? EarthChunkGenerator.SurfacePalette.gravelly()
-            : (
-               climateGroup == 2
-                  ? EarthChunkGenerator.SurfacePalette.steppe()
-                  : (
-                     climateGroup != 4 && climateGroup != 5
-                        ? (roll < 40 ? EarthChunkGenerator.SurfacePalette.steppe() : EarthChunkGenerator.SurfacePalette.defaultOverworld())
-                        : EarthChunkGenerator.SurfacePalette.podzolic()
-                  )
-            );
-         case 30 -> zoneHeight >= MountainSurfaceRules.SURFACE_ALPINE_HEIGHT_ABOVE_SEA && roll < 35
-            ? EarthChunkGenerator.SurfacePalette.gravelly()
-            : (
-               climateGroup == 2
-                  ? (roll < 65 ? EarthChunkGenerator.SurfacePalette.steppe() : EarthChunkGenerator.SurfacePalette.defaultOverworld())
-                  : (
-                     climateGroup != 4 && climateGroup != 5
-                        ? EarthChunkGenerator.SurfacePalette.defaultOverworld()
-                        : (roll < 40 ? EarthChunkGenerator.SurfacePalette.podzolic() : EarthChunkGenerator.SurfacePalette.defaultOverworld())
-                  )
-            );
-         case 40 -> climateGroup == 2
-            ? EarthChunkGenerator.SurfacePalette.steppe()
-            : (roll < 65 ? EarthChunkGenerator.SurfacePalette.rooted() : EarthChunkGenerator.SurfacePalette.defaultOverworld());
-         case 50 -> roll < 45 ? EarthChunkGenerator.SurfacePalette.gravelly() : EarthChunkGenerator.SurfacePalette.stonyPeaks();
-         case 60 -> zoneHeight >= MountainSurfaceRules.SURFACE_ALPINE_HEIGHT_ABOVE_SEA
-            ? EarthChunkGenerator.SurfacePalette.strata(12)
-            : (
-               climateGroup == 2
-                  ? (roll < 55
-                     ? EarthChunkGenerator.SurfacePalette.desert()
-                     : EarthChunkGenerator.SurfacePalette.badlands(badlandsPlateauTop(worldX, worldZ)))
-                  : (
-                     climateGroup != 4 && climateGroup != 5
-                        ? EarthChunkGenerator.SurfacePalette.gravelly()
-                        : (roll < 70 ? EarthChunkGenerator.SurfacePalette.gravelly() : EarthChunkGenerator.SurfacePalette.strata(12))
-                  )
-            );
-         case 70 -> EarthChunkGenerator.SurfacePalette.snowy();
-         case 90 -> roll < 40 ? EarthChunkGenerator.SurfacePalette.swamp() : EarthChunkGenerator.SurfacePalette.wetland();
-         case 95 -> EarthChunkGenerator.SurfacePalette.mangrove();
-         case 100 -> zoneHeight >= MountainSurfaceRules.SURFACE_ALPINE_HEIGHT_ABOVE_SEA && roll < 60
-            ? EarthChunkGenerator.SurfacePalette.strata(12)
-            : (roll < 35 ? EarthChunkGenerator.SurfacePalette.mossy() : EarthChunkGenerator.SurfacePalette.defaultOverworld());
-         default -> climateGroup != 4 && climateGroup != 5
-            ? EarthChunkGenerator.SurfacePalette.defaultOverworld()
-            : EarthChunkGenerator.SurfacePalette.podzolic();
+      return switch (TellusEarthSurfaceDecisionKernel.cover(coverClass, climateGroup, roll, zoneHeight)) {
+         case GRAVELLY -> EarthChunkGenerator.SurfacePalette.gravelly();
+         case STEPPE -> EarthChunkGenerator.SurfacePalette.steppe();
+         case DEFAULT_OVERWORLD -> EarthChunkGenerator.SurfacePalette.defaultOverworld();
+         case PODZOLIC -> EarthChunkGenerator.SurfacePalette.podzolic();
+         case ROOTED -> EarthChunkGenerator.SurfacePalette.rooted();
+         case STONY_PEAKS, STRATA -> EarthChunkGenerator.SurfacePalette.strata(12);
+         case DESERT -> EarthChunkGenerator.SurfacePalette.desert();
+         case BADLANDS -> EarthChunkGenerator.SurfacePalette.badlands(badlandsPlateauTop(worldX, worldZ));
+         case SNOWY -> EarthChunkGenerator.SurfacePalette.snowy();
+         case SWAMP -> EarthChunkGenerator.SurfacePalette.swamp();
+         case WETLAND -> EarthChunkGenerator.SurfacePalette.wetland();
+         case MANGROVE -> EarthChunkGenerator.SurfacePalette.mangrove();
+         case MOSSY -> EarthChunkGenerator.SurfacePalette.mossy();
+         default -> throw new IllegalStateException("unexpected cover Earth palette");
       };
    }
-
    private static int climateBasedBuiltUpCoverClass(Holder<Biome> biome) {
       if (biome == null) {
          return MountainSurfaceRules.ESA_GRASSLAND;
@@ -11641,8 +11593,7 @@ public final class EarthChunkGenerator extends TellusChunkGeneratorBridge implem
          return MountainSurfaceRules.ESA_GRASSLAND;
       }
    }
-
-   private static byte climateGroupForBiome(Holder<Biome> biome) {
+private static byte climateGroupForBiome(Holder<Biome> biome) {
       if (biome.is(Biomes.MANGROVE_SWAMP) || biome.is(BiomeTags.IS_JUNGLE) || biome.is(BiomeTags.IS_SAVANNA)) {
          return 1;
       } else if (biome.is(Biomes.DESERT) || biome.is(BiomeTags.IS_BADLANDS)) {

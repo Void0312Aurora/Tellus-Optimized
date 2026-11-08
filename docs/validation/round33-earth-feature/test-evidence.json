@@ -35,5 +35,10 @@
     "Earth source-backed complete palette and default callsites remain opt-in",
     "Feature and column writes are not yet one composite transaction",
     "save/reload and default lifecycle remain pending"
-  ]
+  ],
+  "nativeCallsite": {
+    "mc1201": "BUILD SUCCESSFUL: EarthCubeBiomeParityProbeTest, LodBiomeSnowTest, Earth kernels",
+    "mc1211": "BUILD SUCCESSFUL: EarthCubeBiomeParityProbeTest, Earth kernels, feature sink",
+    "behavior": "existing seven-case probe retained one known bare/BWh mismatch"
+  }
 }

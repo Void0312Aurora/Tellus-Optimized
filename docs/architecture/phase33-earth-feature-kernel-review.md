@@ -61,6 +61,12 @@ The following serial runs passed:
 
 Feature tests cover dynamic canonical chunk ownership, late mapper failure with zero mutations, throwing-cell rollback, wrong chunk/build-height no-write, terminal statuses and conflict handling. Earth tests cover native branch precedence, all roll/climate/alpine matrices, water-top conversion, filler-count conversion, legacy default preservation and non-Earth rejection.
 
+## Native Earth callsite integration
+
+The existing `EarthChunkGenerator.selectBaseSurfacePalette` and `coverDrivenSurfacePalette` now route their branch selection through `TellusEarthSurfaceDecisionKernel` while retaining the native palette constructors, biome predicates, random roll, mountain zone height, badlands plateau and grass/gravel fallback at the generator boundary. This is a behavior-preserving callsite migration rather than a new default generator mode: the kernel supplies the selected branch and the generator still owns Minecraft block states and source-backed special cases.
+
+The native callsite was compiled and tested in both target layers. The Earth/Cube biome probe preserved its existing seven-case observation, including the single known bare/BWh mismatch; the focused LodBiomeSnow and Earth kernel suites passed.
+
 ## Remaining gates
 
 - Wire the Earth surface kernel to a complete source-backed semantic palette, including biome-specific, badlands, slope, Overture and underwater variants.
