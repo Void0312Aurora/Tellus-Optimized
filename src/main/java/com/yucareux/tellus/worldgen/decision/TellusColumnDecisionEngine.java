@@ -15,6 +15,7 @@ import java.util.OptionalInt;
  */
 public final class TellusColumnDecisionEngine {
     private final Optional<TellusEarthBiomeDecisionKernel> earthBiomeKernel;
+    private final Optional<TellusEarthColumnDecisionKernel> earthColumnKernel;
     private final Optional<TellusSphericalDecisionKernel> sphericalKernel;
 
     public TellusColumnDecisionEngine() {
@@ -27,13 +28,22 @@ public final class TellusColumnDecisionEngine {
     }
 
     private TellusColumnDecisionEngine(Optional<TellusEarthBiomeDecisionKernel> earthBiomeKernel) {
-        this(earthBiomeKernel, Optional.empty());
+        this(earthBiomeKernel, Optional.empty(), Optional.empty());
     }
 
     private TellusColumnDecisionEngine(Optional<TellusEarthBiomeDecisionKernel> earthBiomeKernel,
+                                      Optional<TellusEarthColumnDecisionKernel> earthColumnKernel,
                                       Optional<TellusSphericalDecisionKernel> sphericalKernel) {
         this.earthBiomeKernel = Objects.requireNonNull(earthBiomeKernel, "earthBiomeKernel");
+        this.earthColumnKernel = Objects.requireNonNull(earthColumnKernel, "earthColumnKernel");
         this.sphericalKernel = Objects.requireNonNull(sphericalKernel, "sphericalKernel");
+    }
+
+    public static TellusColumnDecisionEngine withEarthProductionRules(
+        TellusEarthColumnDecisionKernel kernel
+    ) {
+        return new TellusColumnDecisionEngine(Optional.empty(),
+            Optional.of(Objects.requireNonNull(kernel, "kernel")), Optional.empty());
     }
 
     public static TellusColumnDecisionEngine withSphericalProductionRules(
@@ -43,7 +53,8 @@ public final class TellusColumnDecisionEngine {
     }
 
     public static TellusColumnDecisionEngine withSphericalProductionRules(TellusSphericalDecisionKernel kernel) {
-        return new TellusColumnDecisionEngine(Optional.empty(), Optional.of(Objects.requireNonNull(kernel, "kernel")));
+        return new TellusColumnDecisionEngine(Optional.empty(), Optional.empty(),
+            Optional.of(Objects.requireNonNull(kernel, "kernel")));
     }
 
     /** Explicit factory; default pipeline construction does not use this path. */
@@ -81,6 +92,9 @@ public final class TellusColumnDecisionEngine {
         }
         if (this.sphericalKernel.isPresent()) {
             return this.sphericalKernel.orElseThrow().decide(context, coordinate, sample);
+        }
+        if (this.earthColumnKernel.isPresent()) {
+            return this.earthColumnKernel.orElseThrow().decide(context, coordinate, sample, koppenCode);
         }
         if (sample.status() == SampleStatus.QUEUED) {
             return ColumnDecision.unavailable(coordinate, DecisionStatus.QUEUED, "sample queued");

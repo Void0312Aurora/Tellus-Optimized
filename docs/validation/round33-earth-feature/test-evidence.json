@@ -1,0 +1,39 @@
+{
+  "recordedAt": "2026-11-08T10:16:04.8127215Z",
+  "scope": "Round33 Earth surface/column kernels and version feature sinks",
+  "versions": [
+    {
+      "version": "mc1201",
+      "suites": 4,
+      "tests": 22,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "names": [
+        "com.yucareux.tellus.worldgen.decision.EarthSurfacePaletteTest",
+        "com.yucareux.tellus.worldgen.decision.TellusEarthColumnDecisionKernelTest",
+        "com.yucareux.tellus.worldgen.decision.TellusEarthSurfaceDecisionKernelTest",
+        "com.yucareux.tellus.worldgen.feature.TellusMinecraft1201FeaturePlacementSinkTest"
+      ]
+    },
+    {
+      "version": "mc1211",
+      "suites": 4,
+      "tests": 22,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "names": [
+        "com.yucareux.tellus.worldgen.decision.EarthSurfacePaletteTest",
+        "com.yucareux.tellus.worldgen.decision.TellusEarthColumnDecisionKernelTest",
+        "com.yucareux.tellus.worldgen.decision.TellusEarthSurfaceDecisionKernelTest",
+        "com.yucareux.tellus.worldgen.feature.TellusMinecraft1211FeaturePlacementSinkTest"
+      ]
+    }
+  ],
+  "limitations": [
+    "Earth source-backed complete palette and default callsites remain opt-in",
+    "Feature and column writes are not yet one composite transaction",
+    "save/reload and default lifecycle remain pending"
+  ]
+}
