@@ -57,6 +57,8 @@ class TellusMinecraft1201WriteAdapterTest {
     private static final TellusCoordinateContext CANONICAL = TellusCoordinateContextFactory.fromCubeNetCanonical(
         MODEL, CubeNetLayout.standard(MODEL.config().faceBlocks()),
         new CubeNetLayout.FacePoint(CubeNetLayout.Face.POS_X, 32.5, 48.5));
+    private static final CanonicalColumnPosition POSITION = CanonicalColumnPosition.resolve(
+        WriteContext.canonical(CANONICAL, GENERATION, "position-fixture"));
     private static Registry<Biome> BIOMES;
 
     @BeforeAll
@@ -103,18 +105,18 @@ class TellusMinecraft1201WriteAdapterTest {
     }
 
     @Test
-    void canonicalAdapterMapsTopCellAndAcceptsOpaqueInjectedMapper() {
+    void canonicalAdapterMapsColumnAndAcceptsOpaqueInjectedMapper() {
         TellusMinecraft1201CanonicalColumnAdapter defaultAdapter = new TellusMinecraft1201CanonicalColumnAdapter();
-        ProtoChunk chunk = new ProtoChunk(new ChunkPos(2, 3), UpgradeData.EMPTY,
+        ProtoChunk chunk = new ProtoChunk(new ChunkPos(Math.floorDiv(POSITION.x(), 16), Math.floorDiv(POSITION.z(), 16)), UpgradeData.EMPTY,
             LevelHeightAccessor.create(-64, 320), BIOMES, null);
         WriteContext context = WriteContext.canonical(CANONICAL, GENERATION, "canonical-test");
         WriteResult<BlockState> result = defaultAdapter.write(chunk, context, available(CANONICAL, 80));
 
         assertEquals(WriteStatus.WRITTEN, result.status());
-        assertEquals(1, result.mappedWrites().size());
+        assertEquals(145, result.mappedWrites().size());
         assertEquals(Blocks.STONE.defaultBlockState(), result.mappedWrites().get(0));
         assertEquals(Blocks.STONE.defaultBlockState(), chunk.getBlockState(
-            new net.minecraft.core.BlockPos(32, 80, 48)));
+            new net.minecraft.core.BlockPos(POSITION.x(), 80, POSITION.z())));
 
         AtomicInteger calls = new AtomicInteger();
         SemanticMapper<BlockState> opaque = (material, y, writeContext) -> {
@@ -123,15 +125,15 @@ class TellusMinecraft1201WriteAdapterTest {
         };
         TellusMinecraft1201CanonicalColumnAdapter injected =
             new TellusMinecraft1201CanonicalColumnAdapter(new TellusColumnMaterializer(), opaque);
-        ProtoChunk opaqueChunk = new ProtoChunk(new ChunkPos(2, 3), UpgradeData.EMPTY,
+        ProtoChunk opaqueChunk = new ProtoChunk(new ChunkPos(Math.floorDiv(POSITION.x(), 16), Math.floorDiv(POSITION.z(), 16)), UpgradeData.EMPTY,
             LevelHeightAccessor.create(-64, 320), BIOMES, null);
         WriteResult<BlockState> opaqueResult = injected.write(
             opaqueChunk, context, available(CANONICAL, 81));
 
         assertEquals(WriteStatus.WRITTEN, opaqueResult.status());
-        assertEquals(1, calls.get());
+        assertEquals(146, calls.get());
         assertEquals(Blocks.DIRT.defaultBlockState(), opaqueChunk.getBlockState(
-            new net.minecraft.core.BlockPos(32, 81, 48)));
+            new net.minecraft.core.BlockPos(POSITION.x(), 81, POSITION.z())));
         assertFalse(opaqueResult.mappedWrites().isEmpty());
     }
 

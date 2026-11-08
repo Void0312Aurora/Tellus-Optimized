@@ -1,0 +1,62 @@
+{
+  "recordedAt": "2026-11-08T06:57:44.686773+00:00",
+  "versions": {
+    "mc1201": {
+      "tests": 41,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "suites": [
+        "com.yucareux.tellus.worldgen.EarthCubeBiomeParityProbeTest",
+        "com.yucareux.tellus.worldgen.GeneratorConsistencyProbeTest",
+        "com.yucareux.tellus.worldgen.GeneratorParityProbeTest",
+        "com.yucareux.tellus.worldgen.TellusMinecraft1201MaterializerParityTest",
+        "com.yucareux.tellus.worldgen.write.CanonicalColumnPositionTest",
+        "com.yucareux.tellus.worldgen.write.StorageTransactionCoordinatorTest",
+        "com.yucareux.tellus.worldgen.write.TellusColumnMaterializerExpansionTest",
+        "com.yucareux.tellus.worldgen.write.TellusColumnWriteContractTest",
+        "com.yucareux.tellus.worldgen.write.TellusMinecraft1201CanonicalPipelineClassifierTest",
+        "com.yucareux.tellus.worldgen.write.TellusMinecraft1201CanonicalPipelineTest",
+        "com.yucareux.tellus.worldgen.write.TellusMinecraft1201ColumnExpansionTest",
+        "com.yucareux.tellus.worldgen.write.TellusMinecraft1201WriteAdapterTest"
+      ],
+      "observations": [
+        "[14:53:22] [Test worker/INFO]: [STDOUT]: BIOME_PROBE case=bare earth=minecraft:desert cube=minecraft:stony_peaks equal=false",
+        "[14:53:22] [Test worker/INFO]: [STDOUT]: BIOME_PROBE cases=7 mismatches=1",
+        "  [14:53:24] [Test worker/INFO]: [STDOUT]: CONSISTENCY_PROBE faces=6 locations=9 columns=13824 mismatchColumns=0 mismatchBlocks=0",
+        "  [14:53:24] [Test worker/INFO]: [STDOUT]: PARITY_PROBE canonicalColumns=256 mismatches=0 maxHeightDifference=0",
+        "  [14:53:25] [Test worker/INFO]: [STDOUT]: SEMANTIC_MATERIALIZER_PARITY columns=128 mismatchBlocks=0"
+      ]
+    },
+    "mc1211": {
+      "tests": 38,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "suites": [
+        "com.yucareux.tellus.worldgen.decision.TellusColumnDecisionContractTest",
+        "com.yucareux.tellus.worldgen.TellusMinecraft1211MaterializerParityTest",
+        "com.yucareux.tellus.worldgen.write.CanonicalColumnPositionTest",
+        "com.yucareux.tellus.worldgen.write.StorageTransactionCoordinatorTest",
+        "com.yucareux.tellus.worldgen.write.TellusColumnMaterializerExpansionTest",
+        "com.yucareux.tellus.worldgen.write.TellusColumnWriteContractTest",
+        "com.yucareux.tellus.worldgen.write.TellusMinecraft1211CanonicalPipelineClassifierTest",
+        "com.yucareux.tellus.worldgen.write.TellusMinecraft1211ColumnExpansionTest",
+        "com.yucareux.tellus.worldgen.write.TellusMinecraft1211WriteAdapterTest"
+      ],
+      "observations": [
+        "  [14:54:35] [Test worker/INFO]: [STDOUT]: SEMANTIC_MATERIALIZER_PARITY columns=128 mismatchBlocks=0"
+      ]
+    }
+  },
+  "scope": "selected opt-in writer/materializer tests; no default generator or persistent storage migration",
+  "sourceSha256": {
+    "src/main/java/com/yucareux/tellus/worldgen/write/TellusColumnMaterializer.java": "3fbce2fc1f056a8b09f1c303545b3f29ed468a03835106b7b9f901c81be788fb",
+    "src/main/java/com/yucareux/tellus/worldgen/write/SemanticColumnCell.java": "e498f46b2b52dbba130ba0b16098d755bd0a4e7d9980e0af2d42ab0814645c13",
+    "src/main/java/com/yucareux/tellus/worldgen/write/CanonicalColumnPosition.java": "9b326b51284d35a677b8da6754b1d986531dce327eb936b3e63f75b4b75b1f73",
+    "shared/mc1201/src/main/java/com/yucareux/tellus/worldgen/write/TellusMinecraft1201CanonicalColumnAdapter.java": "5c31a318cf617c9cbb53aa194f55657189d384dd0052d256e7c35810dc6daa52",
+    "shared/mc1201/src/main/java/com/yucareux/tellus/worldgen/write/TellusMinecraft1201ColumnWriter.java": "f4eeb7fd6963e8139162bdee7fd5920b92acf6590e7a7e4629641c5045614c4a",
+    "shared/mc1211/src/main/java/com/yucareux/tellus/worldgen/write/TellusMinecraft1211CanonicalColumnAdapter.java": "a2707214dfdf8e56d35fe8c1f0410d3fb2f7353bb10663f27967a237b00f08ac",
+    "shared/mc1211/src/main/java/com/yucareux/tellus/worldgen/write/TellusMinecraft1211ColumnWriter.java": "e73174e58b162a59455f4d32eaba512e8bb60cb48278f1a3b11cf28e3851bfe6"
+  }
+}

@@ -3,7 +3,7 @@ package com.yucareux.tellus.worldgen.decision;
 import java.util.List;
 import java.util.Objects;
 
-/** Immutable semantic underground layering, independent of Minecraft states. */
+/** Immutable semantic underground layering; each layer includes both Y endpoints. */
 public record StrataDecision(List<Layer> layers, boolean known) {
     public record Layer(int minimumY, int maximumY, SemanticMaterial material) {
         public Layer {

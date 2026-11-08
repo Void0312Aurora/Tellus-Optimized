@@ -2,7 +2,12 @@ package com.yucareux.tellus.worldgen.decision;
 
 import java.util.Objects;
 
-/** Immutable semantic surface layering for one column. */
+/**
+ * Immutable semantic surface layering for one column.
+ * Depth counts filler cells below the top, following the native spherical path.
+ * Earth palettes retain their original total-thickness depth and require explicit
+ * conversion before being used as a SurfaceDecision.
+ */
 public record SurfaceDecision(
     SemanticMaterial top,
     SemanticMaterial filler,

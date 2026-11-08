@@ -1,5 +1,7 @@
 # Tellus Phase 12 mc1211 Column Pipeline 审阅
 
+> 2026-11-08 Round 30 更新：本文记录的是早期只写 top cell 的历史边界。当前 Materializer/Writer 已实现带 Y 坐标的完整已知层展开、实际平面/居中球面坐标、全量预映射和失败还原。以下 top-cell-only 描述由 `phase30-column-expansion-review.md` 中的新证据取代；默认 generator/lifecycle/storage 仍未迁移。
+
 > 审阅对象：task-89 的 Minecraft 1.21.1 canonical column pipeline、adapter、writer与 mapper。
 >
 > 审阅任务：task-90。

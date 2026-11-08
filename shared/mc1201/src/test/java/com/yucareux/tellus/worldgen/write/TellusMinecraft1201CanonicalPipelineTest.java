@@ -62,6 +62,8 @@ class TellusMinecraft1201CanonicalPipelineTest {
     private static final TellusCoordinateContext CANONICAL = TellusCoordinateContextFactory.fromCubeNetCanonical(
         MODEL, CubeNetLayout.standard(MODEL.config().faceBlocks()),
         new CubeNetLayout.FacePoint(CubeNetLayout.Face.POS_X, 32.5, 48.5));
+    private static final CanonicalColumnPosition POSITION = CanonicalColumnPosition.resolve(
+        WriteContext.canonical(CANONICAL, GENERATION, "position-fixture"));
     private static Registry<Biome> BIOMES;
 
     @BeforeAll
@@ -138,7 +140,7 @@ class TellusMinecraft1201CanonicalPipelineTest {
         TellusMinecraft1201CanonicalPipeline pipeline = new TellusMinecraft1201CanonicalPipeline(
             true, provider, new TellusColumnDecisionEngine(), planner,
             new TellusColumnMaterializer(), mapper);
-        ProtoChunk target = new ProtoChunk(new ChunkPos(2, 3), UpgradeData.EMPTY,
+        ProtoChunk target = new ProtoChunk(new ChunkPos(Math.floorDiv(POSITION.x(), 16), Math.floorDiv(POSITION.z(), 16)), UpgradeData.EMPTY,
             LevelHeightAccessor.create(-64, 320), BIOMES, null);
         WriteContext context = WriteContext.canonical(CANONICAL, GENERATION, "pipeline-order");
 
@@ -147,9 +149,10 @@ class TellusMinecraft1201CanonicalPipelineTest {
             request(SamplingResolution.exact(SCALE), 4L, CANONICAL));
 
         assertEquals(WriteStatus.WRITTEN, result.status());
-        assertEquals(List.of("sample", "feature", "mapper"), order);
+        assertEquals(List.of("sample", "feature"), order.subList(0, 2));
+        assertEquals(229, order.stream().filter("mapper"::equals).count());
         assertEquals(Blocks.DIRT.defaultBlockState(), target.getBlockState(
-            new net.minecraft.core.BlockPos(32, 164, 48)));
+            new net.minecraft.core.BlockPos(POSITION.x(), 164, POSITION.z())));
     }
 
     private static TellusSampleProvider provider(Function<TellusSampleRequest, TellusSample> sampler) {

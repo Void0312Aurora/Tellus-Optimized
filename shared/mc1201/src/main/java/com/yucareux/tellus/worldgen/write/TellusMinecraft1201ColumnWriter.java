@@ -1,31 +1,38 @@
 package com.yucareux.tellus.worldgen.write;
 
 import com.yucareux.tellus.worldgen.decision.ColumnDecision;
+import com.yucareux.tellus.worldgen.global.SphereWorldModel;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.ChunkAccess;
 
-/**
- * Isolated 1.20.1 sink-backed writer. It is not registered with any generator
- * or lifecycle. The adapter's terminal guards run before the sink is touched.
- */
+/** Isolated 1.20.1 sink-backed writer; no generator or lifecycle registration. */
 public final class TellusMinecraft1201ColumnWriter implements TellusColumnWriter<BlockState> {
    private final ChunkAccess target;
-   private final TellusColumnMaterializer guard;
+   private final TellusColumnMaterializer materializer;
+   private final SphereWorldModel model;
 
    public TellusMinecraft1201ColumnWriter(ChunkAccess target) {
       this(target, new TellusColumnMaterializer());
    }
 
-   public TellusMinecraft1201ColumnWriter(ChunkAccess target, TellusColumnMaterializer guard) {
+   public TellusMinecraft1201ColumnWriter(ChunkAccess target, TellusColumnMaterializer materializer) {
+      this(target, materializer, null);
+   }
+
+   /** Uses an explicitly supplied model for custom face sizes. */
+   public TellusMinecraft1201ColumnWriter(
+      ChunkAccess target, TellusColumnMaterializer materializer, SphereWorldModel model
+   ) {
       this.target = target;
-      this.guard = java.util.Objects.requireNonNull(guard, "guard");
+      this.materializer = java.util.Objects.requireNonNull(materializer, "materializer");
+      this.model = model;
    }
 
    @Override
    public WriteResult<BlockState> write(
       WriteContext context, ColumnDecision decision, SemanticMapper<BlockState> mapper
    ) {
-      return new TellusMinecraft1201CanonicalColumnAdapter(this.guard, mapper)
+      return new TellusMinecraft1201CanonicalColumnAdapter(this.materializer, mapper, this.model)
          .write(this.target, context, decision);
    }
 }

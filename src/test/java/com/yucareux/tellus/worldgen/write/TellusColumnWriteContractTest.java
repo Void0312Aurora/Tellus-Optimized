@@ -100,7 +100,7 @@ class TellusColumnWriteContractTest {
         WriteResult<SemanticMaterial> second = materializer.materialize(canonicalContext, canonicalDecision);
         assertEquals(WriteStatus.WRITTEN, first.status());
         assertEquals(first, second);
-        assertTrue(first.mappedWrites().isEmpty());
+        assertEquals(145, first.mappedWrites().size());
 
         ImmutableTellusCoordinateContext apron = findApronContext().orElseThrow();
         WriteContext mirrorContext = WriteContext.apronMirror(
@@ -112,7 +112,7 @@ class TellusColumnWriteContractTest {
         WriteResult<SemanticMaterial> mirror = materializer.materialize(
             mirrorContext, canonicalDecision);
         assertEquals(WriteStatus.WRITTEN, mirror.status());
-        assertTrue(mirror.mappedWrites().isEmpty());
+        assertEquals(first.mappedWrites(), mirror.mappedWrites());
         assertNotNull(mirror.diagnostics());
     }
 
