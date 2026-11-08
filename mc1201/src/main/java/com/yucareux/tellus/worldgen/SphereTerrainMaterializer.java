@@ -4,6 +4,7 @@ import com.yucareux.tellus.world.data.geology.Lithology;
 import com.yucareux.tellus.world.data.geology.MapUnit;
 import com.yucareux.tellus.worldgen.global.SphereChunkSampler;
 import com.yucareux.tellus.worldgen.global.SphereColumnContext;
+import com.yucareux.tellus.worldgen.decision.TellusSphericalColumnRules;
 import com.yucareux.tellus.worldgen.global.SphereWorldModel;
 import java.util.EnumSet;
 import java.util.Objects;
@@ -137,7 +138,7 @@ public final class SphereTerrainMaterializer {
       Objects.requireNonNull(column, "column");
       ColumnPlan base = this.plan(column.surface(), minY, maxY);
       CubeNetSurfacePolicy.Decision surface = surfaceResolver == null
-         ? CubeNetSurfacePolicy.resolve(column.point(), column.surface(), this.worldScale, this.worldSeed)
+         ? TellusSphericalColumnRules.surface(column, this.worldScale, this.worldSeed)
          : Objects.requireNonNull(surfaceResolver.resolve(column), "surfaceDecision");
       Palette palette = palette(surface);
       base = new ColumnPlan(base.surfaceY(), base.waterY(), palette.top(), palette.filler(),
@@ -147,15 +148,7 @@ public final class SphereTerrainMaterializer {
    }
 
    private StrataPolicy.Column strata(SphereColumnContext column) {
-      SphereChunkSampler.SurfaceData.GeologyData geology = column.surface().geology();
-      if (geology == null || !column.surface().elevationAvailable()) return null;
-      SphereWorldModel.GeoPoint point = column.point();
-      boolean arid = column.surface().coverClass() == 60;
-      MapUnit unit = geology.mapUnit();
-      Lithology lithology = geology.lithology();
-      return unit != null
-         ? StrataPolicy.sphericalColumn(unit, point, this.worldScale, this.seaLevel, this.worldSeed)
-         : StrataPolicy.sphericalColumn(lithology, arid, point, this.worldScale, this.seaLevel, this.worldSeed);
+      return TellusSphericalColumnRules.strata(column, this.worldScale, this.seaLevel, this.worldSeed);
    }
 
    /** Exact run lengths of the native column, including bedrock and sky air. */
@@ -182,16 +175,8 @@ public final class SphereTerrainMaterializer {
 
    /** No Mercator sec(latitude) correction: these are radial physical metres. */
    public int height(double elevationMeters) {
-      if (!Double.isFinite(elevationMeters)) throw new IllegalArgumentException("elevation must be finite");
-      double scaled = elevationMeters >= 0.0
-         ? elevationMeters * this.terrestrialHeightScale
-         : elevationMeters * this.oceanicHeightScale;
-      double blocks = scaled / this.worldScale;
-      double height = this.seaLevel + (scaled >= 0.0 ? Math.ceil(blocks) : Math.floor(blocks));
-      if (height < Integer.MIN_VALUE || height > Integer.MAX_VALUE || !Double.isFinite(height)) {
-         throw new IllegalArgumentException("elevation exceeds supported block heights");
-      }
-      return (int)height;
+      return TellusSphericalColumnRules.height(elevationMeters, this.worldScale, this.seaLevel,
+         this.terrestrialHeightScale, this.oceanicHeightScale);
    }
 
    static Palette palette(int coverClass) {

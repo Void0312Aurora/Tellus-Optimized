@@ -11,7 +11,8 @@ public record TellusSample(
     TellusCoverSample cover,
     TellusWaterSample water,
     TellusSampleProvenance provenance,
-    Optional<TellusClimateSample> climate
+    Optional<TellusClimateSample> climate,
+    Optional<TellusSphericalSurfaceSnapshot> sphericalSurface
 ) {
     public TellusSample {
         Objects.requireNonNull(request, "request");
@@ -21,8 +22,28 @@ public record TellusSample(
         Objects.requireNonNull(water, "water");
         Objects.requireNonNull(provenance, "provenance");
         climate = Objects.requireNonNull(climate, "climate");
+        sphericalSurface = Objects.requireNonNull(sphericalSurface, "sphericalSurface");
         TellusSampleConsistencyValidator.validate(
             request, status, elevation, cover, water, provenance);
+        if (sphericalSurface.isPresent()) {
+            var surface = sphericalSurface.orElseThrow().surface();
+            var owner = request.coordinate().owner().kind();
+            if (owner == com.yucareux.tellus.worldgen.global.GeneratorOwner.EARTH_PROJECTED
+                || status != SampleStatus.AVAILABLE || !surface.elevationAvailable()
+                || Double.compare(surface.elevationMeters(), elevation.metres()) != 0
+                || surface.coverClass() != cover.rawClass() || surface.coverClass() != cover.visualClass()
+                || surface.waterAvailable() != water.hasWater()
+                || surface.waterAvailable() && (Double.compare(surface.waterSurfaceMeters(), water.surfaceMetres()) != 0
+                    || surface.oceanWater() != water.ocean())) {
+                throw new IllegalArgumentException("spherical surface snapshot does not match sample fields/owner");
+            }
+        }
+    }
+
+    public TellusSample(TellusSampleRequest request, SampleStatus status, TellusElevationSample elevation,
+                        TellusCoverSample cover, TellusWaterSample water, TellusSampleProvenance provenance,
+                        Optional<TellusClimateSample> climate) {
+        this(request, status, elevation, cover, water, provenance, climate, Optional.empty());
     }
 
     public TellusSample(

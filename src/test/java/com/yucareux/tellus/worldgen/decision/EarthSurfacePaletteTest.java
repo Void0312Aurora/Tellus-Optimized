@@ -33,6 +33,9 @@ class EarthSurfacePaletteTest {
         assertTrue(palette.flags().badlands());
         assertTrue(palette.flags().builtUp());
         assertTrue(palette.flags().randomBiomes());
+        assertEquals(palette, EarthSurfacePaletteAdapter.fromSurfaceDecision(
+            EarthSurfacePaletteAdapter.toSurfaceDecision(palette),
+            palette.underwaterTop(), palette.strata(), palette.flags()));
     }
 
     @Test
@@ -43,6 +46,7 @@ class EarthSurfacePaletteTest {
             decision, SemanticMaterial.RED_SAND, false,
             new EarthSurfacePalette.Flags(false, true, false, false, true));
 
+        assertEquals(6, palette.depth());
         assertEquals(decision, EarthSurfacePaletteAdapter.toSurfaceDecision(palette));
         assertEquals(SemanticMaterial.RED_SAND, palette.underwaterTop());
         assertFalse(palette.strata());
@@ -54,8 +58,43 @@ class EarthSurfacePaletteTest {
         assertEquals(SurfaceDecision.defaultStone(),
             EarthSurfacePaletteAdapter.toSurfaceDecision(
                 new EarthSurfacePalette(SemanticMaterial.STONE, SemanticMaterial.STONE,
-                    SemanticMaterial.STONE, 3, SurfaceForm.NONE, false,
+                    SemanticMaterial.STONE, 4, SurfaceForm.NONE, false,
                     EarthSurfacePalette.Flags.none())));
+    }
+
+    @Test
+    void earthTopOnlyPaletteProjectsToZeroFillers() {
+        EarthSurfacePalette palette = new EarthSurfacePalette(
+            SemanticMaterial.GRASS, SemanticMaterial.MUD, SemanticMaterial.DIRT,
+            1, SurfaceForm.RIDGE, true, EarthSurfacePalette.Flags.none());
+
+        assertEquals(new SurfaceDecision(
+            SemanticMaterial.GRASS, SemanticMaterial.DIRT, 0, SurfaceForm.RIDGE),
+            EarthSurfacePaletteAdapter.toSurfaceDecision(palette));
+    }
+
+    @Test
+    void zeroFillersExpandToEarthTopOnlyPalette() {
+        SurfaceDecision decision = new SurfaceDecision(
+            SemanticMaterial.GRASS, SemanticMaterial.DIRT, 0, SurfaceForm.RIDGE);
+        EarthSurfacePalette.Flags flags = new EarthSurfacePalette.Flags(true, false, true, false, true);
+
+        EarthSurfacePalette palette = EarthSurfacePaletteAdapter.fromSurfaceDecision(
+            decision, SemanticMaterial.MUD, true, flags);
+
+        assertEquals(new EarthSurfacePalette(
+            SemanticMaterial.GRASS, SemanticMaterial.MUD, SemanticMaterial.DIRT,
+            1, SurfaceForm.RIDGE, true, flags), palette);
+        assertEquals(decision, EarthSurfacePaletteAdapter.toSurfaceDecision(palette));
+    }
+
+    @Test
+    void semanticDepthOverflowFailsExplicitly() {
+        SurfaceDecision decision = new SurfaceDecision(
+            SemanticMaterial.STONE, SemanticMaterial.STONE, Integer.MAX_VALUE, SurfaceForm.NONE);
+
+        assertThrows(ArithmeticException.class, () -> EarthSurfacePaletteAdapter.fromSurfaceDecision(
+            decision, SemanticMaterial.STONE, false, EarthSurfacePalette.Flags.none()));
     }
 
     @Test

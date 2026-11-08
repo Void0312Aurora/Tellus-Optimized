@@ -42,6 +42,18 @@ public final class TellusMinecraft1201SemanticMapper implements SemanticMapper<B
          case WATER -> Blocks.WATER;
          case TERRACOTTA -> Blocks.TERRACOTTA;
          case RED_SAND -> Blocks.RED_SAND;
+         case GRANITE -> Blocks.GRANITE;
+         case CALCITE -> Blocks.CALCITE;
+         case TUFF -> Blocks.TUFF;
+         case BASALT -> Blocks.BASALT;
+         case SMOOTH_BASALT -> Blocks.SMOOTH_BASALT;
+         case BLACKSTONE -> Blocks.BLACKSTONE;
+         case SMOOTH_SANDSTONE -> Blocks.SMOOTH_SANDSTONE;
+         case RED_SANDSTONE -> Blocks.RED_SANDSTONE;
+         case WHITE_TERRACOTTA -> Blocks.WHITE_TERRACOTTA;
+         case LIGHT_GRAY_TERRACOTTA -> Blocks.LIGHT_GRAY_TERRACOTTA;
+         case RED_TERRACOTTA -> Blocks.RED_TERRACOTTA;
+         case ORANGE_TERRACOTTA -> Blocks.ORANGE_TERRACOTTA;
          case UNKNOWN -> throw new IllegalArgumentException("UNKNOWN material cannot be mapped");
       };
    }

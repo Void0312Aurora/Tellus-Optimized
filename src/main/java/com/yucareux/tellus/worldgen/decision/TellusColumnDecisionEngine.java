@@ -15,6 +15,7 @@ import java.util.OptionalInt;
  */
 public final class TellusColumnDecisionEngine {
     private final Optional<TellusEarthBiomeDecisionKernel> earthBiomeKernel;
+    private final Optional<TellusSphericalDecisionKernel> sphericalKernel;
 
     public TellusColumnDecisionEngine() {
         this(Optional.empty());
@@ -26,7 +27,23 @@ public final class TellusColumnDecisionEngine {
     }
 
     private TellusColumnDecisionEngine(Optional<TellusEarthBiomeDecisionKernel> earthBiomeKernel) {
+        this(earthBiomeKernel, Optional.empty());
+    }
+
+    private TellusColumnDecisionEngine(Optional<TellusEarthBiomeDecisionKernel> earthBiomeKernel,
+                                      Optional<TellusSphericalDecisionKernel> sphericalKernel) {
         this.earthBiomeKernel = Objects.requireNonNull(earthBiomeKernel, "earthBiomeKernel");
+        this.sphericalKernel = Objects.requireNonNull(sphericalKernel, "sphericalKernel");
+    }
+
+    public static TellusColumnDecisionEngine withSphericalProductionRules(
+        TellusSphericalDecisionKernel.Settings settings
+    ) {
+        return withSphericalProductionRules(new TellusSphericalDecisionKernel(settings));
+    }
+
+    public static TellusColumnDecisionEngine withSphericalProductionRules(TellusSphericalDecisionKernel kernel) {
+        return new TellusColumnDecisionEngine(Optional.empty(), Optional.of(Objects.requireNonNull(kernel, "kernel")));
     }
 
     /** Explicit factory; default pipeline construction does not use this path. */
@@ -61,6 +78,9 @@ public final class TellusColumnDecisionEngine {
         }
         if (!context.geometry().equals(sample.request().geometry())) {
             throw new IllegalArgumentException("sample geometry does not match generation context");
+        }
+        if (this.sphericalKernel.isPresent()) {
+            return this.sphericalKernel.orElseThrow().decide(context, coordinate, sample);
         }
         if (sample.status() == SampleStatus.QUEUED) {
             return ColumnDecision.unavailable(coordinate, DecisionStatus.QUEUED, "sample queued");

@@ -1,0 +1,97 @@
+{
+  "recordedAt": "2026-11-08T07:37:24.698259+00:00",
+  "versions": {
+    "mc1201": {
+      "tests": 110,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "suites": [
+        "com.yucareux.tellus.worldgen.decision.CubeNetSurfaceDecisionAdapterTest",
+        "com.yucareux.tellus.worldgen.decision.EarthSurfacePaletteTest",
+        "com.yucareux.tellus.worldgen.decision.TellusBiomeDecisionAdapterTest",
+        "com.yucareux.tellus.worldgen.decision.TellusColumnDecisionContractTest",
+        "com.yucareux.tellus.worldgen.decision.TellusColumnDecisionEarthOptInTest",
+        "com.yucareux.tellus.worldgen.decision.TellusColumnPipelineContractTest",
+        "com.yucareux.tellus.worldgen.decision.TellusEarthBiomeClassifierAdapterTest",
+        "com.yucareux.tellus.worldgen.decision.TellusEarthBiomeDecisionKernelTest",
+        "com.yucareux.tellus.worldgen.decision.TellusSphericalDecisionKernelTest",
+        "com.yucareux.tellus.worldgen.EarthCubeBiomeParityProbeTest",
+        "com.yucareux.tellus.worldgen.GeneratorConsistencyProbeTest",
+        "com.yucareux.tellus.worldgen.sample.TellusClimateSampleContractTest",
+        "com.yucareux.tellus.worldgen.sample.TellusSampleContractTest",
+        "com.yucareux.tellus.worldgen.sample.TellusSphericalSampleProviderTest",
+        "com.yucareux.tellus.worldgen.SphereTerrainMaterializerTest",
+        "com.yucareux.tellus.worldgen.TellusMinecraft1201MaterializerParityTest",
+        "com.yucareux.tellus.worldgen.TellusMinecraft1201SphericalKernelParityTest",
+        "com.yucareux.tellus.worldgen.write.CanonicalColumnPositionTest",
+        "com.yucareux.tellus.worldgen.write.StorageTransactionCoordinatorTest",
+        "com.yucareux.tellus.worldgen.write.TellusColumnMaterializerExpansionTest",
+        "com.yucareux.tellus.worldgen.write.TellusColumnWriteContractTest",
+        "com.yucareux.tellus.worldgen.write.TellusMinecraft1201CanonicalPipelineClassifierTest",
+        "com.yucareux.tellus.worldgen.write.TellusMinecraft1201CanonicalPipelineTest",
+        "com.yucareux.tellus.worldgen.write.TellusMinecraft1201ColumnExpansionTest",
+        "com.yucareux.tellus.worldgen.write.TellusMinecraft1201WriteAdapterTest"
+      ],
+      "observations": [
+        "[15:31:50] [Test worker/INFO]: [STDOUT]: BIOME_PROBE case=bare earth=minecraft:desert cube=minecraft:stony_peaks equal=false",
+        "[15:31:51] [Test worker/INFO]: [STDOUT]: BIOME_PROBE cases=7 mismatches=1",
+        "  [15:31:55] [Test worker/INFO]: [STDOUT]: CONSISTENCY_PROBE faces=6 locations=9 columns=13824 mismatchColumns=0 mismatchBlocks=0",
+        "  [15:31:56] [Test worker/INFO]: [STDOUT]: SEMANTIC_MATERIALIZER_PARITY columns=128 mismatchBlocks=0",
+        "  [15:31:58] [Test worker/INFO]: [STDOUT]: SPHERICAL_KERNEL_PARITY columns=1176 mismatchBlocks=0"
+      ]
+    },
+    "mc1211": {
+      "tests": 102,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "suites": [
+        "com.yucareux.tellus.worldgen.decision.CubeNetSurfaceDecisionAdapterTest",
+        "com.yucareux.tellus.worldgen.decision.EarthSurfacePaletteTest",
+        "com.yucareux.tellus.worldgen.decision.TellusBiomeDecisionAdapterTest",
+        "com.yucareux.tellus.worldgen.decision.TellusColumnDecisionContractTest",
+        "com.yucareux.tellus.worldgen.decision.TellusColumnDecisionEarthOptInTest",
+        "com.yucareux.tellus.worldgen.decision.TellusColumnPipelineContractTest",
+        "com.yucareux.tellus.worldgen.decision.TellusEarthBiomeClassifierAdapterTest",
+        "com.yucareux.tellus.worldgen.decision.TellusEarthBiomeDecisionKernelTest",
+        "com.yucareux.tellus.worldgen.decision.TellusSphericalDecisionKernelTest",
+        "com.yucareux.tellus.worldgen.sample.TellusClimateSampleContractTest",
+        "com.yucareux.tellus.worldgen.sample.TellusSampleContractTest",
+        "com.yucareux.tellus.worldgen.sample.TellusSphericalSampleProviderTest",
+        "com.yucareux.tellus.worldgen.TellusMinecraft1211MaterializerParityTest",
+        "com.yucareux.tellus.worldgen.TellusMinecraft1211SphericalKernelParityTest",
+        "com.yucareux.tellus.worldgen.write.CanonicalColumnPositionTest",
+        "com.yucareux.tellus.worldgen.write.StorageTransactionCoordinatorTest",
+        "com.yucareux.tellus.worldgen.write.TellusColumnMaterializerExpansionTest",
+        "com.yucareux.tellus.worldgen.write.TellusColumnWriteContractTest",
+        "com.yucareux.tellus.worldgen.write.TellusMinecraft1211CanonicalPipelineClassifierTest",
+        "com.yucareux.tellus.worldgen.write.TellusMinecraft1211ColumnExpansionTest",
+        "com.yucareux.tellus.worldgen.write.TellusMinecraft1211WriteAdapterTest"
+      ],
+      "observations": [
+        "  [15:34:48] [Test worker/INFO]: [STDOUT]: SEMANTIC_MATERIALIZER_PARITY columns=128 mismatchBlocks=0",
+        "  [15:34:51] [Test worker/INFO]: [STDOUT]: SPHERICAL_KERNEL_PARITY columns=1176 mismatchBlocks=0"
+      ]
+    }
+  },
+  "scope": "full spherical-base production snapshot to semantic kernel to real chunk writes; native delegates height/surface/geology helpers; no default semantic pipeline activation",
+  "sourceSha256": {
+    "src/main/java/com/yucareux/tellus/worldgen/decision/TellusSphericalColumnRules.java": "da007cf5efcf101f0b462d52691ca2232db263aec75e5b1a99680a0a8f41a458",
+    "src/main/java/com/yucareux/tellus/worldgen/decision/TellusSphericalDecisionKernel.java": "17ac646f5ee80a2e501705c114ff35c988f76171d98aa5062d23f2f0c0d472f1",
+    "src/main/java/com/yucareux/tellus/worldgen/decision/TellusColumnDecisionEngine.java": "d0a5fe0aa3979d64bc41bdb9850b8a2b8a720d41beaf2c866e1e39b51e6a76a6",
+    "src/main/java/com/yucareux/tellus/worldgen/decision/EarthSurfacePaletteAdapter.java": "c509ce7ee04f1041d0c6f4e6470d47d6ce3e9227f4bd7fb23576178b65604f27",
+    "src/main/java/com/yucareux/tellus/worldgen/decision/SemanticMaterial.java": "dcef34e64b758cdd8c3d27c4ee2881b8fac687bfa184105318300237f4f2972d",
+    "src/main/java/com/yucareux/tellus/worldgen/sample/TellusSample.java": "f70e14d67228e76bfbc7b8ab99f54101f53e9f3cbf00dbedd1c26756c5344baa",
+    "src/main/java/com/yucareux/tellus/worldgen/sample/TellusSphericalSurfaceSnapshot.java": "de1f1324d0f103198fa84d869aec17c2077cb625bfe12c26310e20dac0f71202",
+    "src/main/java/com/yucareux/tellus/worldgen/sample/TellusSphericalSampleProvider.java": "ee50b7cf86dcde7fe1c25b0605ec9c096b26ce5ddb2420c082ebef60c3beead2",
+    "mc1201/src/main/java/com/yucareux/tellus/worldgen/SphereTerrainMaterializer.java": "be5c783eb5a8971a3a04cc2d4014640281303934bc170b91985e23e4d20ba004",
+    "shared/mc1211/src/main/java/com/yucareux/tellus/worldgen/SphereTerrainMaterializer.java": "f88e229bc8f9c64261194f7ca96e2124c36e77141ed4e0a2f81206116b358a33"
+  },
+  "limits": [
+    "base spherical surface policy only; Cube-Net Earth-equivalent callback and biome classification remain outside the generic kernel",
+    "native height/surface/geology share production helpers with the kernel; fixed numeric boundary tests additionally cover height rounding",
+    "fixtures are deterministic and do not establish GIS coverage or live server lifecycle behavior",
+    "real world save/reload backend and FeaturePlan integration remain pending"
+  ]
+}

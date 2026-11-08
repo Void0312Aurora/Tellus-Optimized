@@ -19,6 +19,7 @@ public final class TellusSphericalSampleProvider implements TellusSampleProvider
     private final Route route;
     private final TellusSampleProvider delegate;
     private final SphereChunkSampler sampler;
+    private final boolean resolveProductionSurface;
 
     public TellusSphericalSampleProvider(
         String providerId, Route route, TellusSampleProvider delegate
@@ -27,15 +28,31 @@ public final class TellusSphericalSampleProvider implements TellusSampleProvider
         this.route = Objects.requireNonNull(route, "route");
         this.delegate = Objects.requireNonNull(delegate, "delegate");
         this.sampler = null;
+        this.resolveProductionSurface = false;
     }
 
     public TellusSphericalSampleProvider(
         String providerId, Route route, SphereChunkSampler sampler
     ) {
+        this(providerId, route, sampler, false);
+    }
+
+    private TellusSphericalSampleProvider(
+        String providerId, Route route, SphereChunkSampler sampler, boolean resolveProductionSurface
+    ) {
         this.providerId = requireText(providerId, "providerId");
         this.route = Objects.requireNonNull(route, "route");
         this.delegate = null;
         this.sampler = Objects.requireNonNull(sampler, "sampler");
+        this.resolveProductionSurface = resolveProductionSurface;
+    }
+
+    public static TellusSphericalSampleProvider forCubeNetProduction(SphereChunkSampler sampler) {
+        return new TellusSphericalSampleProvider("tellus:cube-net-production", Route.CUBE_NET, sampler, true);
+    }
+
+    public static TellusSphericalSampleProvider forSphereFaceProduction(SphereChunkSampler sampler) {
+        return new TellusSphericalSampleProvider("tellus:sphere-face-production", Route.SPHERE_FACE, sampler, true);
     }
 
     public static TellusSphericalSampleProvider forCubeNet(TellusSampleProvider delegate) {
@@ -97,12 +114,17 @@ public final class TellusSphericalSampleProvider implements TellusSampleProvider
         TellusWaterSample water = data.waterAvailable()
             ? new TellusWaterSample(SampleStatus.AVAILABLE, true, data.oceanWater(), data.waterSurfaceMeters())
             : TellusWaterSample.dry();
+        TellusSphericalSurfaceSnapshot snapshot = this.resolveProductionSurface
+            ? TellusSphericalSurfaceSnapshot.resolved(data,
+                com.yucareux.tellus.worldgen.CubeNetSurfacePolicy.resolve(request.coordinate().geo(), data,
+                    request.geometry().worldScale(), request.cacheKey().worldSeed()))
+            : TellusSphericalSurfaceSnapshot.raw(data);
         return new TellusSample(request, SampleStatus.AVAILABLE,
             new TellusElevationSample(SampleStatus.AVAILABLE, data.elevationMeters()),
             new TellusCoverSample(SampleStatus.AVAILABLE, data.coverClass(), data.coverClass()),
             water,
             TellusSampleProvenance.snapshot(this.providerId, "injected-spherical-v1", false,
-                "injected SphereChunkSampler SurfaceData"));
+                "injected SphereChunkSampler SurfaceData"), java.util.Optional.empty(), java.util.Optional.of(snapshot));
     }
 
     private boolean supports(GeneratorOwner owner) {

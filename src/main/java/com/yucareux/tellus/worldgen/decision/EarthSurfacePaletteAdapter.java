@@ -9,7 +9,8 @@ public final class EarthSurfacePaletteAdapter {
 
     /**
      * Expands an already semantic surface decision with explicit Earth-only
-     * fields; no climate, classifier or generator lookup is performed.
+     * fields, adding the top cell to the semantic filler count. No climate,
+     * classifier or generator lookup is performed.
      */
     public static EarthSurfacePalette fromSurfaceDecision(
         SurfaceDecision decision,
@@ -19,13 +20,13 @@ public final class EarthSurfacePaletteAdapter {
     ) {
         Objects.requireNonNull(decision, "decision");
         return new EarthSurfacePalette(
-            decision.top(), underwaterTop, decision.filler(), decision.depth(),
+            decision.top(), underwaterTop, decision.filler(), Math.addExact(decision.depth(), 1),
             decision.form(), strata, flags);
     }
 
-    /** Projects the common top/filler/depth/form view without discarding the palette object itself. */
+    /** Projects top/filler/form and removes the top cell from Earth's total depth. */
     public static SurfaceDecision toSurfaceDecision(EarthSurfacePalette palette) {
         Objects.requireNonNull(palette, "palette");
-        return new SurfaceDecision(palette.top(), palette.filler(), palette.depth(), palette.form());
+        return new SurfaceDecision(palette.top(), palette.filler(), palette.depth() - 1, palette.form());
     }
 }
