@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.yucareux.tellus.worldgen.CubeNetNativeBiomeKernelBridgeTest" tests="1" skipped="0" failures="1" errors="0" timestamp="2026-11-09T03:23:56.130Z" hostname="VOID0312" time="18.218">
+  <properties/>
+  <testcase name="creatingExplicitKernelDoesNotMutateSourceCodecSettings()" classname="com.yucareux.tellus.worldgen.CubeNetNativeBiomeKernelBridgeTest" time="0.281">
+    <failure message="java.lang.AssertionError: DataResult.Error['Element Reference{ResourceKey[minecraft:worldgen/biome / minecraft:plains]=net.minecraft.world.level.biome.Biome@4c954f7d} is not valid in current registry set']" type="java.lang.AssertionError">java.lang.AssertionError: DataResult.Error['Element Reference{ResourceKey[minecraft:worldgen/biome / minecraft:plains]=net.minecraft.world.level.biome.Biome@4c954f7d} is not valid in current registry set']
+	at com.yucareux.tellus.worldgen.CubeNetNativeBiomeKernelBridgeTest.lambda$creatingExplicitKernelDoesNotMutateSourceCodecSettings$9(CubeNetNativeBiomeKernelBridgeTest.java:198)
+	at java.base/java.util.Optional.orElseThrow(Optional.java:403)
+	at com.yucareux.tellus.worldgen.CubeNetNativeBiomeKernelBridgeTest.creatingExplicitKernelDoesNotMutateSourceCodecSettings(CubeNetNativeBiomeKernelBridgeTest.java:198)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+</failure>
+  </testcase>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.yucareux.tellus.worldgen.CubeNetNativeBiomeKernelBridgeTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-11-09T03:28:41.043Z" hostname="VOID0312" time="21.337">
+  <properties/>
+  <testcase name="nativeQuartBiomeParityAcrossSixFacesCasesAndSettingsPreservesAllTerrainWrites()" classname="com.yucareux.tellus.worldgen.CubeNetNativeBiomeKernelBridgeTest" time="3.991"/>
+  <testcase name="unkeyedNativeHolderRemainsUnknownWithoutFabricatedRegistryId()" classname="com.yucareux.tellus.worldgen.CubeNetNativeBiomeKernelBridgeTest" time="0.003"/>
+  <testcase name="nonblockingAndRejectedNativeProfilesDoNotReadSource()" classname="com.yucareux.tellus.worldgen.CubeNetNativeBiomeKernelBridgeTest" time="0.007"/>
+  <testcase name="creatingExplicitKernelDoesNotMutateSourceCodecSettings()" classname="com.yucareux.tellus.worldgen.CubeNetNativeBiomeKernelBridgeTest" time="0.035"/>
+  <testcase name="settingsScalesAndWaterControlKernelWithoutChangingNativeSource()" classname="com.yucareux.tellus.worldgen.CubeNetNativeBiomeKernelBridgeTest" time="0.004"/>
+  <system-out><![CDATA[[11:28:59] [Test worker/INFO]: Loaded 847 RESOLVE ecoregions at 30 arc-second resolution
+[11:29:01] [Test worker/INFO]: Land mask PMTiles unavailable (Network access is disabled during managed Distant Horizons generation); using ESA-only land fallback.
+[11:29:01] [Test worker/INFO]: Loaded Mapterhorn 0.0.11 source-resolution catalog (134 sources).
+[11:29:02] [Test worker/INFO]: [STDOUT]: CUBE_NATIVE_BIOME_KERNEL columns=264 terrainCells=34320 biomeMismatches=0 terrainMismatches=0
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.yucareux.tellus.worldgen.CubeNetNativeBiomeKernelBridgeTest" tests="5" skipped="0" failures="1" errors="0" timestamp="2026-11-09T03:20:06.911Z" hostname="VOID0312" time="19.545">
+  <properties/>
+  <testcase name="nativeQuartBiomeParityAcrossSixFacesCasesAndSettingsPreservesAllTerrainWrites()" classname="com.yucareux.tellus.worldgen.CubeNetNativeBiomeKernelBridgeTest" time="3.766"/>
+  <testcase name="unkeyedNativeHolderRemainsUnknownWithoutFabricatedRegistryId()" classname="com.yucareux.tellus.worldgen.CubeNetNativeBiomeKernelBridgeTest" time="0.003"/>
+  <testcase name="nonblockingAndRejectedNativeProfilesDoNotReadSource()" classname="com.yucareux.tellus.worldgen.CubeNetNativeBiomeKernelBridgeTest" time="0.01"/>
+  <testcase name="creatingExplicitKernelDoesNotMutateSourceCodecSettings()" classname="com.yucareux.tellus.worldgen.CubeNetNativeBiomeKernelBridgeTest" time="0.046">
+    <failure message="java.util.NoSuchElementException: No value present" type="java.util.NoSuchElementException">java.util.NoSuchElementException: No value present
+	at java.base/java.util.Optional.orElseThrow(Optional.java:377)
+	at com.yucareux.tellus.worldgen.CubeNetNativeBiomeKernelBridgeTest.creatingExplicitKernelDoesNotMutateSourceCodecSettings(CubeNetNativeBiomeKernelBridgeTest.java:197)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+</failure>
+  </testcase>
+  <testcase name="settingsScalesAndWaterControlKernelWithoutChangingNativeSource()" classname="com.yucareux.tellus.worldgen.CubeNetNativeBiomeKernelBridgeTest" time="0.004"/>
+  <system-out><![CDATA[[11:20:23] [Test worker/INFO]: Loaded 847 RESOLVE ecoregions at 30 arc-second resolution
+[11:20:25] [Test worker/INFO]: Land mask PMTiles unavailable (Network access is disabled during managed Distant Horizons generation); using ESA-only land fallback.
+[11:20:25] [Test worker/INFO]: Loaded Mapterhorn 0.0.11 source-resolution catalog (134 sources).
+[11:20:26] [Test worker/INFO]: [STDOUT]: CUBE_NATIVE_BIOME_KERNEL columns=264 terrainCells=34320 biomeMismatches=0 terrainMismatches=0
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

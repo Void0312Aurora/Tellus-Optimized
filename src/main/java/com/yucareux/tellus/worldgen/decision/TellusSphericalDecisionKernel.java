@@ -25,10 +25,24 @@ public final class TellusSphericalDecisionKernel {
       }
    }
 
+   /** Resolved native biome at the proposed column top; it is not a vertical biome palette. */
+   @FunctionalInterface
+   public interface BiomeResolver {
+      BiomeDecision resolve(TellusGenerationContext generation, TellusCoordinateContext coordinate,
+                            TellusSample sample, int terrainY);
+   }
+
    private final Settings settings;
+   private final BiomeResolver biomeResolver;
 
    public TellusSphericalDecisionKernel(Settings settings) {
+      this(settings, (generation, coordinate, sample, terrainY) -> BiomeDecision.unknown());
+   }
+
+   /** Explicit opt-in source boundary; terminal/incomplete requests never invoke the resolver. */
+   public TellusSphericalDecisionKernel(Settings settings, BiomeResolver biomeResolver) {
       this.settings = Objects.requireNonNull(settings, "settings");
+      this.biomeResolver = Objects.requireNonNull(biomeResolver, "biomeResolver");
    }
 
    public ColumnDecision decide(TellusGenerationContext generation, TellusCoordinateContext coordinate,
@@ -77,10 +91,14 @@ public final class TellusSphericalDecisionKernel {
       WaterDecision water = this.settings.enableWater() && data.waterAvailable()
          ? new WaterDecision(data.oceanWater() ? WaterDecision.Kind.OCEAN : WaterDecision.Kind.INLAND,
             OptionalInt.of(waterY)) : WaterDecision.dry();
+      StrataDecision layers = strata(strata, generation.minY(), terrainY);
+      BiomeDecision biome = Objects.requireNonNull(this.biomeResolver.resolve(generation, coordinate, sample, terrainY),
+         "resolved spherical biome");
       return new ColumnDecision(coordinate, DecisionStatus.AVAILABLE, OptionalInt.of(terrainY),
-         CubeNetSurfaceDecisionAdapter.map(surface), water, BiomeDecision.unknown(),
-         strata(strata, generation.minY(), terrainY),
-         List.of("production spherical radial height/surface/geology; biome classification remains external"));
+         CubeNetSurfaceDecisionAdapter.map(surface), water, biome, layers,
+         List.of(biome.known()
+            ? "production spherical radial height/surface/geology; explicit native column-top biome"
+            : "production spherical radial height/surface/geology; biome classification remains external"));
    }
 
    private int height(TellusGenerationContext generation, double metres) {

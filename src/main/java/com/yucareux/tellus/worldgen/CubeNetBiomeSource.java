@@ -522,6 +522,46 @@ public final class CubeNetBiomeSource extends TellusBiomeSourceBridge {
       return result.stream();
    }
 
+   /**
+    * Explicit column-top semantic bridge. Native quart anchoring and source reads are retained:
+    * the terrain provider's richer SurfaceData is not substituted for this biome source's inputs.
+    * This does not describe a vertical cave-biome palette or register a default runtime hook.
+    */
+   public com.yucareux.tellus.worldgen.decision.TellusSphericalDecisionKernel semanticColumnKernel() {
+      var rules = new com.yucareux.tellus.worldgen.decision.TellusSphericalDecisionKernel.Settings(
+         this.settings.enableWater(), this.settings.terrestrialHeightScale(), this.settings.oceanicHeightScale());
+      return new com.yucareux.tellus.worldgen.decision.TellusSphericalDecisionKernel(rules,
+         (generation, coordinate, sample, terrainY) -> {
+            if (!(coordinate.owner() instanceof com.yucareux.tellus.worldgen.global.CubeNetCanonicalOwnerView owner)
+               || Double.compare(generation.worldScale(), this.model.config().worldScale()) != 0) {
+               throw new IllegalArgumentException("native Cube-Net biome bridge requires matching scale and canonical Cube-Net ownership");
+            }
+            Integer structureDepth = this.structureBiomeQueryDepth.get();
+            if (structureDepth != null && structureDepth > 0) {
+               throw new IllegalStateException("semantic column biome query is not a structure-biome search");
+            }
+            int x = semanticBiomePlanarBlock(owner.planarPoint().x());
+            int z = semanticBiomePlanarBlock(owner.planarPoint().z());
+            if (!this.resolveAddress(x, z).filter(owner.block()::equals).isPresent()
+               || !this.policy.admitsTerrainMaterialization(owner.chunk())) {
+               throw new IllegalArgumentException("native Cube-Net biome source does not own the requested planar column");
+            }
+            Holder<Biome> biome = this.getNoiseBiome(QuartPos.fromBlock(x), QuartPos.fromBlock(terrainY),
+               QuartPos.fromBlock(z), Climate.empty());
+            return biome.unwrapKey().map(key -> new com.yucareux.tellus.worldgen.decision.BiomeDecision(
+               key.location().toString(), true))
+               .orElseGet(com.yucareux.tellus.worldgen.decision.BiomeDecision::unknown);
+         });
+   }
+
+   private static int semanticBiomePlanarBlock(double coordinate) {
+      double floor = Math.floor(coordinate);
+      if (!Double.isFinite(coordinate) || floor < Integer.MIN_VALUE || floor > Integer.MAX_VALUE) {
+         throw new IllegalArgumentException("native biome planar coordinate exceeds integer range");
+      }
+      return (int)floor;
+   }
+
    @Override
    public Holder<Biome> getNoiseBiome(int quartX, int quartY, int quartZ, Climate.Sampler sampler) {
       int blockX = QuartPos.toBlock(quartX);
