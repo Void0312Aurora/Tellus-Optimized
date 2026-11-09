@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.yucareux.tellus.worldgen.CubeNetNativeBaseProviderPipelineTest" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-11-09T06:20:31.789Z" hostname="VOID0312" time="37.323">
+  <properties/>
+  <testcase name="nativeBaseProviderPipelineMatchesActualFillAcrossFacesProfilesAndRichSurfacePaths()" classname="com.yucareux.tellus.worldgen.CubeNetNativeBaseProviderPipelineTest" time="14.705"/>
+  <testcase name="fixedSourceTerminalAndInvalidProfilesDoNotInventOrResampleTerrain()" classname="com.yucareux.tellus.worldgen.CubeNetNativeBaseProviderPipelineTest" time="0.787"/>
+  <testcase name="genericNativeSnapshotRouteValidatesContextsAndReturnsTerminalBeforeCallback()" classname="com.yucareux.tellus.worldgen.CubeNetNativeBaseProviderPipelineTest" time="0.003"/>
+  <testcase name="wholeGeneratorCodecAndNativeClassifierRemainUnchangedByExplicitFactories()" classname="com.yucareux.tellus.worldgen.CubeNetNativeBaseProviderPipelineTest" time="0.219"/>
+  <testcase name="canonicalGridLineCoordinatesUseOwnerCellCenterRatherThanReflectedPlanarNeighbour()" classname="com.yucareux.tellus.worldgen.CubeNetNativeBaseProviderPipelineTest" time="0.011"/>
+  <testcase name="extractedBankLoopMatchesFrozenColumnsAndRawSourceLookupOrder()" classname="com.yucareux.tellus.worldgen.CubeNetNativeBaseProviderPipelineTest" time="0.403"/>
+  <system-out><![CDATA[[14:20:54] [Test worker/INFO]: Loaded 847 RESOLVE ecoregions at 30 arc-second resolution
+[14:20:57] [Test worker/INFO]: Land mask PMTiles unavailable (Network access is disabled during managed Distant Horizons generation); using ESA-only land fallback.
+[14:20:57] [Test worker/INFO]: Loaded Mapterhorn 0.0.11 source-resolution catalog (134 sources).
+[14:21:07] [Test worker/INFO]: [STDOUT]: CUBE_NATIVE_BASE_PIPELINE columns=288 nativeBlockStates=110592 bankAdjustedColumns=36 richSurfaceDifferences=84 mismatchBlocks=0
+[14:21:08] [Test worker/INFO]: [STDOUT]: CUBE_NATIVE_CODEC_EXISTING_OFFSET encodedSea=76 decodedSea=88 drift=12
+[14:21:09] [Test worker/INFO]: [STDOUT]: CUBE_NATIVE_BANK_EXTRACTION columns=3072 changedColumns=1536 mismatchColumns=0 lookupOrderMismatches=0
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

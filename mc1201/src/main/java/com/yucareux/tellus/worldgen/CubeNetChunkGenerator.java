@@ -429,6 +429,84 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
       }
    }
 
+   /** Explicit native base stage: POST_GROUND_ADJUSTMENT_PRE_INLAND_FLOW_BADLANDS. */
+   public com.yucareux.tellus.worldgen.sample.TellusSphericalSampleProvider semanticBaseSampleProvider() {
+      return com.yucareux.tellus.worldgen.sample.TellusSphericalSampleProvider.forCubeNetNativeSnapshots(request -> {
+         if (Double.compare(request.geometry().worldScale(), this.worldScale()) != 0
+            || request.cacheKey().worldSeed() != this.worldSeed
+            || this.worldSeed != this.materializer.worldSeed()) {
+            throw new IllegalArgumentException("native Cube-Net base sample differs from generator scale/seed");
+         }
+         var position = this.semanticBasePosition(request.coordinate());
+         var owner = (com.yucareux.tellus.worldgen.global.CubeNetCanonicalOwnerView)request.coordinate().owner();
+         var column = this.faces[owner.block().face()].terrainGrid(owner.chunk()).column(
+            (int)Math.floorMod(owner.block().blockX(), 16L), (int)Math.floorMod(owner.block().blockZ(), 16L));
+         column = this.applyCubeNetLandmarkGround(List.of(column)).get(0);
+         if (this.inlandWaterResolver != null) {
+            column = this.applyCubeNetShorelineBankRampColumn(position.x(), position.z(), column, new HashMap<>());
+         }
+         var surface = this.inlandWaterResolver == null
+            ? CubeNetSurfacePolicy.resolve(column.point(), column.data(), this.worldScale(), this.worldSeed)
+            : this.resolveCubeNetSurfaceDecision(column.context(), new HashMap<>());
+         return com.yucareux.tellus.worldgen.sample.TellusSphericalSurfaceSnapshot.resolvedNativeColumn(column, surface);
+      });
+   }
+
+   /** Explicit base-column decision; later flowing-water properties and badlands bands remain external. */
+   public com.yucareux.tellus.worldgen.decision.TellusSphericalDecisionKernel semanticBaseColumnKernel() {
+      var settings = new com.yucareux.tellus.worldgen.decision.TellusSphericalDecisionKernel.Settings(
+         this.cubeNetEnableWater, this.cubeNetTerrestrialHeightScale, this.cubeNetOceanicHeightScale);
+      return new com.yucareux.tellus.worldgen.decision.TellusSphericalDecisionKernel(settings,
+         (generation, coordinate, sample, terrainY) -> {
+            if (Double.compare(generation.worldScale(), this.worldScale()) != 0
+               || generation.seaLevel() != this.seaLevel || generation.minY() != this.minY
+               || generation.maxYExclusive() != this.maxY() || generation.worldSeed() != this.worldSeed
+               || this.worldSeed != this.materializer.worldSeed()) {
+               throw new IllegalArgumentException("native Cube-Net base kernel differs from generator profile/seed");
+            }
+            var position = this.semanticBasePosition(coordinate);
+            if (this.biomeSource instanceof CubeNetBiomeSource cubeNet) {
+               var owner = (com.yucareux.tellus.worldgen.global.CubeNetCanonicalOwnerView)coordinate.owner();
+               var center = com.yucareux.tellus.worldgen.global.TellusCoordinateContextFactory.fromCubeNetCanonical(
+                  this.model, this.adapter.layout(), this.adapter.facePoint(owner.block()));
+               return cubeNet.semanticColumnBiome(generation, center, terrainY);
+            }
+            var biome = this.biomeSource.getNoiseBiome(QuartPos.fromBlock(position.x()), QuartPos.fromBlock(terrainY),
+               QuartPos.fromBlock(position.z()), Climate.empty());
+            return biome.unwrapKey().map(key -> new com.yucareux.tellus.worldgen.decision.BiomeDecision(
+               key.location().toString(), true)).orElseGet(com.yucareux.tellus.worldgen.decision.BiomeDecision::unknown);
+         });
+   }
+
+   private com.yucareux.tellus.worldgen.write.CanonicalColumnPosition semanticBasePosition(
+      com.yucareux.tellus.worldgen.global.TellusCoordinateContext coordinate
+   ) {
+      Objects.requireNonNull(coordinate, "coordinate");
+      if (!(coordinate.owner() instanceof com.yucareux.tellus.worldgen.global.CubeNetCanonicalOwnerView owner)) {
+         throw new IllegalArgumentException("native Cube-Net base requires canonical Cube-Net ownership");
+      }
+      this.model.chartForBlock(owner.block().face(), owner.block().blockX(), owner.block().blockZ());
+      if (!this.model.blockForGeo(coordinate.geo()).equals(owner.block())) {
+         throw new IllegalArgumentException("native Cube-Net base owner does not match geographic point");
+      }
+      var generation = new com.yucareux.tellus.worldgen.decision.TellusGenerationContext(
+         this.worldSeed, this.worldScale(), this.seaLevel, this.minY, this.maxY());
+      var position = com.yucareux.tellus.worldgen.write.CanonicalColumnPosition.resolve(
+         com.yucareux.tellus.worldgen.write.WriteContext.canonical(coordinate, generation, "cube-native-base"), this.model);
+      if (!this.address(new ChunkPos(Math.floorDiv(position.x(), 16), Math.floorDiv(position.z(), 16)))
+         .filter(owner.chunk()::equals).isPresent()) {
+         throw new IllegalArgumentException("native Cube-Net base planar chunk does not match canonical owner");
+      }
+      BlockAddress block = this.resolveBlock(position.x(), position.z()).orElseThrow(
+         () -> new IllegalArgumentException("native Cube-Net base planar block is not materializable"));
+      if (block.address().face() != owner.block().face() || block.x() != owner.block().blockX()
+         || block.z() != owner.block().blockZ()) {
+         throw new IllegalArgumentException("native Cube-Net base planar block does not match canonical owner");
+      }
+      this.singularityPolicy.requireTerrainMaterialization(owner.chunk());
+      return position;
+   }
+
    public SphereWorldModel model() { return this.model; }
    public CubeNetAddressAdapter adapter() { return this.adapter; }
    public CubeNetApronResolver apronResolver() { return this.apronResolver; }
@@ -1000,41 +1078,51 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
       int minZ = chunk.getPos().getMinBlockZ();
       for (int localZ = 0; localZ < 16; localZ++) for (int localX = 0; localX < 16; localX++) {
          int index = localZ * 16 + localX;
-         SphereChunkSampler.Column column = columns.get(index);
-         SphereChunkSampler.SurfaceData surface = column.data();
-         if (!surface.elevationAvailable() || surface.waterAvailable()) continue;
-         BlockAddress resolved = this.resolveBlock(minX + localX, minZ + localZ).orElse(null);
-         if (resolved != null) {
-            SphereWorldModel.GeoPoint point = this.model.exactSurfacePoint(
-               resolved.address().face(), resolved.x() + 0.5, resolved.z() + 0.5);
-            if (this.inlandWaterResolver != null && this.inlandWaterResolver.isInlandBank(point)) continue;
-         }
-         int terrainY = this.materializer.height(surface.elevationMeters());
-         int allowedY = Integer.MAX_VALUE;
-         int searchRadius = Math.max(this.inlandShorelineRadius, this.oceanShorelineRadius);
-         for (int dz = -searchRadius; dz <= searchRadius; dz++) {
-            for (int dx = -searchRadius; dx <= searchRadius; dx++) {
-               if (dx == 0 && dz == 0) continue;
-               int distance = Math.max(Math.abs(dx), Math.abs(dz));
-               if (distance > searchRadius) continue;
-               SphereChunkSampler.SurfaceData neighbour = this.surfaceDataAtPlanar(
-                  minX + localX + dx, minZ + localZ + dz, cache);
-               if (neighbour == null || !neighbour.waterAvailable()) continue;
-               int radius = neighbour.inlandWater()
-                  ? this.inlandShorelineRadius : this.oceanShorelineRadius;
-               if (distance > radius) continue;
-               int waterY = this.materializer.height(neighbour.waterSurfaceMeters());
-               allowedY = Math.min(allowedY, waterY + distance);
-            }
-         }
-         if (allowedY == Integer.MAX_VALUE || terrainY - allowedY < CUBE_NET_SHORELINE_MIN_CLIFF
-            || terrainY <= allowedY) continue;
-         int rampedY = Math.max(this.minY + 1, allowedY);
-         double elevation = (rampedY - this.seaLevel) * this.worldScale();
-         adjusted.set(index, new SphereChunkSampler.Column(column.address(), column.point(),
-            surface.withElevation(elevation)));
+         adjusted.set(index, this.applyCubeNetShorelineBankRampColumn(
+            minX + localX, minZ + localZ, columns.get(index), cache));
       }
       return List.copyOf(adjusted);
+   }
+
+   private SphereChunkSampler.Column applyCubeNetShorelineBankRampColumn(
+      int worldX, int worldZ, SphereChunkSampler.Column column,
+      Map<Long, SphereChunkSampler.SurfaceData> cache
+   ) {
+      if (!this.shorelineBlendCliffLimit
+         || Math.max(this.inlandShorelineRadius, this.oceanShorelineRadius) <= 0) {
+         return column;
+      }
+      SphereChunkSampler.SurfaceData surface = column.data();
+      if (!surface.elevationAvailable() || surface.waterAvailable()) return column;
+      BlockAddress resolved = this.resolveBlock(worldX, worldZ).orElse(null);
+      if (resolved != null) {
+         SphereWorldModel.GeoPoint point = this.model.exactSurfacePoint(
+            resolved.address().face(), resolved.x() + 0.5, resolved.z() + 0.5);
+         if (this.inlandWaterResolver != null && this.inlandWaterResolver.isInlandBank(point)) return column;
+      }
+      int terrainY = this.materializer.height(surface.elevationMeters());
+      int allowedY = Integer.MAX_VALUE;
+      int searchRadius = Math.max(this.inlandShorelineRadius, this.oceanShorelineRadius);
+      for (int dz = -searchRadius; dz <= searchRadius; dz++) {
+         for (int dx = -searchRadius; dx <= searchRadius; dx++) {
+            if (dx == 0 && dz == 0) continue;
+            int distance = Math.max(Math.abs(dx), Math.abs(dz));
+            if (distance > searchRadius) continue;
+            SphereChunkSampler.SurfaceData neighbour = this.surfaceDataAtPlanar(
+               worldX + dx, worldZ + dz, cache);
+            if (neighbour == null || !neighbour.waterAvailable()) continue;
+            int radius = neighbour.inlandWater()
+               ? this.inlandShorelineRadius : this.oceanShorelineRadius;
+            if (distance > radius) continue;
+            int waterY = this.materializer.height(neighbour.waterSurfaceMeters());
+            allowedY = Math.min(allowedY, waterY + distance);
+         }
+      }
+      if (allowedY == Integer.MAX_VALUE || terrainY - allowedY < CUBE_NET_SHORELINE_MIN_CLIFF
+         || terrainY <= allowedY) return column;
+      int rampedY = Math.max(this.minY + 1, allowedY);
+      double elevation = (rampedY - this.seaLevel) * this.worldScale();
+      return new SphereChunkSampler.Column(column.address(), column.point(), surface.withElevation(elevation));
    }
 
    /** Applies Tellus's layered badlands cliff material to canonical columns. */

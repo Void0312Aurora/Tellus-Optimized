@@ -531,27 +531,33 @@ public final class CubeNetBiomeSource extends TellusBiomeSourceBridge {
       var rules = new com.yucareux.tellus.worldgen.decision.TellusSphericalDecisionKernel.Settings(
          this.settings.enableWater(), this.settings.terrestrialHeightScale(), this.settings.oceanicHeightScale());
       return new com.yucareux.tellus.worldgen.decision.TellusSphericalDecisionKernel(rules,
-         (generation, coordinate, sample, terrainY) -> {
-            if (!(coordinate.owner() instanceof com.yucareux.tellus.worldgen.global.CubeNetCanonicalOwnerView owner)
-               || Double.compare(generation.worldScale(), this.model.config().worldScale()) != 0) {
-               throw new IllegalArgumentException("native Cube-Net biome bridge requires matching scale and canonical Cube-Net ownership");
-            }
-            Integer structureDepth = this.structureBiomeQueryDepth.get();
-            if (structureDepth != null && structureDepth > 0) {
-               throw new IllegalStateException("semantic column biome query is not a structure-biome search");
-            }
-            int x = semanticBiomePlanarBlock(owner.planarPoint().x());
-            int z = semanticBiomePlanarBlock(owner.planarPoint().z());
-            if (!this.resolveAddress(x, z).filter(owner.block()::equals).isPresent()
-               || !this.policy.admitsTerrainMaterialization(owner.chunk())) {
-               throw new IllegalArgumentException("native Cube-Net biome source does not own the requested planar column");
-            }
-            Holder<Biome> biome = this.getNoiseBiome(QuartPos.fromBlock(x), QuartPos.fromBlock(terrainY),
-               QuartPos.fromBlock(z), Climate.empty());
-            return biome.unwrapKey().map(key -> new com.yucareux.tellus.worldgen.decision.BiomeDecision(
-               key.location().toString(), true))
-               .orElseGet(com.yucareux.tellus.worldgen.decision.BiomeDecision::unknown);
-         });
+         (generation, coordinate, sample, terrainY) -> this.semanticColumnBiome(generation, coordinate, terrainY));
+   }
+
+   /** Reusable native query boundary; callers choose their validated engine-coordinate context. */
+   public com.yucareux.tellus.worldgen.decision.BiomeDecision semanticColumnBiome(
+      com.yucareux.tellus.worldgen.decision.TellusGenerationContext generation,
+      com.yucareux.tellus.worldgen.global.TellusCoordinateContext coordinate, int terrainY
+   ) {
+      if (!(coordinate.owner() instanceof com.yucareux.tellus.worldgen.global.CubeNetCanonicalOwnerView owner)
+         || Double.compare(generation.worldScale(), this.model.config().worldScale()) != 0) {
+         throw new IllegalArgumentException("native Cube-Net biome bridge requires matching scale and canonical Cube-Net ownership");
+      }
+      Integer structureDepth = this.structureBiomeQueryDepth.get();
+      if (structureDepth != null && structureDepth > 0) {
+         throw new IllegalStateException("semantic column biome query is not a structure-biome search");
+      }
+      int x = semanticBiomePlanarBlock(owner.planarPoint().x());
+      int z = semanticBiomePlanarBlock(owner.planarPoint().z());
+      if (!this.resolveAddress(x, z).filter(owner.block()::equals).isPresent()
+         || !this.policy.admitsTerrainMaterialization(owner.chunk())) {
+         throw new IllegalArgumentException("native Cube-Net biome source does not own the requested planar column");
+      }
+      Holder<Biome> biome = this.getNoiseBiome(QuartPos.fromBlock(x), QuartPos.fromBlock(terrainY),
+         QuartPos.fromBlock(z), Climate.empty());
+      return biome.unwrapKey().map(key -> new com.yucareux.tellus.worldgen.decision.BiomeDecision(
+         key.location().toString(), true))
+         .orElseGet(com.yucareux.tellus.worldgen.decision.BiomeDecision::unknown);
    }
 
    private static int semanticBiomePlanarBlock(double coordinate) {

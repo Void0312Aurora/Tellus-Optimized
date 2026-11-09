@@ -1,0 +1,45 @@
+# Round 52 — Native Cube-Net canonical base provider and kernel
+
+## Explicit stage, not a final-world replacement
+
+Both CubeNetChunkGenerator versions expose an identical opt-in `semanticBaseSampleProvider()` and `semanticBaseColumnKernel()`. The stage is named **POST_GROUND_ADJUSTMENT_PRE_INLAND_FLOW_BADLANDS**. It includes the actual canonical terrain-grid column, landmark ground adjustment, the conditional shoreline bank ramp and the same conditional native surface decision. It excludes the later non-default flowing-water properties, badlands overlays, carvers and decoration. Existing default generator entrypoints remain native.
+
+The provider uses the real face-owned cached terrain-grid column, retaining its native truncated-map point, geology, slope and water metadata through Round51's optional native Column context. It does not reinterpret the request's quantized exact bucket as the native sampler resolution. The request remains canonical-only; apron and other ownership routes return UNKNOWN before the new callback. NON_BLOCKING returns QUEUED with no source scheduling; PREVIEW/LOD or a different exact bucket return UNKNOWN.
+
+Before fetching a grid, the native producer checks its current worldSeed agrees with the materializer seed and request seed, request worldScale agrees with the generator, and the coordinate belongs to the canonical model/chart/planar block/chunk and admitted terrain policy. CanonicalColumnPosition resolves the canonical cell center, including reflected axes and grid lines, instead of blindly flooring a continuous reflected planar coordinate.
+
+Ground adjustment applies existing landmark placement before the shoreline bank helper. Bank adjustment runs under the exact native conditions: inland resolver present, cliff flag enabled and nonzero search radius, even if enableWater is false. It preserves the existing native inverse elevation math `(rampedY-effectiveSea)*worldScale`; non-unit height scales are then reapplied by the native materializer exactly as before. It does not quietly correct the established native rounding or double-scale behavior.
+
+## Native rich surface and independent biome sources
+
+The provider retains the actual native branch condition: when inlandWaterResolver is absent, the simple CubeNetSurfacePolicy is used, even for a CubeNetBiomeSource. When present, the existing resolveCubeNetSurfaceDecision resolves native biome, Earth visual-cover/climate category, convexity, shoreline and mountain context. Bank-neighbour and rich-surface caches remain separate and start empty; they are not seeded with the adjusted selected column. Neighbours retain the existing direct native terrainPoint sampling, not landmark-adjusted snapshots.
+
+The kernel derives water and terrestrial/oceanic height scales from the actual generator fields and checks effective sea level, vertical bounds, scale and current seed before the explicit native biome query. The constructor already applies heightOffset to sea level; the bridge does not add it again. For a CubeNetBiomeSource, the existing Round49 resolver body is extracted into semanticColumnBiome and reused with a validated canonical cell-center context. The old source-owned kernel still calls the same body with its original request coordinate, retaining its existing grid-line rejection behavior. Fixed sources use their real native quart query and keyed/unknown holder semantics.
+
+Biome classification still reads its own native spherical source and quart anchors; terrain provider SurfaceData is never substituted for that source's distinct inputs. Rich surface may itself read the native biome source and auxiliary sources before the kernel's later fresh query. This is not one atomic source snapshot, one-query proof or a persistent replay identity.
+
+## Minimal native helper extraction
+
+Only the per-column body of applyCubeNetShorelineBankRamp is extracted into applyCubeNetShorelineBankRampColumn. The full-list wrapper retains its disabled original-list identity, per-fill cache, localZ/localX order, original array/list copying and immutable result. Former per-column continue branches return the original Column. The nested dz/dx order, raw neighbour lookup, inland/ocean radius distinction, cliff threshold, minY clamp and elevation formula are unchanged.
+
+Strict source guards remove the new factories and compare all remaining native code outside that extracted segment with the Round51 recovery parent. A normalized comparison of the old loop body with the new helper checks the exact extraction. Both versions' inserted factory/kernel blocks and complete bank helper blocks are identical. All CubeNetBiomeSource code outside the extracted semantic bridge is unchanged, including Codec and getNoiseBiome.
+
+## Verification scope
+
+The new shared integration suite composes each actual version's CanonicalPipeline, semantic mapper/materializer and transactional writer with the generator-owned base provider/kernel. Controlled native PointSampler inputs and a real empty-water planner seam exercise six faces, positive/negative planar frames, default/non-unit height scales, effective heightOffset, water-off, simple/rich surface selection and actual bank-height changes. Full native fill is compared only for scenarios whose later flowing-water and badlands stages are no-ops; this is not blanket final-stage parity.
+
+The matrix compares **288 complete selected columns /110,592 actual native block states** per version, including **36 genuinely bank-adjusted columns** and **84 rich-vs-simple surface differences**. The frozen bank oracle covers **3,072 columns**, of which1,536 change, with zero output or lookup-order differences. Both radius settings are1 in this fixture; asymmetric radii, every threshold/minY edge and actual landmark flattening (buildings are disabled) are not newly exhaustive claims. The native biome PointSampler separately records source reads to show classification was not relabeled from provider terrain. Additional cases cover fixed sources, terminal/unsupported requests, profile guards, reflected grid-line normalization, generic snapshot contracts and whole-generator Codec factory invariance. A frozen pre-extraction bank loop separately checks the native helper's list outputs and raw point lookup sequence.
+
+The first focused run passed the native matrix but failed one grid-line fixture before entering the producer: the existing coordinate factory rejected its exact inverse-mapping ownership. The fixture now searches a bounded64-candidate list per face for a factory-valid exact gridline, then still requires a reflected canonical-center normalization case. No coordinate validation was weakened; the original failed XML is retained.
+
+The final exact selected regressions are mc1201 **307/307** and mc1211 **300/300**, zero failures/errors/skips. [Validation evidence](../validation/round52-native-cube-base/test-evidence.json) records exact suite counts, test names, native counters, source hashes, fixture diagnostics and retained prior observations. Runs are strictly serial across versions. Original 13,824-column, canonical and seven-case baselines remain required, not replaced by the new matrix.
+
+## Existing Codec boundary and remaining work
+
+A source audit identified an existing non-default-heightOffset Codec issue: the generator encodes getSeaLevel (already effective), while decoding passes that value into a constructor that adds the offset difference again. This round characterizes the existing behavior and preserves the Codec/constructor source rather than introducing a hidden save behavior migration. Factory construction itself must leave encoded data unchanged. The bridge uses the actual current effective sea level; this is separate from proving a complete world save/reload roundtrip.
+
+Seed checks remain against volatile in-process native state, not an atomic lifetime lock or verified server-world manifest. Request geometry/provenance/planet identifiers are not all authenticated against a durable generator profile. Request has no vertical bounds, so those kernel checks can occur after provider reads. Generic snapshot resolvers are caller-owned inputs; retaining a Column is not a cryptographic source proof. Cold accepted requests may load a full256-point grid plus native auxiliary probes; NON_BLOCKING stays source-cold but never promises a resident-cache fast path.
+
+Real GIS/server source coverage, post-base flow/badlands/cave/decorate semantic decisions, vertical biome-container writes, real persistent save/reload transactions and default lifecycle integration remain unfinished. The whole six-workstream goal stays active, and every new composition stays opt-in.
+
+Rollback parent: `recovery/tellus-round51-native-sphere-provider` (`a68c5bdb770befe253700a172985c96ff2c2cfdf`). Restore the two Cube generators and two shared provider/source files from that tree, remove the new test/docs/evidence and restore the status paragraph. The isolated alternate-index checkpoint preserves the real branch, HEAD and index; no world-save migration is applied.

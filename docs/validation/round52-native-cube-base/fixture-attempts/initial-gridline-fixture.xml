@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.yucareux.tellus.worldgen.CubeNetNativeBaseProviderPipelineTest" tests="5" skipped="0" failures="1" errors="0" timestamp="2026-11-09T06:14:08.163Z" hostname="VOID0312" time="32.645">
+  <properties/>
+  <testcase name="nativeBaseProviderPipelineMatchesActualFillAcrossFacesProfilesAndRichSurfacePaths()" classname="com.yucareux.tellus.worldgen.CubeNetNativeBaseProviderPipelineTest" time="14.683"/>
+  <testcase name="fixedSourceTerminalAndInvalidProfilesDoNotInventOrResampleTerrain()" classname="com.yucareux.tellus.worldgen.CubeNetNativeBaseProviderPipelineTest" time="0.949"/>
+  <testcase name="genericNativeSnapshotRouteValidatesContextsAndReturnsTerminalBeforeCallback()" classname="com.yucareux.tellus.worldgen.CubeNetNativeBaseProviderPipelineTest" time="0.002"/>
+  <testcase name="wholeGeneratorCodecAndNativeClassifierRemainUnchangedByExplicitFactories()" classname="com.yucareux.tellus.worldgen.CubeNetNativeBaseProviderPipelineTest" time="0.189"/>
+  <testcase name="canonicalGridLineCoordinatesUseOwnerCellCenterRatherThanReflectedPlanarNeighbour()" classname="com.yucareux.tellus.worldgen.CubeNetNativeBaseProviderPipelineTest" time="0.019">
+    <failure message="java.lang.IllegalArgumentException: canonical owner does not match GeoPoint" type="java.lang.IllegalArgumentException">java.lang.IllegalArgumentException: canonical owner does not match GeoPoint
+	at com.yucareux.tellus.worldgen.global.TellusCoordinateContextFactory.validateCubeNetContext(TellusCoordinateContextFactory.java:257)
+	at com.yucareux.tellus.worldgen.global.TellusCoordinateContextFactory.fromCanonicalPlanar(TellusCoordinateContextFactory.java:202)
+	at com.yucareux.tellus.worldgen.global.TellusCoordinateContextFactory.fromCubeNetCanonical(TellusCoordinateContextFactory.java:168)
+	at com.yucareux.tellus.worldgen.CubeNetNativeBaseProviderPipelineTest.canonicalGridLineCoordinatesUseOwnerCellCenterRatherThanReflectedPlanarNeighbour(CubeNetNativeBaseProviderPipelineTest.java:179)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:569)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1511)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1511)
+</failure>
+  </testcase>
+  <system-out><![CDATA[[14:14:26] [Test worker/INFO]: Loaded 847 RESOLVE ecoregions at 30 arc-second resolution
+[14:14:28] [Test worker/INFO]: Land mask PMTiles unavailable (Network access is disabled during managed Distant Horizons generation); using ESA-only land fallback.
+[14:14:28] [Test worker/INFO]: Loaded Mapterhorn 0.0.11 source-resolution catalog (134 sources).
+[14:14:39] [Test worker/INFO]: [STDOUT]: CUBE_NATIVE_BASE_PIPELINE columns=288 nativeBlockStates=110592 bankAdjustedColumns=36 richSurfaceDifferences=84 mismatchBlocks=0
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
