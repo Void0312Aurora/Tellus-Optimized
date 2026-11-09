@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.yucareux.tellus.worldgen.caves.CubeNetUndergroundStageAdapterTest" tests="14" skipped="0" failures="0" errors="0" timestamp="2026-11-09T11:11:24.869Z" hostname="VOID0312" time="0.017">
+  <properties/>
+  <testcase name="unavailablePlansRemainTargetColdIncludingNullTarget()" classname="com.yucareux.tellus.worldgen.caves.CubeNetUndergroundStageAdapterTest" time="0.001"/>
+  <testcase name="duplicatePositionPlanRejectsBeforeAnyTargetExists()" classname="com.yucareux.tellus.worldgen.caves.CubeNetUndergroundStageAdapterTest" time="0.001"/>
+  <testcase name="bridgePreflightRunsUnderLeaseAndCanRejectStalePlanWithoutTargetReads()" classname="com.yucareux.tellus.worldgen.caves.CubeNetUndergroundStageAdapterTest" time="0.001"/>
+  <testcase name="targetMismatchRejectsBeforeCellOrMetadataReads()" classname="com.yucareux.tellus.worldgen.caves.CubeNetUndergroundStageAdapterTest" time="0.0"/>
+  <testcase name="errorAfterMutationRestoresThenRethrowsSameError()" classname="com.yucareux.tellus.worldgen.caves.CubeNetUndergroundStageAdapterTest" time="0.004"/>
+  <testcase name="publishesOrderedCellsAndExactlyOneAdditionalOccurrencePerFluidMarker()" classname="com.yucareux.tellus.worldgen.caves.CubeNetUndergroundStageAdapterTest" time="0.001"/>
+  <testcase name="runtimeAfterMutationRestoresAllCellsMarkersDirtyAndReverseOrder()" classname="com.yucareux.tellus.worldgen.caves.CubeNetUndergroundStageAdapterTest" time="0.001"/>
+  <testcase name="sameActualObjectQueuesBeforePreflightWhileDifferentIdentityCanWrite()" classname="com.yucareux.tellus.worldgen.caves.CubeNetUndergroundStageAdapterTest" time="0.0"/>
+  <testcase name="allCellReplaceabilityIsCheckedBeforeAnyWrite()" classname="com.yucareux.tellus.worldgen.caves.CubeNetUndergroundStageAdapterTest" time="0.001"/>
+  <testcase name="nullCellAndNullMarkerSnapshotFailBeforeMutation()" classname="com.yucareux.tellus.worldgen.caves.CubeNetUndergroundStageAdapterTest" time="0.001"/>
+  <testcase name="silentlyDroppedCellWriteIsDetectedAndRecovered()" classname="com.yucareux.tellus.worldgen.caves.CubeNetUndergroundStageAdapterTest" time="0.001"/>
+  <testcase name="emptyPlanPreservesDirtyAndMetadataAndDoesNotWrite()" classname="com.yucareux.tellus.worldgen.caves.CubeNetUndergroundStageAdapterTest" time="0.0"/>
+  <testcase name="markerOccurrenceReadbackFailureRecoversDuplicateSensitiveSnapshot()" classname="com.yucareux.tellus.worldgen.caves.CubeNetUndergroundStageAdapterTest" time="0.0"/>
+  <testcase name="incompleteRecoveryRetainsOriginalCauseAndStillRestoresMetadataAndDirty()" classname="com.yucareux.tellus.worldgen.caves.CubeNetUndergroundStageAdapterTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

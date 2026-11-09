@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.yucareux.tellus.worldgen.caves.UndergroundStagePlannerTest" tests="10" skipped="0" failures="0" errors="0" timestamp="2026-11-09T11:13:25.969Z" hostname="VOID0312" time="0.045">
+  <properties/>
+  <testcase name="requestRejectsBadArraysFlagsHaloProfileAndRevision()" classname="com.yucareux.tellus.worldgen.caves.UndergroundStagePlannerTest" time="0.007"/>
+  <testcase name="completeStageMayBeEmptyWithNullableOptionalArraysAndMaximumHeight()" classname="com.yucareux.tellus.worldgen.caves.UndergroundStagePlannerTest" time="0.005"/>
+  <testcase name="exclusionsArePureImmutableAndRetainExpandedBounds()" classname="com.yucareux.tellus.worldgen.caves.UndergroundStagePlannerTest" time="0.002"/>
+  <testcase name="factoryResolverAndErrorFailuresPropagateWithoutPartialPlans()" classname="com.yucareux.tellus.worldgen.caves.UndergroundStagePlannerTest" time="0.006"/>
+  <testcase name="sixFacesUseCanonicalEngineCoordinatesIncludingNegativeTargets()" classname="com.yucareux.tellus.worldgen.caves.UndergroundStagePlannerTest" time="0.002"/>
+  <testcase name="allFourArraysAreDefensiveAndHaloCenterMatchesSurface()" classname="com.yucareux.tellus.worldgen.caves.UndergroundStagePlannerTest" time="0.0"/>
+  <testcase name="unknownQueuedAndPartialNeverPublishDeltaPrefixes()" classname="com.yucareux.tellus.worldgen.caves.UndergroundStagePlannerTest" time="0.003"/>
+  <testcase name="invalidDeltasMarkersAndOverBudgetOutputRejectBeforePublication()" classname="com.yucareux.tellus.worldgen.caves.UndergroundStagePlannerTest" time="0.008"/>
+  <testcase name="nonBlockingIsColdBeforeFactoryOrResolver()" classname="com.yucareux.tellus.worldgen.caves.UndergroundStagePlannerTest" time="0.002"/>
+  <testcase name="sameSnapshotProducesDeterministicImmutableDeltasInRecorderOrder()" classname="com.yucareux.tellus.worldgen.caves.UndergroundStagePlannerTest" time="0.003"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

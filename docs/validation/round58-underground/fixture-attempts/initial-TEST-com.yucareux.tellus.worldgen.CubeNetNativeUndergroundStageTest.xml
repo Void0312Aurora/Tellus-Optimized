@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.yucareux.tellus.worldgen.CubeNetNativeUndergroundStageTest" tests="6" skipped="0" failures="1" errors="0" timestamp="2026-11-09T10:56:46.541Z" hostname="VOID0312" time="18.844">
+  <properties/>
+  <testcase name="aliasSectionsAndStatePalettesFailBeforeDetachedSampling()" classname="com.yucareux.tellus.worldgen.CubeNetNativeUndergroundStageTest" time="0.385"/>
+  <testcase name="disabledNonblockingAndContendedPreparationRemainTargetAndRegistryCold()" classname="com.yucareux.tellus.worldgen.CubeNetNativeUndergroundStageTest" time="0.032"/>
+  <testcase name="replayQueuesUnderNativeLeaseWithoutApplyingPreparedDeltas()" classname="com.yucareux.tellus.worldgen.CubeNetNativeUndergroundStageTest" time="0.165"/>
+  <testcase name="markerMutationRuntimeAndErrorRecoverNativeBlocksDuplicateListsAndDirty()" classname="com.yucareux.tellus.worldgen.CubeNetNativeUndergroundStageTest" time="0.096">
+    <failure message="java.util.NoSuchElementException: No value present" type="java.util.NoSuchElementException">java.util.NoSuchElementException: No value present
+	at java.base/java.util.Optional.orElseThrow(Optional.java:377)
+	at com.yucareux.tellus.worldgen.CubeNetNativeUndergroundStageTest.markerMutationRuntimeAndErrorRecoverNativeBlocksDuplicateListsAndDirty(CubeNetNativeUndergroundStageTest.java:119)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:569)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1511)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1511)
+</failure>
+  </testcase>
+  <testcase name="fullTargetBaselineAndActualObjectBindingRejectStaleAndForeignReplay()" classname="com.yucareux.tellus.worldgen.CubeNetNativeUndergroundStageTest" time="0.055"/>
+  <testcase name="eighteenCompleteChunksMatchUnchangedNativeSamplerAcrossSixFacesAndThreeProfiles()" classname="com.yucareux.tellus.worldgen.CubeNetNativeUndergroundStageTest" time="1.405"/>
+  <system-out><![CDATA[[18:57:05] [Test worker/INFO]: [STDOUT]: NATIVE_UNDERGROUND_STAGE chunks=18 comparedBlockStates=737280 mismatchBlocks=0 exactMarkerArrays=true deltas=12372 fluidMarkers=4 nativeHaloReads=11088 materials=[CAVE_AIR, LAVA, COPPER_ORE, DEEPSLATE_IRON_ORE, GRANITE, TUFF] sourceColdReplay=true
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.yucareux.tellus.worldgen.CubeNetNativeUndergroundStageTest" tests="7" skipped="0" failures="0" errors="0" timestamp="2026-11-09T11:10:32.997Z" hostname="VOID0312" time="1.927">
+  <properties/>
+  <testcase name="aliasSectionsAndStatePalettesFailBeforeDetachedSampling()" classname="com.yucareux.tellus.worldgen.CubeNetNativeUndergroundStageTest" time="0.068"/>
+  <testcase name="disabledNonblockingAndContendedPreparationRemainTargetAndRegistryCold()" classname="com.yucareux.tellus.worldgen.CubeNetNativeUndergroundStageTest" time="0.015"/>
+  <testcase name="replayQueuesUnderNativeLeaseWithoutApplyingPreparedDeltas()" classname="com.yucareux.tellus.worldgen.CubeNetNativeUndergroundStageTest" time="0.107"/>
+  <testcase name="markerMutationRuntimeAndErrorRecoverNativeBlocksDuplicateListsAndDirty()" classname="com.yucareux.tellus.worldgen.CubeNetNativeUndergroundStageTest" time="0.277"/>
+  <testcase name="arithmeticOverflowAndExcludedCapStopBeforeTargetMutation()" classname="com.yucareux.tellus.worldgen.CubeNetNativeUndergroundStageTest" time="0.024"/>
+  <testcase name="fullTargetBaselineAndActualObjectBindingRejectStaleAndForeignReplay()" classname="com.yucareux.tellus.worldgen.CubeNetNativeUndergroundStageTest" time="0.036"/>
+  <testcase name="eighteenCompleteChunksMatchUnchangedNativeSamplerAcrossSixFacesAndThreeProfiles()" classname="com.yucareux.tellus.worldgen.CubeNetNativeUndergroundStageTest" time="1.283"/>
+  <system-out><![CDATA[[19:10:34] [Test worker/INFO]: [STDOUT]: NATIVE_UNDERGROUND_STAGE chunks=18 comparedBlockStates=737280 mismatchBlocks=0 exactMarkerArrays=true deltas=12372 fluidMarkers=4 nativeHaloReads=11088 materials=[CAVE_AIR, LAVA, COPPER_ORE, DEEPSLATE_IRON_ORE, GRANITE, TUFF] sourceColdReplay=true
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
