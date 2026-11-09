@@ -21,3 +21,16 @@ ext.tellus = [
 ]
 
 apply from: rootProject.file('gradle/tellus-fabric.gradle')
+
+// Keep opt-in persistence probes isolated from ordinary development saves.
+def isolatedRunDir = providers.gradleProperty('tellusRunDir').orNull
+if (isolatedRunDir != null && !isolatedRunDir.isBlank()) {
+    loom.runs.server.runDir = project.relativePath(file(isolatedRunDir))
+}
+
+def benchmarkHeap = providers.gradleProperty('tellusBenchmarkHeap').orNull
+if (benchmarkHeap != null && !benchmarkHeap.isBlank()) {
+    tasks.named('runServer').configure {
+        jvmArgs "-Xms${benchmarkHeap}", "-Xmx${benchmarkHeap}"
+    }
+}

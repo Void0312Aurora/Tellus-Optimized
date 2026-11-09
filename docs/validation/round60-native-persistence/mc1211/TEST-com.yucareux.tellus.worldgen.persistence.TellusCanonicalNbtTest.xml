@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.yucareux.tellus.worldgen.persistence.TellusCanonicalNbtTest" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-11-09T15:56:13.136Z" hostname="VOID0312" time="0.123">
+  <properties/>
+  <testcase name="onlyExplicitRootVolatileFieldsAreExcluded()" classname="com.yucareux.tellus.worldgen.persistence.TellusCanonicalNbtTest" time="0.033"/>
+  <testcase name="allArrayTypesAndUnknownNativeMetadataRemainSignificant()" classname="com.yucareux.tellus.worldgen.persistence.TellusCanonicalNbtTest" time="0.03"/>
+  <testcase name="compoundOrderIsCanonicalWithoutMutatingTheTags()" classname="com.yucareux.tellus.worldgen.persistence.TellusCanonicalNbtTest" time="0.015"/>
+  <testcase name="deepOrCyclicTagsAndOversizedStringsAreBounded()" classname="com.yucareux.tellus.worldgen.persistence.TellusCanonicalNbtTest" time="0.011"/>
+  <testcase name="nativeStringsAreNotReplacementEncoded()" classname="com.yucareux.tellus.worldgen.persistence.TellusCanonicalNbtTest" time="0.001"/>
+  <testcase name="listOrderAndScalarTypesAreRetained()" classname="com.yucareux.tellus.worldgen.persistence.TellusCanonicalNbtTest" time="0.032"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

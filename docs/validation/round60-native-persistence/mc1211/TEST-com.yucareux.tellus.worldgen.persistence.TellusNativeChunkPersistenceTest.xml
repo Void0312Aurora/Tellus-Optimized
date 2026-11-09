@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.yucareux.tellus.worldgen.persistence.TellusNativeChunkPersistenceTest" tests="15" skipped="0" failures="0" errors="0" timestamp="2026-11-09T15:56:13.260Z" hostname="VOID0312" time="0.215">
+  <properties/>
+  <testcase name="incompleteRecoveryQuarantinesPhysicalWorldChunkAcrossNewSessions()" classname="com.yucareux.tellus.worldgen.persistence.TellusNativeChunkPersistenceTest" time="0.087"/>
+  <testcase name="reentrantSamePhysicalChunkIsAdmittedOnlyOnceAndLeaseIsReleased()" classname="com.yucareux.tellus.worldgen.persistence.TellusNativeChunkPersistenceTest" time="0.015"/>
+  <testcase name="missingNativeDiskDataIsObservedWithoutDemandLoadingOrRegeneration()" classname="com.yucareux.tellus.worldgen.persistence.TellusNativeChunkPersistenceTest" time="0.007"/>
+  <testcase name="everyRuntimeFaultPointRestoresTheEntirePriorNativeTagExactly()" classname="com.yucareux.tellus.worldgen.persistence.TellusNativeChunkPersistenceTest" time="0.015"/>
+  <testcase name="queuedBaselineIsFlushedBeforeReadAndReturnsDefensiveNativeTag()" classname="com.yucareux.tellus.worldgen.persistence.TellusNativeChunkPersistenceTest" time="0.008"/>
+  <testcase name="nativeHeightBudgetAndAlignmentAreExplicit()" classname="com.yucareux.tellus.worldgen.persistence.TellusNativeChunkPersistenceTest" time="0.005"/>
+  <testcase name="duplicateForeignOrWrongTypedSectionsAreRejectedBeforeQueueWork()" classname="com.yucareux.tellus.worldgen.persistence.TellusNativeChunkPersistenceTest" time="0.007"/>
+  <testcase name="malformedNativeListPaletteAndLightShapesAreColdRejected()" classname="com.yucareux.tellus.worldgen.persistence.TellusNativeChunkPersistenceTest" time="0.01"/>
+  <testcase name="wrongThreadSeedDimensionRootOrProfileIsColdBeforeWorkerAccess()" classname="com.yucareux.tellus.worldgen.persistence.TellusNativeChunkPersistenceTest" time="0.007"/>
+  <testcase name="apronAndOverflowingCoordinatesAreColdBeforeNativeWorkerAccess()" classname="com.yucareux.tellus.worldgen.persistence.TellusNativeChunkPersistenceTest" time="0.005"/>
+  <testcase name="metadataOnlyReadbackMismatchIsFailureAndRestoresCompletePriorTag()" classname="com.yucareux.tellus.worldgen.persistence.TellusNativeChunkPersistenceTest" time="0.008"/>
+  <testcase name="completeNativeCommitUsesExistingQueueAndExactSemanticReadback()" classname="com.yucareux.tellus.worldgen.persistence.TellusNativeChunkPersistenceTest" time="0.006"/>
+  <testcase name="everyErrorFaultPointRetainsExactErrorIdentityAfterCompleteRecovery()" classname="com.yucareux.tellus.worldgen.persistence.TellusNativeChunkPersistenceTest" time="0.01"/>
+  <testcase name="exactStatusSpellingAndNativeDataVersionAreBoundNotSilentlyNormalized()" classname="com.yucareux.tellus.worldgen.persistence.TellusNativeChunkPersistenceTest" time="0.009"/>
+  <testcase name="missingBaselineAndIncompleteOrWrongCoordinateOrStatusPayloadNeverPublish()" classname="com.yucareux.tellus.worldgen.persistence.TellusNativeChunkPersistenceTest" time="0.006"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

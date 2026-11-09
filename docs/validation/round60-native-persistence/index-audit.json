@@ -1,0 +1,15 @@
+{
+  "initialRoundRawIndexSha256": "634856a626d05eef7b730c4f990d42e6dc7fbe0ce2052a6fd28926d671dc01b4",
+  "observedPreCheckpointRawIndexSha256": "bae6810ce206f7dc0defb2c8e7165750ec848381488d4584ad527ee6d592a18c",
+  "initialRawBytesStillEqual": false,
+  "stagedTree": "86bc9cb945e7842ef5845f5b02fdbf1a954a4229",
+  "headTree": "86bc9cb945e7842ef5845f5b02fdbf1a954a4229",
+  "stagedTreeUnchanged": true,
+  "cachedDiffEmpty": true,
+  "normalStageZeroEntries": 1193,
+  "allEntriesHaveNormalHFlag": true,
+  "originalIndexBlobWasNotStoredInGit": true,
+  "rawByteRestoreNotAttempted": true,
+  "qualification": "raw index metadata/cache bytes changed during read/status/diff inspection; exact source of refresh not proven; no staged tree/entry/flag/branch/HEAD change observed",
+  "observedRawBackup": "C:\\Users\\30483\\AppData\\Local\\Temp\\tellus-round60-native-persistence\\observed-real-index-before-checkpoint.bin"
+}

@@ -1,0 +1,137 @@
+Picked up JAVA_TOOL_OPTIONS: "-Dtellus.persistence.probe=true" "-Dtellus.persistence.probe.id=bf9272f7-f517-4ef5-978a-cc239df170d2" "-Dtellus.persistence.probe.allowUpgrade=true" "-Dtellus.persistence.probeRoot=D:\Temp\tellus-phase60-roundtrip-mc1211-20261109-a\world" "-Dtellus.sphere.syntheticSampler=false" "-Dtellus.gameDir=D:\Temp\tellus-phase60-roundtrip-mc1211-20261109-a" "-Dtellus.configDir=D:\Temp\tellus-phase60-roundtrip-mc1211-20261109-a\config" "-Dtellus.chunkgen.threads.max=1"
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.4.0/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+
+> Configure project :mc1211
+Fabric Loom: 1.14.10
+
+> Task :mc1211:compileJava
+> Task :mc1211:processResources UP-TO-DATE
+> Task :mc1211:classes
+> Task :mc1211:generateLog4jConfig
+> Task :mc1211:generateRemapClasspath
+> Task :mc1211:generateDLIConfig
+> Task :mc1211:configureLaunch
+
+> Task :mc1211:runServer
+Picked up JAVA_TOOL_OPTIONS: "-Dtellus.persistence.probe=true" "-Dtellus.persistence.probe.id=bf9272f7-f517-4ef5-978a-cc239df170d2" "-Dtellus.persistence.probe.allowUpgrade=true" "-Dtellus.persistence.probeRoot=D:\Temp\tellus-phase60-roundtrip-mc1211-20261109-a\world" "-Dtellus.sphere.syntheticSampler=false" "-Dtellus.gameDir=D:\Temp\tellus-phase60-roundtrip-mc1211-20261109-a" "-Dtellus.configDir=D:\Temp\tellus-phase60-roundtrip-mc1211-20261109-a\config" "-Dtellus.chunkgen.threads.max=1"
+[23:49:34] [main/INFO] (FabricLoader/GameProvider) Loading Minecraft 1.21.1 with Fabric Loader 0.15.11
+[23:49:35] [main/INFO] (FabricLoader) Loading 43 mods:
+	- fabric-api 0.115.4+1.21.1
+	- fabric-api-base 0.4.42+6573ed8c19
+	- fabric-api-lookup-api-v1 1.6.70+b559734419
+	- fabric-biome-api-v1 13.0.31+d527f9fd19
+	- fabric-block-api-v1 1.0.22+0af3f5a719
+	- fabric-block-view-api-v2 1.0.11+ebb2264e19
+	- fabric-command-api-v1 1.2.49+f71b366f19
+	- fabric-command-api-v2 2.2.28+6ced4dd919
+	- fabric-commands-v0 0.2.66+df3654b319
+	- fabric-content-registries-v0 8.0.18+b559734419
+	- fabric-convention-tags-v1 2.1.4+7f945d5b19
+	- fabric-convention-tags-v2 2.11.0+a406e79519
+	- fabric-crash-report-info-v1 0.2.29+0af3f5a719
+	- fabric-data-attachment-api-v1 1.4.1+9ed317f519
+	- fabric-data-generation-api-v1 20.2.28+16c4ae2519
+	- fabric-dimensions-v1 4.0.0+6fc22b9919
+	- fabric-entity-events-v1 1.7.0+2122d82819
+	- fabric-events-interaction-v0 0.7.13+ba9dae0619
+	- fabric-game-rule-api-v1 1.0.53+6ced4dd919
+	- fabric-gametest-api-v1 2.0.5+6fc22b9919
+	- fabric-item-api-v1 11.1.1+d5debaed19
+	- fabric-item-group-api-v1 4.1.7+def88e3a19
+	- fabric-lifecycle-events-v1 2.5.0+01d9a51c19
+	- fabric-loot-api-v2 3.0.15+3f89f5a519
+	- fabric-loot-api-v3 1.0.3+3f89f5a519
+	- fabric-message-api-v1 6.0.13+6573ed8c19
+	- fabric-networking-api-v1 4.3.0+c7469b2119
+	- fabric-object-builder-api-v1 15.2.1+40875a9319
+	- fabric-particles-v1 4.0.2+6573ed8c19
+	- fabric-recipe-api-v1 5.0.14+248df81c19
+	- fabric-registry-sync-v0 5.2.0+34f5d91419
+	- fabric-rendering-data-attachment-v1 0.3.49+73761d2e19
+	- fabric-rendering-fluids-v1 3.1.6+1daea21519
+	- fabric-resource-conditions-api-v1 4.3.0+8dc279b119
+	- fabric-resource-loader-v0 1.3.1+5b5275af19
+	- fabric-screen-handler-api-v1 1.3.88+b559734419
+	- fabric-transfer-api-v1 5.4.2+c24bd99419
+	- fabric-transitive-access-wideners-v1 6.2.0+45b9699719
+	- fabricloader 0.15.11
+	- java 21
+	- minecraft 1.21.1
+	- mixinextras 0.3.5
+	- tellus 0.8.5
+[23:49:36] [main/INFO] (FabricLoader/Mixin) SpongePowered MIXIN Subsystem Version=0.8.5 Source=file:/C:/Users/30483/.gradle/caches/modules-2/files-2.1/net.fabricmc/sponge-mixin/0.13.3+mixin.0.8.5/9527e6b0d2449408958fd1302594dc65ec5ade9c/sponge-mixin-0.13.3+mixin.0.8.5.jar Service=Knot/Fabric Env=SERVER
+[23:49:36] [main/INFO] (FabricLoader/Mixin) Loaded Fabric development mappings for mixin remapper!
+[23:49:37] [main/INFO] (FabricLoader/Mixin) Compatibility level set to JAVA_17
+[23:49:37] [main/INFO] (FabricLoader/Mixin) Compatibility level set to JAVA_21
+[23:49:39] [main/WARN] (FabricLoader/Mixin) Error loading class: com/seibel/distanthorizons/core/level/AbstractDhLevel (java.lang.ClassNotFoundException: com/seibel/distanthorizons/core/level/AbstractDhLevel)
+[23:49:40] [main/INFO] (FabricLoader/MixinExtras|Service) Initializing MixinExtras via com.llamalad7.mixinextras.service.MixinExtrasServiceImpl(version=0.3.5).
+[23:50:22] [main/INFO] (tellus) Loaded Mapterhorn 0.0.11 source-resolution catalog (134 sources).
+[23:50:22] [main/INFO] (tellus) Tellus worldgen initialized with the dense global packed-coordinate profile
+[23:50:25] [main/INFO] (Minecraft) Environment: Environment[sessionHost=https://sessionserver.mojang.com, servicesHost=https://api.minecraftservices.com, name=PROD]
+[23:50:26] [main/WARN] (TaggedChoiceType_DimDataFix) Not recognizing key tellus:cube_net. Using pass-through codec. TaggedChoiceType[type, minecraft:flat -> ((Tag["settings", ((Tag["biome", NamedType["biome", NamespacedString]] | EmptyPart), ((Tag["layers", List[((Tag["block", NamedType["block_name", NamespacedString]] | EmptyPart), EmptyPartPassthrough)]] | EmptyPart), EmptyPartPassthrough))] | EmptyPart), EmptyPartPassthrough), 
+minecraft:noise -> ((Tag["biome_source", TaggedChoiceType[type, minecraft:checkerboard -> (Tag["biomes", List[NamedType["biome", NamespacedString]]], EmptyPartPassthrough), 
+minecraft:the_end -> EmptyPartPassthrough, 
+minecraft:fixed -> (Tag["biome", NamedType["biome", NamespacedString]], EmptyPartPassthrough), 
+minecraft:multi_noise -> ((Tag["preset", NamedType["multi_noise_biome_source_parameter_list", NamespacedString]], EmptyPartPassthrough) | List[(Tag["biome", NamedType["biome", NamespacedString]], EmptyPartPassthrough)])]
+] | EmptyPart), ((Tag["settings", (String | ((Tag["default_block", NamedType["block_name", NamespacedString]] | EmptyPart), ((Tag["default_fluid", NamedType["block_name", NamespacedString]] | EmptyPart), EmptyPartPassthrough)))] | EmptyPart), EmptyPartPassthrough)), 
+minecraft:debug -> EmptyPartPassthrough]
+
+[23:50:26] [main/ERROR] (Minecraft) Failed to start the minecraft server
+java.lang.ClassCastException: class com.mojang.serialization.Codec$20 cannot be cast to class com.mojang.serialization.MapCodec (com.mojang.serialization.Codec$20 and com.mojang.serialization.MapCodec are in unnamed module of loader net.fabricmc.loader.impl.launch.knot.KnotClassLoader @64bf3bbf)
+	at com.mojang.serialization.DataResult$Success.map(DataResult.java:175) ~[datafixerupper-8.0.16.jar:?]
+	at com.mojang.datafixers.types.templates.TaggedChoice$TaggedChoiceType.lambda$buildCodec$2(TaggedChoice.java:205) ~[datafixerupper-8.0.16.jar:?]
+	at com.mojang.serialization.codecs.KeyDispatchCodec.lambda$decode$4(KeyDispatchCodec.java:46) ~[datafixerupper-8.0.16.jar:?]
+	at com.mojang.serialization.DataResult$Success.flatMap(DataResult.java:201) ~[datafixerupper-8.0.16.jar:?]
+	at com.mojang.serialization.codecs.KeyDispatchCodec.decode(KeyDispatchCodec.java:45) ~[datafixerupper-8.0.16.jar:?]
+	at com.mojang.serialization.MapDecoder.lambda$compressedDecode$1(MapDecoder.java:52) ~[datafixerupper-8.0.16.jar:?]
+	at com.mojang.serialization.DataResult$Success.flatMap(DataResult.java:201) ~[datafixerupper-8.0.16.jar:?]
+	at com.mojang.serialization.MapDecoder.compressedDecode(MapDecoder.java:52) ~[datafixerupper-8.0.16.jar:?]
+	at com.mojang.serialization.MapCodec$MapCodecCodec.decode(MapCodec.java:158) ~[datafixerupper-8.0.16.jar:?]
+	at com.mojang.serialization.Decoder.parse(Decoder.java:18) ~[datafixerupper-8.0.16.jar:?]
+	at com.mojang.serialization.codecs.FieldDecoder.decode(FieldDecoder.java:29) ~[datafixerupper-8.0.16.jar:?]
+	at com.mojang.serialization.MapCodec$2.decode(MapCodec.java:77) ~[datafixerupper-8.0.16.jar:?]
+	at com.mojang.serialization.MapDecoder.lambda$compressedDecode$1(MapDecoder.java:52) ~[datafixerupper-8.0.16.jar:?]
+	at com.mojang.serialization.DataResult$Success.flatMap(DataResult.java:201) ~[datafixerupper-8.0.16.jar:?]
+	at com.mojang.serialization.MapDecoder.compressedDecode(MapDecoder.java:52) ~[datafixerupper-8.0.16.jar:?]
+	at com.mojang.serialization.MapCodec$MapCodecCodec.decode(MapCodec.java:158) ~[datafixerupper-8.0.16.jar:?]
+	at com.mojang.serialization.codecs.PairCodec.decode(PairCodec.java:23) ~[datafixerupper-8.0.16.jar:?]
+	at com.mojang.serialization.Decoder.parse(Decoder.java:18) ~[datafixerupper-8.0.16.jar:?]
+	at com.mojang.serialization.codecs.CompoundListCodec.lambda$decode$2(CompoundListCodec.java:38) ~[datafixerupper-8.0.16.jar:?]
+	at net.minecraft.nbt.NbtOps.method_29153(NbtOps.java:211) ~[minecraft-common-d5c91a2df6-1.21.1-loom.mappings.1_21_1.layered+hash.2198-v2.jar:?]
+	at com.mojang.serialization.codecs.CompoundListCodec.lambda$decode$4(CompoundListCodec.java:36) ~[datafixerupper-8.0.16.jar:?]
+	at com.mojang.serialization.DataResult$Success.flatMap(DataResult.java:201) ~[datafixerupper-8.0.16.jar:?]
+	at com.mojang.serialization.codecs.CompoundListCodec.decode(CompoundListCodec.java:30) ~[datafixerupper-8.0.16.jar:?]
+	at com.mojang.serialization.codecs.PairCodec.decode(PairCodec.java:23) ~[datafixerupper-8.0.16.jar:?]
+	at com.mojang.serialization.Decoder.parse(Decoder.java:18) ~[datafixerupper-8.0.16.jar:?]
+	at com.mojang.serialization.codecs.FieldDecoder.decode(FieldDecoder.java:29) ~[datafixerupper-8.0.16.jar:?]
+	at com.mojang.serialization.MapCodec$2.decode(MapCodec.java:77) ~[datafixerupper-8.0.16.jar:?]
+	at com.mojang.serialization.MapDecoder.lambda$compressedDecode$1(MapDecoder.java:52) ~[datafixerupper-8.0.16.jar:?]
+	at com.mojang.serialization.DataResult$Success.flatMap(DataResult.java:201) ~[datafixerupper-8.0.16.jar:?]
+	at com.mojang.serialization.MapDecoder.compressedDecode(MapDecoder.java:52) ~[datafixerupper-8.0.16.jar:?]
+	at com.mojang.serialization.MapCodec$MapCodecCodec.decode(MapCodec.java:158) ~[datafixerupper-8.0.16.jar:?]
+	at com.mojang.serialization.codecs.PairCodec.decode(PairCodec.java:23) ~[datafixerupper-8.0.16.jar:?]
+	at com.mojang.datafixers.types.templates.Named$NamedType$1.decode(Named.java:118) ~[datafixerupper-8.0.16.jar:?]
+	at com.mojang.datafixers.types.Type.readAndWrite(Type.java:158) ~[datafixerupper-8.0.16.jar:?]
+	at com.mojang.datafixers.DataFixerUpper.update(DataFixerUpper.java:78) ~[datafixerupper-8.0.16.jar:?]
+	at net.minecraft.util.datafix.DataFixTypes.update(DataFixTypes.java:75) ~[minecraft-common-d5c91a2df6-1.21.1-loom.mappings.1_21_1.layered+hash.2198-v2.jar:?]
+	at net.minecraft.util.datafix.DataFixTypes.updateToCurrentVersion(DataFixTypes.java:79) ~[minecraft-common-d5c91a2df6-1.21.1-loom.mappings.1_21_1.layered+hash.2198-v2.jar:?]
+	at net.minecraft.world.level.storage.LevelStorageSource.method_59826(LevelStorageSource.java:231) ~[minecraft-common-d5c91a2df6-1.21.1-loom.mappings.1_21_1.layered+hash.2198-v2.jar:?]
+	at com.mojang.serialization.Dynamic.lambda$update$14(Dynamic.java:143) ~[datafixerupper-8.0.16.jar:?]
+	at com.mojang.serialization.DynamicOps.lambda$update$27(DynamicOps.java:221) ~[datafixerupper-8.0.16.jar:?]
+	at com.mojang.serialization.DataResult$Success.map(DataResult.java:175) ~[datafixerupper-8.0.16.jar:?]
+	at com.mojang.serialization.DynamicOps.update(DynamicOps.java:221) ~[datafixerupper-8.0.16.jar:?]
+	at com.mojang.serialization.Dynamic.lambda$update$15(Dynamic.java:143) ~[datafixerupper-8.0.16.jar:?]
+	at com.mojang.serialization.Dynamic.map(Dynamic.java:38) ~[datafixerupper-8.0.16.jar:?]
+	at com.mojang.serialization.Dynamic.update(Dynamic.java:143) ~[datafixerupper-8.0.16.jar:?]
+	at net.minecraft.world.level.storage.LevelStorageSource.readLevelDataTagFixed(LevelStorageSource.java:230) ~[minecraft-common-d5c91a2df6-1.21.1-loom.mappings.1_21_1.layered+hash.2198-v2.jar:?]
+	at net.minecraft.world.level.storage.LevelStorageSource$LevelStorageAccess.getDataTag(LevelStorageSource.java:444) ~[minecraft-common-d5c91a2df6-1.21.1-loom.mappings.1_21_1.layered+hash.2198-v2.jar:?]
+	at net.minecraft.world.level.storage.LevelStorageSource$LevelStorageAccess.getDataTag(LevelStorageSource.java:435) ~[minecraft-common-d5c91a2df6-1.21.1-loom.mappings.1_21_1.layered+hash.2198-v2.jar:?]
+	at net.minecraft.server.Main.main(Main.java:143) [minecraft-common-d5c91a2df6-1.21.1-loom.mappings.1_21_1.layered+hash.2198-v2.jar:?]
+	at net.fabricmc.loader.impl.game.minecraft.MinecraftGameProvider.launch(MinecraftGameProvider.java:470) [fabric-loader-0.15.11.jar:?]
+	at net.fabricmc.loader.impl.launch.knot.Knot.launch(Knot.java:74) [fabric-loader-0.15.11.jar:?]
+	at net.fabricmc.loader.impl.launch.knot.KnotServer.main(KnotServer.java:23) [fabric-loader-0.15.11.jar:?]
+	at net.fabricmc.devlaunchinjector.Main.main(Main.java:86) [dev-launch-injector-0.2.1+build.8.jar:?]
+
+BUILD SUCCESSFUL in 1m 56s
+6 actionable tasks: 5 executed, 1 up-to-date

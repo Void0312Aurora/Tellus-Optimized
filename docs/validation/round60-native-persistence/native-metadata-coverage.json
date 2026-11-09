@@ -1,0 +1,44 @@
+{
+  "source": "actual mc1201 persisted post-restart native region",
+  "chunk": [
+    616246,
+    -351597
+  ],
+  "dataVersion": 3465,
+  "rootKeys": [
+    "DataVersion",
+    "Heightmaps",
+    "InhabitedTime",
+    "LastUpdate",
+    "PostProcessing",
+    "Status",
+    "block_entities",
+    "block_ticks",
+    "fluid_ticks",
+    "isLightOn",
+    "sections",
+    "structures",
+    "xPos",
+    "yPos",
+    "zPos"
+  ],
+  "sectionCount": 254,
+  "blockEntityCount": 0,
+  "blockTickCount": 0,
+  "fluidTickCount": 0,
+  "postProcessingLists": 254,
+  "postProcessingEntries": 0,
+  "skyLightSectionCount": 2,
+  "blockLightSectionCount": 0,
+  "heightmapKeys": [
+    "MOTION_BLOCKING",
+    "MOTION_BLOCKING_NO_LEAVES",
+    "OCEAN_FLOOR",
+    "WORLD_SURFACE"
+  ],
+  "structureCompoundKeys": [
+    "References",
+    "starts"
+  ],
+  "regionSha256": "9cd20367b63abffecdb2ffd355cbabef7ac34a5a66d6a54cf7c3370924b61599"
+}

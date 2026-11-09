@@ -1,0 +1,63 @@
+{
+  "command": [
+    "python",
+    "tools/tellus_parity_compare.py",
+    "--columns-left",
+    "D:\\workshop\\Tellus-Optimized\\docs\\validation\\round60-native-persistence\\manifests\\cube-net.jsonl",
+    "--columns-right",
+    "D:\\workshop\\Tellus-Optimized\\docs\\validation\\round60-native-persistence\\manifests\\sphere-face.jsonl",
+    "--biome",
+    "D:\\workshop\\Tellus-Optimized\\docs\\validation\\round60-native-persistence\\manifests\\earth-cube-biome.jsonl",
+    "--require-block-digests",
+    "--require-original-biome-cases"
+  ],
+  "exitCode": 0,
+  "stdout": {
+    "biome": {
+      "cases": 7,
+      "mismatches": [
+        {
+          "case": "bare/BWh",
+          "cube": "minecraft:stony_peaks",
+          "earth": "minecraft:desert"
+        }
+      ]
+    },
+    "checks": {
+      "biomeCaseSet": true,
+      "biomeCount": true,
+      "biomeMismatches": true,
+      "columnCount": true,
+      "columnMismatches": true
+    },
+    "columns": {
+      "mismatches": [],
+      "rightRows": 13824,
+      "rows": 13824
+    },
+    "expected": {
+      "biomeCases": 7,
+      "biomeMismatches": 1,
+      "columnMismatches": 0,
+      "columns": 13824,
+      "knownBiomeCase": "bare/BWh",
+      "originalBiomeCases": [
+        "bare/BWh",
+        "cropland/Dfb",
+        "forest/Cfb",
+        "grassland/Cfa",
+        "mangrove/Af",
+        "snow/ET",
+        "wetland/Cfa"
+      ]
+    },
+    "status": "PASS"
+  },
+  "stderr": "",
+  "manifestSha256": {
+    "columns-metadata.json": "d91a72797a1521c44cf5b3c084e375da08517c22b19c63a4be177860465905d1",
+    "cube-net.jsonl": "291927f21f30971b7d169b75e1d185326dcce6298d22212a131b27d846a9f2b2",
+    "earth-cube-biome.jsonl": "0fbc245177c66f363c9c866a6a44ca9cd5c56041e0302ed45945551878f0f091",
+    "sphere-face.jsonl": "291927f21f30971b7d169b75e1d185326dcce6298d22212a131b27d846a9f2b2"
+  }
+}

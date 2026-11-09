@@ -1,0 +1,2 @@
+# Preserve raw native server log bytes; whitespace is evidence, not source formatting.
+live/**/*.server.log -text -diff

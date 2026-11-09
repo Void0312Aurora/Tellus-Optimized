@@ -283,6 +283,9 @@ public class TellusCommon {
          VOXY_PREGEN_MANAGER.shutdown();
          MANAGED_TERRAIN_DOWNLOAD_MANAGER.reset();
       });
+      if (Boolean.getBoolean("tellus.persistence.probe")) {
+         com.yucareux.tellus.worldgen.TellusPersistenceProbeCommand.register(runtime);
+      }
       runtime.onServerTick(REALTIME_MANAGER::onServerTick);
       runtime.onServerTick(VOXY_PREGEN_MANAGER::onServerTick);
       runtime.onServerTick(server -> GEO_TELEPORT_PROGRESS.values().forEach(TellusCommon.TeleportProgress::update));
