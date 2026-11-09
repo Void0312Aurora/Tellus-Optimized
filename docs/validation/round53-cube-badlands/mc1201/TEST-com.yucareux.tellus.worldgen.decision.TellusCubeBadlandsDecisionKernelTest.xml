@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.yucareux.tellus.worldgen.decision.TellusCubeBadlandsDecisionKernelTest" tests="7" skipped="0" failures="0" errors="0" timestamp="2026-11-09T06:42:42.387Z" hostname="VOID0312" time="0.102">
+  <properties/>
+  <testcase name="resolvedKernelMatchesFrozenNativeAlgorithmAcrossCoordinatesThresholdsScalesAndHeights()" classname="com.yucareux.tellus.worldgen.decision.TellusCubeBadlandsDecisionKernelTest" time="0.067"/>
+  <testcase name="outputRemainsTopFirstAndRetainsTopEvenAtOrBelowLowerClipBoundary()" classname="com.yucareux.tellus.worldgen.decision.TellusCubeBadlandsDecisionKernelTest" time="0.001"/>
+  <testcase name="inheritedMinimumScaleDenominatorAndNonfiniteReliefBehaviorAreNotReinterpreted()" classname="com.yucareux.tellus.worldgen.decision.TellusCubeBadlandsDecisionKernelTest" time="0.001"/>
+  <testcase name="ceilReliefThresholdAndFiniteSlopeFallbackKeepOriginalPrecedence()" classname="com.yucareux.tellus.worldgen.decision.TellusCubeBadlandsDecisionKernelTest" time="0.0"/>
+  <testcase name="cliffMinimumDepthCapAndBedrockSideClippingStayUnchanged()" classname="com.yucareux.tellus.worldgen.decision.TellusCubeBadlandsDecisionKernelTest" time="0.012"/>
+  <testcase name="resultListsAreImmutableAndCellsRejectMissingOrUnknownMaterial()" classname="com.yucareux.tellus.worldgen.decision.TellusCubeBadlandsDecisionKernelTest" time="0.005"/>
+  <testcase name="allSevenBandMaterialsAndCurrentPlateauOutputsRetainNativeMapping()" classname="com.yucareux.tellus.worldgen.decision.TellusCubeBadlandsDecisionKernelTest" time="0.016"/>
+  <system-out><![CDATA[[14:42:42] [Test worker/INFO]: [STDOUT]: CUBE_BADLANDS_PURE_KERNEL cases=6912 comparedCells=76920 mismatchCells=0
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

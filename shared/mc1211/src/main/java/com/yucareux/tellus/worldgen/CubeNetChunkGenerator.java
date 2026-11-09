@@ -508,6 +508,75 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
       return position;
    }
 
+   /** Explicit raw-source badlands overlay; flowing-water state properties remain external. */
+   public com.yucareux.tellus.worldgen.feature.TellusFeaturePlanner semanticBadlandsFeaturePlanner() {
+      return (generation, coordinate, column, sample) -> {
+         Objects.requireNonNull(generation, "generation");
+         Objects.requireNonNull(coordinate, "coordinate");
+         Objects.requireNonNull(column, "column");
+         Objects.requireNonNull(sample, "sample");
+         if (!coordinate.equals(column.coordinate()) || !coordinate.equals(sample.request().coordinate())
+            || !generation.geometry().equals(sample.request().geometry())
+            || generation.worldSeed() != sample.request().cacheKey().worldSeed()) {
+            throw new IllegalArgumentException("native Cube-Net badlands inputs do not share an identity");
+         }
+         if (sample.request().nonBlocking()
+            || sample.status() == com.yucareux.tellus.worldgen.sample.SampleStatus.QUEUED
+            || column.status() == com.yucareux.tellus.worldgen.decision.DecisionStatus.QUEUED) {
+            return com.yucareux.tellus.worldgen.feature.FeaturePlan.queued("native Cube-Net badlands input queued");
+         }
+         if (!sample.complete() || column.status() != com.yucareux.tellus.worldgen.decision.DecisionStatus.AVAILABLE) {
+            return com.yucareux.tellus.worldgen.feature.FeaturePlan.unknown("complete native Cube-Net badlands inputs required");
+         }
+         if (Double.compare(generation.worldScale(), this.worldScale()) != 0
+            || generation.seaLevel() != this.seaLevel || generation.minY() != this.minY
+            || generation.maxYExclusive() != this.maxY() || generation.worldSeed() != this.worldSeed
+            || this.worldSeed != this.materializer.worldSeed()) {
+            throw new IllegalArgumentException("native Cube-Net badlands planner differs from generator profile/seed");
+         }
+         var position = this.semanticBasePosition(coordinate);
+         if (!(this.biomeSource instanceof CubeNetBiomeSource)) {
+            return com.yucareux.tellus.worldgen.feature.FeaturePlan.empty("native fixed-source badlands stage is empty");
+         }
+         var surface = this.surfaceDataAtPlanar(position.x(), position.z(), new HashMap<>());
+         if (surface == null || !surface.elevationAvailable()) {
+            return com.yucareux.tellus.worldgen.feature.FeaturePlan.unknown("native badlands raw elevation is unavailable");
+         }
+         if (surface.waterAvailable()) {
+            return com.yucareux.tellus.worldgen.feature.FeaturePlan.empty("native badlands excludes raw water columns");
+         }
+         int surfaceY = this.materializer.height(surface.elevationMeters());
+         var biome = this.biomeSource.getNoiseBiome(QuartPos.fromBlock(position.x()), QuartPos.fromBlock(surfaceY),
+            QuartPos.fromBlock(position.z()), Climate.empty());
+         if (!biome.is(BiomeTags.IS_BADLANDS)) {
+            return com.yucareux.tellus.worldgen.feature.FeaturePlan.empty("native raw column is not a badlands biome");
+         }
+         var owner = (com.yucareux.tellus.worldgen.global.CubeNetCanonicalOwnerView)coordinate.owner();
+         var point = this.model.exactSurfacePoint(owner.block().face(), owner.block().blockX() + 0.5,
+            owner.block().blockZ() + 0.5);
+         int materialX = coordinateForEarth(EarthProjection.longitudeToBlockX(point.longitude(), this.worldScale()));
+         int materialZ = coordinateForEarth(EarthProjection.latToBlockZ(point.latitude(), this.worldScale()));
+         var cells = com.yucareux.tellus.worldgen.decision.TellusCubeBadlandsDecisionKernel.resolve(this.minY, surfaceY,
+            this.worldScale(), surface.neighbourhood().relief(), surface.neighbourhood().gradient().slopeDegrees(),
+            materialX, materialZ);
+         List<com.yucareux.tellus.worldgen.feature.FeaturePlacement> placements = new ArrayList<>(cells.size());
+         for (var cell : cells) {
+            if (cell.y() < generation.minY() || cell.y() >= generation.maxYExclusive()) {
+               return com.yucareux.tellus.worldgen.feature.FeaturePlan.unknown("native badlands overlay exceeds generation bounds");
+            }
+            placements.add(com.yucareux.tellus.worldgen.feature.FeaturePlacement.canonical(
+               com.yucareux.tellus.worldgen.feature.FeatureKind.CUSTOM, "tellus:cube-badlands:" + cell.y(), coordinate,
+               com.yucareux.tellus.worldgen.feature.PlacementOperation.SET,
+               com.yucareux.tellus.worldgen.feature.PlacementConflictPolicy.OWNER_ONLY, cell.material(),
+               0, cell.y(), 0, 1, Map.of("stage", "POST_INLAND_FLOW_BADLANDS")));
+         }
+         return placements.isEmpty()
+            ? com.yucareux.tellus.worldgen.feature.FeaturePlan.empty("native badlands overlay is empty")
+            : new com.yucareux.tellus.worldgen.feature.FeaturePlan(
+               com.yucareux.tellus.worldgen.feature.FeaturePlanStatus.AVAILABLE, placements, List.of());
+      };
+   }
+
    public SphereWorldModel model() { return this.model; }
    public CubeNetAddressAdapter adapter() { return this.adapter; }
    public CubeNetApronResolver apronResolver() { return this.apronResolver; }
@@ -1153,13 +1222,6 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
          Holder<Biome> biome = this.biomeSource.getNoiseBiome(
             QuartPos.fromBlock(worldX), QuartPos.fromBlock(surfaceY), QuartPos.fromBlock(worldZ), Climate.empty());
          if (!biome.is(BiomeTags.IS_BADLANDS)) continue;
-         double relief = surface.neighbourhood().relief();
-         int localReliefBlocks = Double.isFinite(relief)
-            ? Math.max(0, (int)Math.ceil(relief / Math.max(0.0001, this.worldScale()))) : 0;
-         double slope = surface.neighbourhood().gradient().slopeDegrees();
-         if (localReliefBlocks < 3 && Double.isFinite(slope)) {
-            localReliefBlocks = Math.max(0, (int)Math.round(slope / 9.0) * 3);
-         }
          BlockAddress resolved = this.resolveBlock(worldX, worldZ).orElse(null);
          int materialX = worldX;
          int materialZ = worldZ;
@@ -1169,22 +1231,15 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
             materialX = coordinateForEarth(EarthProjection.longitudeToBlockX(point.longitude(), this.worldScale()));
             materialZ = coordinateForEarth(EarthProjection.latToBlockZ(point.latitude(), this.worldScale()));
          }
-         if (localReliefBlocks < 3) {
-            cursor.set(worldX, surfaceY, worldZ);
-            MinecraftVersionCompat.setBlockState(chunk, cursor, this.cubeNetBadlandsPlateauTop(materialX, materialZ));
-            changed = true;
-            continue;
+         var cells = com.yucareux.tellus.worldgen.decision.TellusCubeBadlandsDecisionKernel.resolve(
+            this.minY, surfaceY, this.worldScale(), surface.neighbourhood().relief(),
+            surface.neighbourhood().gradient().slopeDegrees(), materialX, materialZ);
+         for (var cell : cells) {
+            cursor.set(worldX, cell.y(), worldZ);
+            MinecraftVersionCompat.setBlockState(chunk, cursor,
+               com.yucareux.tellus.worldgen.write.TellusNativeSemanticMaterials.state(cell.material()));
          }
-         int depth = BadlandsTerrainPolicy.cliffBandDepth(3, localReliefBlocks);
-         int bottom = Math.max(this.minY + 1, surfaceY - depth + 1);
-         cursor.set(worldX, surfaceY, worldZ);
-         MinecraftVersionCompat.setBlockState(chunk, cursor, this.cubeNetBadlandsBand(materialX, materialZ, surfaceY));
-         for (int y = surfaceY - 1; y >= bottom; y--) {
-            cursor.set(worldX, y, worldZ);
-            MinecraftVersionCompat.setBlockState(chunk, cursor, this.cubeNetBadlandsBand(materialX, materialZ, y));
-            changed = true;
-         }
-         changed = true;
+         changed |= !cells.isEmpty();
       }
       if (changed) chunk.setUnsaved(true);
    }

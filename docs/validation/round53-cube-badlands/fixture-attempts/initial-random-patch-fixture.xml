@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.yucareux.tellus.worldgen.CubeNetBadlandsFeaturePipelineTest" tests="5" skipped="0" failures="1" errors="0" timestamp="2026-11-09T06:36:11.761Z" hostname="VOID0312" time="24.6">
+  <properties/>
+  <testcase name="actualTaggedBadlandsPostpassAndCompositePipelineMatchFullColumns()" classname="com.yucareux.tellus.worldgen.CubeNetBadlandsFeaturePipelineTest" time="5.489">
+    <failure message="java.lang.AssertionError: No real tagged badlands patch found in bounded64-candidate face search: NEG_Y" type="java.lang.AssertionError">java.lang.AssertionError: No real tagged badlands patch found in bounded64-candidate face search: NEG_Y
+	at com.yucareux.tellus.worldgen.CubeNetBadlandsFeaturePipelineTest.badlandsChunk(CubeNetBadlandsFeaturePipelineTest.java:72)
+	at com.yucareux.tellus.worldgen.CubeNetBadlandsFeaturePipelineTest.actualTaggedBadlandsPostpassAndCompositePipelineMatchFullColumns(CubeNetBadlandsFeaturePipelineTest.java:111)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:569)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1511)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1511)
+</failure>
+  </testcase>
+  <testcase name="wetRawColumnSkipsBadlandsEvenWhenWaterIsDisabledAndTerminalRequestsStayCold()" classname="com.yucareux.tellus.worldgen.CubeNetBadlandsFeaturePipelineTest" time="0.961"/>
+  <testcase name="overlayMappingFailureLeavesActualChunkUntouched()" classname="com.yucareux.tellus.worldgen.CubeNetBadlandsFeaturePipelineTest" time="0.018"/>
+  <testcase name="allBandColorsAndPlateauMappingsMatchRetainedNativeVersionHelpers()" classname="com.yucareux.tellus.worldgen.CubeNetBadlandsFeaturePipelineTest" time="0.066"/>
+  <testcase name="rawPostpassReadsFreshTerrainNotTheCachedBaseColumn()" classname="com.yucareux.tellus.worldgen.CubeNetBadlandsFeaturePipelineTest" time="0.036"/>
+  <system-out><![CDATA[[14:36:31] [Test worker/INFO]: Loaded 847 RESOLVE ecoregions at 30 arc-second resolution
+[14:36:32] [Test worker/INFO]: Land mask PMTiles unavailable (Network access is disabled during managed Distant Horizons generation); using ESA-only land fallback.
+[14:36:33] [Test worker/INFO]: Loaded Mapterhorn 0.0.11 source-resolution catalog (134 sources).
+[14:36:36] [Test worker/INFO]: [STDOUT]: CUBE_BADLANDS_NATIVE_MAPPINGS cells=640 bandColors=7 mismatchStates=0
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
