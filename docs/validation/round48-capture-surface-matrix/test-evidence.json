@@ -1,0 +1,260 @@
+{
+  "recordedAt": "2026-11-09T02:54:45.130931+00:00",
+  "scope": "resolved native surface capture matrix and deterministic lease terminal interleavings; no GIS/save/default lifecycle acceptance",
+  "productionSourceChanged": false,
+  "versions": {
+    "mc1201": {
+      "tests": 273,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "suites": {
+        "com.yucareux.tellus.worldgen.CubeNetSurfaceKernelMigrationTest": 2,
+        "com.yucareux.tellus.worldgen.CubeNetSurfacePolicyTest": 4,
+        "com.yucareux.tellus.worldgen.decision.CubeNetSurfaceDecisionAdapterTest": 4,
+        "com.yucareux.tellus.worldgen.decision.EarthSurfacePaletteTest": 7,
+        "com.yucareux.tellus.worldgen.decision.TellusBiomeDecisionAdapterTest": 4,
+        "com.yucareux.tellus.worldgen.decision.TellusColumnDecisionContractTest": 4,
+        "com.yucareux.tellus.worldgen.decision.TellusColumnDecisionEarthOptInTest": 2,
+        "com.yucareux.tellus.worldgen.decision.TellusColumnPipelineContractTest": 3,
+        "com.yucareux.tellus.worldgen.decision.TellusEarthBiomeClassifierAdapterTest": 4,
+        "com.yucareux.tellus.worldgen.decision.TellusEarthBiomeDecisionKernelTest": 3,
+        "com.yucareux.tellus.worldgen.decision.TellusEarthColumnDecisionKernelTest": 3,
+        "com.yucareux.tellus.worldgen.decision.TellusEarthNativeColumnSnapshotReaderTest": 15,
+        "com.yucareux.tellus.worldgen.decision.TellusEarthResolvedColumnKernelTest": 17,
+        "com.yucareux.tellus.worldgen.decision.TellusEarthSurfaceColumnRulesTest": 14,
+        "com.yucareux.tellus.worldgen.decision.TellusEarthSurfaceDecisionKernelTest": 7,
+        "com.yucareux.tellus.worldgen.decision.TellusSphericalDecisionKernelTest": 5,
+        "com.yucareux.tellus.worldgen.EarthBaseColumnKernelParityTest": 2,
+        "com.yucareux.tellus.worldgen.EarthCubeBiomeParityProbeTest": 1,
+        "com.yucareux.tellus.worldgen.EarthNativeCaptureInterleavingTest": 5,
+        "com.yucareux.tellus.worldgen.EarthNativeCaptureKernelBridgeTest": 3,
+        "com.yucareux.tellus.worldgen.EarthNativeCaptureSurfaceMatrixTest": 3,
+        "com.yucareux.tellus.worldgen.EarthNativeColumnCaptureTest": 12,
+        "com.yucareux.tellus.worldgen.EarthNativeFillCaptureIntegrationTest": 3,
+        "com.yucareux.tellus.worldgen.EarthSurfaceColumnKernelBridgeTest": 5,
+        "com.yucareux.tellus.worldgen.EarthSurfaceColumnPlanParityTest": 1,
+        "com.yucareux.tellus.worldgen.EarthSurfaceKernelNativeParityTest": 3,
+        "com.yucareux.tellus.worldgen.feature.FeaturePlacementSinkGuardTest": 1,
+        "com.yucareux.tellus.worldgen.feature.TellusFeaturePlannerContractTest": 4,
+        "com.yucareux.tellus.worldgen.feature.TellusMinecraft1201FeaturePlacementSinkTest": 5,
+        "com.yucareux.tellus.worldgen.GeneratorConsistencyProbeTest": 1,
+        "com.yucareux.tellus.worldgen.GeneratorParityProbeTest": 1,
+        "com.yucareux.tellus.worldgen.LodBiomeSnowTest": 22,
+        "com.yucareux.tellus.worldgen.sample.TellusClimateSampleContractTest": 4,
+        "com.yucareux.tellus.worldgen.sample.TellusSampleContractTest": 20,
+        "com.yucareux.tellus.worldgen.sample.TellusSphericalSampleProviderTest": 6,
+        "com.yucareux.tellus.worldgen.TellusMinecraft1201MaterializerParityTest": 1,
+        "com.yucareux.tellus.worldgen.TellusMinecraft1201SphericalKernelParityTest": 2,
+        "com.yucareux.tellus.worldgen.TellusSurfaceVariantRollTest": 1,
+        "com.yucareux.tellus.worldgen.write.CanonicalColumnPositionTest": 3,
+        "com.yucareux.tellus.worldgen.write.StorageTransactionCoordinatorTest": 2,
+        "com.yucareux.tellus.worldgen.write.TellusColumnMaterializerExpansionTest": 7,
+        "com.yucareux.tellus.worldgen.write.TellusColumnWriteContractTest": 12,
+        "com.yucareux.tellus.worldgen.write.TellusCompositeColumnWriterTest": 17,
+        "com.yucareux.tellus.worldgen.write.TellusMinecraft1201CanonicalPipelineClassifierTest": 1,
+        "com.yucareux.tellus.worldgen.write.TellusMinecraft1201CanonicalPipelineTest": 3,
+        "com.yucareux.tellus.worldgen.write.TellusMinecraft1201ColumnExpansionTest": 6,
+        "com.yucareux.tellus.worldgen.write.TellusMinecraft1201CompositePipelineTest": 6,
+        "com.yucareux.tellus.worldgen.write.TellusMinecraft1201WriteAdapterTest": 3,
+        "com.yucareux.tellus.worldgen.write.TellusNativeSemanticMaterialsTest": 9
+      },
+      "newTestCases": {
+        "com.yucareux.tellus.worldgen.EarthNativeCaptureInterleavingTest": [
+          "mutatingPublicFutureCopiesDoesNotCancelOrCompleteUnderlyingClaim()",
+          "completeReleasesBeforeBlockedSuccessObserverAndParallelTerminalCalls()",
+          "closeBeforeDelayedClaimReturnsNullAndLeavesSuccessorClaimable()",
+          "failureReleasesBeforeBlockedFailureObserverAndKeepsOriginalCause()",
+          "cancelledClaimCanFinishNativeWritesOnOldChunkWithoutErasingSuccessor()"
+        ],
+        "com.yucareux.tellus.worldgen.EarthNativeCaptureSurfaceMatrixTest": [
+          "actualDryDesertBadlandsAndStrataCaptureMatchNullCollectorAndSemanticReplay()",
+          "absentNativeContextIsUnknownRatherThanKnownNoOp()",
+          "explicitNullPaletteSeamDistinguishesThinTopOnlyAndFullKnownNoOpOnBothBackends()"
+        ]
+      },
+      "observations": [
+        "CUBE_COVER_KERNEL_PARITY columns=81900 mismatches=0",
+        "EARTH_BASE_NATIVE_PARITY columns=1981 mismatchBlocks=0",
+        "EARTH_BASE_SEMANTIC_PARITY columns=1981 mismatchBlocks=0",
+        "BIOME_PROBE case=forest earth=minecraft:old_growth_birch_forest cube=minecraft:old_growth_birch_forest equal=true",
+        "BIOME_PROBE case=grassland earth=minecraft:plains cube=minecraft:plains equal=true",
+        "BIOME_PROBE case=cropland earth=minecraft:plains cube=minecraft:plains equal=true",
+        "BIOME_PROBE case=bare earth=minecraft:desert cube=minecraft:stony_peaks equal=false",
+        "BIOME_PROBE case=snow earth=minecraft:frozen_peaks cube=minecraft:frozen_peaks equal=true",
+        "BIOME_PROBE case=wetland earth=minecraft:swamp cube=minecraft:swamp equal=true",
+        "BIOME_PROBE case=mangrove earth=minecraft:mangrove_swamp cube=minecraft:mangrove_swamp equal=true",
+        "BIOME_PROBE cases=7 mismatches=1",
+        "EARTH_NATIVE_CAPTURE_BRIDGE columns=4 cells=96 mismatchBlocks=0",
+        "EARTH_NATIVE_CAPTURE_SURFACE_MATRIX columns=48 cells=1200 mismatchBlocks=0 badlands=12 strata=12",
+        "EARTH_NATIVE_CAPTURE_NULL_PALETTE columns=12 cells=300 mismatchBlocks=0 topOnly=6 knownNoOp=6",
+        "EARTH_NATIVE_FULL_FILL_REPLAY columns=1 cells=145 mismatchBlocks=0",
+        "EARTH_NATIVE_FULL_FILL chunks=2 comparedBlocks=135168 mismatchBlocks=0 captures=1",
+        "EARTH_SURFACE_PLAN_PARITY columns=2622 mismatchBlocks=0 semanticColumns=2190 nonDefaultColumns=108",
+        "EARTH_SURFACE_NATIVE_DRIVER_PARITY columns=3160 mismatches=0",
+        "EARTH_SURFACE_KERNEL_PARITY columns=204000 mismatches=0",
+        "CONSISTENCY_PROBE faces=6 locations=9 columns=13824 mismatchColumns=0 mismatchBlocks=0",
+        "PARITY_PROBE canonicalColumns=256 mismatches=0 maxHeightDifference=0",
+        "SEMANTIC_MATERIALIZER_PARITY columns=128 mismatchBlocks=0",
+        "SPHERICAL_KERNEL_PARITY columns=1176 mismatchBlocks=0",
+        "TELLUS_NATIVE_SEMANTIC_PROPERTIES rejectedNonDefaultStates=22",
+        "TELLUS_NATIVE_SEMANTIC_EXPLICIT oreStates=10 bandStates=7 dripstoneStates=1",
+        "TELLUS_NATIVE_SEMANTIC_MATERIALS roundTrips=53 originalIds=41 appendedIds=13 totalIds=54",
+        "TELLUS_NATIVE_SEMANTIC_FOREIGN rejectedBlocks=4"
+      ],
+      "biomeCases": {
+        "forest": {
+          "earth": "minecraft:old_growth_birch_forest",
+          "cube": "minecraft:old_growth_birch_forest",
+          "equal": true
+        },
+        "grassland": {
+          "earth": "minecraft:plains",
+          "cube": "minecraft:plains",
+          "equal": true
+        },
+        "cropland": {
+          "earth": "minecraft:plains",
+          "cube": "minecraft:plains",
+          "equal": true
+        },
+        "bare": {
+          "earth": "minecraft:desert",
+          "cube": "minecraft:stony_peaks",
+          "equal": false
+        },
+        "snow": {
+          "earth": "minecraft:frozen_peaks",
+          "cube": "minecraft:frozen_peaks",
+          "equal": true
+        },
+        "wetland": {
+          "earth": "minecraft:swamp",
+          "cube": "minecraft:swamp",
+          "equal": true
+        },
+        "mangrove": {
+          "earth": "minecraft:mangrove_swamp",
+          "cube": "minecraft:mangrove_swamp",
+          "equal": true
+        }
+      }
+    },
+    "mc1211": {
+      "tests": 266,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "suites": {
+        "com.yucareux.tellus.worldgen.CubeNetSurfaceKernelMigrationTest": 2,
+        "com.yucareux.tellus.worldgen.CubeNetSurfacePolicyTest": 4,
+        "com.yucareux.tellus.worldgen.decision.CubeNetSurfaceDecisionAdapterTest": 4,
+        "com.yucareux.tellus.worldgen.decision.EarthSurfacePaletteTest": 7,
+        "com.yucareux.tellus.worldgen.decision.TellusBiomeDecisionAdapterTest": 4,
+        "com.yucareux.tellus.worldgen.decision.TellusColumnDecisionContractTest": 4,
+        "com.yucareux.tellus.worldgen.decision.TellusColumnDecisionEarthOptInTest": 2,
+        "com.yucareux.tellus.worldgen.decision.TellusColumnPipelineContractTest": 3,
+        "com.yucareux.tellus.worldgen.decision.TellusEarthBiomeClassifierAdapterTest": 4,
+        "com.yucareux.tellus.worldgen.decision.TellusEarthBiomeDecisionKernelTest": 3,
+        "com.yucareux.tellus.worldgen.decision.TellusEarthColumnDecisionKernelTest": 3,
+        "com.yucareux.tellus.worldgen.decision.TellusEarthNativeColumnSnapshotReaderTest": 15,
+        "com.yucareux.tellus.worldgen.decision.TellusEarthResolvedColumnKernelTest": 17,
+        "com.yucareux.tellus.worldgen.decision.TellusEarthSurfaceColumnRulesTest": 14,
+        "com.yucareux.tellus.worldgen.decision.TellusEarthSurfaceDecisionKernelTest": 7,
+        "com.yucareux.tellus.worldgen.decision.TellusSphericalDecisionKernelTest": 5,
+        "com.yucareux.tellus.worldgen.EarthBaseColumnKernelParityTest": 2,
+        "com.yucareux.tellus.worldgen.EarthNativeCaptureInterleavingTest": 5,
+        "com.yucareux.tellus.worldgen.EarthNativeCaptureKernelBridgeTest": 3,
+        "com.yucareux.tellus.worldgen.EarthNativeCaptureSurfaceMatrixTest": 3,
+        "com.yucareux.tellus.worldgen.EarthNativeColumnCaptureTest": 12,
+        "com.yucareux.tellus.worldgen.EarthNativeFillCaptureIntegrationTest": 3,
+        "com.yucareux.tellus.worldgen.EarthSurfaceColumnKernelBridgeTest": 5,
+        "com.yucareux.tellus.worldgen.EarthSurfaceColumnPlanParityTest": 1,
+        "com.yucareux.tellus.worldgen.EarthSurfaceKernelNativeParityTest": 3,
+        "com.yucareux.tellus.worldgen.feature.FeaturePlacementSinkGuardTest": 1,
+        "com.yucareux.tellus.worldgen.feature.TellusFeaturePlannerContractTest": 4,
+        "com.yucareux.tellus.worldgen.feature.TellusMinecraft1211FeaturePlacementSinkTest": 5,
+        "com.yucareux.tellus.worldgen.LodBiomeSnowTest": 22,
+        "com.yucareux.tellus.worldgen.sample.TellusClimateSampleContractTest": 4,
+        "com.yucareux.tellus.worldgen.sample.TellusSampleContractTest": 20,
+        "com.yucareux.tellus.worldgen.sample.TellusSphericalSampleProviderTest": 6,
+        "com.yucareux.tellus.worldgen.TellusMinecraft1211MaterializerParityTest": 1,
+        "com.yucareux.tellus.worldgen.TellusMinecraft1211SphericalKernelParityTest": 2,
+        "com.yucareux.tellus.worldgen.TellusSurfaceVariantRollTest": 1,
+        "com.yucareux.tellus.worldgen.write.CanonicalColumnPositionTest": 3,
+        "com.yucareux.tellus.worldgen.write.StorageTransactionCoordinatorTest": 2,
+        "com.yucareux.tellus.worldgen.write.TellusColumnMaterializerExpansionTest": 7,
+        "com.yucareux.tellus.worldgen.write.TellusColumnWriteContractTest": 12,
+        "com.yucareux.tellus.worldgen.write.TellusCompositeColumnWriterTest": 17,
+        "com.yucareux.tellus.worldgen.write.TellusMinecraft1211CanonicalPipelineClassifierTest": 1,
+        "com.yucareux.tellus.worldgen.write.TellusMinecraft1211ColumnExpansionTest": 6,
+        "com.yucareux.tellus.worldgen.write.TellusMinecraft1211CompositePipelineTest": 6,
+        "com.yucareux.tellus.worldgen.write.TellusMinecraft1211WriteAdapterTest": 2,
+        "com.yucareux.tellus.worldgen.write.TellusNativeSemanticMaterialsTest": 9
+      },
+      "newTestCases": {
+        "com.yucareux.tellus.worldgen.EarthNativeCaptureInterleavingTest": [
+          "mutatingPublicFutureCopiesDoesNotCancelOrCompleteUnderlyingClaim()",
+          "completeReleasesBeforeBlockedSuccessObserverAndParallelTerminalCalls()",
+          "closeBeforeDelayedClaimReturnsNullAndLeavesSuccessorClaimable()",
+          "failureReleasesBeforeBlockedFailureObserverAndKeepsOriginalCause()",
+          "cancelledClaimCanFinishNativeWritesOnOldChunkWithoutErasingSuccessor()"
+        ],
+        "com.yucareux.tellus.worldgen.EarthNativeCaptureSurfaceMatrixTest": [
+          "actualDryDesertBadlandsAndStrataCaptureMatchNullCollectorAndSemanticReplay()",
+          "absentNativeContextIsUnknownRatherThanKnownNoOp()",
+          "explicitNullPaletteSeamDistinguishesThinTopOnlyAndFullKnownNoOpOnBothBackends()"
+        ]
+      },
+      "observations": [
+        "CUBE_COVER_KERNEL_PARITY columns=81900 mismatches=0",
+        "EARTH_BASE_NATIVE_PARITY columns=1981 mismatchBlocks=0",
+        "EARTH_BASE_SEMANTIC_PARITY columns=1981 mismatchBlocks=0",
+        "EARTH_NATIVE_CAPTURE_BRIDGE columns=4 cells=96 mismatchBlocks=0",
+        "EARTH_NATIVE_CAPTURE_SURFACE_MATRIX columns=48 cells=1200 mismatchBlocks=0 badlands=12 strata=12",
+        "EARTH_NATIVE_CAPTURE_NULL_PALETTE columns=12 cells=300 mismatchBlocks=0 topOnly=6 knownNoOp=6",
+        "EARTH_NATIVE_FULL_FILL_REPLAY columns=1 cells=145 mismatchBlocks=0",
+        "EARTH_NATIVE_FULL_FILL chunks=2 comparedBlocks=135168 mismatchBlocks=0 captures=1",
+        "EARTH_SURFACE_PLAN_PARITY columns=2622 mismatchBlocks=0 semanticColumns=2190 nonDefaultColumns=108",
+        "EARTH_SURFACE_NATIVE_DRIVER_PARITY columns=3160 mismatches=0",
+        "EARTH_SURFACE_KERNEL_PARITY columns=204000 mismatches=0",
+        "SEMANTIC_MATERIALIZER_PARITY columns=128 mismatchBlocks=0",
+        "SPHERICAL_KERNEL_PARITY columns=1176 mismatchBlocks=0",
+        "TELLUS_NATIVE_SEMANTIC_PROPERTIES rejectedNonDefaultStates=22",
+        "TELLUS_NATIVE_SEMANTIC_EXPLICIT oreStates=10 bandStates=7 dripstoneStates=1",
+        "TELLUS_NATIVE_SEMANTIC_MATERIALS roundTrips=53 originalIds=41 appendedIds=13 totalIds=54",
+        "TELLUS_NATIVE_SEMANTIC_FOREIGN rejectedBlocks=4"
+      ],
+      "biomeCases": {}
+    }
+  },
+  "fixtureCorrection": {
+    "initialAttempt": {
+      "tests": 3,
+      "failures": 3,
+      "rootCause": "test manually constructed Earth owner record differed from exact reprojection of GeoPoint",
+      "artifact": "fixture-attempts/initial-coordinate-owner-mismatch.xml"
+    },
+    "correction": "use EarthCompatibilityPoint.fromGeoPoint and assert its integer floors equal all requested native coordinates",
+    "productionValidationWeakened": false
+  },
+  "sourceSha256": {
+    "src/main/java/com/yucareux/tellus/worldgen/EarthChunkGenerator.java": "8de43f9577ddc62323aa714696174d353e716c16a3e1e2578b0c2ce5887d9426",
+    "src/main/java/com/yucareux/tellus/worldgen/TellusEarthNativeColumnCapture.java": "e54cdde5e74a80d8f06475c43a9b6a83eccdfdb478c12ce870d15f63e1a3d745",
+    "src/main/java/com/yucareux/tellus/worldgen/decision/TellusEarthNativeColumnSnapshotReader.java": "6d5cb25057f47161acb897bc4fc41523ebaa921a4107811e45adb2425c78958c",
+    "src/test/java/com/yucareux/tellus/worldgen/EarthNativeColumnCaptureTest.java": "934ff6ce7a1776303c97abc7a72c49ef4e748eddeff1f386763214c32315f5bf",
+    "src/test/java/com/yucareux/tellus/worldgen/EarthNativeCaptureKernelBridgeTest.java": "c6c3f7660974b931ba790f706dd23f094422b304286a4b938e160b84ead91e00",
+    "src/test/java/com/yucareux/tellus/worldgen/decision/TellusEarthNativeColumnSnapshotReaderTest.java": "e1f6f5ddd2b557e1c850ab86a2494f807140b1239a9f814501d07360fd87ed20",
+    "src/test/java/com/yucareux/tellus/worldgen/EarthNativeFillCaptureIntegrationTest.java": "ad661eb3e5c1b9acebbdc61b67efdcd8e035137ff16edb0817d284e0c7d7bfe0",
+    "src/test/java/com/yucareux/tellus/worldgen/EarthNativeCaptureSurfaceMatrixTest.java": "3b4485d543fd9f9108e801f46b510804c3d1e86e88b24dac757b53563d03e8a8",
+    "src/test/java/com/yucareux/tellus/worldgen/EarthNativeCaptureInterleavingTest.java": "04bd0df9ad6a96421b2cb17319f1e297df0f1c6e86f4f707338684c69ead55d1"
+  },
+  "boundaries": [
+    "48 cases invoke all four actual native surface overloads at three positive/negative coordinates; collector-null and collector-on native output matches before semantic replay",
+    "12 null-palette cases explicitly invoke native record/prepare/apply resolved-source seams; current palette selectors are not claimed to reach null",
+    "five deterministic ordered interleaving tests verify public results, claims and successor slots, not exhaustive JVM stress or private reference nullness",
+    "source facts are caller-controlled and source lookups cache-only; synthetic dry flags do not establish real GIS or hydrology convergence",
+    "sample metadata is not newly resolved from GIS; resolved body/context are authoritative for replay",
+    "default lifecycle, real persistent world save/reload and richer specialized/later-phase producers remain gated engineering work"
+  ]
+}
