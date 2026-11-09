@@ -150,6 +150,40 @@ public final class SphereFaceChunkGenerator extends ChunkGenerator {
    public SphereSingularityPolicy singularityPolicy() { return this.singularityPolicy; }
    public SphereSurfaceMotion surfaceMotion() { return this.surfaceMotion; }
 
+   /** Explicit opt-in vertical biome volume planner; no default lifecycle hook. */
+   public com.yucareux.tellus.worldgen.decision.TellusBiomeVolumePlanner semanticBiomeVolumePlanner() {
+      return com.yucareux.tellus.worldgen.decision.TellusBiomeVolumePlanner.fromResolver(request -> {
+         var generation = request.generation();
+         Runnable validateProfile = () -> {
+            if (Double.compare(generation.worldScale(), this.worldScale()) != 0
+               || generation.seaLevel() != this.seaLevel || generation.minY() != this.minY
+               || (long)generation.maxYExclusive() != (long)this.minY + this.height
+               || generation.worldSeed() != this.materializer.worldSeed()) {
+               throw new IllegalArgumentException("Sphere-Face biome volume differs from active generator profile/seed");
+            }
+         };
+         validateProfile.run();
+         for (var context : request.columns()) {
+            var coordinate = context.targetCoordinate();
+            if (!(coordinate.owner() instanceof com.yucareux.tellus.worldgen.global.SphericalOwnerView owner)
+               || owner.block().face() != this.face) {
+               throw new IllegalArgumentException("Sphere-Face biome volume requires active face owner anchors");
+            }
+            this.model.chartForBlock(owner.block().face(), owner.block().blockX(), owner.block().blockZ());
+            if (!this.model.blockForGeo(coordinate.geo()).equals(owner.block())) {
+               throw new IllegalArgumentException("Sphere-Face biome volume owner does not match geographic point");
+            }
+            this.singularityPolicy.requireTerrainMaterialization(owner.chunk());
+         }
+         return (context, quartX, quartY, quartZ) -> {
+            validateProfile.run();
+            var biome = this.biomeSource.getNoiseBiome(quartX, quartY, quartZ, Climate.empty());
+            return biome.unwrapKey().map(key -> new com.yucareux.tellus.worldgen.decision.BiomeDecision(
+               key.location().toString(), true)).orElseGet(com.yucareux.tellus.worldgen.decision.BiomeDecision::unknown);
+         };
+      }, this.model);
+   }
+
    /** Explicit exact native provider; construction and terminal requests do not initialize sources. */
    public com.yucareux.tellus.worldgen.sample.TellusSphericalSampleProvider semanticSampleProvider() {
       return com.yucareux.tellus.worldgen.sample.TellusSphericalSampleProvider.forSphereFaceNativeColumns(request -> {

@@ -1,0 +1,67 @@
+{
+  "parent": "46336d725b5a7356bae5a754f3988ddddf6daeff",
+  "checks": {
+    "src/main/java/com/yucareux/tellus/worldgen/EarthChunkGenerator.java": {
+      "kind": "factory",
+      "currentSha256": "0a245bff4f45ca19752a91cdc506951f938a91df977ed9fba94d1814b250c982",
+      "restoredParentNormalizedSha256": "86d4ab50aa35d335006fd03b1f56014b4335bb69a4b5faaa733ac663a75adb26",
+      "parentNormalizedSha256": "86d4ab50aa35d335006fd03b1f56014b4335bb69a4b5faaa733ac663a75adb26",
+      "blockLines": 32
+    },
+    "mc1201/src/main/java/com/yucareux/tellus/worldgen/CubeNetChunkGenerator.java": {
+      "kind": "factory",
+      "currentSha256": "45d19dcbed5eafc4ddc571ce454998cfaccee3ecf0aafc2cb22352dc843bb8c3",
+      "restoredParentNormalizedSha256": "5c9e1409eb6b5d44f50f0682c04613f2ed353b45d4688cb38e5e65e9e1a3846c",
+      "parentNormalizedSha256": "5c9e1409eb6b5d44f50f0682c04613f2ed353b45d4688cb38e5e65e9e1a3846c",
+      "blockLines": 26
+    },
+    "shared/mc1211/src/main/java/com/yucareux/tellus/worldgen/CubeNetChunkGenerator.java": {
+      "kind": "factory",
+      "currentSha256": "abebd630d65a65e557f564441aacda035ff438fd627251b9e602b9369f337f0c",
+      "restoredParentNormalizedSha256": "2b3f0c1ffe31680147a16abea32c961cb8c21692a0fab5cbcd0abfc6e5abe26b",
+      "parentNormalizedSha256": "2b3f0c1ffe31680147a16abea32c961cb8c21692a0fab5cbcd0abfc6e5abe26b",
+      "blockLines": 26
+    },
+    "mc1201/src/main/java/com/yucareux/tellus/worldgen/SphereFaceChunkGenerator.java": {
+      "kind": "factory",
+      "currentSha256": "e4ec7cf842fe8a4a8a06c0a677176acb3d3f94622f46813ab550fdafdd31a901",
+      "restoredParentNormalizedSha256": "22756182e6636e7163269a1e4c0c5c61bed3961e097946080793c9d6d00514c0",
+      "parentNormalizedSha256": "22756182e6636e7163269a1e4c0c5c61bed3961e097946080793c9d6d00514c0",
+      "blockLines": 34
+    },
+    "shared/mc1211/src/main/java/com/yucareux/tellus/worldgen/SphereFaceChunkGenerator.java": {
+      "kind": "factory",
+      "currentSha256": "e4fac435d9c155c4976650273185ed9e8c9842e07d8f0dbcad262b4f8668fe7e",
+      "restoredParentNormalizedSha256": "539c59840ec6e234190861262cb07cd94830edfd9b28c52c3af0a1a6b3c447c5",
+      "parentNormalizedSha256": "539c59840ec6e234190861262cb07cd94830edfd9b28c52c3af0a1a6b3c447c5",
+      "blockLines": 34
+    },
+    "src/main/java/com/yucareux/tellus/worldgen/EarthBiomeSource.java": {
+      "kind": "source-helper",
+      "currentSha256": "a37ee8b270dcd60ba8497a44f7de7a6d525d0925771239793ddf3457e2ecf6d0",
+      "restoredParentNormalizedSha256": "0e113cdbb5fae6d9649c6040c7339307d11267c6be14a750fdd8e29eb28517b3",
+      "parentNormalizedSha256": "0e113cdbb5fae6d9649c6040c7339307d11267c6be14a750fdd8e29eb28517b3",
+      "blockLines": 17
+    },
+    "shared/mc1201/src/main/java/com/yucareux/tellus/worldgen/EarthBiomeSource.java": {
+      "kind": "source-helper",
+      "currentSha256": "9d1af6bad7b8f0a0862133722b82aa4e92d73c478f34f282bd5401761a2e725b",
+      "restoredParentNormalizedSha256": "da251ff41cd5228c3c7acffbf55f1c25d2d231b1d727ca2cb4fd2678c44cb393",
+      "parentNormalizedSha256": "da251ff41cd5228c3c7acffbf55f1c25d2d231b1d727ca2cb4fd2678c44cb393",
+      "blockLines": 17
+    },
+    "src/main/java/com/yucareux/tellus/worldgen/CubeNetBiomeSource.java": {
+      "kind": "source-helper",
+      "currentSha256": "f51d604e7693329eb7920225322fdfea469d93978bcd6a20953433368e473cdd",
+      "restoredParentNormalizedSha256": "ffdf1b6c792ecb5a74338433037d328377b060ba086eb76e7601dda52c536aba",
+      "parentNormalizedSha256": "ffdf1b6c792ecb5a74338433037d328377b060ba086eb76e7601dda52c536aba",
+      "blockLines": 16
+    },
+    "writerAndPureContracts": {
+      "noReplacementSectionConstructor": true,
+      "noThrowableMessageOrToStringFormatter": true,
+      "duplicateIdentityGuards": true,
+      "pureNativeOrderAndPublicValidator": true
+    }
+  }
+}

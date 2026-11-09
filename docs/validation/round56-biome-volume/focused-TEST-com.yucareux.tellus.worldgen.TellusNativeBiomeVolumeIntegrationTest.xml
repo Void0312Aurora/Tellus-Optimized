@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.yucareux.tellus.worldgen.TellusNativeBiomeVolumeIntegrationTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-11-09T09:15:17.841Z" hostname="VOID0312" time="3.528">
+  <properties/>
+  <testcase name="nativeVolumeFactoriesStayColdForNonblockingInvalidSeedAndWrongOwner()" classname="com.yucareux.tellus.worldgen.TellusNativeBiomeVolumeIntegrationTest" time="0.181"/>
+  <testcase name="cubeNativeCreateBiomesMatchesCompleteVolumesAcrossSixFacesAndCaveProfiles()" classname="com.yucareux.tellus.worldgen.TellusNativeBiomeVolumeIntegrationTest" time="2.913"/>
+  <testcase name="earthFixedNativeGeneratorVolumeRetainsActualQuartOrderAndFullHeight()" classname="com.yucareux.tellus.worldgen.TellusNativeBiomeVolumeIntegrationTest" time="0.066"/>
+  <testcase name="fixedSphereVolumesMatchNativeAcrossFacesBiomesAndNegativeEngineCoordinates()" classname="com.yucareux.tellus.worldgen.TellusNativeBiomeVolumeIntegrationTest" time="0.164"/>
+  <system-out><![CDATA[[17:15:18] [Test worker/INFO]: [STDOUT]: NATIVE_BIOME_VOLUME_GUARDS nonblockingSeedStructureCold=true nativeLifecycleUnchanged=true
+[17:15:18] [Test worker/INFO]: Loaded 847 RESOLVE ecoregions at 30 arc-second resolution
+[17:15:21] [Test worker/INFO]: [STDOUT]: NATIVE_CUBE_BIOME_VOLUME chunks=18 quartCells=27648 verticallyVaryingColumns=173 biomeIds=[minecraft:birch_forest, minecraft:cherry_grove, minecraft:dark_forest, minecraft:deep_dark, minecraft:desert, minecraft:dripstone_caves, minecraft:flower_forest, minecraft:forest, minecraft:lush_caves, minecraft:meadow, minecraft:mushroom_fields, minecraft:old_growth_birch_forest, minecraft:old_growth_spruce_taiga, minecraft:stony_peaks, minecraft:swamp, minecraft:windswept_forest, minecraft:windswept_gravelly_hills, minecraft:windswept_hills, minecraft:wooded_badlands] mismatchQuarts=0 blockContainersRetained=true
+[17:15:21] [Test worker/INFO]: EarthChunkGenerator init: scale=30.0, minAltitude=-64, maxAltitude=-2147483648, heightOffset=64, limits=[minY=-64, height=528, logicalHeight=528], seaLevel=64
+[17:15:21] [Test worker/INFO]: [STDOUT]: NATIVE_EARTH_FIXED_BIOME_VOLUME chunks=1 quartCells=2112 mismatchQuarts=0 realEarthClassifier=false
+[17:15:21] [Test worker/INFO]: [STDOUT]: NATIVE_SPHERE_BIOME_VOLUME chunks=18 quartCells=27648 terrainReads=0 mismatchQuarts=0
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

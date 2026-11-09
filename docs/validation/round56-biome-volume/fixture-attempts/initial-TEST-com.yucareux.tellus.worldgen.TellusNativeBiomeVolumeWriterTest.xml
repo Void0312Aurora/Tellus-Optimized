@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.yucareux.tellus.worldgen.TellusNativeBiomeVolumeWriterTest" tests="12" skipped="0" failures="1" errors="0" timestamp="2026-11-09T08:59:21.632Z" hostname="VOID0312" time="0.713">
+  <properties/>
+  <testcase name="invalidOrUnmappedSemanticIdsNeverPublishAndForeignRegistryIsPlannerCold()" classname="com.yucareux.tellus.worldgen.TellusNativeBiomeVolumeWriterTest" time="0.126"/>
+  <testcase name="malformedAnchorsProfileBoundsBudgetAndCustomOrMissingSectionsArePlannerCold()" classname="com.yucareux.tellus.worldgen.TellusNativeBiomeVolumeWriterTest" time="0.044"/>
+  <testcase name="deterministicOtherThreadContentionQueuesWhileAnotherActualObjectCanProceed()" classname="com.yucareux.tellus.worldgen.TellusNativeBiomeVolumeWriterTest" time="0.03"/>
+  <testcase name="resultShapeIsImmutableAndHasNoFlatStoragePayloadOverload()" classname="com.yucareux.tellus.worldgen.TellusNativeBiomeVolumeWriterTest" time="0.013"/>
+  <testcase name="stagingRecreateFailureAndRepeatedNewPaletteAreRejectedBeforeAnyPublication()" classname="com.yucareux.tellus.worldgen.TellusNativeBiomeVolumeWriterTest" time="0.093"/>
+  <testcase name="nonblockingStopsBeforePlannerPaletteRegistryAndDisabledNullOrBusyStayCold()" classname="com.yucareux.tellus.worldgen.TellusNativeBiomeVolumeWriterTest" time="0.014"/>
+  <testcase name="complete1536QuartPublicationRetainsBlockContainerCountersOldPalettesAndAllMarkers()" classname="com.yucareux.tellus.worldgen.TellusNativeBiomeVolumeWriterTest" time="0.033">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;[false, true, true, true]&gt; but was: &lt;[false, true, true, false]&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;[false, true, true, true]&gt; but was: &lt;[false, true, true, false]&gt;
+	at org.junit.jupiter.api.AssertionFailureBuilder.build(AssertionFailureBuilder.java:151)
+	at org.junit.jupiter.api.AssertionFailureBuilder.buildAndThrow(AssertionFailureBuilder.java:132)
+	at org.junit.jupiter.api.AssertEquals.failNotEqual(AssertEquals.java:197)
+	at org.junit.jupiter.api.AssertEquals.assertEquals(AssertEquals.java:182)
+	at org.junit.jupiter.api.AssertEquals.assertEquals(AssertEquals.java:177)
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1145)
+	at com.yucareux.tellus.worldgen.TellusNativeBiomeVolumeWriterTest.untouchedOldObjects(TellusNativeBiomeVolumeWriterTest.java:73)
+	at com.yucareux.tellus.worldgen.TellusNativeBiomeVolumeWriterTest.complete1536QuartPublicationRetainsBlockContainerCountersOldPalettesAndAllMarkers(TellusNativeBiomeVolumeWriterTest.java:89)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:569)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1511)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1511)
+</failure>
+  </testcase>
+  <testcase name="lateResolverRuntimeAndErrorDoNotPublishAndAlwaysReleaseWithoutMessageCallbacks()" classname="com.yucareux.tellus.worldgen.TellusNativeBiomeVolumeWriterTest" time="0.059"/>
+  <testcase name="sameThreadReentryAndFiveExistingNativeWritePathsQueueWithoutSamplingOrMapping()" classname="com.yucareux.tellus.worldgen.TellusNativeBiomeVolumeWriterTest" time="0.054"/>
+  <testcase name="dirtyMutationRuntimeErrorAndNoopRestoreSectionsBiomesStatesCountersMarkersAndDirty()" classname="com.yucareux.tellus.worldgen.TellusNativeBiomeVolumeWriterTest" time="0.024"/>
+  <testcase name="dirtyRestorationErrorReportsIncompleteAfterEverySectionReferenceIsRestored()" classname="com.yucareux.tellus.worldgen.TellusNativeBiomeVolumeWriterTest" time="0.01"/>
+  <testcase name="unknownQueuedMismatchedOrNullPlanLeavesEveryOriginalReferenceUntouched()" classname="com.yucareux.tellus.worldgen.TellusNativeBiomeVolumeWriterTest" time="0.021"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

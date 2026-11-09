@@ -5130,6 +5130,38 @@ public final class EarthChunkGenerator extends TellusChunkGeneratorBridge implem
       return new NoiseColumn(minY, states);
    }
 
+   /** Explicit opt-in vertical biome volume planner; no default lifecycle hook. */
+   public com.yucareux.tellus.worldgen.decision.TellusBiomeVolumePlanner semanticBiomeVolumePlanner() {
+      return com.yucareux.tellus.worldgen.decision.TellusBiomeVolumePlanner.fromResolver(request -> {
+         var generation = request.generation();
+         Runnable validateProfile = () -> {
+            if (generation.worldSeed() != this.worldSeed || generation.seaLevel() != this.seaLevel
+               || Double.compare(generation.worldScale(), this.settings.worldScale()) != 0
+               || generation.minY() != this.minY
+               || (long)generation.maxYExclusive() != (long)this.minY + this.height) {
+               throw new IllegalArgumentException("Earth biome volume differs from active generator profile/seed");
+            }
+         };
+         validateProfile.run();
+         for (var context : request.columns()) {
+            if (!(context.targetCoordinate().owner() instanceof EarthOwnerView owner)
+               || Double.compare(owner.point().worldScale(), this.settings.worldScale()) != 0
+               || !owner.point().projectionModeId().equalsIgnoreCase(EarthProjection.projectionModeId())) {
+               throw new IllegalArgumentException("Earth biome volume requires active Earth owner anchors");
+            }
+         }
+         net.minecraft.world.level.biome.BiomeResolver source = this.biomeSource instanceof EarthBiomeSource earth
+            ? earth.semanticVolumeResolver()
+            : (x, y, z, sampler) -> this.biomeSource.getNoiseBiome(x, y, z, sampler);
+         return (context, quartX, quartY, quartZ) -> {
+            validateProfile.run();
+            var biome = source.getNoiseBiome(quartX, quartY, quartZ, net.minecraft.world.level.biome.Climate.empty());
+            return biome.unwrapKey().map(key -> new BiomeDecision(key.location().toString(), true))
+               .orElseGet(BiomeDecision::unknown);
+         };
+      });
+   }
+
    /** Explicit bridge to the same native source/height resolver as getBaseColumn. No registration. */
    public TellusEarthColumnDecisionKernel semanticBaseColumnKernel() {
       return TellusEarthColumnDecisionKernel.resolvedColumns((generation, coordinate, sample, koppenCode) -> {

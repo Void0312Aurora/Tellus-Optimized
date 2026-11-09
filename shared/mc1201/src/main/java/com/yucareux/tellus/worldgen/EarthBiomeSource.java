@@ -211,6 +211,23 @@ public final class EarthBiomeSource extends BiomeSource {
       return this.resolveBiomeAtBlock(blockX, blockY, blockZ);
    }
 
+   /** Explicit per-volume native resolver; retains column caching without changing fast-spawn state. */
+   public BiomeResolver semanticVolumeResolver() {
+      this.requireOrdinaryVolumeQuery();
+      BiomeResolver nativeResolver = this.createChunkBiomeResolver();
+      return (x, y, z, sampler) -> {
+         this.requireOrdinaryVolumeQuery();
+         return nativeResolver.getNoiseBiome(x, y, z, sampler);
+      };
+   }
+
+   private void requireOrdinaryVolumeQuery() {
+      Integer depth = this.structureBiomeQueryDepth.get();
+      if (depth != null && depth > 0) {
+         throw new IllegalStateException("biome volume is not a structure-biome query");
+      }
+   }
+
    /**
     * Creates a resolver confined to one vanilla chunk-biome task. Vanilla
     * revisits each horizontal quart column for every vertical quart layer, so

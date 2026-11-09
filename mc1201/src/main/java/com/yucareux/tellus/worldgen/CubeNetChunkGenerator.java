@@ -429,6 +429,32 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
       }
    }
 
+   /** Explicit opt-in vertical biome volume planner; no default lifecycle hook. */
+   public com.yucareux.tellus.worldgen.decision.TellusBiomeVolumePlanner semanticBiomeVolumePlanner() {
+      return com.yucareux.tellus.worldgen.decision.TellusBiomeVolumePlanner.fromResolver(request -> {
+         var generation = request.generation();
+         Runnable validateProfile = () -> {
+            if (generation.worldSeed() != this.worldSeed || generation.seaLevel() != this.seaLevel
+               || Double.compare(generation.worldScale(), this.worldScale()) != 0
+               || generation.minY() != this.minY || generation.maxYExclusive() != this.maxY()
+               || this.worldSeed != this.materializer.worldSeed()) {
+               throw new IllegalArgumentException("Cube-Net biome volume differs from active generator profile/seed");
+            }
+         };
+         validateProfile.run();
+         for (var context : request.columns()) this.semanticBasePosition(context.targetCoordinate());
+         net.minecraft.world.level.biome.BiomeResolver source = this.biomeSource instanceof CubeNetBiomeSource cubeNet
+            ? cubeNet.semanticVolumeResolver()
+            : (x, y, z, sampler) -> this.biomeSource.getNoiseBiome(x, y, z, sampler);
+         return (context, quartX, quartY, quartZ) -> {
+            validateProfile.run();
+            var biome = source.getNoiseBiome(quartX, quartY, quartZ, Climate.empty());
+            return biome.unwrapKey().map(key -> new com.yucareux.tellus.worldgen.decision.BiomeDecision(
+               key.location().toString(), true)).orElseGet(com.yucareux.tellus.worldgen.decision.BiomeDecision::unknown);
+         };
+      }, this.model);
+   }
+
    /** Explicit native base stage: POST_GROUND_ADJUSTMENT_PRE_INLAND_FLOW_BADLANDS. */
    public com.yucareux.tellus.worldgen.sample.TellusSphericalSampleProvider semanticBaseSampleProvider() {
       return com.yucareux.tellus.worldgen.sample.TellusSphericalSampleProvider.forCubeNetNativeSnapshots(request -> {

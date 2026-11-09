@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.yucareux.tellus.worldgen.TellusNativeBiomeVolumeWriterTest" tests="12" skipped="0" failures="0" errors="0" timestamp="2026-11-09T09:33:11.075Z" hostname="VOID0312" time="0.339">
+  <properties/>
+  <testcase name="invalidOrUnmappedSemanticIdsNeverPublishAndForeignRegistryIsPlannerCold()" classname="com.yucareux.tellus.worldgen.TellusNativeBiomeVolumeWriterTest" time="0.039"/>
+  <testcase name="complete1536QuartPublicationRetainsSectionsPalettesBlockContainersAndEveryNativeCounter()" classname="com.yucareux.tellus.worldgen.TellusNativeBiomeVolumeWriterTest" time="0.015"/>
+  <testcase name="malformedAnchorsProfileBoundsBudgetAndCustomOrMissingSectionsArePlannerCold()" classname="com.yucareux.tellus.worldgen.TellusNativeBiomeVolumeWriterTest" time="0.035"/>
+  <testcase name="deterministicOtherThreadContentionQueuesWhileAnotherActualObjectCanProceed()" classname="com.yucareux.tellus.worldgen.TellusNativeBiomeVolumeWriterTest" time="0.014"/>
+  <testcase name="resultShapeIsImmutableAndHasNoFlatStoragePayloadOverload()" classname="com.yucareux.tellus.worldgen.TellusNativeBiomeVolumeWriterTest" time="0.003"/>
+  <testcase name="nonblockingStopsBeforePlannerPaletteRegistryAndDisabledNullOrBusyStayCold()" classname="com.yucareux.tellus.worldgen.TellusNativeBiomeVolumeWriterTest" time="0.014"/>
+  <testcase name="lateResolverRuntimeAndErrorDoNotPublishAndAlwaysReleaseWithoutMessageCallbacks()" classname="com.yucareux.tellus.worldgen.TellusNativeBiomeVolumeWriterTest" time="0.024"/>
+  <testcase name="sameThreadReentryAndFiveExistingNativeWritePathsQueueWithoutSamplingOrMapping()" classname="com.yucareux.tellus.worldgen.TellusNativeBiomeVolumeWriterTest" time="0.013"/>
+  <testcase name="dirtyMutationRuntimeErrorAndNoopRestoreSectionsBiomesStatesCountersMarkersAndDirty()" classname="com.yucareux.tellus.worldgen.TellusNativeBiomeVolumeWriterTest" time="0.054"/>
+  <testcase name="dirtyRestorationErrorReportsIncompleteAfterEverySectionReferenceIsRestored()" classname="com.yucareux.tellus.worldgen.TellusNativeBiomeVolumeWriterTest" time="0.018"/>
+  <testcase name="unknownQueuedMismatchedOrNullPlanLeavesEveryOriginalReferenceUntouched()" classname="com.yucareux.tellus.worldgen.TellusNativeBiomeVolumeWriterTest" time="0.012"/>
+  <testcase name="unsupportedReadOnlyAndMutablePaletteSubclassesRemainPlannerAndRegistryCold()" classname="com.yucareux.tellus.worldgen.TellusNativeBiomeVolumeWriterTest" time="0.007"/>
+  <system-out><![CDATA[[17:33:11] [Test worker/INFO]: [STDOUT]: NATIVE_BIOME_VOLUME_WRITER cells=1536 exactRegistryHolders=true sectionIdentity=true stateContainerIdentity=true biomeContainerIdentity=true blockCounters=true nativeFluidCounterRetained=true markersUntouched=true
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

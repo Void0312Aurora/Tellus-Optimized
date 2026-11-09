@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.yucareux.tellus.worldgen.decision.TellusBiomeVolumePlannerTest" tests="10" skipped="0" failures="0" errors="0" timestamp="2026-11-09T09:15:22.127Z" hostname="VOID0312" time="0.099">
+  <properties/>
+  <testcase name="everyFullProfileMismatchAliasesSlotReorderingAndApronFailBeforeFactory()" classname="com.yucareux.tellus.worldgen.decision.TellusBiomeVolumePlannerTest" time="0.007"/>
+  <testcase name="nonblockingIsFactoryColdAndQuantizedBucketDoesNotReplaceNativeWorldScale()" classname="com.yucareux.tellus.worldgen.decision.TellusBiomeVolumePlannerTest" time="0.003"/>
+  <testcase name="nullResolverOutputsAndSourceFailuresPropagateWithoutInventingPartialResults()" classname="com.yucareux.tellus.worldgen.decision.TellusBiomeVolumePlannerTest" time="0.012"/>
+  <testcase name="nativeOrderMatchesSectionXyZAcrossBothChunkSignsAndNegativeYWithoutHoles()" classname="com.yucareux.tellus.worldgen.decision.TellusBiomeVolumePlannerTest" time="0.008"/>
+  <testcase name="availableConstructorRejectsMissingDuplicateMisorderedForeignAndUnknownCells()" classname="com.yucareux.tellus.worldgen.decision.TellusBiomeVolumePlannerTest" time="0.011"/>
+  <testcase name="requestAndPlanCopyListsAndStructuralNullAndBlockedContractsStayStrict()" classname="com.yucareux.tellus.worldgen.decision.TellusBiomeVolumePlannerTest" time="0.011"/>
+  <testcase name="unknownAfterKnownPrefixDiscardsAllCellsAndStopsFurtherSourceCalls()" classname="com.yucareux.tellus.worldgen.decision.TellusBiomeVolumePlannerTest" time="0.006"/>
+  <testcase name="boundsBudgetAndMinecraftBlockIntDomainAreCheckedBeforeAnyResolverFactory()" classname="com.yucareux.tellus.worldgen.decision.TellusBiomeVolumePlannerTest" time="0.004"/>
+  <testcase name="factoryRunsOnceAndResolverGetsEveryExactCoordinateAndMatchingAnchorContext()" classname="com.yucareux.tellus.worldgen.decision.TellusBiomeVolumePlannerTest" time="0.01"/>
+  <testcase name="defaultSphereCubeAndExplicitCustomModelsResolveCanonicalAnchorsWithoutGuessingTopology()" classname="com.yucareux.tellus.worldgen.decision.TellusBiomeVolumePlannerTest" time="0.018"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

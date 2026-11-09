@@ -1,0 +1,47 @@
+# Round56 — Explicit native biome volumes
+
+## Contract and native query order
+
+The new Minecraft-free TellusBiomeVolumePlan and TellusBiomeVolumePlanner describe a complete chunk biome volume, rather than copying one column-top biome through every Y. A request carries the full generation profile, physical chunk coordinates,16 canonical quart-anchor WriteContexts in localZ/localX order and a sampling resolution. Each AVAILABLE plan contains every exact quart coordinate in native section/X/Y/Z order, including negative Y. UNKNOWN/QUEUED carry no candidate prefix and PARTIAL is excluded. Cell/order/list shape is immutable and constructor-checked; lexical biome ids and registry ownership are checked at the Minecraft boundary.
+
+Pure validation checks all16 matching profiles/owner kinds/physical anchors, excludes derived apron ownership, checks both vertical bounds for16-block alignment, limits height to4096 and the resulting volume to16,384 cells, and checks the whole chunk's block coordinates fit Minecraft integers. An explicit model supports custom face sizes; default topology is not guessed for custom spherical contexts. Nonblocking requests stay resolver-factory-cold regardless of the quantized sampling bucket. Exact request resolution does not replace actual native scale.
+
+The native fill order was checked against both versions' LevelChunkSection bytecode: section ascending, local quartX outer, quartY middle, quartZ inner. The generic planner creates one per-volume resolver after complete request preflight and preserves this order. The resolver receives actual engine quart coordinates at every Y. A late unknown result discards all earlier cells before any target mutation.
+
+## Explicit native factories
+
+EarthChunkGenerator and both Cube-Net/Sphere-Face generator implementations expose semanticBiomeVolumePlanner(). Before source construction, each checks its current scale/sea/bounds/seed and every anchor's actual owner/domain; Cube also checks materializer seed, and Sphere checks the selected face and singularity policy. Profile/seed checks repeat before each quart query. These are in-process guards, not an atomic source/registry/world manifest binding.
+
+Both EarthBiomeSource implementations expose semanticVolumeResolver(), retaining one native QuartBiomeColumnCache per volume and resolving each actual Y through the original classifier. Explicit planning uses the same non-fast-spawn cached classification path as native createBiomes, while leaving the fastSpawnMode flag unchanged. CubeNetBiomeSource delegates exact quart coordinates to its original cave-aware source. Earth and Cube volume helpers reject a structure-biome query when created and on each later resolver call. A source holder without a registry key becomes UNKNOWN rather than an invented plains biome.
+
+The factories and helpers are additive. Removing only the new blocks reproduces the complete prior eight source files; Cube/Sphere factory copies and both Earth helper copies match between versions. Native createBiomes, classifiers, default producers, Codec and save-format code remain unchanged. The mc1201 Earth source is an actual overlay at shared/mc1201; the initial compile identified its missing helper and the same explicit helper was added there.
+
+## Publication and failure recovery
+
+TellusNativeBiomeVolumeWriter is explicit and ProtoChunk-only. It acquires the existing non-reentrant target-object lease before target reads/planning. Contention remains queued without source work. Complete pure/profile/target/section validation precedes classification; nonblocking requests remain planner, palette and registry-mapping cold. Every original section must be the exact vanilla class and each original biome container an exact mutable PalettedContainer. Registry checks require original and mapped holders to be canonical, bound members of the supplied target registry; equal textual ids from a foreign registry do not suffice.
+
+All classification, id mapping and detached independent-palette preparation/readback completes before the first target mutation. The writer captures every original Holder reference and the dirty flag. Publication updates biome quart cells in the existing containers. Success retains the original section objects, original block-state and biome container objects, block contents, section counters and marker arrays. It only sets the dirty flag after complete publication and readback.
+
+On a publication RuntimeException or Error, every original quart cell is attempted in reverse order, followed by dirty restoration even if earlier restoration fails. Semantic holder contents are read back by identity; incomplete restoration throws and releases the lease. A completely recovered RuntimeException returns an invalid no-write result; a recovered Error rethrows the same Error. Diagnostics use only exception class names, avoiding overridable message/toString callbacks before cleanup. A distinct result type has no flat StorageTransactionBoundary overload.
+
+This preserves semantic palette contents and object identities on recovery. A mutable palette can retain newly allocated internal ids/bits after restoring its old contents; exact serialized palette bytes and allocator history are not a rollback guarantee. No format or Codec change is introduced. The native engine, direct container edits, cached external handles, different object aliases for one world chunk, arbitrary VM allocation failures, disk saves and source snapshots are outside the participating lease contract. The biome operation and the existing block/feature batch are separate explicit operations, not one combined world transaction.
+
+## Verification and corrections
+
+The first focused run compiled and executed28 tests. Two native integration fixture mistakes were corrected: Earth native fill requires a real RandomState, and ProtoChunk.getNoiseBiome guards queries by lifecycle status even after palettes are populated. The fixture now supplies the test registry's real RandomState and reads the actual section palettes; production lifecycle status is unchanged.
+
+That run also caught a real implementation regression: constructing a replacement LevelChunkSection with the existing block container recalculated its fluid-ticking counter differently from its native incremental value (true became false). The implementation was changed to preserve existing sections and mutate only their biome cells. The positive regression keeps its original true fluid-counter assertion; it was not weakened to accept recalculation. Initial failing XMLs are archived separately from final evidence.
+
+Ten pure tests cover native order/1536-cell completeness and16 anchors, four chunk-coordinate signs, factory/query cardinality, cold nonblocking and invalid inputs, unknown-prefix discard, complete profile mismatches, aliases/apron, height/int budgets, custom Sphere/Cube topology, immutable values and explicit null/source failures.
+
+Twelve native writer tests cover real1536-quart publication and98,304 retained block states, all section/container references and counter flags, target registry ownership, complete preflight, unknown/queued plans, late source RuntimeException/Error, actual dirty-flag mutation/no-op/incomplete rollback faults, unsupported palette shapes, same-thread reentry, five existing explicit writer paths, and deterministic latch-controlled contention between actual target objects.
+
+Four broad native integration tests compare18 full Cube-Net volumes across six faces and three cave/random profiles,18 fixed-biome Sphere volumes across six faces/three biomes and negative engine coordinates, one fixed-source Earth native volume, plus cold native factory guards. Cube coverage requires observed vertical variation and real cave/deep-dark ids, not a top-biome label copied through the volume. Two additional Earth tests use the established controlled disk elevation/cover and empty vector-water fixture with the real Earth classifier/cached createBiomes, require actual vertical variation, compare explicit planning/native/target palettes, and verify fast-spawn and structure-query boundaries. These fixtures do not establish live GIS/datapack/server or persisted-world acceptance.
+
+Final counts and exact native observations are recorded in [machine evidence](../validation/round56-biome-volume/test-evidence.json), alongside the original failing artifacts and source restoration proof. The final selected inventory adds28 tests per version to Round55 and runs strictly serially. The retained original13,824-column, canonical256-column and seven-biome-case probes are still mc1201 evidence; the one known bare/BWh biome mismatch is retained and no nonexistent mc1211 original replay is claimed.
+
+## Rollback and remaining goal gates
+
+Rollback parent is recovery/tellus-round55-chunk-batch (46336d725b5a7356bae5a754f3988ddddf6daeff). Checkpoint publication uses an isolated index, restores the exact scoped parent tree to verify rollback, then restores the new tree before commit/ref publication; the real branch/HEAD/index remain unchanged.
+
+The default lifecycle remains off. Remaining work includes later cave/snow/decoration composition, source-stable complete producer transactions, world-key-aware runtime coordination and incomplete-recovery handling, and real persisted-world save/reload. The existing non-default-heightOffset Cube Codec sea drift76→88 remains unchanged. The overall goal remains active.

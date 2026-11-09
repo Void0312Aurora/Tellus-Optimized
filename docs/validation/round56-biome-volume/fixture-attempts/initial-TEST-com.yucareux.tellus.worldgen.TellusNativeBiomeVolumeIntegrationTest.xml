@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.yucareux.tellus.worldgen.TellusNativeBiomeVolumeIntegrationTest" tests="4" skipped="0" failures="1" errors="0" timestamp="2026-11-09T08:59:18.406Z" hostname="VOID0312" time="3.217">
+  <properties/>
+  <testcase name="nativeVolumeFactoriesStayColdForNonblockingInvalidSeedAndWrongOwner()" classname="com.yucareux.tellus.worldgen.TellusNativeBiomeVolumeIntegrationTest" time="0.178"/>
+  <testcase name="cubeNativeCreateBiomesMatchesCompleteVolumesAcrossSixFacesAndCaveProfiles()" classname="com.yucareux.tellus.worldgen.TellusNativeBiomeVolumeIntegrationTest" time="2.709"/>
+  <testcase name="earthFixedNativeGeneratorVolumeRetainsActualQuartOrderAndFullHeight()" classname="com.yucareux.tellus.worldgen.TellusNativeBiomeVolumeIntegrationTest" time="0.025">
+    <failure message="java.util.concurrent.CompletionException: java.lang.NullPointerException: Cannot invoke &quot;net.minecraft.world.level.levelgen.RandomState.sampler()&quot; because &quot;random&quot; is null" type="java.util.concurrent.CompletionException">java.util.concurrent.CompletionException: java.lang.NullPointerException: Cannot invoke &quot;net.minecraft.world.level.levelgen.RandomState.sampler()&quot; because &quot;random&quot; is null
+	at java.base/java.util.concurrent.CompletableFuture.encodeThrowable(CompletableFuture.java:315)
+	at java.base/java.util.concurrent.CompletableFuture.completeThrowable(CompletableFuture.java:320)
+	at java.base/java.util.concurrent.CompletableFuture$AsyncSupply.run(CompletableFuture.java:1770)
+	at java.base/java.util.concurrent.CompletableFuture$AsyncSupply.exec(CompletableFuture.java:1760)
+	at java.base/java.util.concurrent.ForkJoinTask.doExec(ForkJoinTask.java:373)
+	at java.base/java.util.concurrent.ForkJoinPool$WorkQueue.topLevelExec(ForkJoinPool.java:1182)
+	at java.base/java.util.concurrent.ForkJoinPool.scan(ForkJoinPool.java:1655)
+	at java.base/java.util.concurrent.ForkJoinPool.runWorker(ForkJoinPool.java:1622)
+	at java.base/java.util.concurrent.ForkJoinWorkerThread.run(ForkJoinWorkerThread.java:165)
+Caused by: java.lang.NullPointerException: Cannot invoke &quot;net.minecraft.world.level.levelgen.RandomState.sampler()&quot; because &quot;random&quot; is null
+	at com.yucareux.tellus.worldgen.WorldgenApi.fillBiomes(WorldgenApi.java:35)
+	at com.yucareux.tellus.worldgen.EarthChunkGenerator.fillBiomesWithColumnCache(EarthChunkGenerator.java:844)
+	at com.yucareux.tellus.worldgen.EarthChunkGenerator.lambda$createBiomes$3(EarthChunkGenerator.java:834)
+	at java.base/java.util.concurrent.CompletableFuture$AsyncSupply.run(CompletableFuture.java:1768)
+	... 6 more
+</failure>
+  </testcase>
+  <testcase name="fixedSphereVolumesMatchNativeAcrossFacesBiomesAndNegativeEngineCoordinates()" classname="com.yucareux.tellus.worldgen.TellusNativeBiomeVolumeIntegrationTest" time="0.127"/>
+  <system-out><![CDATA[[16:59:18] [Test worker/INFO]: [STDOUT]: NATIVE_BIOME_VOLUME_GUARDS nonblockingSeedStructureCold=true nativeLifecycleUnchanged=true
+[16:59:19] [Test worker/INFO]: Loaded 847 RESOLVE ecoregions at 30 arc-second resolution
+[16:59:21] [Test worker/INFO]: [STDOUT]: NATIVE_CUBE_BIOME_VOLUME chunks=18 quartCells=27648 verticallyVaryingColumns=173 biomeIds=[minecraft:birch_forest, minecraft:cherry_grove, minecraft:dark_forest, minecraft:deep_dark, minecraft:desert, minecraft:dripstone_caves, minecraft:flower_forest, minecraft:forest, minecraft:lush_caves, minecraft:meadow, minecraft:mushroom_fields, minecraft:old_growth_birch_forest, minecraft:old_growth_spruce_taiga, minecraft:stony_peaks, minecraft:swamp, minecraft:windswept_forest, minecraft:windswept_gravelly_hills, minecraft:windswept_hills, minecraft:wooded_badlands] mismatchQuarts=0 blockContainersRetained=true
+[16:59:21] [Test worker/INFO]: EarthChunkGenerator init: scale=30.0, minAltitude=-64, maxAltitude=-2147483648, heightOffset=64, limits=[minY=-64, height=528, logicalHeight=528], seaLevel=64
+[16:59:21] [Test worker/INFO]: [STDOUT]: NATIVE_SPHERE_BIOME_VOLUME chunks=18 quartCells=27648 terrainReads=0 mismatchQuarts=0
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

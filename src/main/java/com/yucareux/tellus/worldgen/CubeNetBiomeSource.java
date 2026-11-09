@@ -522,6 +522,22 @@ public final class CubeNetBiomeSource extends TellusBiomeSourceBridge {
       return result.stream();
    }
 
+   /** Explicit native vertical query; canonical ownership is checked by the generator planner. */
+   public net.minecraft.world.level.biome.BiomeResolver semanticVolumeResolver() {
+      this.requireOrdinaryVolumeQuery();
+      return (x, y, z, sampler) -> {
+         this.requireOrdinaryVolumeQuery();
+         return this.getNoiseBiome(x, y, z, sampler);
+      };
+   }
+
+   private void requireOrdinaryVolumeQuery() {
+      Integer depth = this.structureBiomeQueryDepth.get();
+      if (depth != null && depth > 0) {
+         throw new IllegalStateException("biome volume is not a structure-biome query");
+      }
+   }
+
    /**
     * Explicit column-top semantic bridge. Native quart anchoring and source reads are retained:
     * the terrain provider's richer SurfaceData is not substituted for this biome source's inputs.
