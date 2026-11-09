@@ -117,6 +117,132 @@ import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemp
  * CubeNetRuntime.
  */
 public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeNetLodSurface, WaterSourceConversionGuard, TellusGeodeticPosition {
+   /** Explicit opt-in bridge; default generation never invokes this entrypoint. */
+   private final com.yucareux.tellus.worldgen.caves.CubeNetNativeUndergroundStage nativeUndergroundStage = new com.yucareux.tellus.worldgen.caves.CubeNetNativeUndergroundStage();
+
+   public com.yucareux.tellus.worldgen.caves.CubeNetNativeUndergroundStage.Preparation prepareNativeUnderground(
+      boolean enabled, net.minecraft.world.level.chunk.ProtoChunk chunk,
+      net.minecraft.world.level.StructureManager structures,
+      net.minecraft.core.Registry<net.minecraft.world.level.biome.Biome> biomes, long seed) {
+      return prepareNativeUnderground(enabled, chunk, structures, biomes, seed,
+         com.yucareux.tellus.worldgen.sample.SamplingResolution.exact(1), this.singularityConfig);
+   }
+
+   /**
+    * Explicit opt-in capture; all target/config/profile guards precede source sampling.
+    * Caller must quiesce native engine writers and source mutations. The later bridge
+    * lease protects publication participants, not this source/target acquisition interval.
+    */
+   public com.yucareux.tellus.worldgen.caves.CubeNetNativeUndergroundStage.Preparation prepareNativeUnderground(
+      boolean enabled, net.minecraft.world.level.chunk.ProtoChunk chunk,
+      net.minecraft.world.level.StructureManager structures,
+      net.minecraft.core.Registry<net.minecraft.world.level.biome.Biome> biomes, long seed,
+      com.yucareux.tellus.worldgen.sample.SamplingResolution resolution,
+      com.yucareux.tellus.worldgen.global.SphereSingularityPolicy.Config config) {
+      if (!enabled || resolution == null || config == null)
+         return nativeUndergroundStage.invalidPreparation("native underground disabled or missing resolution/config");
+      if (!this.cubeNetCaves && !this.cubeNetOreVeins && !this.cubeNetGeologicalStonePatches)
+         return nativeUndergroundStage.invalidPreparation("native underground features are disabled");
+      if (resolution.kind() == com.yucareux.tellus.worldgen.sample.SamplingResolution.Kind.NON_BLOCKING)
+         return nativeUndergroundStage.queuedPreparation("nonblocking native underground capture remains target/source cold");
+      if (chunk == null || biomes == null || !config.equals(this.singularityConfig))
+         return nativeUndergroundStage.invalidPreparation("native underground target/registry/config differs from generator");
+      if (!this.nativeUndergroundSeedBound(seed))
+         return nativeUndergroundStage.invalidPreparation("native underground generator/materializer seed is not bound");
+      int minY = getMinY(), maxY = getMinY() + getGenDepth();
+      try {
+         Math.subtractExact(minY, this.seaLevel);
+         Math.subtractExact(maxY - 1, this.seaLevel);
+         var address = this.address(chunk.getPos()).orElse(null);
+         if (address == null) return nativeUndergroundStage.invalidPreparation("native underground target is not canonical");
+         com.yucareux.tellus.worldgen.caves.CubeNetNativeUndergroundStage.validateTargetForCapture(
+            chunk, this.model, address, chunk.getPos().x, chunk.getPos().z, minY, maxY, config);
+         var columns = undergroundColumns(chunk.getPos(), address);
+         if (!this.nativeUndergroundSeedBound(seed))
+            return nativeUndergroundStage.invalidPreparation("native underground seed changed during column capture");
+         int[] halo = this.cubeNetGeologicalStonePatches
+            ? captureUndergroundSurfaceHalo(chunk.getPos(), columns.surfaceSampler()) : null;
+         if (!this.nativeUndergroundSeedBound(seed))
+            return nativeUndergroundStage.invalidPreparation("native underground seed changed during halo capture");
+         var exclusions = undergroundStructureExclusions(structures, chunk.getPos()).stream().map(b ->
+            new com.yucareux.tellus.worldgen.caves.UndergroundStagePlan.Exclusion(b.minX(), b.minY(), b.minZ(), b.maxX(), b.maxY(), b.maxZ(), b.carvingMargin(), b.blocksFeaturePlacement())).toList();
+         var generation = new com.yucareux.tellus.worldgen.decision.TellusGenerationContext(seed, worldScale(), getSeaLevel(), getMinY(), getMinY() + getGenDepth());
+         var flags = new com.yucareux.tellus.worldgen.caves.UndergroundStagePlan.Flags(cubeNetCaves, cubeNetCavesReachSurface, cubeNetOreVeins, cubeNetGeologicalStonePatches);
+         if (!flags.anyEnabled()) return nativeUndergroundStage.invalidPreparation("native underground features are disabled");
+         var request = new com.yucareux.tellus.worldgen.caves.UndergroundStagePlan.Request(generation, model, address, chunk.getPos().x, chunk.getPos().z, columns.surfaceY(), columns.floodGuardY(), columns.generationFloorY(), exclusions, halo, flags, "cube-generator-native-v2", resolution);
+         if (!this.nativeUndergroundSeedBound(seed))
+            return nativeUndergroundStage.invalidPreparation("native underground seed changed before detached preparation");
+         var result = nativeUndergroundStage.prepare(true, chunk, request, biomes, config);
+         if (!this.nativeUndergroundSeedBound(seed))
+            return nativeUndergroundStage.invalidPreparation("native underground seed changed during detached preparation");
+         return result;
+      } catch (RuntimeException failure) {
+         return nativeUndergroundStage.invalidPreparation("native underground capture failed: " + failure.getClass().getName());
+      }
+   }
+
+   public com.yucareux.tellus.worldgen.caves.CubeNetNativeUndergroundStage.Preparation prepareNativeUnderground(
+      boolean enabled, net.minecraft.world.level.chunk.ProtoChunk chunk,
+      net.minecraft.world.level.StructureManager structures,
+      net.minecraft.core.Registry<net.minecraft.world.level.biome.Biome> biomes, long seed,
+      com.yucareux.tellus.worldgen.sample.SamplingResolution resolution) {
+      return prepareNativeUnderground(enabled, chunk, structures, biomes, seed, resolution, this.singularityConfig);
+   }
+
+   private boolean nativeUndergroundSeedBound(long seed) {
+      return this.worldSeed == seed && this.materializer.worldSeed() == seed;
+   }
+
+   private int[] captureUndergroundSurfaceHalo(ChunkPos pos, java.util.function.IntBinaryOperator sampler) {
+      int[] halo = new int[400];
+      for (int z = 0; z < 20; z++) for (int x = 0; x < 20; x++)
+         halo[z * 20 + x] = sampler.applyAsInt(Math.addExact(pos.getMinBlockX(), x - 2), Math.addExact(pos.getMinBlockZ(), z - 2));
+      return halo;
+   }
+
+   public com.yucareux.tellus.worldgen.caves.CubeNetNativeUndergroundStage.Preparation prepareNativeUnderground(
+      boolean enabled, net.minecraft.world.level.chunk.ProtoChunk chunk,
+      com.yucareux.tellus.worldgen.caves.UndergroundStagePlan.Request request,
+      net.minecraft.core.Registry<net.minecraft.world.level.biome.Biome> biomes) {
+      return prepareNativeUnderground(enabled, chunk, request, biomes, this.singularityConfig);
+   }
+
+   public com.yucareux.tellus.worldgen.caves.CubeNetNativeUndergroundStage.Preparation prepareNativeUnderground(
+      boolean enabled, net.minecraft.world.level.chunk.ProtoChunk chunk,
+      com.yucareux.tellus.worldgen.caves.UndergroundStagePlan.Request request,
+      net.minecraft.core.Registry<net.minecraft.world.level.biome.Biome> biomes,
+      com.yucareux.tellus.worldgen.global.SphereSingularityPolicy.Config config) {
+      if (!enabled || request == null || config == null)
+         return nativeUndergroundStage.invalidPreparation("native underground disabled or missing request/config");
+      if (!this.cubeNetCaves && !this.cubeNetOreVeins && !this.cubeNetGeologicalStonePatches)
+         return nativeUndergroundStage.invalidPreparation("native underground features are disabled");
+      if (request.resolution().kind() == com.yucareux.tellus.worldgen.sample.SamplingResolution.Kind.NON_BLOCKING)
+         return nativeUndergroundStage.queuedPreparation("nonblocking native underground preparation remains target cold");
+      var generation = request.generation();
+      var flags = new com.yucareux.tellus.worldgen.caves.UndergroundStagePlan.Flags(
+         this.cubeNetCaves, this.cubeNetCavesReachSurface, this.cubeNetOreVeins, this.cubeNetGeologicalStonePatches);
+      if (!config.equals(this.singularityConfig) || !request.model().config().equals(this.model.config())
+         || !flags.equals(request.flags()) || !nativeUndergroundSeedBound(generation.worldSeed())
+         || Double.compare(generation.worldScale(), worldScale()) != 0 || generation.seaLevel() != getSeaLevel()
+         || generation.minY() != getMinY() || generation.maxYExclusive() != this.maxY())
+         return nativeUndergroundStage.invalidPreparation("native underground request differs from generator profile/seed/config");
+      var result = nativeUndergroundStage.prepare(true, chunk, request, biomes, config);
+      return nativeUndergroundSeedBound(generation.worldSeed()) ? result
+         : nativeUndergroundStage.invalidPreparation("native underground seed changed during detached preparation");
+   }
+
+   public com.yucareux.tellus.worldgen.caves.CubeNetUndergroundStageAdapter.ReplayResult replayNativeUnderground(
+      boolean enabled, net.minecraft.world.level.chunk.ChunkAccess target,
+      com.yucareux.tellus.worldgen.caves.CubeNetNativeUndergroundStage.Prepared prepared) {
+      if (!enabled || prepared == null) return nativeUndergroundStage.replay(false, target, prepared);
+      var generation = prepared.plan().request().generation();
+      if (!nativeUndergroundSeedBound(generation.worldSeed())
+         || Double.compare(generation.worldScale(), this.worldScale()) != 0
+         || generation.seaLevel() != this.seaLevel || generation.minY() != this.minY
+         || generation.maxYExclusive() != this.maxY())
+         return nativeUndergroundStage.replay(false, target, prepared);
+      return nativeUndergroundStage.replay(true, target, prepared, this.singularityConfig);
+   }
    public static final int GEOMETRY_VERSION = 3;
    private static final float AXOLOTL_CHUNK_CHANCE = 0.55F;
    private static final float AXOLOTL_POND_CHANCE = 0.68F;

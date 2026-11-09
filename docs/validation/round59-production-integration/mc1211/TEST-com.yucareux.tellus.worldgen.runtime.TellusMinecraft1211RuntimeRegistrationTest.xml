@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.yucareux.tellus.worldgen.runtime.TellusMinecraft1211RuntimeRegistrationTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-11-09T14:57:17.265Z" hostname="VOID0312" time="0.099">
+  <properties/>
+  <testcase name="unsupportedAndDuplicateRemainExplicit()" classname="com.yucareux.tellus.worldgen.runtime.TellusMinecraft1211RuntimeRegistrationTest" time="0.007"/>
+  <testcase name="orderedFactoriesStartWithEarthAndRemainExplicit()" classname="com.yucareux.tellus.worldgen.runtime.TellusMinecraft1211RuntimeRegistrationTest" time="0.0"/>
+  <testcase name="factoryNotFoundResultDoesNotCreateRuntime()" classname="com.yucareux.tellus.worldgen.runtime.TellusMinecraft1211RuntimeRegistrationTest" time="0.0"/>
+  <testcase name="earthRegistersIntoCallerOwnedRegistryOnly()" classname="com.yucareux.tellus.worldgen.runtime.TellusMinecraft1211RuntimeRegistrationTest" time="0.0"/>
+  <system-out><![CDATA[[22:57:17] [Test worker/INFO]: EarthChunkGenerator init: scale=30.0, minAltitude=-64, maxAltitude=-2147483648, heightOffset=64, limits=[minY=-64, height=528, logicalHeight=528], seaLevel=64
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

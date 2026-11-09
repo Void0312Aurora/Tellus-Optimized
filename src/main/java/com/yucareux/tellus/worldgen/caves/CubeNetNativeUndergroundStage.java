@@ -32,29 +32,44 @@ public final class CubeNetNativeUndergroundStage {
         }
     }
 
-    /** Unforgeable capture: original target and native baseline never escape. */
     public static final class Prepared {
         private final ProtoChunk target;
         private final BlockState[] baseline;
         private final UndergroundStagePlan plan;
-        private Prepared(ProtoChunk target, BlockState[] baseline, UndergroundStagePlan plan) {
+        private final com.yucareux.tellus.worldgen.global.SphereSingularityPolicy.Config singularityConfig;
+        private final long worldSeed;
+        private final CubeNetNativeUndergroundStage issuer;
+        private Prepared(ProtoChunk target, BlockState[] baseline, UndergroundStagePlan plan,
+                         com.yucareux.tellus.worldgen.global.SphereSingularityPolicy.Config singularityConfig,
+                         CubeNetNativeUndergroundStage issuer) {
             this.target = target; this.baseline = baseline; this.plan = plan;
+            this.singularityConfig = singularityConfig; this.worldSeed = plan.request().generation().worldSeed();
+            this.issuer = issuer;
         }
         public UndergroundStagePlan plan() { return plan; }
     }
 
     public Preparation prepare(boolean enabled, ChunkAccess chunk, UndergroundStagePlan.Request request, Registry<Biome> biomes) {
-        if (!enabled || request == null) return stopped(PreparationStatus.INVALID, "underground preparation disabled or missing request");
+        return prepare(enabled, chunk, request, biomes,
+            com.yucareux.tellus.worldgen.global.SphereSingularityPolicy.DEFAULT_CONFIG);
+    }
+
+    public Preparation prepare(boolean enabled, ChunkAccess chunk, UndergroundStagePlan.Request request, Registry<Biome> biomes,
+                               com.yucareux.tellus.worldgen.global.SphereSingularityPolicy.Config singularityConfig) {
+        if (!enabled || request == null || singularityConfig == null)
+            return stopped(PreparationStatus.INVALID, "underground preparation disabled or missing request/config");
         try { UndergroundStagePlanner.validateRequest(request); }
         catch (RuntimeException failure) { return stopped(PreparationStatus.INVALID, failure.getClass().getName()); }
-        if (request.resolution().kind() == com.yucareux.tellus.worldgen.sample.SamplingResolution.Kind.NON_BLOCKING) return stopped(PreparationStatus.QUEUED, "nonblocking preparation remains target/registry cold");
-        if (!(chunk instanceof ProtoChunk target) || biomes == null) return stopped(PreparationStatus.INVALID, "preparation requires ProtoChunk and biome registry");
+        if (request.resolution().kind() == com.yucareux.tellus.worldgen.sample.SamplingResolution.Kind.NON_BLOCKING)
+            return stopped(PreparationStatus.QUEUED, "nonblocking preparation remains target/registry cold");
+        if (!(chunk instanceof ProtoChunk target) || biomes == null)
+            return stopped(PreparationStatus.INVALID, "preparation requires ProtoChunk and biome registry");
         var acquired = TellusTargetWriteGuard.tryAcquire(target);
         if (acquired.isEmpty()) return stopped(PreparationStatus.QUEUED, "participating native writer active");
         try (var lease = acquired.orElseThrow()) {
             lease.requireOwned(target);
             try {
-                validateTarget(target, request);
+                validateTarget(target, request, singularityConfig);
                 BlockState[] baseline = snapshot(target, request);
                 var detached = new ProtoChunk(target.getPos(), UpgradeData.EMPTY,
                     LevelHeightAccessor.create(request.generation().minY(), request.generation().maxYExclusive() - request.generation().minY()), biomes, null);
@@ -79,8 +94,10 @@ public final class CubeNetNativeUndergroundStage {
                         deltas.add(new UndergroundStagePlan.Delta(pos.getX(),pos.getY(),pos.getZ(),material,fluid));
                         MinecraftVersionCompat.setBlockState(written,pos,state);
                     });
-                var plan = UndergroundStagePlan.available(request, deltas, List.of("unchanged native sampler evaluated against detached target and frozen halo"));
-                return new Preparation(PreparationStatus.READY, Optional.of(new Prepared(target,baseline,plan)), List.of());
+                var plan = UndergroundStagePlan.available(request, deltas,
+                    List.of("unchanged native sampler evaluated against detached target and frozen halo"));
+                return new Preparation(PreparationStatus.READY,
+                    Optional.of(new Prepared(target,baseline,plan,singularityConfig,this)), List.of());
             } catch (RuntimeException failure) {
                 return stopped(PreparationStatus.INVALID, "detached native preparation failed: " + failure.getClass().getName());
             }
@@ -88,9 +105,20 @@ public final class CubeNetNativeUndergroundStage {
     }
 
     public CubeNetUndergroundStageAdapter.ReplayResult replay(boolean enabled, ChunkAccess target, Prepared prepared) {
-        if (!enabled || prepared == null || target != prepared.target) return invalid("disabled, missing or foreign prepared target");
+        return replay(enabled, target, prepared,
+            prepared == null ? com.yucareux.tellus.worldgen.global.SphereSingularityPolicy.DEFAULT_CONFIG
+                : prepared.singularityConfig);
+    }
+
+    public CubeNetUndergroundStageAdapter.ReplayResult replay(boolean enabled, ChunkAccess target, Prepared prepared,
+                                                               com.yucareux.tellus.worldgen.global.SphereSingularityPolicy.Config singularityConfig) {
+        if (!enabled || prepared == null || target != prepared.target || prepared.issuer != this || singularityConfig == null
+            || !singularityConfig.equals(prepared.singularityConfig))
+            return invalid("disabled, missing, foreign or singularity-config-mismatched prepared target");
         ProtoChunk chunk = prepared.target;
         var request = prepared.plan.request();
+        if (request.generation().worldSeed() != prepared.worldSeed)
+            return invalid("prepared underground seed binding differs from request");
         var markers = new TellusNativePostProcessing(chunk);
         CubeNetUndergroundStageAdapter.PostProcessing metadata = new CubeNetUndergroundStageAdapter.PostProcessing() {
             public Object snapshot() {
@@ -116,7 +144,7 @@ public final class CubeNetNativeUndergroundStage {
             public int minY() { return chunk.getMinBuildHeight(); }
             public int maxYExclusive() { return chunk.getMaxBuildHeight(); }
             public void preflight() {
-                validateTarget(chunk, request);
+                validateTarget(chunk, request, prepared.singularityConfig);
                 for(int i=0;i<prepared.baseline.length;i++) if(!prepared.baseline[i].equals(chunk.getBlockState(position(request,i))))
                     throw new IllegalStateException("detached underground target snapshot is stale");
             }
@@ -136,14 +164,36 @@ public final class CubeNetNativeUndergroundStage {
     private static CubeNetUndergroundStageAdapter.ReplayResult invalid(String diagnostic) {
         return new CubeNetUndergroundStageAdapter.ReplayResult(CubeNetUndergroundStageAdapter.ReplayStatus.INVALID,0,List.of(diagnostic));
     }
-    private static void validateTarget(ProtoChunk target,UndergroundStagePlan.Request request) {
-        if(target.getPos().x!=request.chunkX() || target.getPos().z!=request.chunkZ()
-            || target.getMinBuildHeight()!=request.generation().minY() || target.getMaxBuildHeight()!=request.generation().maxYExclusive())
+    public Preparation invalidPreparation(String diagnostic) { return stopped(PreparationStatus.INVALID, diagnostic); }
+    public Preparation queuedPreparation(String diagnostic) { return stopped(PreparationStatus.QUEUED, diagnostic); }
+    private static void validateTarget(ProtoChunk target, UndergroundStagePlan.Request request,
+                                       com.yucareux.tellus.worldgen.global.SphereSingularityPolicy.Config singularityConfig) {
+        validateTargetForCapture(target, request.model(), request.address(), request.chunkX(), request.chunkZ(),
+            request.generation().minY(), request.generation().maxYExclusive(), singularityConfig);
+    }
+
+    /** Read-only admission before generator source capture; caller must provide engine quiescence. */
+    public static void validateTargetForCapture(ProtoChunk target,
+        com.yucareux.tellus.worldgen.global.SphereWorldModel model,
+        com.yucareux.tellus.worldgen.global.SphereWorldModel.SphereChunkAddress address,
+        int chunkX, int chunkZ, int minY, int maxYExclusive,
+        com.yucareux.tellus.worldgen.global.SphereSingularityPolicy.Config singularityConfig) {
+        Objects.requireNonNull(target); Objects.requireNonNull(model); Objects.requireNonNull(address);
+        Objects.requireNonNull(singularityConfig);
+        long height = (long) maxYExclusive - minY;
+        if (height <= 0 || height > 4096 || minY % 16 != 0 || maxYExclusive % 16 != 0)
+            throw new IllegalArgumentException("native underground bounds must be aligned and bounded");
+        Math.toIntExact((long)chunkX * 16 - 2); Math.toIntExact((long)chunkX * 16 + 17);
+        Math.toIntExact((long)chunkZ * 16 - 2); Math.toIntExact((long)chunkZ * 16 + 17);
+        new com.yucareux.tellus.worldgen.global.CubeNetAddressAdapter(model).chunkAddress(chunkX, chunkZ)
+            .filter(address::equals).orElseThrow(() -> new IllegalArgumentException("native underground target is not canonical"));
+        new com.yucareux.tellus.worldgen.global.SphereSingularityPolicy(model, singularityConfig)
+            .requireTerrainMaterialization(address);
+        if(target.getPos().x != chunkX || target.getPos().z != chunkZ
+            || target.getMinBuildHeight() != minY || target.getMaxBuildHeight() != maxYExclusive)
             throw new IllegalArgumentException("native underground target identity or bounds differ");
-        new com.yucareux.tellus.worldgen.global.SphereSingularityPolicy(request.model(),
-            com.yucareux.tellus.worldgen.global.SphereSingularityPolicy.DEFAULT_CONFIG).requireTerrainMaterialization(request.address());
         var sections=target.getSections();
-        if(sections.length != (request.generation().maxYExclusive()-request.generation().minY())/16) throw new IllegalArgumentException("section count differs");
+        if(sections.length != height/16) throw new IllegalArgumentException("section count differs");
         Set<Object> identities=Collections.newSetFromMap(new IdentityHashMap<>());
         for(var section:sections) if(section==null || section.getClass()!=LevelChunkSection.class || !identities.add(section)
             || section.getStates().getClass()!=PalettedContainer.class || !identities.add(section.getStates()))

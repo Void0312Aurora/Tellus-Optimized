@@ -13,6 +13,7 @@ import net.minecraft.world.level.chunk.ChunkAccess;
 
 /** Opt-in 1.21.1 feature sink; no generator or lifecycle registration. */
 public final class TellusMinecraft1211FeaturePlacementSink implements FeaturePlacementSink<BlockState> {
+   private static final long MAX_CELLS = 1_048_576L;
    private final ChunkAccess target;
 
    public TellusMinecraft1211FeaturePlacementSink(ChunkAccess target) {
@@ -45,6 +46,12 @@ public final class TellusMinecraft1211FeaturePlacementSink implements FeaturePla
       if (terminal != null) return terminal;
       final long[] base;
       try {
+         // Bound expansion before allocating cell buffers or consulting the target.
+         long cells = 0L;
+         for (FeaturePlacement placement : plan.placements()) {
+            cells = Math.addExact(cells, (long)placement.height());
+            if (cells > MAX_CELLS) return invalid("feature placement exceeds cell budget " + MAX_CELLS);
+         }
          // Apron writes retain their explicit seam projection. Canonical writes
          // resolve the Cube-Net cell center rather than its face-point origin.
          base = context.apronMirror()
@@ -97,10 +104,15 @@ public final class TellusMinecraft1211FeaturePlacementSink implements FeaturePla
       } catch (RuntimeException error) {
          return invalid("feature placement mapping failed: " + error.getMessage());
       }
+      if (mapped.size() != positions.size()) {
+         return invalid("feature placement mapping did not cover the full plan");
+      }
 
       List<BlockState> previous = new ArrayList<>(positions.size());
+      final boolean previouslyUnsaved;
       try {
          for (BlockPos position : positions) previous.add(this.target.getBlockState(position));
+         previouslyUnsaved = this.target.isUnsaved();
       } catch (RuntimeException error) {
          return invalid("feature placement state capture failed: " + error.getMessage());
       }
@@ -116,10 +128,10 @@ public final class TellusMinecraft1211FeaturePlacementSink implements FeaturePla
             }
          }
          this.target.setUnsaved(true);
-      } catch (RuntimeException error) {
+      } catch (RuntimeException | Error error) {
          // A throwing setBlockState may already have changed its cell. Include
          // the current index and continue attempting every prior cell.
-         RuntimeException rollbackFailure = null;
+         Throwable rollbackFailure = null;
          for (int rollback = Math.min(index, positions.size() - 1); rollback >= 0; rollback--) {
             try {
                BlockPos position = positions.get(rollback);
@@ -127,10 +139,21 @@ public final class TellusMinecraft1211FeaturePlacementSink implements FeaturePla
                if (!this.target.getBlockState(position).equals(previous.get(rollback))) {
                   throw new IllegalStateException("target did not retain restored state");
                }
-            } catch (RuntimeException failed) {
+            } catch (RuntimeException | Error failed) {
                if (rollbackFailure == null) rollbackFailure = failed;
                else if (failed != rollbackFailure) rollbackFailure.addSuppressed(failed);
             }
+         }
+         // Dirty restoration is independent of cell recovery: even a failed
+         // rollback callback must not skip the original persistence state.
+         try {
+            this.target.setUnsaved(previouslyUnsaved);
+            if (this.target.isUnsaved() != previouslyUnsaved) {
+               throw new IllegalStateException("target did not retain restored dirty state");
+            }
+         } catch (RuntimeException | Error failed) {
+            if (rollbackFailure == null) rollbackFailure = failed;
+            else if (failed != rollbackFailure) rollbackFailure.addSuppressed(failed);
          }
          if (rollbackFailure != null) {
             IllegalStateException failure = new IllegalStateException(
@@ -138,6 +161,7 @@ public final class TellusMinecraft1211FeaturePlacementSink implements FeaturePla
             failure.addSuppressed(rollbackFailure);
             throw failure;
          }
+         if (error instanceof Error fatal) throw fatal;
          return invalid("feature placement write failed and original states were restored: "
             + error.getMessage());
       }

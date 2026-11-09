@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.yucareux.tellus.worldgen.CubeNetOwnedUndergroundStageTest" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-11-09T14:53:44.272Z" hostname="VOID0312" time="1.262">
+  <properties/>
+  <testcase name="changingSeedDuringCaptureRejectsSnapshotAndLeavesTargetUntouched()" classname="com.yucareux.tellus.worldgen.CubeNetOwnedUndergroundStageTest" time="0.045"/>
+  <testcase name="seedChangesAndForeignGeneratorReplayAreRejectedBeforeWritesOrSourceReads()" classname="com.yucareux.tellus.worldgen.CubeNetOwnedUndergroundStageTest" time="0.048"/>
+  <testcase name="customSerializedCapConfigIsRetainedAndValidatedDuringReplay()" classname="com.yucareux.tellus.worldgen.CubeNetOwnedUndergroundStageTest" time="0.091"/>
+  <testcase name="disabledNoFeaturesAndNonblockingAreTargetAndSourceCold()" classname="com.yucareux.tellus.worldgen.CubeNetOwnedUndergroundStageTest" time="0.002"/>
+  <testcase name="ownedSnapshotsMatchOriginalNativeSamplerAcrossAllFacesAndSourceColdReplay()" classname="com.yucareux.tellus.worldgen.CubeNetOwnedUndergroundStageTest" time="0.925"/>
+  <testcase name="invalidBoundsCanonicalCapConfigAndSeedStopBeforeSources()" classname="com.yucareux.tellus.worldgen.CubeNetOwnedUndergroundStageTest" time="0.03"/>
+  <system-out><![CDATA[[22:53:45] [Test worker/INFO]: [STDOUT]: CUBE_OWNED_UNDERGROUND chunks=12 comparedBlockStates=491520 mismatchBlocks=0 sourceColdReplay=true deltas=17392 negativeFrames=8 rotatedFrames=6
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

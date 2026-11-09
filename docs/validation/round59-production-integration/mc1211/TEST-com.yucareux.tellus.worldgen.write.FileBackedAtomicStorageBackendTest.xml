@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.yucareux.tellus.worldgen.write.FileBackedAtomicStorageBackendTest" tests="15" skipped="0" failures="0" errors="0" timestamp="2026-11-09T14:57:17.461Z" hostname="VOID0312" time="0.415">
+  <properties/>
+  <testcase name="conflictingIdempotencyAndMissingRecordsAreExplicit()" classname="com.yucareux.tellus.worldgen.write.FileBackedAtomicStorageBackendTest" time="0.058"/>
+  <testcase name="lockedActiveTempIsRetainedUntilLockIsReleased()" classname="com.yucareux.tellus.worldgen.write.FileBackedAtomicStorageBackendTest" time="0.038"/>
+  <testcase name="checksumMutationIsRejected()" classname="com.yucareux.tellus.worldgen.write.FileBackedAtomicStorageBackendTest" time="0.037"/>
+  <testcase name="unpairedSurrogatesInEncodedWritesFailBeforePublication()" classname="com.yucareux.tellus.worldgen.write.FileBackedAtomicStorageBackendTest" time="0.009"/>
+  <testcase name="oversizedSerializedTransactionIsRejectedBeforeDirectoryCreation()" classname="com.yucareux.tellus.worldgen.write.FileBackedAtomicStorageBackendTest" time="0.007"/>
+  <testcase name="separateBackendInstancesSerializeConcurrentCommitDeterministically()" classname="com.yucareux.tellus.worldgen.write.FileBackedAtomicStorageBackendTest" time="0.035"/>
+  <testcase name="malformedContentReturnsFailureAndDoesNotBecomeNotFound()" classname="com.yucareux.tellus.worldgen.write.FileBackedAtomicStorageBackendTest" time="0.03"/>
+  <testcase name="staleRecoveryKeepsUnrelatedTempAndDeletesOnlyOwnedTemp()" classname="com.yucareux.tellus.worldgen.write.FileBackedAtomicStorageBackendTest" time="0.032"/>
+  <testcase name="trailingContentIsRejected()" classname="com.yucareux.tellus.worldgen.write.FileBackedAtomicStorageBackendTest" time="0.033"/>
+  <testcase name="encoderFailureLeavesNoPublishedOrTemporaryRecord()" classname="com.yucareux.tellus.worldgen.write.FileBackedAtomicStorageBackendTest" time="0.008"/>
+  <testcase name="oversizedCommittedRecordIsRejectedOnRead()" classname="com.yucareux.tellus.worldgen.write.FileBackedAtomicStorageBackendTest" time="0.046"/>
+  <testcase name="nonCommittableTransactionsAreRejectedWithoutCreatingFiles()" classname="com.yucareux.tellus.worldgen.write.FileBackedAtomicStorageBackendTest" time="0.005"/>
+  <testcase name="unpairedSurrogateInGeometryFailsBeforePublication()" classname="com.yucareux.tellus.worldgen.write.FileBackedAtomicStorageBackendTest" time="0.006"/>
+  <testcase name="commitReloadAndRepeatedCommitAreIdempotent()" classname="com.yucareux.tellus.worldgen.write.FileBackedAtomicStorageBackendTest" time="0.033"/>
+  <testcase name="sameIdempotencyKeyWithDifferentPayloadIsRejected()" classname="com.yucareux.tellus.worldgen.write.FileBackedAtomicStorageBackendTest" time="0.034"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

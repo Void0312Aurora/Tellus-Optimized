@@ -12,6 +12,7 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import re
 import sys
 from pathlib import Path
 from typing import Iterable
@@ -23,6 +24,7 @@ class ManifestError(ValueError):
 
 COLUMN_FIELDS = ("key", "material", "height", "status")
 BIOME_FIELDS = ("case", "earth", "cube")
+ORIGINAL_BIOME_CASES = frozenset(("forest/Cfb", "grassland/Cfa", "cropland/Dfb", "bare/BWh", "snow/ET", "wetland/Cfa", "mangrove/Af"))
 
 
 def _clean(value: object, field: str, line: int) -> str:
@@ -39,6 +41,11 @@ def _validate_row(raw: dict[str, object], fields: tuple[str, ...], line: int) ->
     if missing:
         raise ManifestError(f"line {line}: missing fields {','.join(missing)}")
     row = {field: _clean(raw[field], field, line) for field in fields}
+    if fields == COLUMN_FIELDS and "blockSha256" in raw:
+        digest = _clean(raw["blockSha256"], "blockSha256", line)
+        if re.fullmatch(r"[0-9a-f]{64}", digest) is None:
+            raise ManifestError(f"line {line}: invalid blockSha256")
+        row["blockSha256"] = digest
     return row
 
 
@@ -105,7 +112,7 @@ def compare_columns(left: list[dict[str, str]], right: list[dict[str, str]]) -> 
         right_row = right_index.get(key)
         if left_row is None or right_row is None:
             mismatches.append({"key": key, "left": left_row, "right": right_row, "reason": "missing-row"})
-        elif any(left_row[field] != right_row[field] for field in ("material", "height", "status")):
+        elif any(left_row.get(field) != right_row.get(field) for field in ("material", "height", "status", "blockSha256")):
             mismatches.append({"key": key, "left": left_row, "right": right_row, "reason": "value-mismatch"})
     return {"rows": len(left), "rightRows": len(right), "mismatches": mismatches}
 
@@ -130,6 +137,8 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--expected-biome-cases", type=int, default=7)
     parser.add_argument("--expected-biome-mismatches", type=int, default=1)
     parser.add_argument("--known-biome-case", default="bare/BWh")
+    parser.add_argument("--require-block-digests", action="store_true", help="require full-column SHA-256 on every native column row")
+    parser.add_argument("--require-original-biome-cases", action="store_true", help="require the seven original case/climate identifiers")
     parser.add_argument("--json", action="store_true", help="emit machine-readable result")
     return parser.parse_args(argv)
 
@@ -140,6 +149,8 @@ def run(argv: list[str]) -> tuple[int, dict[str, object]]:
         left = read_manifest(args.columns_left, "columns")
         right = read_manifest(args.columns_right, "columns")
         biome = read_manifest(args.biome, "biome")
+        if args.require_block_digests and any("blockSha256" not in row for row in left + right):
+            raise ManifestError("full-column blockSha256 is required on every column row")
     except ManifestError as error:
         return 2, {"status": "EVIDENCE_GAP", "error": str(error)}
 
@@ -148,6 +159,7 @@ def run(argv: list[str]) -> tuple[int, dict[str, object]]:
     column_count_ok = columns["rows"] == args.expected_columns and columns["rightRows"] == args.expected_columns
     column_mismatch_ok = len(columns["mismatches"]) == args.expected_column_mismatches
     biome_count_ok = biome_result["cases"] == args.expected_biome_cases
+    biome_case_set_ok = not args.require_original_biome_cases or {row["case"] for row in biome} == ORIGINAL_BIOME_CASES
     biome_mismatch_rows = biome_result["mismatches"]
     known_ok = (
         args.expected_biome_mismatches != 1
@@ -156,7 +168,7 @@ def run(argv: list[str]) -> tuple[int, dict[str, object]]:
     )
     biome_mismatch_ok = len(biome_mismatch_rows) == args.expected_biome_mismatches and known_ok
     result = {
-        "status": "PASS" if column_count_ok and column_mismatch_ok and biome_count_ok and biome_mismatch_ok else "MISMATCH",
+        "status": "PASS" if column_count_ok and column_mismatch_ok and biome_count_ok and biome_case_set_ok and biome_mismatch_ok else "MISMATCH",
         "columns": columns,
         "biome": biome_result,
         "expected": {
@@ -165,11 +177,13 @@ def run(argv: list[str]) -> tuple[int, dict[str, object]]:
             "biomeCases": args.expected_biome_cases,
             "biomeMismatches": args.expected_biome_mismatches,
             "knownBiomeCase": args.known_biome_case,
+            "originalBiomeCases": sorted(ORIGINAL_BIOME_CASES) if args.require_original_biome_cases else None,
         },
         "checks": {
             "columnCount": column_count_ok,
             "columnMismatches": column_mismatch_ok,
             "biomeCount": biome_count_ok,
+            "biomeCaseSet": biome_case_set_ok,
             "biomeMismatches": biome_mismatch_ok,
         },
     }

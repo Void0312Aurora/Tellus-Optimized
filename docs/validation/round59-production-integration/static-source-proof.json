@@ -1,0 +1,47 @@
+{
+  "parent": "36a54cd82f897dd109879277d8c23453ab0f95f8",
+  "unchangedNormalizedParentRegions": {
+    "mc1201/src/main/java/com/yucareux/tellus/worldgen/CubeNetChunkGenerator.java": {
+      "codec": "5b888be3f29c4a3e36fe462471a61faae2fb3a9609baae1021cf2958f7f3f4b7",
+      "nativeUnderground": "c542f19ea8c66fa8e0b8bb45005f7ed7c5bf1810561be7c77aa581170dd06d66"
+    },
+    "shared/mc1211/src/main/java/com/yucareux/tellus/worldgen/CubeNetChunkGenerator.java": {
+      "codec": "b860ea823e894c5118ddb66af44b640bbe9976d79a7c219506ed4fa7c56668c1",
+      "nativeUnderground": "c542f19ea8c66fa8e0b8bb45005f7ed7c5bf1810561be7c77aa581170dd06d66"
+    },
+    "src/main/java/com/yucareux/tellus/worldgen/caves/CubeNetSphericalCaveSampler.java": {
+      "normalizedSha256": "fbaa66fc107565a235e530869cba7469aeaf8a6bff2d0ece66086f68173a6cc0"
+    },
+    "src/main/java/com/yucareux/tellus/worldgen/caves/CubeNetSphericalCaveField.java": {
+      "normalizedSha256": "5e3640a4b5e89edaabf7137864cf9ec7b08762376bac3afbefc6759b0d05f140"
+    },
+    "src/main/java/com/yucareux/tellus/worldgen/decision/SemanticMaterial.java": {
+      "normalizedSha256": "d00a09647d94430bf02b55f753af3ff44976d67a940b8d38ffbf11afb83537ee"
+    },
+    "mc1201/src/main/java/com/yucareux/tellus/worldgen/SphereFaceChunkGenerator.java": {
+      "normalizedSha256": "e01ec3c785c845213aa6aa765d3a0a40fb4cfafa2a19866027958489f20e9aaf"
+    },
+    "shared/mc1211/src/main/java/com/yucareux/tellus/worldgen/SphereFaceChunkGenerator.java": {
+      "normalizedSha256": "1673e364baf3fcef5adade4644570b54480f1298b52072f59c45a69443a59d9b"
+    },
+    "mc1201/src/test/java/com/yucareux/tellus/worldgen/GeneratorConsistencyProbeTest.java": {
+      "normalizedSha256": "eb705a83810020c76f07f31d8f470bd85a3fde6a8dfa67a8df38f3a28fc2f30f"
+    },
+    "mc1201/src/test/java/com/yucareux/tellus/worldgen/EarthCubeBiomeParityProbeTest.java": {
+      "normalizedSha256": "9c6f3a1e40b703f38a985a06da56ace2a104d44261fdace3f506ed1c2b625d05"
+    },
+    "mc1201/src/test/java/com/yucareux/tellus/worldgen/GeneratorParityProbeTest.java": {
+      "normalizedSha256": "84351302e5c47b0fbbfe4266b54f0d82bca12921fbb572f34c852c394ad0093d"
+    },
+    "src/main/java/com/yucareux/tellus/worldgen/write/StorageTransactionBoundary.java": {
+      "normalizedSha256": "ef3379140bcd731756bb9ec8107a8c71f131d59072863ea44249eaa859e37210"
+    },
+    "src/main/java/com/yucareux/tellus/TellusCommon.java": {
+      "normalizedSha256": "6098393c9520763bc828ce3ec8e8884110808b8ec2bbda9dcdc54f7091394d6c"
+    }
+  },
+  "defaultCubeUndergroundSourceOrderRetained": true,
+  "originalProbesUntouched": true,
+  "sphereLaterStagesUnchanged": true,
+  "noCodecSemanticIdsOrDefaultLifecycleChange": true
+}

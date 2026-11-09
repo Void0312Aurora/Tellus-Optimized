@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.yucareux.tellus.worldgen.runtime.TellusRuntimeRolloutGateTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-11-09T14:54:43.932Z" hostname="VOID0312" time="0.001">
+  <properties/>
+  <testcase name="defaultAndMissingEvidenceRemainDisabled()" classname="com.yucareux.tellus.worldgen.runtime.TellusRuntimeRolloutGateTest" time="0.0"/>
+  <testcase name="onlyExplicitFlagAndFreshPassingEvidenceEnable()" classname="com.yucareux.tellus.worldgen.runtime.TellusRuntimeRolloutGateTest" time="0.0"/>
+  <testcase name="staleOrFailedParityAndStorageBlockEnablement()" classname="com.yucareux.tellus.worldgen.runtime.TellusRuntimeRolloutGateTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

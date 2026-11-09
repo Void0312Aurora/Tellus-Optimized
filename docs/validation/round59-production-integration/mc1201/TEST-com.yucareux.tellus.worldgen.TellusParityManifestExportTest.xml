@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.yucareux.tellus.worldgen.TellusParityManifestExportTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-11-09T14:54:27.293Z" hostname="VOID0312" time="14.694">
+  <properties/>
+  <testcase name="exportEveryOriginalNativeColumnWithFullBlockDigest()" classname="com.yucareux.tellus.worldgen.TellusParityManifestExportTest" time="14.592"/>
+  <testcase name="exportSevenActualBiomeCasesWithoutNormalizingResults()" classname="com.yucareux.tellus.worldgen.TellusParityManifestExportTest" time="0.006"/>
+  <system-out><![CDATA[[22:54:41] [Test worker/INFO]: [STDOUT]: PARITY_MANIFEST_EXPORT columns=13824 comparedBlockStates=42246144 mismatchBlocks=0 output=C:\Users\30483\AppData\Local\Temp\tellus-parity-manifests\mc1201
+[22:54:41] [Test worker/INFO]: [STDOUT]: PARITY_MANIFEST_EXPORT biomeCases=7 mismatches=1 known=bare/BWh output=C:\Users\30483\AppData\Local\Temp\tellus-parity-manifests\mc1201
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

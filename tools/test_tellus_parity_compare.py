@@ -55,6 +55,57 @@ class ParityComparatorTest(unittest.TestCase):
             self.assertEqual(result["columns"]["mismatches"], [])
             self.assertEqual(len(result["biome"]["mismatches"]), 1)
 
+    def test_complete_block_digests_are_not_ignored(self):
+        with tempfile.TemporaryDirectory() as raw:
+            directory = Path(raw)
+            base = {"key": "a", "material": "STONE", "height": "80", "status": "AVAILABLE"}
+            left = self._write(directory, "left.jsonl", json.dumps({**base, "blockSha256": "a" * 64}))
+            right = self._write(directory, "right.jsonl", json.dumps({**base, "blockSha256": "b" * 64}))
+            biome = self._write(directory, "biome.jsonl", '{"case":"bare/BWh","earth":"desert","cube":"stony_peaks"}')
+            args = ["--columns-left", left, "--columns-right", right, "--biome", biome,
+                    "--expected-columns", "1", "--expected-biome-cases", "1", "--require-block-digests"]
+            code, result = run(args)
+            self.assertEqual((code, result["status"]), (1, "MISMATCH"))
+            self.assertEqual(len(result["columns"]["mismatches"]), 1)
+            Path(right).write_text(json.dumps({**base, "blockSha256": "a" * 64}), encoding="utf-8")
+            self.assertEqual(run(args)[0], 0)
+            Path(right).write_text(json.dumps(base), encoding="utf-8")
+            self.assertEqual(run(args)[0], 2)
+
+    def test_invalid_digest_and_one_sided_digest_fail(self):
+        with tempfile.TemporaryDirectory() as raw:
+            directory = Path(raw)
+            base = {"key": "a", "material": "STONE", "height": "80", "status": "AVAILABLE"}
+            invalid = self._write(directory, "invalid.jsonl", json.dumps({**base, "blockSha256": "not-a-hash"}))
+            with self.assertRaises(ManifestError):
+                read_manifest(invalid, "columns")
+            left = self._write(directory, "left.jsonl", json.dumps({**base, "blockSha256": "a" * 64}))
+            right = self._write(directory, "right.jsonl", json.dumps(base))
+            biome = self._write(directory, "biome.jsonl", '{"case":"bare/BWh","earth":"desert","cube":"stony_peaks"}')
+            code, result = run(["--columns-left", left, "--columns-right", right, "--biome", biome,
+                                "--expected-columns", "1", "--expected-biome-cases", "1"])
+            self.assertEqual((code, result["status"]), (1, "MISMATCH"))
+
+    def test_strict_original_biome_case_domain_rejects_same_count_substitution(self):
+        with tempfile.TemporaryDirectory() as raw:
+            directory = Path(raw)
+            column = '{"key":"a","material":"STONE","height":"80","status":"AVAILABLE"}'
+            left = self._write(directory, "left.jsonl", column)
+            right = self._write(directory, "right.jsonl", column)
+            cases = ["forest/Cfb", "grassland/Cfa", "cropland/Dfb", "bare/BWh", "snow/ET", "wetland/Cfa", "mangrove/Af"]
+            rows = [{"case": case, "earth": "desert" if case == "bare/BWh" else "forest",
+                     "cube": "stony_peaks" if case == "bare/BWh" else "forest"} for case in cases]
+            biome = self._write(directory, "biome.jsonl", "\n".join(map(json.dumps, rows)))
+            args = ["--columns-left", left, "--columns-right", right, "--biome", biome,
+                    "--expected-columns", "1", "--require-original-biome-cases"]
+            self.assertEqual(run(args)[0], 0)
+            rows[0]["case"] = "fabricated/AAA"
+            Path(biome).write_text("\n".join(map(json.dumps, rows)), encoding="utf-8")
+            code, result = run(args)
+            self.assertEqual((code, result["status"]), (1, "MISMATCH"))
+            self.assertFalse(result["checks"]["biomeCaseSet"])
+            self.assertTrue(result["checks"]["biomeCount"])
+
 
 if __name__ == "__main__":
     unittest.main()

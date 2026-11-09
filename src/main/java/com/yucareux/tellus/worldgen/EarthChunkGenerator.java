@@ -32,6 +32,7 @@ import com.yucareux.tellus.worldgen.sample.TellusSample;
 import com.yucareux.tellus.worldgen.write.TellusNativeSemanticMaterials;
 import com.yucareux.tellus.worldgen.decision.TellusEarthColumnSnapshot;
 import com.yucareux.tellus.worldgen.decision.TellusEarthColumnDecisionKernel;
+import com.yucareux.tellus.worldgen.decision.TellusEarthSnowDecisionKernel;
 import com.yucareux.tellus.worldgen.decision.BiomeDecision;
 import com.yucareux.tellus.worldgen.decision.WaterDecision;
 import com.yucareux.tellus.worldgen.global.EarthOwnerView;
@@ -5160,6 +5161,15 @@ public final class EarthChunkGenerator extends TellusChunkGeneratorBridge implem
                .orElseGet(BiomeDecision::unknown);
          };
       });
+   }
+
+   /**
+    * Explicit detached Earth snow rules bound to the current seed and height range.
+    * Callers supply resolved surface facts and own snow eligibility/target validation.
+    * Both native resolved snow backends reuse the same pure column rule below.
+    */
+   public TellusEarthSnowDecisionKernel semanticSnowColumnKernel() {
+      return new TellusEarthSnowDecisionKernel(this.worldSeed, this.minY, (long)this.minY + this.height);
    }
 
    /** Explicit bridge to the same native source/height resolver as getBaseColumn. No registration. */
@@ -12341,10 +12351,10 @@ private static byte climateGroupForBiome(Holder<Biome> biome) {
       boolean fullSlopeCoverage,
       boolean glacierHollow
    ) {
-      SurfaceMaterialDepthPolicy.SnowColumn column = SurfaceMaterialDepthPolicy.snowColumn(
-         worldX, worldZ, this.worldSeed, fullSlopeCoverage
+      TellusEarthSnowDecisionKernel.Column column = TellusEarthSnowDecisionKernel.resolveColumn(
+         this.worldSeed, new TellusEarthSnowDecisionKernel.Input(worldX, worldZ, surface, fullSlopeCoverage, glacierHollow)
       );
-      BlockState snow = snowCoverState(column, glacierHollow, worldX, worldZ);
+      BlockState snow = TellusNativeSemanticMaterials.state(column.material());
       for (int depth = 0; depth < column.depth(); depth++) {
          int y = surface - depth;
          if (y < minY) {
@@ -12367,11 +12377,11 @@ private static byte climateGroupForBiome(Holder<Biome> biome) {
       boolean fullSlopeCoverage,
       boolean glacierHollow
    ) {
-      SurfaceMaterialDepthPolicy.SnowColumn column = SurfaceMaterialDepthPolicy.snowColumn(
-         worldX, worldZ, this.worldSeed, fullSlopeCoverage
+      TellusEarthSnowDecisionKernel.Column column = TellusEarthSnowDecisionKernel.resolveColumn(
+         this.worldSeed, new TellusEarthSnowDecisionKernel.Input(worldX, worldZ, surface, fullSlopeCoverage, glacierHollow)
       );
-      BlockState snow = snowCoverState(column, glacierHollow, worldX, worldZ);
-      int bottom = Math.max(minY, surface - column.depth() + 1);
+      BlockState snow = TellusNativeSemanticMaterials.state(column.material());
+      int bottom = column.sectionBottom(surface, minY);
       writer.fillColumnConstant(localX, localZ, bottom, surface, snow);
    }
 

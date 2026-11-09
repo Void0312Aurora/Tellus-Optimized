@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.yucareux.tellus.worldgen.EarthSnowKernelNativeParityTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-11-09T14:53:53.155Z" hostname="VOID0312" time="0.358">
+  <properties/>
+  <testcase name="publicGeneratorFactoryBindsCurrentSeedBoundsAndReturnsDetachedSnapshots()" classname="com.yucareux.tellus.worldgen.EarthSnowKernelNativeParityTest" time="0.009"/>
+  <testcase name="frozenOldLoopsMatchBothNativeBackendsAllCellsOrderMaterialsBoundsAndEntityRemoval()" classname="com.yucareux.tellus.worldgen.EarthSnowKernelNativeParityTest" time="0.267"/>
+  <testcase name="extremeNativeCursorIntWrapAndSectionNoWriteRemainDifferentAndBounded()" classname="com.yucareux.tellus.worldgen.EarthSnowKernelNativeParityTest" time="0.003"/>
+  <testcase name="wholeNativeChunksRetainEveryUntouchedCellAndNeverWriteSurfacePlusOne()" classname="com.yucareux.tellus.worldgen.EarthSnowKernelNativeParityTest" time="0.013"/>
+  <system-out><![CDATA[[22:53:53] [Test worker/INFO]: EarthChunkGenerator init: scale=30.0, minAltitude=-64, maxAltitude=-2147483648, heightOffset=64, limits=[minY=-64, height=528, logicalHeight=528], seaLevel=64
+[22:53:53] [Test worker/INFO]: EarthChunkGenerator init: scale=30.0, minAltitude=-64, maxAltitude=-2147483648, heightOffset=64, limits=[minY=-64, height=528, logicalHeight=528], seaLevel=64
+[22:53:53] [Test worker/INFO]: [STDOUT]: EARTH_SNOW_NATIVE_PARITY cases=1296 comparedBlockStates=331776 mismatchBlocks=0 exactCursorAndSectionOrder=true exactEntityRemoval=true materials=[SNOW, POWDER_SNOW, PACKED_ICE, BLUE_ICE]
+[22:53:53] [Test worker/INFO]: EarthChunkGenerator init: scale=30.0, minAltitude=-64, maxAltitude=-2147483648, heightOffset=64, limits=[minY=-64, height=528, logicalHeight=528], seaLevel=64
+[22:53:53] [Test worker/INFO]: EarthChunkGenerator init: scale=30.0, minAltitude=-64, maxAltitude=-2147483648, heightOffset=64, limits=[minY=-64, height=528, logicalHeight=528], seaLevel=64
+[22:53:53] [Test worker/INFO]: [STDOUT]: EARTH_SNOW_WHOLE_CHUNK_PARITY comparedBlockStates=65536 mismatchBlocks=0
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
