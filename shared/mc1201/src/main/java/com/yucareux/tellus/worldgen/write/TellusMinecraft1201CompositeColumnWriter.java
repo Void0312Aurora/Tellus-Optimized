@@ -35,6 +35,9 @@ public final class TellusMinecraft1201CompositeColumnWriter {
          }
          public boolean isAir(BlockState state) { return state.isAir(); }
          public void markDirty() { chunk.setUnsaved(true); }
+         public TellusCompositeColumnWriter.PostProcessing postProcessing() {
+            return chunk instanceof net.minecraft.world.level.chunk.ProtoChunk proto ? new TellusNativePostProcessing(proto) : null;
+         }
       }, context, decision, features, mapper);
    }
 

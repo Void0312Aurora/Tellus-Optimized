@@ -1,0 +1,4 @@
+Recorded compiler diagnostic, not a full compiler log or JUnit XML.
+Initial focused mc1201 :compileTestJava failed in CubeNetInlandFlowPipelineTest.java:129: unreported checked Exception from existing SphereFaceNativeBiomeKernelBridgeTest.chunk helper.
+Correction: nativeMarkerSnapshotRestoresOriginalReferencesNullSlotsOrderDuplicatesAndDirtyFlag test method declares throws Exception. No production change.
+Final focused and full serial suites pass.

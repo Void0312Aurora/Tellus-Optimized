@@ -23,8 +23,16 @@ public record FeaturePlacement(
     int offsetZ,
     int height,
     boolean apronMirror,
-    Map<String, String> metadata
+    Map<String, String> metadata,
+    java.util.Optional<WaterFlowState> flowState
 ) {
+    /** Source-compatible default-state placement; no state properties or metadata transaction. */
+    public FeaturePlacement(FeatureKind kind, String featureId, GeneratorOwner owner, GeneratorOwner canonicalOwner,
+        PlacementOperation operation, PlacementConflictPolicy conflictPolicy, SemanticMaterial material,
+        int offsetX, int offsetY, int offsetZ, int height, boolean apronMirror, Map<String, String> metadata) {
+        this(kind, featureId, owner, canonicalOwner, operation, conflictPolicy, material,
+            offsetX, offsetY, offsetZ, height, apronMirror, metadata, java.util.Optional.empty());
+    }
     public FeaturePlacement {
         Objects.requireNonNull(kind, "kind");
         featureId = requireText(featureId, "featureId");
@@ -35,6 +43,12 @@ public record FeaturePlacement(
         Objects.requireNonNull(material, "material");
         if (height < 1) throw new IllegalArgumentException("height");
         metadata = Map.copyOf(Objects.requireNonNull(metadata, "metadata"));
+        flowState = Objects.requireNonNull(flowState, "flowState");
+        if (flowState.isPresent() && (material != SemanticMaterial.WATER || apronMirror || owner == GeneratorOwner.CUBE_NET_APRON || owner != canonicalOwner
+            || conflictPolicy != PlacementConflictPolicy.OWNER_ONLY
+            || operation != PlacementOperation.SET && operation != PlacementOperation.FILL)) {
+            throw new IllegalArgumentException("exact flow requires canonical WATER SET/FILL OWNER_ONLY placement");
+        }
         if (apronMirror && operation != PlacementOperation.MIRROR) {
             throw new IllegalArgumentException("apron mirror requires MIRROR operation");
         }
@@ -53,6 +67,16 @@ public record FeaturePlacement(
         GeneratorOwner owner = context.owner().kind();
         return new FeaturePlacement(kind, featureId, owner, owner, operation,
             conflictPolicy, material, offsetX, offsetY, offsetZ, height, false, metadata);
+    }
+
+    public static FeaturePlacement canonicalFlow(TellusCoordinateContext context, String featureId,
+        int bottomY, int height, int level) {
+        Objects.requireNonNull(context, "context");
+        GeneratorOwner owner = context.owner().kind();
+        if (owner == GeneratorOwner.CUBE_NET_APRON) throw new IllegalArgumentException("canonical flow excludes apron");
+        return new FeaturePlacement(FeatureKind.CUSTOM, featureId, owner, owner, PlacementOperation.FILL,
+            PlacementConflictPolicy.OWNER_ONLY, SemanticMaterial.WATER, 0, bottomY, 0, height, false,
+            Map.of("stage", "INLAND_FLOW"), java.util.Optional.of(new WaterFlowState(level)));
     }
 
     public static FeaturePlacement apronMirror(

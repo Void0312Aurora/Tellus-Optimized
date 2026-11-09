@@ -577,6 +577,65 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
       };
    }
 
+   /** Explicit raw-native inland flow, including exact WATER level and required post-processing. */
+   public com.yucareux.tellus.worldgen.feature.TellusFeaturePlanner semanticInlandFlowFeaturePlanner() {
+      return (generation, coordinate, column, sample) -> {
+         Objects.requireNonNull(generation, "generation");
+         Objects.requireNonNull(coordinate, "coordinate");
+         Objects.requireNonNull(column, "column");
+         Objects.requireNonNull(sample, "sample");
+         if (!coordinate.equals(column.coordinate()) || !coordinate.equals(sample.request().coordinate())
+            || !generation.geometry().equals(sample.request().geometry())
+            || generation.worldSeed() != sample.request().cacheKey().worldSeed()) {
+            throw new IllegalArgumentException("native Cube-Net inland-flow inputs do not share an identity");
+         }
+         if (sample.request().nonBlocking()
+            || sample.status() == com.yucareux.tellus.worldgen.sample.SampleStatus.QUEUED
+            || column.status() == com.yucareux.tellus.worldgen.decision.DecisionStatus.QUEUED) {
+            return com.yucareux.tellus.worldgen.feature.FeaturePlan.queued("native Cube-Net inland-flow input queued");
+         }
+         if (!sample.complete() || column.status() != com.yucareux.tellus.worldgen.decision.DecisionStatus.AVAILABLE) {
+            return com.yucareux.tellus.worldgen.feature.FeaturePlan.unknown("complete native Cube-Net inland-flow inputs required");
+         }
+         if (Double.compare(generation.worldScale(), this.worldScale()) != 0
+            || generation.seaLevel() != this.seaLevel || generation.minY() != this.minY
+            || generation.maxYExclusive() != this.maxY() || generation.worldSeed() != this.worldSeed
+            || this.worldSeed != this.materializer.worldSeed()) {
+            throw new IllegalArgumentException("native Cube-Net inland-flow planner differs from generator profile/seed");
+         }
+         this.semanticBasePosition(coordinate);
+         if (this.inlandWaterResolver == null) {
+            return com.yucareux.tellus.worldgen.feature.FeaturePlan.empty("native inland-flow resolver is absent");
+         }
+         var owner = (com.yucareux.tellus.worldgen.global.CubeNetCanonicalOwnerView)coordinate.owner();
+         var point = this.model.exactSurfacePoint(owner.block().face(), owner.block().blockX() + 0.5,
+            owner.block().blockZ() + 0.5);
+         var surface = this.faces[owner.block().face()].terrainPoint(owner.block(), 1).data();
+         if (surface == null || !surface.elevationAvailable()) {
+            return com.yucareux.tellus.worldgen.feature.FeaturePlan.unknown("native inland-flow raw elevation is unavailable");
+         }
+         if (!surface.inlandWater()) {
+            return com.yucareux.tellus.worldgen.feature.FeaturePlan.empty("native raw column has no inland water");
+         }
+         var flow = this.inlandWaterResolver.sample(point, surface);
+         if (!flow.hasWater() || flow.flowLevel() <= 0) {
+            return com.yucareux.tellus.worldgen.feature.FeaturePlan.empty("native inland-flow column has no positive flow level");
+         }
+         int waterY = this.materializer.height(surface.waterSurfaceMeters());
+         int terrainY = flow.falling() ? this.materializer.height(flow.terrainSurfaceMeters()) : 0;
+         var resolved = com.yucareux.tellus.worldgen.decision.TellusCubeInlandFlowDecisionKernel.resolve(
+            this.minY, this.maxY(), flow.hasWater(), flow.flowLevel(), flow.falling(), waterY, terrainY);
+         if (resolved.isEmpty()) {
+            return com.yucareux.tellus.worldgen.feature.FeaturePlan.empty("native inland-flow band is outside build bounds");
+         }
+         var band = resolved.orElseThrow();
+         int height = Math.addExact(Math.subtractExact(band.topY(), band.bottomY()), 1);
+         return com.yucareux.tellus.worldgen.feature.FeaturePlan.available(
+            com.yucareux.tellus.worldgen.feature.FeaturePlacement.canonicalFlow(
+               coordinate, "tellus:cube-inland-flow", band.bottomY(), height, band.level()));
+      };
+   }
+
    public SphereWorldModel model() { return this.model; }
    public CubeNetAddressAdapter adapter() { return this.adapter; }
    public CubeNetApronResolver apronResolver() { return this.apronResolver; }
@@ -1136,10 +1195,14 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
          CubeNetInlandWaterResolver.Sample flow = this.inlandWaterResolver.sample(point, surface);
          if (!flow.hasWater() || flow.flowLevel() <= 0) continue;
          int waterY = this.materializer.height(surface.waterSurfaceMeters());
-         int bottom = flow.falling() ? this.materializer.height(flow.terrainSurfaceMeters()) + 1 : waterY;
+         int terrainY = flow.falling() ? this.materializer.height(flow.terrainSurfaceMeters()) : 0;
+         var resolved = com.yucareux.tellus.worldgen.decision.TellusCubeInlandFlowDecisionKernel.resolve(
+            this.minY, this.maxY(), flow.hasWater(), flow.flowLevel(), flow.falling(), waterY, terrainY);
+         if (resolved.isEmpty()) continue;
+         var band = resolved.orElseThrow();
          BlockState state = Blocks.WATER.defaultBlockState().setValue(
-            net.minecraft.world.level.block.LiquidBlock.LEVEL, Math.max(1, Math.min(8, flow.flowLevel())));
-         for (int y = Math.max(this.minY, bottom); y <= Math.min(this.maxY() - 1, waterY); y++) {
+            net.minecraft.world.level.block.LiquidBlock.LEVEL, band.level());
+         for (int y = band.bottomY(); y <= band.topY(); y++) {
             BlockPos pos = new BlockPos(worldX, y, worldZ);
             MinecraftVersionCompat.setBlockState(chunk, pos, state);
             if (chunk instanceof ProtoChunk proto) MinecraftVersionCompat.markPosForPostProcessing(proto, pos);

@@ -32,6 +32,15 @@ public final class TellusCompositeColumnWriter<M> {
       void write(Cell cell, M state);
       boolean isAir(M state);
       void markDirty();
+      default PostProcessing postProcessing() { return null; }
+   }
+
+   /** Snapshot/restore must preserve exact marker lists and associated target dirty state. */
+   public interface PostProcessing {
+      Object snapshot();
+      void mark(Cell cell);
+      int occurrences(Cell cell);
+      void restore(Object snapshot);
    }
 
    private record Candidate(Cell cell, SemanticMaterial material, FeaturePlacement feature) { }
@@ -78,11 +87,14 @@ public final class TellusCompositeColumnWriter<M> {
       List<M> mapped = new ArrayList<>();
       Map<Cell, M> original = new LinkedHashMap<>();
       Map<Cell, M> finalStates = new LinkedHashMap<>();
+      Set<Cell> flowCells = new java.util.LinkedHashSet<>();
+      PostProcessing postProcessing = null;
+      Object postSnapshot = null;
       try {
          // Owner/material/budget checks precede all concrete target access and mapping.
          long cells = terrain.mappedWrites().size();
          for (FeaturePlacement placement : features.placements()) {
-            String ownerError = FeaturePlacementSinkGuard.validatePlacement(context, placement);
+            String ownerError = FeaturePlacementSinkGuard.validatePlacement(context, placement, true);
             if (ownerError != null) return invalid(terrain, ownerError);
             if (placement.material() == SemanticMaterial.UNKNOWN || placement.operation() == PlacementOperation.MIRROR) {
                return invalid(terrain, "canonical composite requires known non-mirror feature material");
@@ -117,9 +129,16 @@ public final class TellusCompositeColumnWriter<M> {
                return invalid(terrain, "composite cell is outside target chunk/build bounds");
             }
          }
+         if (features.placements().stream().anyMatch(placement -> placement.flowState().isPresent())) {
+            postProcessing = target.postProcessing();
+            if (postProcessing == null) return invalid(terrain, "target has no post-processing transaction support");
+         }
          // Map the entire terrain+feature batch before reading or changing any block state.
          for (Candidate candidate : candidates) {
-            mapped.add(Objects.requireNonNull(mapper.map(candidate.material(), candidate.cell().y(), context), "mapped state"));
+            M state = candidate.feature() == null
+               ? mapper.map(candidate.material(), candidate.cell().y(), context)
+               : mapper.mapFeature(candidate.feature(), candidate.cell().y(), context);
+            mapped.add(Objects.requireNonNull(state, "mapped state"));
          }
          for (Candidate candidate : candidates) {
             if (!original.containsKey(candidate.cell())) {
@@ -147,8 +166,10 @@ public final class TellusCompositeColumnWriter<M> {
             }
             // Ordered owner-only SET/FILL placements use the last planned state.
             finalStates.put(cell, mapped.get(i));
+            if (feature.flowState().isPresent()) flowCells.add(cell); else flowCells.remove(cell);
             featureCells.add(cell);
          }
+         if (!flowCells.isEmpty()) postSnapshot = Objects.requireNonNull(postProcessing.snapshot(), "post-processing snapshot");
       } catch (RuntimeException error) {
          return invalid(terrain, "composite preparation failed: " + error.getMessage());
       }
@@ -161,6 +182,13 @@ public final class TellusCompositeColumnWriter<M> {
             target.write(positions.get(index), values.get(index));
             if (!values.get(index).equals(target.read(positions.get(index)))) {
                throw new IllegalStateException("target did not retain composite state");
+            }
+         }
+         for (Cell cell : flowCells) {
+            int previous = postProcessing.occurrences(cell);
+            postProcessing.mark(cell);
+            if (postProcessing.occurrences(cell) != Math.addExact(previous, 1)) {
+               throw new IllegalStateException("target did not append exactly one post-processing marker");
             }
          }
          target.markDirty();
@@ -178,6 +206,13 @@ public final class TellusCompositeColumnWriter<M> {
                else if (failed != restoreError) restoreError.addSuppressed(failed);
             }
          }
+         if (postSnapshot != null) {
+            try { postProcessing.restore(postSnapshot); }
+            catch (RuntimeException failed) {
+               if (restoreError == null) restoreError = failed;
+               else if (failed != restoreError) restoreError.addSuppressed(failed);
+            }
+         }
          if (restoreError != null) {
             IllegalStateException incomplete = new IllegalStateException("composite write failed; rollback incomplete", error);
             incomplete.addSuppressed(restoreError);
@@ -186,7 +221,7 @@ public final class TellusCompositeColumnWriter<M> {
          return invalid(terrain, "composite write failed and terrain/features were restored: " + error.getMessage());
       }
       return new WriteResult<>(terrain.status(), values,
-         List.of("terrain and feature batch prepared, written and verified together"), terrain.persistenceIdentity());
+         List.of("terrain and feature batch prepared, written and verified together"), terrain.persistenceIdentity(), !flowCells.isEmpty());
    }
 
    private static <M> WriteResult<M> invalid(WriteResult<SemanticColumnCell> terrain, String diagnostic) {

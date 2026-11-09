@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.yucareux.tellus.worldgen.CubeNetInlandFlowPipelineTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-11-09T07:13:07.703Z" hostname="VOID0312" time="1.677">
+  <properties/>
+  <testcase name="allEightExplicitLevelsKeepNativePropertiesAndAppendRealMarkers()" classname="com.yucareux.tellus.worldgen.CubeNetInlandFlowPipelineTest" time="0.167"/>
+  <testcase name="actualProtoChunkRollsBackBlocksMarkerAppendAndDirtyFailureTogether()" classname="com.yucareux.tellus.worldgen.CubeNetInlandFlowPipelineTest" time="0.048"/>
+  <testcase name="legacyFeatureOnlySinkDoesNotSilentlyDropFlowPropertiesOrMarkers()" classname="com.yucareux.tellus.worldgen.CubeNetInlandFlowPipelineTest" time="0.044"/>
+  <testcase name="genuineRiverAndFallingCurtainMatchWholeNativeChunksAndOrderedMarkerArrays()" classname="com.yucareux.tellus.worldgen.CubeNetInlandFlowPipelineTest" time="1.259"/>
+  <testcase name="nativeMarkerSnapshotRestoresOriginalReferencesNullSlotsOrderDuplicatesAndDirtyFlag()" classname="com.yucareux.tellus.worldgen.CubeNetInlandFlowPipelineTest" time="0.006"/>
+  <system-out><![CDATA[[15:13:08] [Test worker/INFO]: [STDOUT]: CUBE_FLOW_EXACT_STATES levels=8 cells=24 markers=24 defaultReverseMapperStillRejects=true
+[15:13:09] [Test worker/INFO]: [STDOUT]: CUBE_INLAND_FLOW_PIPELINE chunks=1 columns=256 nativeBlockStates=98304 flowingCells=1088 levels=[7, 8] mismatchBlocks=0 orderedMarkerArraysEqual=true
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

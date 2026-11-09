@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.yucareux.tellus.worldgen.decision.TellusCubeInlandFlowDecisionKernelTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-11-09T07:13:55.910Z" hostname="VOID0312" time="0.035">
+  <properties/>
+  <testcase name="resolvedBandsMatchTheFrozenNativeLoopAcrossBuildRangesHeightsStatusesAndLevels()" classname="com.yucareux.tellus.worldgen.decision.TellusCubeInlandFlowDecisionKernelTest" time="0.03"/>
+  <testcase name="fallingStartsAboveResolvedTerrainAndClipsBothInclusiveEnds()" classname="com.yucareux.tellus.worldgen.decision.TellusCubeInlandFlowDecisionKernelTest" time="0.0"/>
+  <testcase name="NoWaterZeroNegativeLevelAndFullyClippedBandsStayEmptyWithoutInventedWrites()" classname="com.yucareux.tellus.worldgen.decision.TellusCubeInlandFlowDecisionKernelTest" time="0.0"/>
+  <testcase name="allEightPositiveLevelsAreRetainedAndLargerNativeLevelsClampToEight()" classname="com.yucareux.tellus.worldgen.decision.TellusCubeInlandFlowDecisionKernelTest" time="0.0"/>
+  <testcase name="immutableBandRejectsEmptyRangesAndLevelsOutsideTheTypedContract()" classname="com.yucareux.tellus.worldgen.decision.TellusCubeInlandFlowDecisionKernelTest" time="0.003"/>
+  <system-out><![CDATA[[15:13:55] [Test worker/INFO]: [STDOUT]: CUBE_INLAND_FLOW_PURE_KERNEL cases=11232 bands=2376 comparedCells=406410 mismatches=0
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

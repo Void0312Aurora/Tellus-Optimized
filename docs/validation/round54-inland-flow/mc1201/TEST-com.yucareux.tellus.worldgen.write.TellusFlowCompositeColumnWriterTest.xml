@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.yucareux.tellus.worldgen.write.TellusFlowCompositeColumnWriterTest" tests="12" skipped="0" failures="0" errors="0" timestamp="2026-11-09T07:13:56.866Z" hostname="VOID0312" time="0.073">
+  <properties/>
+  <testcase name="metadataRestoreFailureStillLeavesEveryBlockRestoreAttemptedAndReportsItsCause()" classname="com.yucareux.tellus.worldgen.write.TellusFlowCompositeColumnWriterTest" time="0.017"/>
+  <testcase name="unsupportedTargetIsRejectedBeforeMappingAndDefaultMapperRejectsPropertiesBeforeReads()" classname="com.yucareux.tellus.worldgen.write.TellusFlowCompositeColumnWriterTest" time="0.014"/>
+  <testcase name="exactFlowConstructorsEnforceLevelsCanonicalWaterAndLegacySinkRejection()" classname="com.yucareux.tellus.worldgen.write.TellusFlowCompositeColumnWriterTest" time="0.015"/>
+  <testcase name="acceptedFinalPlacementsDetermineFlowFlagsMarkersAndDuplicateCollapse()" classname="com.yucareux.tellus.worldgen.write.TellusFlowCompositeColumnWriterTest" time="0.003"/>
+  <testcase name="dirtySetterFailureAfterMutationRestoresBothInitiallyCleanAndInitiallyDirtyMetadata()" classname="com.yucareux.tellus.worldgen.write.TellusFlowCompositeColumnWriterTest" time="0.002"/>
+  <testcase name="markerNoOpFailsEvenWhenTheCellAlreadyHasDuplicateMarkers()" classname="com.yucareux.tellus.worldgen.write.TellusFlowCompositeColumnWriterTest" time="0.001"/>
+  <testcase name="unknownAndQueuedColumnsOrPlansDoNotTouchAnyTargetOrMapper()" classname="com.yucareux.tellus.worldgen.write.TellusFlowCompositeColumnWriterTest" time="0.002"/>
+  <testcase name="everyExactFlowLevelCommitsBlocksThenAppendsMarkersWithoutCollapsingExistingDuplicates()" classname="com.yucareux.tellus.worldgen.write.TellusFlowCompositeColumnWriterTest" time="0.002"/>
+  <testcase name="blockWriteThatMutatesThenThrowsRestoresTheThrowingCellAndAllPriorBlocksBeforeMetadata()" classname="com.yucareux.tellus.worldgen.write.TellusFlowCompositeColumnWriterTest" time="0.002"/>
+  <testcase name="blockRestoreFailureStillRestoresMetadataDirtyStateAndAllOtherBlocks()" classname="com.yucareux.tellus.worldgen.write.TellusFlowCompositeColumnWriterTest" time="0.004"/>
+  <testcase name="transientFlowFlagSurvivesIdentityAndIsRejectedByBlockOnlyStoragePreparation()" classname="com.yucareux.tellus.worldgen.write.TellusFlowCompositeColumnWriterTest" time="0.001"/>
+  <testcase name="markerFailureAfterAppendRestoresEveryBlockAndTheExactOriginalMarkerList()" classname="com.yucareux.tellus.worldgen.write.TellusFlowCompositeColumnWriterTest" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

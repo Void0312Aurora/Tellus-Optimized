@@ -30,6 +30,9 @@ public final class StorageTransactionBoundary {
       } else if (context.apronMirror()) {
          status = StorageTransactionStatus.NO_COMMIT_FALLBACK;
          diagnostic = "apron is a derived view; only canonical owner may commit";
+      } else if (result.transientPostProcessing()) {
+         status = StorageTransactionStatus.NO_COMMIT_FALLBACK;
+         diagnostic = "write requires post-processing metadata absent from this storage payload";
       } else if (result.status() == WriteStatus.NO_WRITE_UNKNOWN) {
          status = StorageTransactionStatus.NO_COMMIT_UNKNOWN;
          diagnostic = "unknown write result cannot commit";

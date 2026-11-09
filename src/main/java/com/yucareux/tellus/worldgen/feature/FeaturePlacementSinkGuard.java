@@ -26,8 +26,15 @@ public final class FeaturePlacementSinkGuard {
    }
 
    public static String validatePlacement(WriteContext context, FeaturePlacement placement) {
+      return validatePlacement(context, placement, false);
+   }
+
+   public static String validatePlacement(WriteContext context, FeaturePlacement placement, boolean allowFlow) {
       Objects.requireNonNull(context, "context");
       Objects.requireNonNull(placement, "placement");
+      if (!allowFlow && placement.flowState().isPresent()) {
+         return "exact flow requires a block-state and post-processing composite transaction";
+      }
       if (placement.conflictPolicy() == PlacementConflictPolicy.MIRROR_OWNER
          && !placement.apronMirror()) {
          return "MIRROR_OWNER conflict policy requires an apron mirror placement";

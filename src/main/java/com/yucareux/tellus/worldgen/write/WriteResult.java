@@ -9,8 +9,13 @@ public record WriteResult<M>(
    WriteStatus status,
    List<M> mappedWrites,
    List<String> diagnostics,
-   Optional<TellusPersistenceIdentity> persistenceIdentity
+   Optional<TellusPersistenceIdentity> persistenceIdentity,
+   boolean transientPostProcessing
 ) {
+   public WriteResult(WriteStatus status, List<M> mappedWrites, List<String> diagnostics,
+                      Optional<TellusPersistenceIdentity> persistenceIdentity) {
+      this(status, mappedWrites, diagnostics, persistenceIdentity, false);
+   }
    public WriteResult {
       Objects.requireNonNull(status, "status");
       mappedWrites = List.copyOf(Objects.requireNonNull(mappedWrites, "mappedWrites"));
@@ -42,7 +47,7 @@ public record WriteResult<M>(
    }
 
    public WriteResult<M> withPersistenceIdentity(TellusPersistenceIdentity identity) {
-      return new WriteResult<>(this.status, this.mappedWrites, this.diagnostics, Optional.of(identity));
+      return new WriteResult<>(this.status, this.mappedWrites, this.diagnostics, Optional.of(identity), this.transientPostProcessing);
    }
 
    private static <M> WriteResult<M> noWrite(WriteStatus status, String diagnostic) {
