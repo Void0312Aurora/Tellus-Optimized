@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.yucareux.tellus.worldgen.EarthNativeCaptureKernelBridgeTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-11-09T02:05:20.738Z" hostname="VOID0312" time="0.806">
+  <properties/>
+  <testcase name="invalidNativeProfilesAndTargetsFailBeforeLeaseReservation()" classname="com.yucareux.tellus.worldgen.EarthNativeCaptureKernelBridgeTest" time="0.169"/>
+  <testcase name="capturedActualNativeSurfaceInputsReplayThroughKernelWithoutBaseQuerySubstitution()" classname="com.yucareux.tellus.worldgen.EarthNativeCaptureKernelBridgeTest" time="0.115"/>
+  <testcase name="publicRegistrationIsExclusiveExactAndCloseDoesNotEraseReplacement()" classname="com.yucareux.tellus.worldgen.EarthNativeCaptureKernelBridgeTest" time="0.019"/>
+  <system-out><![CDATA[[10:05:21] [Test worker/INFO]: EarthChunkGenerator init: scale=30.0, minAltitude=-64, maxAltitude=-2147483648, heightOffset=64, limits=[minY=-64, height=528, logicalHeight=528], seaLevel=64
+[10:05:21] [Test worker/INFO]: EarthChunkGenerator init: scale=30.0, minAltitude=-64, maxAltitude=-2147483648, heightOffset=64, limits=[minY=-64, height=528, logicalHeight=528], seaLevel=64
+[10:05:21] [Test worker/INFO]: EarthChunkGenerator init: scale=30.0, minAltitude=-64, maxAltitude=-2147483648, heightOffset=64, limits=[minY=-64, height=528, logicalHeight=528], seaLevel=64
+[10:05:21] [Test worker/INFO]: EarthChunkGenerator init: scale=30.0, minAltitude=-64, maxAltitude=-2147483648, heightOffset=64, limits=[minY=-64, height=528, logicalHeight=528], seaLevel=64
+[10:05:21] [Test worker/INFO]: EarthChunkGenerator init: scale=30.0, minAltitude=-64, maxAltitude=-2147483648, heightOffset=64, limits=[minY=-64, height=528, logicalHeight=528], seaLevel=64
+[10:05:21] [Test worker/INFO]: [STDOUT]: EARTH_NATIVE_CAPTURE_BRIDGE columns=4 cells=96 mismatchBlocks=0
+[10:05:21] [Test worker/INFO]: EarthChunkGenerator init: scale=30.0, minAltitude=-64, maxAltitude=-2147483648, heightOffset=64, limits=[minY=-64, height=528, logicalHeight=528], seaLevel=64
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

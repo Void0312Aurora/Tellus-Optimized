@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.yucareux.tellus.worldgen.EarthNativeColumnCaptureTest" tests="12" skipped="0" failures="0" errors="0" timestamp="2026-11-09T02:05:21.555Z" hostname="VOID0312" time="0.288">
+  <properties/>
+  <testcase name="fatalErrorDuringCaptureDeliveryPropagatesRatherThanBecomingRuntimeFailure()" classname="com.yucareux.tellus.worldgen.EarthNativeColumnCaptureTest" time="0.012"/>
+  <testcase name="nativeFailureKeepsOriginalCauseDespiteIncompleteClaimAndDependentFailure()" classname="com.yucareux.tellus.worldgen.EarthNativeColumnCaptureTest" time="0.018"/>
+  <testcase name="claimUsesExactObjectIdentityAndIsOneShot()" classname="com.yucareux.tellus.worldgen.EarthNativeColumnCaptureTest" time="0.003"/>
+  <testcase name="writerReadsUnflushedPalettesAndCompletesOnlyAfterReleaseWithReentrantReplacement()" classname="com.yucareux.tellus.worldgen.EarthNativeColumnCaptureTest" time="0.012"/>
+  <testcase name="cursorSnapshotKeepsExactBodyWaterAndSurfacePropertiesWithoutSky()" classname="com.yucareux.tellus.worldgen.EarthNativeColumnCaptureTest" time="0.008"/>
+  <testcase name="concurrentOpenHasOneWinnerAndOldClosePreservesReplacement()" classname="com.yucareux.tellus.worldgen.EarthNativeColumnCaptureTest" time="0.005"/>
+  <testcase name="knownNoOpContextAndAirOrBedrockAtTopRemainExactSemantics()" classname="com.yucareux.tellus.worldgen.EarthNativeColumnCaptureTest" time="0.005"/>
+  <testcase name="defaultWaterIsRepresentableButFlowingWaterAndUnsupportedBlocksStayRawOnly()" classname="com.yucareux.tellus.worldgen.EarthNativeColumnCaptureTest" time="0.008"/>
+  <testcase name="actualNativeSurfaceOverloadsRecordTheirResolvedContextOnBothBackends()" classname="com.yucareux.tellus.worldgen.EarthNativeColumnCaptureTest" time="0.015"/>
+  <testcase name="cancellationSuppressesPreparedSnapshotAndObserverExceptionsStayDependent()" classname="com.yucareux.tellus.worldgen.EarthNativeColumnCaptureTest" time="0.006"/>
+  <testcase name="callbacksDoNotHoldLeaseMonitorAndTerminalLeaseDropsChunkReferences()" classname="com.yucareux.tellus.worldgen.EarthNativeColumnCaptureTest" time="0.008"/>
+  <testcase name="captureRuntimeFailureDoesNotInterruptNativeWritesOrProduceFalseSuccess()" classname="com.yucareux.tellus.worldgen.EarthNativeColumnCaptureTest" time="0.009"/>
+  <system-out><![CDATA[[10:05:21] [Test worker/INFO]: EarthChunkGenerator init: scale=30.0, minAltitude=-64, maxAltitude=-2147483648, heightOffset=64, limits=[minY=-64, height=528, logicalHeight=528], seaLevel=64
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

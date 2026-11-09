@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.yucareux.tellus.worldgen.decision.TellusEarthNativeColumnSnapshotReaderTest" tests="15" skipped="0" failures="0" errors="0" timestamp="2026-11-09T02:05:49.876Z" hostname="VOID0312" time="0.031">
+  <properties/>
+  <testcase name="nullArgumentsAreProgrammerErrorsBeforeAnyCallback()" classname="com.yucareux.tellus.worldgen.decision.TellusEarthNativeColumnSnapshotReaderTest" time="0.002"/>
+  <testcase name="unknownBodyAtAnyPositionReturnsEmptyWithoutFallbackOrLaterReads()" classname="com.yucareux.tellus.worldgen.decision.TellusEarthNativeColumnSnapshotReaderTest" time="0.0"/>
+  <testcase name="suppliedWetHeightAtOrBelowTerrainIsRetainedAndHasNoAboveBodyReads()" classname="com.yucareux.tellus.worldgen.decision.TellusEarthNativeColumnSnapshotReaderTest" time="0.001"/>
+  <testcase name="everyKnownSemanticMaterialIsPreservedAtBottomInternalAndTopCells()" classname="com.yucareux.tellus.worldgen.decision.TellusEarthNativeColumnSnapshotReaderTest" time="0.003"/>
+  <testcase name="unknownWaterStopsBeforeBodyCallbackAndIsNeverInferredFromCells()" classname="com.yucareux.tellus.worldgen.decision.TellusEarthNativeColumnSnapshotReaderTest" time="0.001"/>
+  <testcase name="explicitInlandAndOceanWaterAreVerifiedOnceThroughTheirLastCellWithoutSkyReads()" classname="com.yucareux.tellus.worldgen.decision.TellusEarthNativeColumnSnapshotReaderTest" time="0.0"/>
+  <testcase name="integerEndpointRangesUseLongIterationWithoutWrappingOrOffByOneReads()" classname="com.yucareux.tellus.worldgen.decision.TellusEarthNativeColumnSnapshotReaderTest" time="0.0"/>
+  <testcase name="singleCellBedrockAtMinimumIsRepresentedWithoutASurfaceCollision()" classname="com.yucareux.tellus.worldgen.decision.TellusEarthNativeColumnSnapshotReaderTest" time="0.001"/>
+  <testcase name="callbackErrorsPropagateUnchangedFromBodyAndExplicitWater()" classname="com.yucareux.tellus.worldgen.decision.TellusEarthNativeColumnSnapshotReaderTest" time="0.003"/>
+  <testcase name="nullBodyAndWaterCallbackResultsAreProgrammerErrorsNotFallbacks()" classname="com.yucareux.tellus.worldgen.decision.TellusEarthNativeColumnSnapshotReaderTest" time="0.001"/>
+  <testcase name="invalidTerrainAndWaterRangesAreRejectedBeforeAnyCallbackEvenForUnknownWater()" classname="com.yucareux.tellus.worldgen.decision.TellusEarthNativeColumnSnapshotReaderTest" time="0.002"/>
+  <testcase name="fullGenerationBudgetIsValidatedWithLongArithmeticBeforeCallbacksEvenForTinyBodies()" classname="com.yucareux.tellus.worldgen.decision.TellusEarthNativeColumnSnapshotReaderTest" time="0.001"/>
+  <testcase name="knownAirIncludingTopAndAllAirBodyDoesNotInventSupportOrMoveTerrain()" classname="com.yucareux.tellus.worldgen.decision.TellusEarthNativeColumnSnapshotReaderTest" time="0.002"/>
+  <testcase name="dryColumnReadsOnlyOriginalBodyAndRetainsExactIdentitiesAndRuns()" classname="com.yucareux.tellus.worldgen.decision.TellusEarthNativeColumnSnapshotReaderTest" time="0.001"/>
+  <testcase name="everyNonWaterMaterialInExplicitWaterSpanIsUnrepresentableRatherThanReplaced()" classname="com.yucareux.tellus.worldgen.decision.TellusEarthNativeColumnSnapshotReaderTest" time="0.003"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

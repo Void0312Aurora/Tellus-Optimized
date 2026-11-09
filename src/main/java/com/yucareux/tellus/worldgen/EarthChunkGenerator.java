@@ -91,6 +91,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
@@ -430,6 +431,7 @@ public final class EarthChunkGenerator extends TellusChunkGeneratorBridge implem
    private final int configuredSpawnChunkX;
    private final int configuredSpawnChunkZ;
    private volatile long worldSeed = 0L;
+   private final AtomicReference<TellusEarthNativeColumnCapture.Lease> nativeColumnCapture = new AtomicReference<>();
    private static final long JAVA_RANDOM_MULTIPLIER = 25214903917L;
    private static final long JAVA_RANDOM_ADDEND = 11L;
    private static final long JAVA_RANDOM_MASK = 281474976710655L;
@@ -533,6 +535,38 @@ public final class EarthChunkGenerator extends TellusChunkGeneratorBridge implem
 
    public boolean isLakeWater(int blockX, int blockZ) {
       return this.waterResolver.isLakeWater(blockX, blockZ);
+   }
+
+   /** Single-shot observation of one exact native chunk/column; never enables a default semantic lifecycle. */
+   public TellusEarthNativeColumnCapture.Lease captureNativeColumn(
+      ChunkAccess target, TellusGenerationContext generation, TellusCoordinateContext coordinate
+   ) {
+      Objects.requireNonNull(target, "target"); Objects.requireNonNull(coordinate, "coordinate");
+      this.validateNativeCaptureProfile(generation);
+      if (!(coordinate.owner() instanceof EarthOwnerView owner)
+         || Double.compare(owner.point().worldScale(), generation.worldScale()) != 0
+         || !owner.point().projectionModeId().equalsIgnoreCase(EarthProjection.projectionModeId())) {
+         throw new IllegalArgumentException("native capture requires the exact Earth owner profile");
+      }
+      int x = Math.toIntExact(owner.point().floorBlockX());
+      int z = Math.toIntExact(owner.point().floorBlockZ());
+      if ((x >> 4) != MinecraftVersionCompat.chunkX(target.getPos())
+         || (z >> 4) != MinecraftVersionCompat.chunkZ(target.getPos())
+         || MinecraftVersionCompat.minY(target) != generation.minY()
+         || (long)MinecraftVersionCompat.minY(target) + target.getHeight() != generation.maxYExclusive()) {
+         throw new IllegalArgumentException("native capture target differs from supplied coordinate or bounds");
+      }
+      return TellusEarthNativeColumnCapture.open(this.nativeColumnCapture, target, generation, coordinate);
+   }
+
+   private void validateNativeCaptureProfile(TellusGenerationContext generation) {
+      Objects.requireNonNull(generation, "generation");
+      if (generation.worldSeed() != this.worldSeed || generation.seaLevel() != this.seaLevel
+         || Double.compare(generation.worldScale(), this.settings.worldScale()) != 0
+         || generation.minY() != this.minY || (long)generation.maxYExclusive() != (long)this.minY + this.height
+         || (long)generation.maxYExclusive() - generation.minY() > 1_048_576L) {
+         throw new IllegalArgumentException("native capture generation differs from active generator profile");
+      }
    }
 
    public long worldSeed() {
@@ -1100,22 +1134,41 @@ public final class EarthChunkGenerator extends TellusChunkGeneratorBridge implem
        Blender blender,  RandomState random,  StructureManager structures,  ChunkAccess chunk
    ) {
       EarthChunkGenerator.FullChunkTrace timingTrace = EarthChunkGenerator.FullChunkPerf.beginTrace("fill", chunk.getPos());
+      TellusEarthNativeColumnCapture.Lease captureLease = this.nativeColumnCapture.get();
+      TellusEarthNativeColumnCapture.Builder capture = null;
+      if (captureLease != null) {
+         try {
+            capture = captureLease.claim(chunk);
+            if (capture != null) this.validateNativeCaptureProfile(captureLease.generation());
+         } catch (RuntimeException captureFailure) {
+            captureLease.failed(captureFailure);
+            capture = null;
+         }
+      }
       try {
          this.disableFastSpawnMode();
          long baseTerrainStartNs = EarthChunkGenerator.ChunkDetailPerf.now();
          long fullChunkStartNs = beginFullChunkProfiling();
-         this.fillTellusSurface(random, structures, chunk);
+         this.fillTellusSurface(random, structures, chunk, capture);
          EarthChunkGenerator.ChunkDetailPerf.recordBaseTerrain(EarthChunkGenerator.ChunkDetailPerf.elapsedSince(baseTerrainStartNs));
          endFullChunkProfiling(EarthChunkGenerator.FullChunkPhase.FILL_TOTAL, fullChunkStartNs);
          EarthChunkGenerator.FullChunkPerf.finishTrace(timingTrace, "success", null);
+         // The payload was copied at its column boundary; completion happens after all native work and section release.
+         if (capture != null) captureLease.complete(capture);
          return Objects.requireNonNull(CompletableFuture.completedFuture(chunk), "completedFuture");
       } catch (RuntimeException | Error error) {
+         if (capture != null) captureLease.failed(error);
          EarthChunkGenerator.FullChunkPerf.finishTrace(timingTrace, "failed", error);
          throw error;
       }
    }
 
    private void fillTellusSurface( RandomState random,  StructureManager structures,  ChunkAccess chunk) {
+      this.fillTellusSurface(random, structures, chunk, null);
+   }
+
+   private void fillTellusSurface(RandomState random, StructureManager structures, ChunkAccess chunk,
+      TellusEarthNativeColumnCapture.Builder capture) {
       ChunkPos pos = chunk.getPos();
       validateExperimentalChunkBounds(this.settings, pos);
       long chunkKey = MinecraftVersionCompat.packChunkPos(MinecraftVersionCompat.chunkX(pos), MinecraftVersionCompat.chunkZ(pos));
@@ -1592,6 +1645,13 @@ public final class EarthChunkGenerator extends TellusChunkGeneratorBridge implem
                }
                waterColumnFillNs += elapsedFullChunkProfilingSince(subPhaseStartNs);
 
+               if (capture != null && capture.matches(worldX, worldZ)) {
+                  WaterDecision actualWater = hasWater
+                     ? new WaterDecision(oceanFlags[index] ? WaterDecision.Kind.OCEAN : WaterDecision.Kind.INLAND,
+                        java.util.OptionalInt.of(waterSurface)) : WaterDecision.dry();
+                  capture.before(chunk, sectionWriter, worldX, worldZ, surface, actualWater, nativeCapturedBiome(biome));
+               }
+
                subPhaseStartNs = beginFullChunkProfiling();
                if (thinShellTerrain) {
                   if (sectionWriter != null) {
@@ -1611,7 +1671,8 @@ public final class EarthChunkGenerator extends TellusChunkGeneratorBridge implem
                         surfaceCoverClass,
                         oceanBeachCache,
                         surfaceProfiler,
-                        useFastSurfacePalette
+                        useFastSurfacePalette,
+                         capture
                      );
                   } else {
                      this.applyThinShellSurface(
@@ -1629,7 +1690,8 @@ public final class EarthChunkGenerator extends TellusChunkGeneratorBridge implem
                         surfaceCoverClass,
                         oceanBeachCache,
                         surfaceProfiler,
-                        useFastSurfacePalette
+                        useFastSurfacePalette,
+                         capture
                      );
                   }
                } else if (sectionWriter != null) {
@@ -1648,7 +1710,8 @@ public final class EarthChunkGenerator extends TellusChunkGeneratorBridge implem
                      surfaceCoverClass,
                      oceanBeachCache,
                      surfaceProfiler,
-                     useFastSurfacePalette
+                     useFastSurfacePalette,
+                         capture
                   );
                } else {
                   this.applySurface(
@@ -1665,10 +1728,15 @@ public final class EarthChunkGenerator extends TellusChunkGeneratorBridge implem
                      surfaceCoverClass,
                      oceanBeachCache,
                      surfaceProfiler,
-                     useFastSurfacePalette
+                     useFastSurfacePalette,
+                         capture
                   );
                }
                surfaceApplyNs += elapsedFullChunkProfilingSince(subPhaseStartNs);
+
+               if (capture != null && capture.matches(worldX, worldZ)) {
+                  capture.after(chunk, sectionWriter, worldX, worldZ, surface);
+               }
 
                if (surfaceSnow) {
                   subPhaseStartNs = beginFullChunkProfiling();
@@ -5933,6 +6001,27 @@ public final class EarthChunkGenerator extends TellusChunkGeneratorBridge implem
       EarthChunkGenerator.SurfaceApplyProfiler profiler,
       boolean useFastSurfacePalette
    ) {
+      this.applyThinShellSurface(chunk, cursor, worldX, worldZ, surface, minY, underwater, snowCovered, biome, slopeDiff, convexity, coverClass, oceanBeachCache, profiler, useFastSurfacePalette, null);
+   }
+
+   private void applyThinShellSurface(
+      ChunkAccess chunk,
+      MutableBlockPos cursor,
+      int worldX,
+      int worldZ,
+      int surface,
+      int minY,
+      boolean underwater,
+      boolean snowCovered,
+      Holder<Biome> biome,
+      int slopeDiff,
+      int convexity,
+      int coverClass,
+      EarthChunkGenerator.FullChunkOceanBeachCache oceanBeachCache,
+      EarthChunkGenerator.SurfaceApplyProfiler profiler,
+      boolean useFastSurfacePalette,
+      TellusEarthNativeColumnCapture.Builder capture
+   ) {
       if (surface >= minY) {
          long paletteResolveStartNs = beginFullChunkProfiling();
          EarthChunkGenerator.SurfacePalette palette = this.selectFullChunkSurfacePalette(
@@ -5943,6 +6032,8 @@ public final class EarthChunkGenerator extends TellusChunkGeneratorBridge implem
          BlockState top = strata != null ? resolveStrataBlock(strata, surface) : this.resolveThinShellTopBlock(palette, surface, underwater);
          top = ThinShellSurfaceOre.resolve(top, this.settings.oreDistribution(), underwater, snowCovered, worldX, surface, worldZ);
          boolean badlands = palette != null && !underwater && biome.is(BiomeTags.IS_BADLANDS) && slopeDiff >= 3;
+         this.recordNativeSurfaceCapture(capture, worldX, worldZ, palette, strata, top,
+            true, underwater, badlands, slopeDiff, biome);
          ResolvedSurfacePlan plan = this.prepareResolvedSurfacePlan(palette, strata, top, true,
             underwater, badlands, slopeDiff, worldX, worldZ, surface, minY);
          long blockWriteStartNs = beginFullChunkProfiling();
@@ -5970,6 +6061,28 @@ public final class EarthChunkGenerator extends TellusChunkGeneratorBridge implem
       EarthChunkGenerator.SurfaceApplyProfiler profiler,
       boolean useFastSurfacePalette
    ) {
+      this.applyThinShellSurface(writer, worldX, worldZ, localX, localZ, surface, minY, underwater, snowCovered, biome, slopeDiff, convexity, coverClass, oceanBeachCache, profiler, useFastSurfacePalette, null);
+   }
+
+   private void applyThinShellSurface(
+      EarthChunkGenerator.ChunkSectionWriter writer,
+      int worldX,
+      int worldZ,
+      int localX,
+      int localZ,
+      int surface,
+      int minY,
+      boolean underwater,
+      boolean snowCovered,
+      Holder<Biome> biome,
+      int slopeDiff,
+      int convexity,
+      int coverClass,
+      EarthChunkGenerator.FullChunkOceanBeachCache oceanBeachCache,
+      EarthChunkGenerator.SurfaceApplyProfiler profiler,
+      boolean useFastSurfacePalette,
+      TellusEarthNativeColumnCapture.Builder capture
+   ) {
       if (surface >= minY) {
          long paletteResolveStartNs = beginFullChunkProfiling();
          EarthChunkGenerator.SurfacePalette palette = this.selectFullChunkSurfacePalette(
@@ -5980,6 +6093,8 @@ public final class EarthChunkGenerator extends TellusChunkGeneratorBridge implem
          BlockState top = strata != null ? resolveStrataBlock(strata, surface) : this.resolveThinShellTopBlock(palette, surface, underwater);
          top = ThinShellSurfaceOre.resolve(top, this.settings.oreDistribution(), underwater, snowCovered, worldX, surface, worldZ);
          boolean badlands = palette != null && !underwater && biome.is(BiomeTags.IS_BADLANDS) && slopeDiff >= 3;
+         this.recordNativeSurfaceCapture(capture, worldX, worldZ, palette, strata, top,
+            true, underwater, badlands, slopeDiff, biome);
          ResolvedSurfacePlan plan = this.prepareResolvedSurfacePlan(palette, strata, top, true,
             underwater, badlands, slopeDiff, worldX, worldZ, surface, minY);
          long blockWriteStartNs = beginFullChunkProfiling();
@@ -5987,6 +6102,20 @@ public final class EarthChunkGenerator extends TellusChunkGeneratorBridge implem
          if (badlands) profiler.badlandsNs += elapsedFullChunkProfilingSince(blockWriteStartNs);
          profiler.blockWriteNs += elapsedFullChunkProfilingSince(blockWriteStartNs);
       }
+   }
+
+   private static BiomeDecision nativeCapturedBiome(Holder<Biome> biome) {
+      return biome.unwrapKey().map(key -> new BiomeDecision(key.location().toString(), true))
+         .orElseGet(BiomeDecision::unknown);
+   }
+
+   private void recordNativeSurfaceCapture(TellusEarthNativeColumnCapture.Builder capture,
+      int worldX, int worldZ, SurfacePalette palette, StrataPolicy.Column strata, BlockState proposedTop,
+      boolean thinShell, boolean underwater, boolean badlands, int relief, Holder<Biome> biome) {
+      if (capture == null || !capture.matches(worldX, worldZ)) return;
+      capture.surfaceContext(new ResolvedSurfaceContext(palette == null ? null : new ResolvedSurfacePalette(
+         palette.top(), palette.underwaterTop(), palette.filler(), palette.depth(), palette.landformSurface(), palette.strata()),
+         strata, proposedTop, thinShell, underwater, badlands, relief, nativeCapturedBiome(biome)));
    }
 
    /** Exact resolved palette at the native source boundary, after every source override/cache. */
@@ -6148,16 +6277,42 @@ public final class EarthChunkGenerator extends TellusChunkGeneratorBridge implem
       EarthChunkGenerator.SurfaceApplyProfiler profiler,
       boolean useFastSurfacePalette
    ) {
+      this.applySurface(chunk, cursor, worldX, worldZ, surface, minY, underwater, biome, slopeDiff, convexity, coverClass, oceanBeachCache, profiler, useFastSurfacePalette, null);
+   }
+
+   private void applySurface(
+      ChunkAccess chunk,
+      MutableBlockPos cursor,
+      int worldX,
+      int worldZ,
+      int surface,
+      int minY,
+      boolean underwater,
+      Holder<Biome> biome,
+      int slopeDiff,
+      int convexity,
+      int coverClass,
+      EarthChunkGenerator.FullChunkOceanBeachCache oceanBeachCache,
+      EarthChunkGenerator.SurfaceApplyProfiler profiler,
+      boolean useFastSurfacePalette,
+      TellusEarthNativeColumnCapture.Builder capture
+   ) {
       if (surface >= minY) {
          long paletteResolveStartNs = beginFullChunkProfiling();
          EarthChunkGenerator.SurfacePalette palette = this.selectFullChunkSurfacePalette(
             biome, worldX, worldZ, surface, underwater, slopeDiff, convexity, coverClass, oceanBeachCache, profiler, useFastSurfacePalette
          );
          profiler.paletteResolveNs += elapsedFullChunkProfilingSince(paletteResolveStartNs);
-         if (palette == null) return;
+         if (palette == null) {
+            this.recordNativeSurfaceCapture(capture, worldX, worldZ, null, null, null,
+               false, underwater, false, slopeDiff, biome);
+            return;
+         }
          boolean badlands = !underwater && biome.is(BiomeTags.IS_BADLANDS) && slopeDiff >= 3;
          StrataPolicy.Column strata = !badlands && palette.strata() && !underwater ? this.resolveStrataColumn(worldX, worldZ, biome) : null;
          BlockState top = strata != null ? resolveStrataBlock(strata, surface) : underwater ? palette.underwaterTop() : palette.top();
+         this.recordNativeSurfaceCapture(capture, worldX, worldZ, palette, strata, top,
+            false, underwater, badlands, slopeDiff, biome);
          ResolvedSurfacePlan plan = this.prepareResolvedSurfacePlan(palette, strata, top, false,
             underwater, badlands, slopeDiff, worldX, worldZ, surface, minY);
          long blockWriteStartNs = beginFullChunkProfiling();
@@ -6184,16 +6339,43 @@ public final class EarthChunkGenerator extends TellusChunkGeneratorBridge implem
       EarthChunkGenerator.SurfaceApplyProfiler profiler,
       boolean useFastSurfacePalette
    ) {
+      this.applySurface(writer, worldX, worldZ, localX, localZ, surface, minY, underwater, biome, slopeDiff, convexity, coverClass, oceanBeachCache, profiler, useFastSurfacePalette, null);
+   }
+
+   private void applySurface(
+      EarthChunkGenerator.ChunkSectionWriter writer,
+      int worldX,
+      int worldZ,
+      int localX,
+      int localZ,
+      int surface,
+      int minY,
+      boolean underwater,
+      Holder<Biome> biome,
+      int slopeDiff,
+      int convexity,
+      int coverClass,
+      EarthChunkGenerator.FullChunkOceanBeachCache oceanBeachCache,
+      EarthChunkGenerator.SurfaceApplyProfiler profiler,
+      boolean useFastSurfacePalette,
+      TellusEarthNativeColumnCapture.Builder capture
+   ) {
       if (surface >= minY) {
          long paletteResolveStartNs = beginFullChunkProfiling();
          EarthChunkGenerator.SurfacePalette palette = this.selectFullChunkSurfacePalette(
             biome, worldX, worldZ, surface, underwater, slopeDiff, convexity, coverClass, oceanBeachCache, profiler, useFastSurfacePalette
          );
          profiler.paletteResolveNs += elapsedFullChunkProfilingSince(paletteResolveStartNs);
-         if (palette == null) return;
+         if (palette == null) {
+            this.recordNativeSurfaceCapture(capture, worldX, worldZ, null, null, null,
+               false, underwater, false, slopeDiff, biome);
+            return;
+         }
          boolean badlands = !underwater && biome.is(BiomeTags.IS_BADLANDS) && slopeDiff >= 3;
          StrataPolicy.Column strata = !badlands && palette.strata() && !underwater ? this.resolveStrataColumn(worldX, worldZ, biome) : null;
          BlockState top = strata != null ? resolveStrataBlock(strata, surface) : underwater ? palette.underwaterTop() : palette.top();
+         this.recordNativeSurfaceCapture(capture, worldX, worldZ, palette, strata, top,
+            false, underwater, badlands, slopeDiff, biome);
          ResolvedSurfacePlan plan = this.prepareResolvedSurfacePlan(palette, strata, top, false,
             underwater, badlands, slopeDiff, worldX, worldZ, surface, minY);
          long blockWriteStartNs = beginFullChunkProfiling();
@@ -13250,6 +13432,33 @@ private static byte climateGroupForBiome(Holder<Biome> biome) {
          this.dirtySections = new boolean[sections.length];
          this.acquiredSections = new boolean[sections.length];
          this.stateContainers = (PalettedContainer<BlockState>[])new PalettedContainer[sections.length];
+      }
+
+      /** Read exact states without acquiring a palette already owned by this writer or touching dirty counts. */
+      List<BlockState> copyColumnSnapshot(int localX, int localZ, int minY, int maxYInclusive) {
+         if (this.closed) throw new IllegalStateException("chunk writer is closed");
+         long count = (long)maxYInclusive - minY + 1L;
+         if (localX < 0 || localX > 15 || localZ < 0 || localZ > 15 || count <= 0 || count > 1_048_576L
+            || minY < this.chunkMinY || (long)maxYInclusive >= (long)this.chunkMinY + this.sections.length * 16L) {
+            throw new IllegalArgumentException("capture column outside writer bounds");
+         }
+         List<BlockState> cells = new ArrayList<>((int)count);
+         long y = minY;
+         while (y <= maxYInclusive) {
+            int sectionIndex = this.sectionIndexForY((int)y);
+            int bottom = this.chunkMinY + (sectionIndex << 4);
+            int end = (int)Math.min((long)maxYInclusive, (long)bottom + 15L);
+            LevelChunkSection section = this.sections[sectionIndex];
+            boolean temporary = !this.acquiredSections[sectionIndex];
+            if (temporary) section.acquire();
+            try {
+               PalettedContainer<BlockState> states = temporary ? section.getStates() : this.stateContainers[sectionIndex];
+               for (; y <= end; y++) cells.add(states.get(localX, (int)y - bottom, localZ));
+            } finally {
+               if (temporary) section.release();
+            }
+         }
+         return List.copyOf(cells);
       }
 
       void fillSectionConstant(int sectionIndex, BlockState state, EarthChunkGenerator.SolidSectionFillProfiler profiler) {
