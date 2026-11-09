@@ -1,0 +1,256 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.yucareux.tellus.worldgen.EarthNativeFillCaptureIntegrationTest" tests="3" skipped="0" failures="3" errors="0" timestamp="2026-11-09T02:21:10.144Z" hostname="VOID0312" time="20.467">
+  <properties/>
+  <testcase name="earlyNativeFailureFailsCaptureWithSameCauseAndReleasesItsSlot()" classname="com.yucareux.tellus.worldgen.EarthNativeFillCaptureIntegrationTest" time="0.613">
+    <failure message="org.opentest4j.AssertionFailedError: Unexpected exception type thrown, expected: &lt;java.lang.NullPointerException&gt; but was: &lt;com.google.common.util.concurrent.UncheckedExecutionException&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: Unexpected exception type thrown, expected: &lt;java.lang.NullPointerException&gt; but was: &lt;com.google.common.util.concurrent.UncheckedExecutionException&gt;
+	at org.junit.jupiter.api.AssertionFailureBuilder.build(AssertionFailureBuilder.java:151)
+	at org.junit.jupiter.api.AssertThrows.assertThrows(AssertThrows.java:67)
+	at org.junit.jupiter.api.AssertThrows.assertThrows(AssertThrows.java:35)
+	at org.junit.jupiter.api.Assertions.assertThrows(Assertions.java:3115)
+	at com.yucareux.tellus.worldgen.EarthNativeFillCaptureIntegrationTest.earlyNativeFailureFailsCaptureWithSameCauseAndReleasesItsSlot(EarthNativeFillCaptureIntegrationTest.java:214)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:569)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1511)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1511)
+Caused by: com.google.common.util.concurrent.UncheckedExecutionException: com.yucareux.tellus.worldgen.OceanCoverageUnavailableException: Overture ocean coverage FAILED near -5:-5
+	at com.google.common.cache.LocalCache$Segment.get(LocalCache.java:2055)
+	at com.google.common.cache.LocalCache.get(LocalCache.java:3966)
+	at com.google.common.cache.LocalCache$LocalManualCache.get(LocalCache.java:4863)
+	at com.yucareux.tellus.worldgen.HydrologyWaterMap.tile(HydrologyWaterMap.java:89)
+	at com.yucareux.tellus.worldgen.HydrologyWaterMap.shapes(HydrologyWaterMap.java:57)
+	at com.yucareux.tellus.worldgen.InlandHydrologyPlanner$State.mayAffect(InlandHydrologyPlanner.java:310)
+	at com.yucareux.tellus.worldgen.InlandHydrologyPlanner.mayAffect(InlandHydrologyPlanner.java:47)
+	at com.yucareux.tellus.worldgen.WaterSurfaceResolver.resolveFastColumnData(WaterSurfaceResolver.java:668)
+	at com.yucareux.tellus.worldgen.WaterSurfaceResolver.resolveFastColumnData(WaterSurfaceResolver.java:664)
+	at com.yucareux.tellus.worldgen.EarthChunkGenerator.applyShorelineBankRamp(EarthChunkGenerator.java:4166)
+	at com.yucareux.tellus.worldgen.EarthChunkGenerator.fillTellusSurface(EarthChunkGenerator.java:1311)
+	at com.yucareux.tellus.worldgen.EarthChunkGenerator.fillFromNoise(EarthChunkGenerator.java:1152)
+	at com.yucareux.tellus.worldgen.EarthNativeFillCaptureIntegrationTest.fill(EarthNativeFillCaptureIntegrationTest.java:159)
+	at com.yucareux.tellus.worldgen.EarthNativeFillCaptureIntegrationTest.lambda$earlyNativeFailureFailsCaptureWithSameCauseAndReleasesItsSlot$3(EarthNativeFillCaptureIntegrationTest.java:214)
+	at org.junit.jupiter.api.AssertThrows.assertThrows(AssertThrows.java:53)
+	... 6 more
+Caused by: com.yucareux.tellus.worldgen.OceanCoverageUnavailableException: Overture ocean coverage FAILED near -5:-5
+	at com.yucareux.tellus.worldgen.HydrologyWaterMap.lambda$tile$9(HydrologyWaterMap.java:93)
+	at com.google.common.cache.LocalCache$LocalManualCache$1.load(LocalCache.java:4868)
+	at com.google.common.cache.LocalCache$LoadingValueReference.loadFuture(LocalCache.java:3533)
+	at com.google.common.cache.LocalCache$Segment.loadSync(LocalCache.java:2282)
+	at com.google.common.cache.LocalCache$Segment.lockedGetOrLoad(LocalCache.java:2159)
+	at com.google.common.cache.LocalCache$Segment.get(LocalCache.java:2049)
+	... 20 more
+</failure>
+  </testcase>
+  <testcase name="lateNativeFailureAfterColumnCopyDoesNotPublishSuccessAndReleasesSections()" classname="com.yucareux.tellus.worldgen.EarthNativeFillCaptureIntegrationTest" time="0.014">
+    <failure message="org.opentest4j.AssertionFailedError: Unexpected exception type thrown, expected: &lt;java.lang.IllegalStateException&gt; but was: &lt;com.google.common.util.concurrent.UncheckedExecutionException&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: Unexpected exception type thrown, expected: &lt;java.lang.IllegalStateException&gt; but was: &lt;com.google.common.util.concurrent.UncheckedExecutionException&gt;
+	at org.junit.jupiter.api.AssertionFailureBuilder.build(AssertionFailureBuilder.java:151)
+	at org.junit.jupiter.api.AssertThrows.assertThrows(AssertThrows.java:67)
+	at org.junit.jupiter.api.AssertThrows.assertThrows(AssertThrows.java:35)
+	at org.junit.jupiter.api.Assertions.assertThrows(Assertions.java:3115)
+	at com.yucareux.tellus.worldgen.EarthNativeFillCaptureIntegrationTest.lateNativeFailureAfterColumnCopyDoesNotPublishSuccessAndReleasesSections(EarthNativeFillCaptureIntegrationTest.java:231)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:569)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1511)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1511)
+Caused by: com.google.common.util.concurrent.UncheckedExecutionException: com.yucareux.tellus.worldgen.OceanCoverageUnavailableException: Overture ocean coverage FAILED near -5:-5
+	at com.google.common.cache.LocalCache$Segment.get(LocalCache.java:2055)
+	at com.google.common.cache.LocalCache.get(LocalCache.java:3966)
+	at com.google.common.cache.LocalCache$LocalManualCache.get(LocalCache.java:4863)
+	at com.yucareux.tellus.worldgen.HydrologyWaterMap.tile(HydrologyWaterMap.java:89)
+	at com.yucareux.tellus.worldgen.HydrologyWaterMap.shapes(HydrologyWaterMap.java:57)
+	at com.yucareux.tellus.worldgen.InlandHydrologyPlanner$State.mayAffect(InlandHydrologyPlanner.java:310)
+	at com.yucareux.tellus.worldgen.InlandHydrologyPlanner.mayAffect(InlandHydrologyPlanner.java:47)
+	at com.yucareux.tellus.worldgen.WaterSurfaceResolver.resolveFastColumnData(WaterSurfaceResolver.java:668)
+	at com.yucareux.tellus.worldgen.WaterSurfaceResolver.resolveFastColumnData(WaterSurfaceResolver.java:664)
+	at com.yucareux.tellus.worldgen.EarthChunkGenerator.applyShorelineBankRamp(EarthChunkGenerator.java:4166)
+	at com.yucareux.tellus.worldgen.EarthChunkGenerator.fillTellusSurface(EarthChunkGenerator.java:1311)
+	at com.yucareux.tellus.worldgen.EarthChunkGenerator.fillFromNoise(EarthChunkGenerator.java:1152)
+	at com.yucareux.tellus.worldgen.EarthNativeFillCaptureIntegrationTest.fill(EarthNativeFillCaptureIntegrationTest.java:159)
+	at com.yucareux.tellus.worldgen.EarthNativeFillCaptureIntegrationTest.lambda$lateNativeFailureAfterColumnCopyDoesNotPublishSuccessAndReleasesSections$6(EarthNativeFillCaptureIntegrationTest.java:231)
+	at org.junit.jupiter.api.AssertThrows.assertThrows(AssertThrows.java:53)
+	... 6 more
+Caused by: com.yucareux.tellus.worldgen.OceanCoverageUnavailableException: Overture ocean coverage FAILED near -5:-5
+	at com.yucareux.tellus.worldgen.HydrologyWaterMap.lambda$tile$9(HydrologyWaterMap.java:93)
+	at com.google.common.cache.LocalCache$LocalManualCache$1.load(LocalCache.java:4868)
+	at com.google.common.cache.LocalCache$LoadingValueReference.loadFuture(LocalCache.java:3533)
+	at com.google.common.cache.LocalCache$Segment.loadSync(LocalCache.java:2282)
+	at com.google.common.cache.LocalCache$Segment.lockedGetOrLoad(LocalCache.java:2159)
+	at com.google.common.cache.LocalCache$Segment.get(LocalCache.java:2049)
+	... 20 more
+</failure>
+  </testcase>
+  <testcase name="completeNativeFillPreservesEveryBlockWithCaptureEnabledAndReleasesBeforeDelivery()" classname="com.yucareux.tellus.worldgen.EarthNativeFillCaptureIntegrationTest" time="0.009">
+    <failure message="com.google.common.util.concurrent.UncheckedExecutionException: com.yucareux.tellus.worldgen.OceanCoverageUnavailableException: Overture ocean coverage FAILED near -5:-5" type="com.google.common.util.concurrent.UncheckedExecutionException">com.google.common.util.concurrent.UncheckedExecutionException: com.yucareux.tellus.worldgen.OceanCoverageUnavailableException: Overture ocean coverage FAILED near -5:-5
+	at com.google.common.cache.LocalCache$Segment.get(LocalCache.java:2055)
+	at com.google.common.cache.LocalCache.get(LocalCache.java:3966)
+	at com.google.common.cache.LocalCache$LocalManualCache.get(LocalCache.java:4863)
+	at com.yucareux.tellus.worldgen.HydrologyWaterMap.tile(HydrologyWaterMap.java:89)
+	at com.yucareux.tellus.worldgen.HydrologyWaterMap.shapes(HydrologyWaterMap.java:57)
+	at com.yucareux.tellus.worldgen.InlandHydrologyPlanner$State.mayAffect(InlandHydrologyPlanner.java:310)
+	at com.yucareux.tellus.worldgen.InlandHydrologyPlanner.mayAffect(InlandHydrologyPlanner.java:47)
+	at com.yucareux.tellus.worldgen.WaterSurfaceResolver.resolveFastColumnData(WaterSurfaceResolver.java:668)
+	at com.yucareux.tellus.worldgen.WaterSurfaceResolver.resolveFastColumnData(WaterSurfaceResolver.java:664)
+	at com.yucareux.tellus.worldgen.EarthChunkGenerator.applyShorelineBankRamp(EarthChunkGenerator.java:4166)
+	at com.yucareux.tellus.worldgen.EarthChunkGenerator.fillTellusSurface(EarthChunkGenerator.java:1311)
+	at com.yucareux.tellus.worldgen.EarthChunkGenerator.fillFromNoise(EarthChunkGenerator.java:1152)
+	at com.yucareux.tellus.worldgen.EarthNativeFillCaptureIntegrationTest.fill(EarthNativeFillCaptureIntegrationTest.java:159)
+	at com.yucareux.tellus.worldgen.EarthNativeFillCaptureIntegrationTest.completeNativeFillPreservesEveryBlockWithCaptureEnabledAndReleasesBeforeDelivery(EarthNativeFillCaptureIntegrationTest.java:167)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:569)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1511)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1511)
+Caused by: com.yucareux.tellus.worldgen.OceanCoverageUnavailableException: Overture ocean coverage FAILED near -5:-5
+	at com.yucareux.tellus.worldgen.HydrologyWaterMap.lambda$tile$9(HydrologyWaterMap.java:93)
+	at com.google.common.cache.LocalCache$LocalManualCache$1.load(LocalCache.java:4868)
+	at com.google.common.cache.LocalCache$LoadingValueReference.loadFuture(LocalCache.java:3533)
+	at com.google.common.cache.LocalCache$Segment.loadSync(LocalCache.java:2282)
+	at com.google.common.cache.LocalCache$Segment.lockedGetOrLoad(LocalCache.java:2159)
+	at com.google.common.cache.LocalCache$Segment.get(LocalCache.java:2049)
+	... 16 more
+</failure>
+  </testcase>
+  <system-out><![CDATA[[10:21:27] [Test worker/INFO]: Land mask PMTiles unavailable (Network access is disabled during managed Distant Horizons generation); using ESA-only land fallback.
+[10:21:27] [Test worker/INFO]: Loaded Mapterhorn 0.0.11 source-resolution catalog (134 sources).
+[10:21:30] [Test worker/INFO]: EarthChunkGenerator init: scale=30.0, minAltitude=-64, maxAltitude=-2147483648, heightOffset=64, limits=[minY=-64, height=528, logicalHeight=528], seaLevel=64
+[10:21:30] [Test worker/INFO]: fillFromNoise layout: chunkPos=[0, 0], minY=-64, height=528, maxY=463, sections=33, genMinY=-64, genHeight=528, seaLevel=64, settingsMinAlt=-64, settingsMaxAlt=-2147483648
+[10:21:30] [Test worker/WARN]: Overture water PMTiles unavailable; retrying in 1s
+java.io.IOException: Network access is disabled during managed Distant Horizons generation
+	at com.yucareux.tellus.world.data.osm.PmTilesRangeReader.readBytes(PmTilesRangeReader.java:255) ~[main/:?]
+	at com.yucareux.tellus.world.data.osm.PmTilesRangeReader.readHeader(PmTilesRangeReader.java:159) ~[main/:?]
+	at com.yucareux.tellus.world.data.osm.PmTilesRangeReader.header(PmTilesRangeReader.java:83) ~[main/:?]
+	at com.yucareux.tellus.world.data.osm.TellusOsmWaterSource.ensureInitialized(TellusOsmWaterSource.java:676) ~[main/:?]
+	at com.yucareux.tellus.world.data.osm.TellusOsmWaterSource.waterForAreaWithStatus(TellusOsmWaterSource.java:224) ~[main/:?]
+	at com.yucareux.tellus.world.data.osm.TellusOsmWaterSource.waterForAreaWithStatus(TellusOsmWaterSource.java:203) ~[main/:?]
+	at com.yucareux.tellus.world.data.osm.TellusOsmWaterSource.waterForAreaWithStatus(TellusOsmWaterSource.java:188) ~[main/:?]
+	at com.yucareux.tellus.worldgen.OceanCoastField.build(OceanCoastField.java:263) ~[main/:?]
+	at com.yucareux.tellus.worldgen.OceanCoastField.tile(OceanCoastField.java:149) ~[main/:?]
+	at com.yucareux.tellus.worldgen.OceanCoastField.intersectsOcean(OceanCoastField.java:229) ~[main/:?]
+	at com.yucareux.tellus.worldgen.WaterSurfaceResolver.lambda$buildInlandCoastProtection$4(WaterSurfaceResolver.java:1072) ~[main/:?]
+	at com.google.common.cache.LocalCache$LocalManualCache$1.load(LocalCache.java:4868) ~[guava-31.1-jre.jar:?]
+	at com.google.common.cache.LocalCache$LoadingValueReference.loadFuture(LocalCache.java:3533) ~[guava-31.1-jre.jar:?]
+	at com.google.common.cache.LocalCache$Segment.loadSync(LocalCache.java:2282) ~[guava-31.1-jre.jar:?]
+	at com.google.common.cache.LocalCache$Segment.lockedGetOrLoad(LocalCache.java:2159) ~[guava-31.1-jre.jar:?]
+	at com.google.common.cache.LocalCache$Segment.get(LocalCache.java:2049) ~[guava-31.1-jre.jar:?]
+	at com.google.common.cache.LocalCache.get(LocalCache.java:3966) ~[guava-31.1-jre.jar:?]
+	at com.google.common.cache.LocalCache$LocalManualCache.get(LocalCache.java:4863) ~[guava-31.1-jre.jar:?]
+	at com.yucareux.tellus.worldgen.WaterSurfaceResolver.buildInlandCoastProtection(WaterSurfaceResolver.java:1067) ~[main/:?]
+	at com.yucareux.tellus.worldgen.WaterSurfaceResolver.inlandCoastProtection(WaterSurfaceResolver.java:1056) ~[main/:?]
+	at com.yucareux.tellus.worldgen.WaterSurfaceResolver.buildRegionData(WaterSurfaceResolver.java:1147) ~[main/:?]
+	at com.yucareux.tellus.worldgen.WaterSurfaceResolver.lambda$resolveRegionData$3(WaterSurfaceResolver.java:800) ~[main/:?]
+	at com.google.common.cache.LocalCache$LocalManualCache$1.load(LocalCache.java:4868) ~[guava-31.1-jre.jar:?]
+	at com.google.common.cache.LocalCache$LoadingValueReference.loadFuture(LocalCache.java:3533) ~[guava-31.1-jre.jar:?]
+	at com.google.common.cache.LocalCache$Segment.loadSync(LocalCache.java:2282) ~[guava-31.1-jre.jar:?]
+	at com.google.common.cache.LocalCache$Segment.lockedGetOrLoad(LocalCache.java:2159) ~[guava-31.1-jre.jar:?]
+	at com.google.common.cache.LocalCache$Segment.get(LocalCache.java:2049) ~[guava-31.1-jre.jar:?]
+	at com.google.common.cache.LocalCache.get(LocalCache.java:3966) ~[guava-31.1-jre.jar:?]
+	at com.google.common.cache.LocalCache$LocalManualCache.get(LocalCache.java:4863) ~[guava-31.1-jre.jar:?]
+	at com.yucareux.tellus.worldgen.WaterSurfaceResolver.resolveRegionData(WaterSurfaceResolver.java:800) ~[main/:?]
+	at com.yucareux.tellus.worldgen.WaterSurfaceResolver.resolveChunkWaterDataFast(WaterSurfaceResolver.java:336) ~[main/:?]
+	at com.yucareux.tellus.worldgen.WaterSurfaceResolver.resolveChunkWaterData(WaterSurfaceResolver.java:317) ~[main/:?]
+	at com.yucareux.tellus.worldgen.EarthChunkGenerator.resolveChunkWaterData(EarthChunkGenerator.java:10720) ~[main/:?]
+	at com.yucareux.tellus.worldgen.EarthChunkGenerator.fillTellusSurface(EarthChunkGenerator.java:1241) ~[main/:?]
+	at com.yucareux.tellus.worldgen.EarthChunkGenerator.fillFromNoise(EarthChunkGenerator.java:1152) ~[main/:?]
+	at com.yucareux.tellus.worldgen.EarthNativeFillCaptureIntegrationTest.fill(EarthNativeFillCaptureIntegrationTest.java:159) ~[test/:?]
+	at com.yucareux.tellus.worldgen.EarthNativeFillCaptureIntegrationTest.lambda$earlyNativeFailureFailsCaptureWithSameCauseAndReleasesItsSlot$3(EarthNativeFillCaptureIntegrationTest.java:214) ~[test/:?]
+	at org.junit.jupiter.api.AssertThrows.assertThrows(AssertThrows.java:53) ~[junit-jupiter-api-5.10.2.jar:5.10.2]
+	at org.junit.jupiter.api.AssertThrows.assertThrows(AssertThrows.java:35) ~[junit-jupiter-api-5.10.2.jar:5.10.2]
+	at org.junit.jupiter.api.Assertions.assertThrows(Assertions.java:3115) ~[junit-jupiter-api-5.10.2.jar:5.10.2]
+	at com.yucareux.tellus.worldgen.EarthNativeFillCaptureIntegrationTest.earlyNativeFailureFailsCaptureWithSameCauseAndReleasesItsSlot(EarthNativeFillCaptureIntegrationTest.java:214) ~[test/:?]
+	at jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method) ~[?:?]
+	at jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77) ~[?:?]
+	at jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43) ~[?:?]
+	at java.lang.reflect.Method.invoke(Method.java:569) ~[?:?]
+	at org.junit.platform.commons.util.ReflectionUtils.invokeMethod(ReflectionUtils.java:728) ~[junit-platform-commons-1.10.2.jar:1.10.2]
+	at org.junit.jupiter.engine.execution.MethodInvocation.proceed(MethodInvocation.java:60) ~[junit-jupiter-engine-5.10.2.jar:5.10.2]
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain$ValidatingInvocation.proceed(InvocationInterceptorChain.java:131) ~[junit-jupiter-engine-5.10.2.jar:5.10.2]
+	at org.junit.jupiter.engine.extension.TimeoutExtension.intercept(TimeoutExtension.java:156) ~[junit-jupiter-engine-5.10.2.jar:5.10.2]
+	at org.junit.jupiter.engine.extension.TimeoutExtension.interceptTestableMethod(TimeoutExtension.java:147) ~[junit-jupiter-engine-5.10.2.jar:5.10.2]
+	at org.junit.jupiter.engine.extension.TimeoutExtension.interceptTestMethod(TimeoutExtension.java:86) ~[junit-jupiter-engine-5.10.2.jar:5.10.2]
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker$ReflectiveInterceptorCall.lambda$ofVoidMethod$0(InterceptingExecutableInvoker.java:103) ~[junit-jupiter-engine-5.10.2.jar:5.10.2]
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker.lambda$invoke$0(InterceptingExecutableInvoker.java:93) ~[junit-jupiter-engine-5.10.2.jar:5.10.2]
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain$InterceptedInvocation.proceed(InvocationInterceptorChain.java:106) ~[junit-jupiter-engine-5.10.2.jar:5.10.2]
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain.proceed(InvocationInterceptorChain.java:64) ~[junit-jupiter-engine-5.10.2.jar:5.10.2]
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain.chainAndInvoke(InvocationInterceptorChain.java:45) ~[junit-jupiter-engine-5.10.2.jar:5.10.2]
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain.invoke(InvocationInterceptorChain.java:37) ~[junit-jupiter-engine-5.10.2.jar:5.10.2]
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker.invoke(InterceptingExecutableInvoker.java:92) ~[junit-jupiter-engine-5.10.2.jar:5.10.2]
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker.invoke(InterceptingExecutableInvoker.java:86) ~[junit-jupiter-engine-5.10.2.jar:5.10.2]
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.lambda$invokeTestMethod$7(TestMethodTestDescriptor.java:218) ~[junit-jupiter-engine-5.10.2.jar:5.10.2]
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:73) ~[junit-platform-engine-1.10.2.jar:1.10.2]
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.invokeTestMethod(TestMethodTestDescriptor.java:214) ~[junit-jupiter-engine-5.10.2.jar:5.10.2]
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.execute(TestMethodTestDescriptor.java:139) ~[junit-jupiter-engine-5.10.2.jar:5.10.2]
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.execute(TestMethodTestDescriptor.java:69) ~[junit-jupiter-engine-5.10.2.jar:5.10.2]
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$6(NodeTestTask.java:151) ~[junit-platform-engine-1.10.2.jar:1.10.2]
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:73) ~[junit-platform-engine-1.10.2.jar:1.10.2]
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$8(NodeTestTask.java:141) ~[junit-platform-engine-1.10.2.jar:1.10.2]
+	at org.junit.platform.engine.support.hierarchical.Node.around(Node.java:137) ~[junit-platform-engine-1.10.2.jar:1.10.2]
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$9(NodeTestTask.java:139) ~[junit-platform-engine-1.10.2.jar:1.10.2]
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:73) ~[junit-platform-engine-1.10.2.jar:1.10.2]
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.executeRecursively(NodeTestTask.java:138) ~[junit-platform-engine-1.10.2.jar:1.10.2]
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.execute(NodeTestTask.java:95) ~[junit-platform-engine-1.10.2.jar:1.10.2]
+	at java.util.ArrayList.forEach(ArrayList.java:1511) ~[?:?]
+	at org.junit.platform.engine.support.hierarchical.SameThreadHierarchicalTestExecutorService.invokeAll(SameThreadHierarchicalTestExecutorService.java:41) ~[junit-platform-engine-1.10.2.jar:1.10.2]
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$6(NodeTestTask.java:155) ~[junit-platform-engine-1.10.2.jar:1.10.2]
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:73) ~[junit-platform-engine-1.10.2.jar:1.10.2]
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$8(NodeTestTask.java:141) ~[junit-platform-engine-1.10.2.jar:1.10.2]
+	at org.junit.platform.engine.support.hierarchical.Node.around(Node.java:137) ~[junit-platform-engine-1.10.2.jar:1.10.2]
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$9(NodeTestTask.java:139) ~[junit-platform-engine-1.10.2.jar:1.10.2]
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:73) ~[junit-platform-engine-1.10.2.jar:1.10.2]
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.executeRecursively(NodeTestTask.java:138) ~[junit-platform-engine-1.10.2.jar:1.10.2]
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.execute(NodeTestTask.java:95) ~[junit-platform-engine-1.10.2.jar:1.10.2]
+	at java.util.ArrayList.forEach(ArrayList.java:1511) ~[?:?]
+	at org.junit.platform.engine.support.hierarchical.SameThreadHierarchicalTestExecutorService.invokeAll(SameThreadHierarchicalTestExecutorService.java:41) ~[junit-platform-engine-1.10.2.jar:1.10.2]
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$6(NodeTestTask.java:155) ~[junit-platform-engine-1.10.2.jar:1.10.2]
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:73) ~[junit-platform-engine-1.10.2.jar:1.10.2]
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$8(NodeTestTask.java:141) ~[junit-platform-engine-1.10.2.jar:1.10.2]
+	at org.junit.platform.engine.support.hierarchical.Node.around(Node.java:137) ~[junit-platform-engine-1.10.2.jar:1.10.2]
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$9(NodeTestTask.java:139) ~[junit-platform-engine-1.10.2.jar:1.10.2]
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:73) ~[junit-platform-engine-1.10.2.jar:1.10.2]
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.executeRecursively(NodeTestTask.java:138) ~[junit-platform-engine-1.10.2.jar:1.10.2]
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.execute(NodeTestTask.java:95) ~[junit-platform-engine-1.10.2.jar:1.10.2]
+	at org.junit.platform.engine.support.hierarchical.SameThreadHierarchicalTestExecutorService.submit(SameThreadHierarchicalTestExecutorService.java:35) ~[junit-platform-engine-1.10.2.jar:1.10.2]
+	at org.junit.platform.engine.support.hierarchical.HierarchicalTestExecutor.execute(HierarchicalTestExecutor.java:57) ~[junit-platform-engine-1.10.2.jar:1.10.2]
+	at org.junit.platform.engine.support.hierarchical.HierarchicalTestEngine.execute(HierarchicalTestEngine.java:54) ~[junit-platform-engine-1.10.2.jar:1.10.2]
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:198) ~[junit-platform-launcher-1.10.2.jar:1.10.2]
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:169) ~[junit-platform-launcher-1.10.2.jar:1.10.2]
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:93) ~[junit-platform-launcher-1.10.2.jar:1.10.2]
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.lambda$execute$0(EngineExecutionOrchestrator.java:58) ~[junit-platform-launcher-1.10.2.jar:1.10.2]
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.withInterceptedStreams(EngineExecutionOrchestrator.java:141) ~[junit-platform-launcher-1.10.2.jar:1.10.2]
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:57) ~[junit-platform-launcher-1.10.2.jar:1.10.2]
+	at org.junit.platform.launcher.core.DefaultLauncher.execute(DefaultLauncher.java:103) ~[junit-platform-launcher-1.10.2.jar:1.10.2]
+	at org.junit.platform.launcher.core.DefaultLauncher.execute(DefaultLauncher.java:85) ~[junit-platform-launcher-1.10.2.jar:1.10.2]
+	at org.junit.platform.launcher.core.DelegatingLauncher.execute(DelegatingLauncher.java:47) ~[junit-platform-launcher-1.10.2.jar:1.10.2]
+	at org.gradle.api.internal.tasks.testing.junitplatform.JUnitPlatformTestDefinitionProcessor$CollectThenExecuteTestDefinitionConsumer.processAllTestDefinitions(JUnitPlatformTestDefinitionProcessor.java:179) ~[?:?]
+	at org.gradle.api.internal.tasks.testing.junitplatform.JUnitPlatformTestDefinitionProcessor$CollectThenExecuteTestDefinitionConsumer.access$000(JUnitPlatformTestDefinitionProcessor.java:122) ~[?:?]
+	at org.gradle.api.internal.tasks.testing.junitplatform.JUnitPlatformTestDefinitionProcessor.stop(JUnitPlatformTestDefinitionProcessor.java:116) ~[?:?]
+	at org.gradle.api.internal.tasks.testing.SuiteTestDefinitionProcessor.stop(SuiteTestDefinitionProcessor.java:63) ~[?:?]
+	at jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method) ~[?:?]
+	at jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77) ~[?:?]
+	at jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43) ~[?:?]
+	at java.lang.reflect.Method.invoke(Method.java:569) ~[?:?]
+	at org.gradle.internal.dispatch.MethodInvocation.invokeOn(MethodInvocation.java:77) ~[?:?]
+	at org.gradle.internal.dispatch.ReflectionDispatch.dispatch(ReflectionDispatch.java:28) ~[?:?]
+	at org.gradle.internal.dispatch.ReflectionDispatch.dispatch(ReflectionDispatch.java:19) ~[?:?]
+	at org.gradle.internal.dispatch.ContextClassLoaderDispatch.dispatch(ContextClassLoaderDispatch.java:33) ~[?:?]
+	at org.gradle.internal.dispatch.ProxyDispatchAdapter$DispatchingInvocationHandler.invoke(ProxyDispatchAdapter.java:88) ~[?:?]
+	at jdk.proxy1.$Proxy4.stop(Unknown Source) ~[?:?]
+	at org.gradle.api.internal.tasks.testing.worker.TestWorker$3.run(TestWorker.java:195) ~[?:?]
+	at org.gradle.api.internal.tasks.testing.worker.TestWorker.executeAndMaintainThreadName(TestWorker.java:126) ~[?:?]
+	at org.gradle.api.internal.tasks.testing.worker.TestWorker.execute(TestWorker.java:103) ~[?:?]
+	at org.gradle.api.internal.tasks.testing.worker.TestWorker.execute(TestWorker.java:63) ~[?:?]
+	at org.gradle.process.internal.worker.child.ActionExecutionWorker.execute(ActionExecutionWorker.java:56) ~[?:?]
+	at org.gradle.process.internal.worker.child.SystemApplicationClassLoaderWorker.call(SystemApplicationClassLoaderWorker.java:122) ~[?:?]
+	at org.gradle.process.internal.worker.child.SystemApplicationClassLoaderWorker.call(SystemApplicationClassLoaderWorker.java:72) ~[?:?]
+	at worker.org.gradle.process.internal.worker.GradleWorkerMain.run(GradleWorkerMain.java:69) ~[gradle-worker.jar:?]
+	at worker.org.gradle.process.internal.worker.GradleWorkerMain.main(GradleWorkerMain.java:74) ~[gradle-worker.jar:?]
+[10:21:30] [Test worker/INFO]: EarthChunkGenerator init: scale=30.0, minAltitude=-64, maxAltitude=-2147483648, heightOffset=64, limits=[minY=-64, height=528, logicalHeight=528], seaLevel=64
+[10:21:30] [Test worker/INFO]: EarthChunkGenerator init: scale=30.0, minAltitude=-64, maxAltitude=-2147483648, heightOffset=64, limits=[minY=-64, height=528, logicalHeight=528], seaLevel=64
+[10:21:30] [tellus-preload-index-1/WARN]: Failed to refresh terrain preload package index
+java.lang.IllegalStateException: invoked too early?
+	at net.fabricmc.loader.impl.FabricLoaderImpl.getGameDir(FabricLoaderImpl.java:155) ~[fabric-loader-0.16.10.jar:?]
+	at com.yucareux.tellus.platform.FabricTellusPlatformService.gameDir(FabricTellusPlatformService.java:16) ~[main/:?]
+	at com.yucareux.tellus.platform.TellusPlatform.gameDir(TellusPlatform.java:22) ~[main/:?]
+	at com.yucareux.tellus.preload.TerrainPreloadStorage.root(TerrainPreloadStorage.java:46) ~[main/:?]
+	at com.yucareux.tellus.preload.TerrainPreloadStorage.listManifests(TerrainPreloadStorage.java:105) ~[main/:?]
+	at com.yucareux.tellus.preload.TerrainPreloadPackageRegistry.refreshSnapshot(TerrainPreloadPackageRegistry.java:127) ~[main/:?]
+	at com.yucareux.tellus.preload.TerrainPreloadPackageRegistry.runRefreshLoop(TerrainPreloadPackageRegistry.java:100) ~[main/:?]
+	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1136) ~[?:?]
+	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:635) ~[?:?]
+	at java.lang.Thread.run(Thread.java:840) ~[?:?]
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
