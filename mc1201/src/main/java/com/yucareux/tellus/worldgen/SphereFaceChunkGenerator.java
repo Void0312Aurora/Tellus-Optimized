@@ -150,6 +150,25 @@ public final class SphereFaceChunkGenerator extends ChunkGenerator {
    public SphereSingularityPolicy singularityPolicy() { return this.singularityPolicy; }
    public SphereSurfaceMotion surfaceMotion() { return this.surfaceMotion; }
 
+   /** Explicit exact native provider; construction and terminal requests do not initialize sources. */
+   public com.yucareux.tellus.worldgen.sample.TellusSphericalSampleProvider semanticSampleProvider() {
+      return com.yucareux.tellus.worldgen.sample.TellusSphericalSampleProvider.forSphereFaceNativeColumns(request -> {
+         if (!(request.coordinate().owner() instanceof com.yucareux.tellus.worldgen.global.SphericalOwnerView owner)
+            || owner.block().face() != this.face
+            || Double.compare(request.geometry().worldScale(), this.worldScale()) != 0
+            || request.cacheKey().worldSeed() != this.materializer.worldSeed()) {
+            throw new IllegalArgumentException("native Sphere-Face sample differs from generator face/scale/seed");
+         }
+         this.model.chartForBlock(owner.block().face(), owner.block().blockX(), owner.block().blockZ());
+         if (!this.model.blockForGeo(request.coordinate().geo()).equals(owner.block())) {
+            throw new IllegalArgumentException("native Sphere-Face sample owner does not match geographic point");
+         }
+         this.singularityPolicy.requireTerrainMaterialization(owner.chunk());
+         return this.terrainGrid(owner.chunk()).column((int)Math.floorMod(owner.block().blockX(), 16L),
+            (int)Math.floorMod(owner.block().blockZ(), 16L));
+      });
+   }
+
    /** Explicit fixed-biome column kernel; no terrain reads, biome writes or default hook. */
    public com.yucareux.tellus.worldgen.decision.TellusSphericalDecisionKernel semanticColumnKernel() {
       return new com.yucareux.tellus.worldgen.decision.TellusSphericalDecisionKernel(

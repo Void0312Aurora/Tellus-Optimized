@@ -84,7 +84,12 @@ public final class TellusSphericalDecisionKernel {
          || (long)generation.maxYExclusive() - generation.minY() > 1_048_576L) {
          return ColumnDecision.unknown(coordinate, "native spherical column exceeds vertical range/budget");
       }
-      SphereColumnContext column = new SphereColumnContext(address, coordinate.geo(), data);
+      SphereColumnContext column = snapshot.nativeColumn().map(nativeColumn -> {
+         if (!nativeColumn.address().equals(address)) {
+            throw new IllegalArgumentException("native spherical column does not match canonical owner");
+         }
+         return nativeColumn.context();
+      }).orElseGet(() -> new SphereColumnContext(address, coordinate.geo(), data));
       var surface = snapshot.surfaceDecision().orElseThrow();
       StrataPolicy.Column strata = TellusSphericalColumnRules.strata(column,
          generation.worldScale(), generation.seaLevel(), generation.worldSeed());

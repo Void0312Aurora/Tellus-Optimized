@@ -55,6 +55,42 @@ public final class TellusSphericalSampleProvider implements TellusSampleProvider
         return new TellusSphericalSampleProvider("tellus:sphere-face-production", Route.SPHERE_FACE, sampler, true);
     }
 
+    /** Explicit native exact-column route; the resolver owns source/model/cache validation. */
+    public static TellusSphericalSampleProvider forSphereFaceNativeColumns(
+        java.util.function.Function<TellusSampleRequest, SphereChunkSampler.Column> columns
+    ) {
+        Objects.requireNonNull(columns, "columns");
+        return new TellusSphericalSampleProvider("tellus:sphere-face-native", Route.SPHERE_FACE, new TellusSampleProvider() {
+            @Override public String providerId() { return "tellus:sphere-face-native"; }
+            @Override public TellusSample sample(TellusSampleRequest request) {
+                if (request.nonBlocking()) return TellusSample.queued(request, providerId(), "native-exact-column-v1",
+                    "non-blocking native spherical request does not read or schedule a terrain grid");
+                if (!request.resolution().equals(SamplingResolution.exact(request.geometry().worldScale()))) {
+                    return TellusSample.unknown(request, "native spherical column requires exact native-scale resolution");
+                }
+                var column = Objects.requireNonNull(columns.apply(request), "native column");
+                if (!(request.coordinate().owner() instanceof com.yucareux.tellus.worldgen.global.SphericalOwnerView owner)
+                    || !column.address().equals(owner.block())) {
+                    throw new IllegalArgumentException("native spherical column does not match request owner");
+                }
+                var data = column.data();
+                if (!data.elevationAvailable()) return TellusSample.unknown(request, "native spherical column has no elevation");
+                var decision = com.yucareux.tellus.worldgen.CubeNetSurfacePolicy.resolve(column.point(), data,
+                    request.geometry().worldScale(), request.cacheKey().worldSeed());
+                var snapshot = TellusSphericalSurfaceSnapshot.resolvedNativeColumn(column, decision);
+                var water = data.waterAvailable()
+                    ? new TellusWaterSample(SampleStatus.AVAILABLE, true, data.oceanWater(), data.waterSurfaceMeters())
+                    : TellusWaterSample.dry();
+                return new TellusSample(request, SampleStatus.AVAILABLE,
+                    new TellusElevationSample(SampleStatus.AVAILABLE, data.elevationMeters()),
+                    new TellusCoverSample(SampleStatus.AVAILABLE, data.coverClass(), data.coverClass()), water,
+                    TellusSampleProvenance.snapshot(providerId(), "native-exact-column-v1", false,
+                        "native generator column; source point retained; cache hit not asserted"),
+                    java.util.Optional.empty(), java.util.Optional.of(snapshot));
+            }
+        });
+    }
+
     public static TellusSphericalSampleProvider forCubeNet(TellusSampleProvider delegate) {
         return new TellusSphericalSampleProvider("tellus:cube-net-spherical", Route.CUBE_NET, delegate);
     }

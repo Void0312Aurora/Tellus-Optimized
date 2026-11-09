@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.yucareux.tellus.worldgen.SphereFaceNativeProviderPipelineTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-11-09T05:56:29.240Z" hostname="VOID0312" time="0.591">
+  <properties/>
+  <testcase name="legacyInjectedProviderStillUsesItsDeclaredRoundedPointAndResolution()" classname="com.yucareux.tellus.worldgen.SphereFaceNativeProviderPipelineTest" time="0.009"/>
+  <testcase name="nativeGridFailureEscapesWithoutWritesAndRetryReusesOnlySuccessfulSnapshot()" classname="com.yucareux.tellus.worldgen.SphereFaceNativeProviderPipelineTest" time="0.051"/>
+  <testcase name="ownedNativeProviderAndVersionPipelineMatchActualFillWithoutResampling()" classname="com.yucareux.tellus.worldgen.SphereFaceNativeProviderPipelineTest" time="0.413"/>
+  <testcase name="factoriesTerminalUnsupportedAndInvalidRequestsLeaveNativeSourcesCold()" classname="com.yucareux.tellus.worldgen.SphereFaceNativeProviderPipelineTest" time="0.014"/>
+  <system-out><![CDATA[[13:56:29] [Test worker/INFO]: [STDOUT]: SPHERE_NATIVE_PROVIDER_PIPELINE columns=144 nativeBlockStates=55296 sourceCalls=9216 sourcePointDifferences=144 mismatchBlocks=0
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

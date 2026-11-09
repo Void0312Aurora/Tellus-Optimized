@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.yucareux.tellus.worldgen.sample.TellusNativeSphericalColumnSnapshotTest" tests="7" skipped="0" failures="1" errors="0" timestamp="2026-11-09T05:50:38.833Z" hostname="VOID0312" time="0.096">
+  <properties/>
+  <testcase name="kernelRejectsNativeColumnWhoseAddressDiffersFromCanonicalOwner()" classname="com.yucareux.tellus.worldgen.sample.TellusNativeSphericalColumnSnapshotTest" time="0.01"/>
+  <testcase name="kernelUsesNativeSourcePointForStrataInsteadOfRequestCoordinatePoint()" classname="com.yucareux.tellus.worldgen.sample.TellusNativeSphericalColumnSnapshotTest" time="0.04">
+    <failure message="java.lang.AssertionError: geology fixture did not distinguish native and request points" type="java.lang.AssertionError">java.lang.AssertionError: geology fixture did not distinguish native and request points
+	at com.yucareux.tellus.worldgen.sample.TellusNativeSphericalColumnSnapshotTest.lambda$kernelUsesNativeSourcePointForStrataInsteadOfRequestCoordinatePoint$13(TellusNativeSphericalColumnSnapshotTest.java:148)
+	at java.base/java.util.Optional.orElseThrow(Optional.java:403)
+	at com.yucareux.tellus.worldgen.sample.TellusNativeSphericalColumnSnapshotTest.kernelUsesNativeSourcePointForStrataInsteadOfRequestCoordinatePoint(TellusNativeSphericalColumnSnapshotTest.java:147)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:569)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1511)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1511)
+</failure>
+  </testcase>
+  <testcase name="nativeFactoryNullAndRouteDependenciesFailFast()" classname="com.yucareux.tellus.worldgen.sample.TellusNativeSphericalColumnSnapshotTest" time="0.005"/>
+  <testcase name="nativeProviderRejectsUnsupportedOwnerWrongAddressNullColumnAndCallbackFailure()" classname="com.yucareux.tellus.worldgen.sample.TellusNativeSphericalColumnSnapshotTest" time="0.029"/>
+  <testcase name="nativeProviderPreservesColumnPointAndDoesNotInvokeResolverForQueuedOrCoarseRequests()" classname="com.yucareux.tellus.worldgen.sample.TellusNativeSphericalColumnSnapshotTest" time="0.003"/>
+  <testcase name="nativeSnapshotRetainsTheWholeImmutableColumnAndRejectsMismatchedData()" classname="com.yucareux.tellus.worldgen.sample.TellusNativeSphericalColumnSnapshotTest" time="0.004"/>
+  <testcase name="legacyRawResolvedAndTwoArgumentSnapshotsRemainNativeColumnEmpty()" classname="com.yucareux.tellus.worldgen.sample.TellusNativeSphericalColumnSnapshotTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
