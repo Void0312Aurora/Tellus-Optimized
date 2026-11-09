@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.yucareux.tellus.worldgen.SphereFaceNativeBiomeKernelBridgeTest" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-11-09T05:28:06.710Z" hostname="VOID0312" time="0.407">
+  <properties/>
+  <testcase name="singularityCapsFailClosedAndQueuedOrUnknownRequestsDoNotReadTerrain()" classname="com.yucareux.tellus.worldgen.SphereFaceNativeBiomeKernelBridgeTest" time="0.018"/>
+  <testcase name="fullGeneratorCodecIsUnchangedByExplicitFactoryAndRetainsFixedSource()" classname="com.yucareux.tellus.worldgen.SphereFaceNativeBiomeKernelBridgeTest" time="0.006"/>
+  <testcase name="mismatchedFaceScaleSeaBoundsSeedAndCubeOwnerAreRejectedWithoutTerrainReads()" classname="com.yucareux.tellus.worldgen.SphereFaceNativeBiomeKernelBridgeTest" time="0.003"/>
+  <testcase name="existingKernelTracksSeedChangesAndDoesNotFreezeAnObsoleteBinding()" classname="com.yucareux.tellus.worldgen.SphereFaceNativeBiomeKernelBridgeTest" time="0.001"/>
+  <testcase name="nativeUnkeyedFixedBiomeDoesNotInventAnIdentity()" classname="com.yucareux.tellus.worldgen.SphereFaceNativeBiomeKernelBridgeTest" time="0.0"/>
+  <testcase name="realFixedBiomeAndNativeChunkContainersMatchKernelAcrossFacesBiomesAndSeeds()" classname="com.yucareux.tellus.worldgen.SphereFaceNativeBiomeKernelBridgeTest" time="0.299"/>
+  <system-out><![CDATA[[13:28:07] [Test worker/INFO]: [STDOUT]: SPHERE_FIXED_BIOME_KERNEL columns=144 materializedCells=18672 comparedBlockStates=55296 biomeQuartCells=55296 biomeMismatches=0 terrainMismatches=0
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

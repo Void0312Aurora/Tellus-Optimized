@@ -61,6 +61,8 @@ public final class SphereTerrainMaterializer {
       this.worldSeed = worldSeed;
    }
 
+   long worldSeed() { return this.worldSeed; }
+
    /** Preflight every column before writing so missing/out-of-range data cannot leave half a chunk. */
    public FillResult fill(ChunkAccess chunk, SphereChunkSampler.TerrainGrid terrain) {
       return this.fill(chunk, terrain, null);

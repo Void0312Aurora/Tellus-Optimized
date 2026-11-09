@@ -150,6 +150,37 @@ public final class SphereFaceChunkGenerator extends ChunkGenerator {
    public SphereSingularityPolicy singularityPolicy() { return this.singularityPolicy; }
    public SphereSurfaceMotion surfaceMotion() { return this.surfaceMotion; }
 
+   /** Explicit fixed-biome column kernel; no terrain reads, biome writes or default hook. */
+   public com.yucareux.tellus.worldgen.decision.TellusSphericalDecisionKernel semanticColumnKernel() {
+      return new com.yucareux.tellus.worldgen.decision.TellusSphericalDecisionKernel(
+         com.yucareux.tellus.worldgen.decision.TellusSphericalDecisionKernel.Settings.DEFAULT,
+         (generation, coordinate, sample, terrainY) -> {
+            if (!(coordinate.owner() instanceof com.yucareux.tellus.worldgen.global.SphericalOwnerView owner)
+               || owner.block().face() != this.face
+               || Double.compare(generation.worldScale(), this.worldScale()) != 0
+               || generation.seaLevel() != this.seaLevel || generation.minY() != this.minY
+               || (long)generation.maxYExclusive() != (long)this.minY + this.height
+               || generation.worldSeed() != this.materializer.worldSeed()) {
+               throw new IllegalArgumentException("native Sphere-Face kernel differs from generator face/profile/seed");
+            }
+            this.model.chartForBlock(owner.block().face(), owner.block().blockX(), owner.block().blockZ());
+            if (!this.model.blockForGeo(coordinate.geo()).equals(owner.block())) {
+               throw new IllegalArgumentException("native Sphere-Face owner does not match geographic point");
+            }
+            this.singularityPolicy.requireTerrainMaterialization(owner.chunk());
+            var engine = this.topology.engineCoordinate(owner.chunk());
+            int x = Math.toIntExact(Math.addExact(Math.multiplyExact(engine.chunkX(), 16L),
+               Math.floorMod(owner.block().blockX(), 16L)));
+            int z = Math.toIntExact(Math.addExact(Math.multiplyExact(engine.chunkZ(), 16L),
+               Math.floorMod(owner.block().blockZ(), 16L)));
+            var biome = this.biomeSource.getNoiseBiome(net.minecraft.core.QuartPos.fromBlock(x),
+               net.minecraft.core.QuartPos.fromBlock(terrainY), net.minecraft.core.QuartPos.fromBlock(z), Climate.empty());
+            return biome.unwrapKey().map(key -> new com.yucareux.tellus.worldgen.decision.BiomeDecision(
+               key.location().toString(), true))
+               .orElseGet(com.yucareux.tellus.worldgen.decision.BiomeDecision::unknown);
+         });
+   }
+
    void setWorldSeed(long worldSeed) {
       this.materializer.setWorldSeed(worldSeed);
    }

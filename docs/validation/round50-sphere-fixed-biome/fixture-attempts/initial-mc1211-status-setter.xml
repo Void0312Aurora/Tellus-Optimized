@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.yucareux.tellus.worldgen.SphereFaceNativeBiomeKernelBridgeTest" tests="6" skipped="0" failures="1" errors="0" timestamp="2026-11-09T05:24:21.945Z" hostname="VOID0312" time="0.222">
+  <properties/>
+  <testcase name="singularityCapsFailClosedAndQueuedOrUnknownRequestsDoNotReadTerrain()" classname="com.yucareux.tellus.worldgen.SphereFaceNativeBiomeKernelBridgeTest" time="0.037"/>
+  <testcase name="fullGeneratorCodecIsUnchangedByExplicitFactoryAndRetainsFixedSource()" classname="com.yucareux.tellus.worldgen.SphereFaceNativeBiomeKernelBridgeTest" time="0.014"/>
+  <testcase name="mismatchedFaceScaleSeaBoundsSeedAndCubeOwnerAreRejectedWithoutTerrainReads()" classname="com.yucareux.tellus.worldgen.SphereFaceNativeBiomeKernelBridgeTest" time="0.009"/>
+  <testcase name="existingKernelTracksSeedChangesAndDoesNotFreezeAnObsoleteBinding()" classname="com.yucareux.tellus.worldgen.SphereFaceNativeBiomeKernelBridgeTest" time="0.003"/>
+  <testcase name="nativeUnkeyedFixedBiomeDoesNotInventAnIdentity()" classname="com.yucareux.tellus.worldgen.SphereFaceNativeBiomeKernelBridgeTest" time="0.001"/>
+  <testcase name="realFixedBiomeAndNativeChunkContainersMatchKernelAcrossFacesBiomesAndSeeds()" classname="com.yucareux.tellus.worldgen.SphereFaceNativeBiomeKernelBridgeTest" time="0.078">
+    <failure message="java.util.NoSuchElementException: No value present" type="java.util.NoSuchElementException">java.util.NoSuchElementException: No value present
+	at java.base/java.util.Optional.orElseThrow(Optional.java:377)
+	at com.yucareux.tellus.worldgen.SphereFaceNativeBiomeKernelBridgeTest.biomeStatus(SphereFaceNativeBiomeKernelBridgeTest.java:93)
+	at com.yucareux.tellus.worldgen.SphereFaceNativeBiomeKernelBridgeTest.realFixedBiomeAndNativeChunkContainersMatchKernelAcrossFacesBiomesAndSeeds(SphereFaceNativeBiomeKernelBridgeTest.java:114)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+</failure>
+  </testcase>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
