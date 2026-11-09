@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.yucareux.tellus.worldgen.TellusNativeChunkBatchTest" tests="14" skipped="0" failures="0" errors="0" timestamp="2026-11-09T07:58:47.928Z" hostname="VOID0312" time="0.455">
+  <properties/>
+  <testcase name="plannerRuntimeFailureAndErrorReleaseLeaseWithoutWritesAndAllowRetry()" classname="com.yucareux.tellus.worldgen.TellusNativeChunkBatchTest" time="0.044"/>
+  <testcase name="secondColumnMapperFailureRestoresEarlierBlocksMarkersReferencesAndDirty()" classname="com.yucareux.tellus.worldgen.TellusNativeChunkBatchTest" time="0.024"/>
+  <testcase name="throwingExceptionMessageCannotBypassPrefixRecoveryOrColdPlanningCleanup()" classname="com.yucareux.tellus.worldgen.TellusNativeChunkBatchTest" time="0.077"/>
+  <testcase name="metadataRestoreErrorReportsIncompleteAfterRestoringEveryBlockAndReleasesLease()" classname="com.yucareux.tellus.worldgen.TellusNativeChunkBatchTest" time="0.051"/>
+  <testcase name="unknownQueuedAndPartialPlansStopBeforeAnyEarlierColumnWrites()" classname="com.yucareux.tellus.worldgen.TellusNativeChunkBatchTest" time="0.025"/>
+  <testcase name="mismatchedOrNullPlannerResultIsInvalidBeforeSnapshotOrPrefixWrites()" classname="com.yucareux.tellus.worldgen.TellusNativeChunkBatchTest" time="0.013"/>
+  <testcase name="firstRowFeatureInAnotherPhysicalColumnIsIncludedInWholeChunkRollback()" classname="com.yucareux.tellus.worldgen.TellusNativeChunkBatchTest" time="0.03"/>
+  <testcase name="secondColumnMapperErrorRestoresCommittedPrefixThenRethrowsSameError()" classname="com.yucareux.tellus.worldgen.TellusNativeChunkBatchTest" time="0.027"/>
+  <testcase name="sameThreadMapperReentryIsQueuedEvenWithoutFlowAndLaterFailureRestoresPrefix()" classname="com.yucareux.tellus.worldgen.TellusNativeChunkBatchTest" time="0.027"/>
+  <testcase name="successfulTwoColumnFlowBatchRetainsResultsAndImmutableShape()" classname="com.yucareux.tellus.worldgen.TellusNativeChunkBatchTest" time="0.006"/>
+  <testcase name="disabledEmptyOversizedAndValueShapeGuardsAreColdAndResultsCannotExposeRolledBackSuccess()" classname="com.yucareux.tellus.worldgen.TellusNativeChunkBatchTest" time="0.002"/>
+  <testcase name="completePreflightRejectsPhysicalAliasesProfilesBoundsApronAndNonblockingBeforeSource()" classname="com.yucareux.tellus.worldgen.TellusNativeChunkBatchTest" time="0.034"/>
+  <testcase name="oversizedWholeChunkSnapshotIsRejectedBeforeSourceOrAnyAllocationOfSnapshotCells()" classname="com.yucareux.tellus.worldgen.TellusNativeChunkBatchTest" time="0.001"/>
+  <testcase name="otherThreadBatchAndNativeCompositeAreQueuedWhileDifferentActualTargetCanProceed()" classname="com.yucareux.tellus.worldgen.TellusNativeChunkBatchTest" time="0.007"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

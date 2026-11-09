@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.yucareux.tellus.worldgen.feature.TellusFeaturePlannerSequenceTest" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-11-09T08:00:32.660Z" hostname="VOID0312" time="0.023">
+  <properties/>
+  <testcase name="emptyStagesPreserveDiagnosticsAndRemainExplicitlyEmpty()" classname="com.yucareux.tellus.worldgen.feature.TellusFeaturePlannerSequenceTest" time="0.003"/>
+  <testcase name="allInvocationArgumentsRemainRequiredEvenForEmptySequence()" classname="com.yucareux.tellus.worldgen.feature.TellusFeaturePlannerSequenceTest" time="0.003"/>
+  <testcase name="stageArrayIsCopiedAndInvalidStagesOrNullResultsFailBeforeWrites()" classname="com.yucareux.tellus.worldgen.feature.TellusFeaturePlannerSequenceTest" time="0.005"/>
+  <testcase name="terminalColumnAndSampleInputsStayStageCold()" classname="com.yucareux.tellus.worldgen.feature.TellusFeaturePlannerSequenceTest" time="0.001"/>
+  <testcase name="orderedStagesRetainExactPlacementObjectsAndTypedFlowBeforeBadlands()" classname="com.yucareux.tellus.worldgen.feature.TellusFeaturePlannerSequenceTest" time="0.003"/>
+  <testcase name="blockedLaterStageDiscardsEarlierPlacementsAndDoesNotInvokeFollowingStages()" classname="com.yucareux.tellus.worldgen.feature.TellusFeaturePlannerSequenceTest" time="0.004"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

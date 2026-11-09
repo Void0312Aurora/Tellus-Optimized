@@ -50,6 +50,16 @@ public final class TellusMinecraft1201CanonicalColumnAdapter {
          return new WriteResult<>(plan.status(), List.of(), plan.diagnostics(), plan.persistenceIdentity());
       }
       Objects.requireNonNull(target, "target");
+      var acquired = TellusTargetWriteGuard.tryAcquire(target);
+      if (acquired.isEmpty()) return new WriteResult<>(WriteStatus.NO_WRITE_QUEUED, List.of(),
+         List.of("target chunk already has a participating writer"), plan.persistenceIdentity());
+      try (var lease = acquired.orElseThrow()) {
+         return writeExclusive(target, context, plan);
+      }
+   }
+
+   private WriteResult<BlockState> writeExclusive(ChunkAccess target, WriteContext context,
+                                                  WriteResult<SemanticColumnCell> plan) {
       CanonicalColumnPosition horizontal;
       List<BlockPos> positions = new ArrayList<>(plan.mappedWrites().size());
       List<BlockState> mapped = new ArrayList<>(plan.mappedWrites().size());

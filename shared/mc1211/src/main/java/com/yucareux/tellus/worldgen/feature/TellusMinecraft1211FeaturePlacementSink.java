@@ -27,6 +27,22 @@ public final class TellusMinecraft1211FeaturePlacementSink implements FeaturePla
       Objects.requireNonNull(mapper, "mapper");
       FeaturePlacementResult<BlockState> terminal = FeaturePlacementSinkGuard.planResult(plan);
       if (terminal != null) return terminal;
+      if (this.target == null) return placeUnleased(context, plan, mapper);
+      var acquired = com.yucareux.tellus.worldgen.write.TellusTargetWriteGuard.tryAcquire(this.target);
+      if (acquired.isEmpty()) return FeaturePlacementResult.noWrite(FeaturePlacementStatus.NO_WRITE_QUEUED,
+         "target chunk already has a participating writer");
+      try (var lease = acquired.orElseThrow()) {
+         return placeUnleased(context, plan, mapper);
+      }
+   }
+
+   private FeaturePlacementResult<BlockState> placeUnleased(
+      WriteContext context, FeaturePlan plan, SemanticMapper<BlockState> mapper
+   ) {
+      Objects.requireNonNull(context, "context");
+      Objects.requireNonNull(mapper, "mapper");
+      FeaturePlacementResult<BlockState> terminal = FeaturePlacementSinkGuard.planResult(plan);
+      if (terminal != null) return terminal;
       final long[] base;
       try {
          // Apron writes retain their explicit seam projection. Canonical writes

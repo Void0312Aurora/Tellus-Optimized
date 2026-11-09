@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.yucareux.tellus.worldgen.feature.TellusFeaturePlannerSequenceTest" tests="6" skipped="0" failures="1" errors="0" timestamp="2026-11-09T07:47:14.429Z" hostname="VOID0312" time="0.068">
+  <properties/>
+  <testcase name="emptyStagesPreserveDiagnosticsAndRemainExplicitlyEmpty()" classname="com.yucareux.tellus.worldgen.feature.TellusFeaturePlannerSequenceTest" time="0.004"/>
+  <testcase name="allInvocationArgumentsRemainRequiredEvenForEmptySequence()" classname="com.yucareux.tellus.worldgen.feature.TellusFeaturePlannerSequenceTest" time="0.006"/>
+  <testcase name="stageArrayIsCopiedAndInvalidStagesOrNullResultsFailBeforeWrites()" classname="com.yucareux.tellus.worldgen.feature.TellusFeaturePlannerSequenceTest" time="0.009"/>
+  <testcase name="terminalColumnAndSampleInputsStayStageCold()" classname="com.yucareux.tellus.worldgen.feature.TellusFeaturePlannerSequenceTest" time="0.033">
+    <failure message="java.lang.IllegalArgumentException: QUEUED aggregate requires non-blocking request and queued non-snapshot provenance" type="java.lang.IllegalArgumentException">java.lang.IllegalArgumentException: QUEUED aggregate requires non-blocking request and queued non-snapshot provenance
+	at com.yucareux.tellus.worldgen.sample.TellusSampleConsistencyValidator.validate(TellusSampleConsistencyValidator.java:52)
+	at com.yucareux.tellus.worldgen.sample.TellusSample.&lt;init&gt;(TellusSample.java:26)
+	at com.yucareux.tellus.worldgen.sample.TellusSample.&lt;init&gt;(TellusSample.java:46)
+	at com.yucareux.tellus.worldgen.sample.TellusSample.&lt;init&gt;(TellusSample.java:57)
+	at com.yucareux.tellus.worldgen.sample.TellusSample.queued(TellusSample.java:121)
+	at com.yucareux.tellus.worldgen.feature.TellusFeaturePlannerSequenceTest.terminalColumnAndSampleInputsStayStageCold(TellusFeaturePlannerSequenceTest.java:47)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:569)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1511)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1511)
+</failure>
+  </testcase>
+  <testcase name="orderedStagesRetainExactPlacementObjectsAndTypedFlowBeforeBadlands()" classname="com.yucareux.tellus.worldgen.feature.TellusFeaturePlannerSequenceTest" time="0.008"/>
+  <testcase name="blockedLaterStageDiscardsEarlierPlacementsAndDoesNotInvokeFollowingStages()" classname="com.yucareux.tellus.worldgen.feature.TellusFeaturePlannerSequenceTest" time="0.005"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

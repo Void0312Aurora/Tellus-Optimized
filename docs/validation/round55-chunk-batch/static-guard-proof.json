@@ -1,0 +1,72 @@
+{
+  "allEightOriginalFilesRestoreToRecordedHash": true,
+  "allFourVersionWrapperBlocksIdenticalAfterVersionNormalization": true,
+  "files": {
+    "shared/mc1201/src/main/java/com/yucareux/tellus/worldgen/write/TellusMinecraft1201CompositeColumnWriter.java": {
+      "restoredOldSha256": "b09688181fd8196d69524eba5610c26b7cf4160807f370e5c1a7be47d6ccfb26",
+      "lines": 70,
+      "currentNormalizedTextSha256": "26e8412f5e3540419ed3556c5d6716930a7e4b55fa943eb139fa90d991c7f6ce",
+      "restoredParentHashNormalization": "universal-newline UTF-8 text",
+      "currentByteSha256": "001f9a8893138ba89f4174486ac59fe25f5e3768938f49c1a896fd0a8d8e2736"
+    },
+    "shared/mc1201/src/main/java/com/yucareux/tellus/worldgen/write/TellusMinecraft1201CanonicalPipeline.java": {
+      "restoredOldSha256": "bc1e0b93333f202927e2b4e6c06c5f25ec82c8aef1301b0b7e795157ae3969f5",
+      "lines": 192,
+      "currentNormalizedTextSha256": "6e96793406339806661c9807672514e05c61b2631f95cb7d6edaea23a8313a54",
+      "restoredParentHashNormalization": "universal-newline UTF-8 text",
+      "currentByteSha256": "82a3f76bd66179de8073bd0e93bf41a35066f8317992d15c566f284b942a2dae"
+    },
+    "shared/mc1201/src/main/java/com/yucareux/tellus/worldgen/write/TellusMinecraft1201CanonicalColumnAdapter.java": {
+      "restoredOldSha256": "5c31a318cf617c9cbb53aa194f55657189d384dd0052d256e7c35810dc6daa52",
+      "lines": 122,
+      "currentNormalizedTextSha256": "1e4b4d2e408daefa482e78f9ae3d4ec2b1c0cca8b66f1785083847c4339a1466",
+      "restoredParentHashNormalization": "universal-newline UTF-8 text",
+      "currentByteSha256": "5fe226dd09b9ccd56411ca401f61bf56dc46d02a8831fd79f8dc6baac8ae5341"
+    },
+    "shared/mc1201/src/main/java/com/yucareux/tellus/worldgen/feature/TellusMinecraft1201FeaturePlacementSink.java": {
+      "restoredOldSha256": "b30694a53380aec320cd0d83763523f940060b562c0cba583446a5d1fec13971",
+      "lines": 162,
+      "currentNormalizedTextSha256": "bcdb7f523644f7aeacce04831edb151d12e37d401a9b11699431821e4f426989",
+      "restoredParentHashNormalization": "universal-newline UTF-8 text",
+      "currentByteSha256": "b1008336c2435076503b54fa37c4bed7ea39864bc5b6c92885eaa755377c5e80"
+    },
+    "shared/mc1211/src/main/java/com/yucareux/tellus/worldgen/write/TellusMinecraft1211CompositeColumnWriter.java": {
+      "restoredOldSha256": "9329d57250e3a18f49d1f4fe514695f6b7317b9a7b6e2ec8d9ca1f5d34805f9a",
+      "lines": 70,
+      "currentNormalizedTextSha256": "d305abb2a214ea237027ab2d2bed0a3627c182313475ecd1fafeaa3ebb604234",
+      "restoredParentHashNormalization": "universal-newline UTF-8 text",
+      "currentByteSha256": "abf93577637c083071f54958c93fd46ad392ca0c45ec67fd787daac7b3709884"
+    },
+    "shared/mc1211/src/main/java/com/yucareux/tellus/worldgen/write/TellusMinecraft1211CanonicalPipeline.java": {
+      "restoredOldSha256": "b849e3cda8b70b59edd1152f2411c859fce8784f6e9cf31d68fb79cdc8fd2545",
+      "lines": 185,
+      "currentNormalizedTextSha256": "1aa781e11bb4792a8252c5a86bdbf8879f1fafca2924841c983dfc444bad61fe",
+      "restoredParentHashNormalization": "universal-newline UTF-8 text",
+      "currentByteSha256": "7d910b00eed852bba9c95110c59f58a34f2991acd30da8a72b40beca2a4204a5"
+    },
+    "shared/mc1211/src/main/java/com/yucareux/tellus/worldgen/write/TellusMinecraft1211CanonicalColumnAdapter.java": {
+      "restoredOldSha256": "a2707214dfdf8e56d35fe8c1f0410d3fb2f7353bb10663f27967a237b00f08ac",
+      "lines": 122,
+      "currentNormalizedTextSha256": "75ae2a78241955e65ab06183c3b00230b4d163c7ac5c6fd9f383af1d25b9d84b",
+      "restoredParentHashNormalization": "universal-newline UTF-8 text",
+      "currentByteSha256": "e90644a43dc61ccc3dab931097ebdca939dc648a799d7f06bc1ad7341b585082"
+    },
+    "shared/mc1211/src/main/java/com/yucareux/tellus/worldgen/feature/TellusMinecraft1211FeaturePlacementSink.java": {
+      "restoredOldSha256": "2b313f50b699356a831ca3e416c733d40cfd824768af785ef53b970d733b6a67",
+      "lines": 162,
+      "currentNormalizedTextSha256": "5863de55ba92d5ce9dd5d9be693d75fa85ad8ee44248f548962d85de6855bcd4",
+      "restoredParentHashNormalization": "universal-newline UTF-8 text",
+      "currentByteSha256": "afd34e7473e07031aa52565c138269de01b5d092790838b29d7a15321cdcd3cf"
+    },
+    "src/main/java/com/yucareux/tellus/worldgen/write/TellusTargetWriteGuard.java": {
+      "lines": 53,
+      "tests": 0,
+      "currentByteSha256": "2f28b5a3a33a90c91ea46dd6e6d0784bd0ed12b417f7e27773ef71226b14322f"
+    },
+    "src/test/java/com/yucareux/tellus/worldgen/write/TellusTargetWriteGuardTest.java": {
+      "lines": 138,
+      "tests": 7,
+      "currentByteSha256": "938a7cc681ee6b9312a04ae14e4d3b515c7d8ab1a0ca40c448cd9226909e48ea"
+    }
+  }
+}

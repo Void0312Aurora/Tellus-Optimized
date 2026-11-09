@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.yucareux.tellus.worldgen.write.TellusTargetWriteGuardTest" tests="7" skipped="0" failures="0" errors="0" timestamp="2026-11-09T07:58:49.733Z" hostname="VOID0312" time="0.012">
+  <properties/>
+  <testcase name="foreignThreadCannotUseOrCloseAnActiveLeaseOrReleaseItsTarget()" classname="com.yucareux.tellus.worldgen.write.TellusTargetWriteGuardTest" time="0.002"/>
+  <testcase name="staleTokenAndIdempotentCloseDoNotReleaseTheNextLease()" classname="com.yucareux.tellus.worldgen.write.TellusTargetWriteGuardTest" time="0.001"/>
+  <testcase name="equalButDifferentTargetObjectsHaveIndependentIdentityLeases()" classname="com.yucareux.tellus.worldgen.write.TellusTargetWriteGuardTest" time="0.002"/>
+  <testcase name="nullTargetsAreInvalidAndTargetEqualityCallbacksAreNeverInvoked()" classname="com.yucareux.tellus.worldgen.write.TellusTargetWriteGuardTest" time="0.002"/>
+  <testcase name="tryWithResourcesReleasesOnRuntimeFailuresAndErrors()" classname="com.yucareux.tellus.worldgen.write.TellusTargetWriteGuardTest" time="0.002"/>
+  <testcase name="sameThreadReentryIsQueuedWhileAnotherActualTargetRemainsAvailable()" classname="com.yucareux.tellus.worldgen.write.TellusTargetWriteGuardTest" time="0.001"/>
+  <testcase name="concurrentContentionReturnsImmediatelyAndReleaseAllowsAFreshOwner()" classname="com.yucareux.tellus.worldgen.write.TellusTargetWriteGuardTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

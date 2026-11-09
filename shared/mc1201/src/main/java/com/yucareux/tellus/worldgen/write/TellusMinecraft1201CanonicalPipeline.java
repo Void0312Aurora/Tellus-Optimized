@@ -128,6 +128,28 @@ public final class TellusMinecraft1201CanonicalPipeline {
       TellusCoordinateContext coordinate,
       TellusSampleRequest request
    ) {
+      if (!this.enabled) return WriteResult.invalid("mc1201 canonical pipeline is disabled");
+      if (target == null) return writeExclusive(target, context, generation, coordinate, request, null);
+      var acquired = TellusTargetWriteGuard.tryAcquire(target);
+      if (acquired.isEmpty()) return WriteResult.queued("target chunk already has a participating writer");
+      try (var lease = acquired.orElseThrow()) {
+         return writeExclusive(target, context, generation, coordinate, request, lease);
+      }
+   }
+
+   public TellusNativeChunkBatch.Result writeChunk(ChunkAccess target, java.util.List<TellusNativeChunkBatch.Request> requests) {
+      return new TellusNativeChunkBatch(this.materializer, this.mapper).write(this.enabled, target, requests,
+         request -> this.plan(request.generation(), request.coordinate(), request.request()));
+   }
+
+   private WriteResult<BlockState> writeExclusive(
+      ChunkAccess target,
+      WriteContext context,
+      TellusGenerationContext generation,
+      TellusCoordinateContext coordinate,
+      TellusSampleRequest request,
+      TellusTargetWriteGuard.Lease lease
+   ) {
       if (!this.enabled) {
          return WriteResult.invalid("mc1201 canonical pipeline is disabled");
       }
@@ -159,8 +181,9 @@ public final class TellusMinecraft1201CanonicalPipeline {
          () -> new IllegalStateException("known column plan has no decision"));
       var features = plan.featurePlan().orElseGet(() ->
          com.yucareux.tellus.worldgen.feature.FeaturePlan.empty("no feature plan supplied"));
-      return new TellusMinecraft1201CompositeColumnWriter(this.materializer)
-         .write(target, context, decision, features, this.mapper);
+      var writer = new TellusMinecraft1201CompositeColumnWriter(this.materializer);
+      return lease == null ? writer.write(target, context, decision, features, this.mapper)
+         : writer.writeOwned(target, context, decision, features, this.mapper, lease);
    }
 
    private static String diagnostic(TellusColumnPlan plan, String fallback) {

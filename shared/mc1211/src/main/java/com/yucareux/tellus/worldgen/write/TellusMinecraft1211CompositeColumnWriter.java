@@ -21,6 +21,29 @@ public final class TellusMinecraft1211CompositeColumnWriter {
 
    public WriteResult<BlockState> write(ChunkAccess chunk, WriteContext context, ColumnDecision decision,
                                          FeaturePlan features, SemanticMapper<BlockState> mapper) {
+      if (chunk == null
+         || decision != null && (decision.status() == com.yucareux.tellus.worldgen.decision.DecisionStatus.UNKNOWN
+            || decision.status() == com.yucareux.tellus.worldgen.decision.DecisionStatus.QUEUED)
+         || features != null && (features.status() == com.yucareux.tellus.worldgen.feature.FeaturePlanStatus.UNKNOWN
+            || features.status() == com.yucareux.tellus.worldgen.feature.FeaturePlanStatus.QUEUED)) {
+         return writeUnleased(chunk, context, decision, features, mapper);
+      }
+      var acquired = TellusTargetWriteGuard.tryAcquire(chunk);
+      if (acquired.isEmpty()) return WriteResult.queued("target chunk already has a participating writer");
+      try (var lease = acquired.orElseThrow()) {
+         return writeOwned(chunk, context, decision, features, mapper, lease);
+      }
+   }
+
+   WriteResult<BlockState> writeOwned(ChunkAccess chunk, WriteContext context, ColumnDecision decision,
+                                     FeaturePlan features, SemanticMapper<BlockState> mapper,
+                                     TellusTargetWriteGuard.Lease lease) {
+      java.util.Objects.requireNonNull(lease, "lease").requireOwned(chunk);
+      return writeUnleased(chunk, context, decision, features, mapper);
+   }
+
+   private WriteResult<BlockState> writeUnleased(ChunkAccess chunk, WriteContext context, ColumnDecision decision,
+                                         FeaturePlan features, SemanticMapper<BlockState> mapper) {
       // Creating the adapter performs no chunk access; terminal plans remain no-touch.
       return this.writer.write(new TellusCompositeColumnWriter.Target<BlockState>() {
          public int chunkX() { return chunk.getPos().x; }
