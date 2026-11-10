@@ -216,6 +216,16 @@ class TellusNativeChunkPersistenceTest {
         assertEquals("old", store.disk.get(position).getString("sentinel"));
         assertFalse(Files.exists(journal));
     }
+    @Test void competingNativeBatchIsRejectedByWorldRootLease() throws Exception {
+        var store = new BatchStore(store(fullTag("unused")).binding, Map.of(pos, fullTag("old")));
+        var api = api(store);
+        try (TellusNativeWorldLease ignored = TellusNativeWorldLease.acquire(store.binding)) {
+            var result = api.commitBatch(List.of(new TellusNativeChunkPersistence.BatchEntry(pos, fullTag("new"))),
+                TellusNativeChunkPersistence.BatchFaultInjector.NONE);
+            assertEquals(TellusNativeChunkPersistence.BatchStatus.REJECTED, result.status());
+            assertTrue(result.diagnostics().get(0).contains("lease unavailable"));
+        }
+    }
     @Test void nativeHeightBudgetAndAlignmentAreExplicit() {
         assertThrows(IllegalArgumentException.class, () -> new TellusNativeChunkPersistence.Binding(root, "dim", 1, "gen", "profile", -64, 8192, 63));
         assertThrows(IllegalArgumentException.class, () -> new TellusNativeChunkPersistence.Binding(root, "dim", 1, "gen", "profile", -63, 384, 63));

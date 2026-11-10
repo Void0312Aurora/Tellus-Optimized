@@ -230,11 +230,19 @@ public final class TellusNativeChunkPersistence {
     /**
      * Publishes a deterministic, quiescent multi-chunk batch and restores all
      * earlier chunks when a later stage rejects or rolls back. This is an
-     * in-process staged transaction contract: it deliberately has no crash
-     * journal and callers must exclude competing world saves until the future
-     * durable journal gate is implemented.
+     * in-process staged transaction contract backed by a durable journal and a
+     * world-root file lease. The lease covers preflight, publication and
+     * recovery so cooperating processes cannot interleave native batches.
      */
     public BatchCommitResult commitBatch(List<BatchEntry> requested, BatchFaultInjector faults) {
+        try (TellusNativeWorldLease ignored = TellusNativeWorldLease.acquire(binding)) {
+            return commitBatchLocked(requested, faults);
+        } catch (IOException failure) {
+            return batch(BatchStatus.REJECTED, List.of(), "native world lease unavailable: " + failure.getClass().getName());
+        }
+    }
+
+    private BatchCommitResult commitBatchLocked(List<BatchEntry> requested, BatchFaultInjector faults) {
         Objects.requireNonNull(requested, "requested");
         Objects.requireNonNull(faults, "faults");
         if (requested.isEmpty()) return batch(BatchStatus.REJECTED, List.of(), "batch must contain at least one chunk");
@@ -294,6 +302,14 @@ public final class TellusNativeChunkPersistence {
 
     /** Recovers prepared batches before normal probe/lifecycle work touches the world. */
     public List<String> recoverPendingBatches() {
+        try (TellusNativeWorldLease ignored = TellusNativeWorldLease.acquire(binding)) {
+            return recoverPendingBatchesLocked();
+        } catch (IOException failure) {
+            throw new IllegalStateException("native world lease unavailable during journal recovery", failure);
+        }
+    }
+
+    private List<String> recoverPendingBatchesLocked() {
         current();
         if (!store.mainThread()) throw new IllegalStateException("native journal recovery requires server main thread");
         try {
