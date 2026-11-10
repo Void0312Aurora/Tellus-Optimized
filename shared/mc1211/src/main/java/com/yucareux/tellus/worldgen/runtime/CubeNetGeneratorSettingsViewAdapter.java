@@ -55,7 +55,8 @@ public final class CubeNetGeneratorSettingsViewAdapter implements TellusGenerato
          this.settings.caveGeneration(), this.settings.oreVeins(), this.settings.geologicalStonePatches(),
          this.settings.lavaPools(), this.settings.geodes(), this.settings.deepDark(), this.settings.enableWater(),
          this.settings.roads(), this.settings.buildings(), this.settings.cavesReachSurface(), this.settings.undergroundDepth(),
-         false, false, this.settings.lakeFreezing(), false, false
+          false, this.settings.climateBasedBuiltUpTerrain(), this.settings.lakeFreezing(),
+          this.settings.customTrees(), this.settings.hugeRedMushrooms()
       ));
    }
 

@@ -357,6 +357,9 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
    private final int cubeNetHeightOffset;
    private final double cubeNetTerrestrialHeightScale;
    private final double cubeNetOceanicHeightScale;
+   private final boolean cubeNetCustomTrees;
+   private final boolean cubeNetHugeRedMushrooms;
+   private final boolean cubeNetClimateBasedBuiltUpTerrain;
    private static final boolean CUBE_NET_CAVES_DEFAULT = Boolean.parseBoolean(
       System.getProperty("tellus.cubeNet.caves", "true")
    );
@@ -529,6 +532,10 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
       this.cubeNetHeightOffset = resolveHeightOffset(biome);
       this.cubeNetTerrestrialHeightScale = resolveTerrestrialHeightScale(biome);
       this.cubeNetOceanicHeightScale = resolveOceanicHeightScale(biome);
+      var travelSettings = biome instanceof CubeNetBiomeSource cubeNet ? cubeNet.settings() : CubeNetBiomeSource.Settings.DEFAULT;
+      this.cubeNetCustomTrees = travelSettings.customTrees();
+      this.cubeNetHugeRedMushrooms = travelSettings.hugeRedMushrooms();
+      this.cubeNetClimateBasedBuiltUpTerrain = travelSettings.climateBasedBuiltUpTerrain();
 
       Preconditions.checkArgument(minY % 16 == 0 && height % 16 == 0 && height >= 16
          && minY >= -2032 && (long)minY + height <= 2032,
@@ -1234,6 +1241,8 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
          // Cache misses retain the canonical raw cover, matching the source's
          // non-blocking fallback used by the biome source.
       }
+      visualCover = CubeNetTravelTerrainRules.surfaceCover(surface.coverClass(), visualCover, biome,
+         this.cubeNetClimateBasedBuiltUpTerrain);
       byte climateGroup = cubeNetClimateGroupForBiome(biome);
       int heightAboveSea = surfaceY - this.seaLevel;
       int slopeDiff = finite(surface.neighbourhood().gradient().slopeDegrees())
@@ -3323,7 +3332,7 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
          .filter(this.singularityPolicy::admitsTerrainMaterialization).orElse(null);
       if (address == null) return;
       int face = address.face();
-      int cellSize = TellusProceduralTreeGenerator.PLACEMENT_CELL_SIZE;
+      int cellSize = CubeNetTravelTerrainRules.treeCellSize(this.cubeNetCustomTrees);
       int minFaceX = Math.toIntExact(address.blockX());
       int minFaceZ = Math.toIntExact(address.blockZ());
       int maxFaceX = minFaceX + 15;
@@ -3336,8 +3345,8 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
       TellusCanopyHeightSource canopy = TellusWorldgenSources.canopyHeight();
       for (int cellX = minCellX; cellX <= maxCellX; cellX++) {
          for (int cellZ = minCellZ; cellZ <= maxCellZ; cellZ++) {
-            TellusProceduralTreeGenerator.TreeAnchor anchor = TellusProceduralTreeGenerator.anchorForCell(
-               cellX, cellZ, this.worldSeed ^ (long)face * 0x9E3779B97F4A7C15L
+            TellusProceduralTreeGenerator.TreeAnchor anchor = CubeNetTravelTerrainRules.treeAnchor(
+               cellX, cellZ, this.worldSeed ^ (long)face * 0x9E3779B97F4A7C15L, this.cubeNetCustomTrees
             );
             int faceX = anchor.worldX();
             int faceZ = anchor.worldZ();
@@ -3360,12 +3369,18 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
                && !level.getBlockState(ground).is(Blocks.DIRT)
                && !level.getBlockState(ground).is(Blocks.MUD)) continue;
             if (this.hasNearbyTree(level, ground)) continue;
-            TellusCanopyHeightSource.CanopySample sample = canopy.sampleCanopy(
-               column.point(), this.worldScale(), this.worldScale()
-            );
-            TellusProceduralTreeGenerator.place(
-               level, ground, level.getBiome(ground.above()), sample, anchor.seed()
-            );
+            Holder<Biome> biome = level.getBiome(ground.above());
+            if (biome.is(Biomes.MANGROVE_SWAMP)) continue; // Retained native biome features already own mangroves.
+            var features = CubeNetTravelTerrainRules.treeFeatures(biome, this.cubeNetHugeRedMushrooms);
+            if (features.isEmpty()) continue;
+            if (this.cubeNetCustomTrees) {
+               TellusCanopyHeightSource.CanopySample sample = canopy.sampleCanopy(
+                  column.point(), this.worldScale(), this.worldScale());
+               TellusProceduralTreeGenerator.place(level, ground, biome, sample, anchor.seed());
+            } else {
+               RandomSource random = RandomSource.create(anchor.seed());
+               features.get(random.nextInt(features.size())).place(level, this, random, ground.above());
+            }
          }
       }
    }

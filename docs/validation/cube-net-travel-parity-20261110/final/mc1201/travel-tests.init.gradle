@@ -1,0 +1,4 @@
+import org.gradle.api.tasks.testing.Test
+import groovy.json.JsonSlurper
+def names = new JsonSlurper().parse(new File("C:/Users/30483/AppData/Local/Temp/tellus-travel-fix-20261110-2110/mc1201/selected-tests.json"))
+allprojects { afterEvaluate { tasks.withType(Test).configureEach { if (name == "test") { filter { names.each { includeTestsMatching(it) } } } } } }

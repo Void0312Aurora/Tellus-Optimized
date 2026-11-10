@@ -1,0 +1,194 @@
+{
+  "assemble.log": {
+    "sha256": "0013f80e016b1447651dc56bede47cb00556a6ce1f9a269f598bfa7068018fe3",
+    "bytes": 961
+  },
+  "attempt-1-new-test-assumptions.zip": {
+    "sha256": "eec45f5f4ffebee1627f36df98cf942ac9d0c43257b9fb6be8c95c8a0a8f34e4",
+    "bytes": 74103
+  },
+  "compile.log": {
+    "sha256": "bafd9b37617cc2d8258d4be354b0353e45e2425fb7811708c8196e006d4163f6",
+    "bytes": 226
+  },
+  "datapack-tests.log": {
+    "sha256": "53c9876baa110f99908a3a9eae7015e10af299444ae3f3ddfc56b26c287b7782",
+    "bytes": 571
+  },
+  "fresh-parity-manifests.zip": {
+    "sha256": "6d22c572cb8934a693748a3d37e2d6ffa00f818298f2378bb25a70472300f65f",
+    "bytes": 122805
+  },
+  "historical-replay.json": {
+    "sha256": "6d17bb892b0827d3e6c4cac11610bdab8ad2f7eb0e1908c40832e5acf71913c4",
+    "bytes": 567
+  },
+  "native-controller-tests.log": {
+    "sha256": "cb9f6ad8884b02190bb95372d4764c9bfb2d7ede941c9790b2485e7cec8425f6",
+    "bytes": 3182
+  },
+  "parity-controller-tests.log": {
+    "sha256": "67d262b98e593d89401c780efec94173720a2d0da5ca49b5f029122bff988189",
+    "bytes": 1351
+  },
+  "rollback-check.json": {
+    "sha256": "41b8952d69fdf3783d76be50f1cad40b5f55313339b967679e02c3f2d404faf3",
+    "bytes": 675
+  },
+  "source-all-java-sha256.json": {
+    "sha256": "cf868db9459a172e36b6ae9a494d2435681d5f0666fd3dfeab2592063fd5021d",
+    "bytes": 163668
+  },
+  "source-and-rollback.zip": {
+    "sha256": "0349e4ba1437ec8662f06039ee9ee4982a0bb1ad169c4d191c6d6a58b0b42e5e",
+    "bytes": 287480
+  },
+  "source-delta.patch": {
+    "sha256": "aa77b295bde6ff73e08aa8658da980aafbcb3f51f05d39851a3a3c4b8828b346",
+    "bytes": 125418
+  },
+  "source-sha256.json": {
+    "sha256": "8a6249369920d00d1b4001fcf208bbb791835c4115c10c09f4e5cf7db61b65bd",
+    "bytes": 5966
+  },
+  "strict-travel-parity.json": {
+    "sha256": "ddcb0e0fef85e0be4b1ef634b993cc5fd0b55b3f0c3e4f8c0d3326d7f9582f38",
+    "bytes": 498
+  },
+  "summary.json": {
+    "sha256": "b5e8fddc59130c5156ec8c6fa1dd55db5135dde3e206b731ca336d9e0668c0b9",
+    "bytes": 15976
+  },
+  "travel-controller-tests.log": {
+    "sha256": "768aa86f8bb53929f09302612bff6d021cfa2ff0c99f276704cfb5fe361a43c7",
+    "bytes": 441
+  },
+  "mc1201/4b5c1401-cd63-4bf7-b803-8e50b4c00555-runtime_reload.json": {
+    "sha256": "b776fd4a610ebf5c0a42738218d6176dd66e0687297a604cea3f0806051ffedd",
+    "bytes": 1482
+  },
+  "mc1201/ff03ec7a-229f-4e96-bd17-979ca8c2021d-generate.json": {
+    "sha256": "2a96fcbfa52df97425de1664636ef47b1b0416afc6bd5860e0a3325faed3abf0",
+    "bytes": 9288
+  },
+  "mc1201/generate.server.log": {
+    "sha256": "d74b7337d3d51517b2aaf988718589473ecff2f9fa81a472f9f12a71542f746a",
+    "bytes": 11579
+  },
+  "mc1201/regression-command.json": {
+    "sha256": "90d6955759e20e72f6a19716545c73c24c542fbbc7c698c78a7e7aae35805142",
+    "bytes": 313
+  },
+  "mc1201/regression-xml.zip": {
+    "sha256": "f55a5cc2810e8ed0da4f393bbc824c6e10a3c0e1c96af9502f2ac875ad51873c",
+    "bytes": 88296
+  },
+  "mc1201/regression.json": {
+    "sha256": "bf6b19d8fb161b1ffa1db71593e42e126d106854c68b6262000f8aebff2abf8f",
+    "bytes": 31673
+  },
+  "mc1201/regression.log": {
+    "sha256": "0a2e59a3224daebadc8eb1960b3746076698f358f08fabac6cb90be56328c675",
+    "bytes": 513
+  },
+  "mc1201/roundtrip.json": {
+    "sha256": "abdaffaacc2234a3532ff8883afca0f65f1381bf0f4a88c83d0e34c266c06406",
+    "bytes": 2316
+  },
+  "mc1201/runtime_reload.server.log": {
+    "sha256": "bc4aa21e62418875685d4703d6dac77e7b82983701fba503f25619c9a505cc81",
+    "bytes": 12083
+  },
+  "mc1201/selected-tests.json": {
+    "sha256": "2e2c7a39e8d1a8b05809b9e15d39ad0822d9b941ae60b33c583b28466375c804",
+    "bytes": 7571
+  },
+  "mc1201/source-cache-manifest.json": {
+    "sha256": "b8ca7b5c77c89138270aa2d61c82d848fbea37244ede7b338d3f7989f612b4b6",
+    "bytes": 1637
+  },
+  "mc1201/source-world-manifest.json": {
+    "sha256": "1351a6326ccbf560369e041e5befcffac196a864cd9334bc80a6772815e63e9a",
+    "bytes": 7163
+  },
+  "mc1201/travel-smoke-command.json": {
+    "sha256": "08593034fd8df81309cfb35eb6760c6a32066241a4ff52ffdd1e852128d806b2",
+    "bytes": 1045
+  },
+  "mc1201/travel-smoke-controller.log": {
+    "sha256": "6f24bbbd22987550ccdba8a2cf0e91e0f88c965a79a636a8630800e80230d9b8",
+    "bytes": 23662
+  },
+  "mc1201/travel-smoke.json": {
+    "sha256": "4bcba79fbfd5b886a766a858fd040a78b8d2572e942d36128b0ced5b41e527c1",
+    "bytes": 185210
+  },
+  "mc1201/travel-tests.init.gradle": {
+    "sha256": "9f02548444f7f227d762924b7abb620293dff6d01020990600881232fb95903a",
+    "bytes": 366
+  },
+  "mc1211/20270179-6102-44ae-b366-4bc25bf15277-runtime_reload.json": {
+    "sha256": "daab533a9ef7d05ff117d5e1cbebf365815e70efc6366213730e92c6a0e4b340",
+    "bytes": 1482
+  },
+  "mc1211/43b84a1b-bdf6-432d-aa65-786fff1759af-generate.json": {
+    "sha256": "6a46e44d6a01f68c4693067a7c5e8cfac396a0d93b7eda41876fd219f8b01d24",
+    "bytes": 9287
+  },
+  "mc1211/generate.server.log": {
+    "sha256": "b2686e85acd6dc699b40205c92bede9f905a268bc0a69f22e5742fde59750021",
+    "bytes": 13702
+  },
+  "mc1211/regression-command.json": {
+    "sha256": "6d01be17bda8aefd31d87c750afcfa906fe2bd587191e62e26919e2cea4b39ab",
+    "bytes": 313
+  },
+  "mc1211/regression-xml.zip": {
+    "sha256": "0b4af100606eed1daddd8b034f393d55bdb581e4a5a8cdc694c208861faab497",
+    "bytes": 84223
+  },
+  "mc1211/regression.json": {
+    "sha256": "ad5bd0d66f08926d11cf37fdcd970b35251b8b28f7a4ec30d6602d51f218629e",
+    "bytes": 29987
+  },
+  "mc1211/regression.log": {
+    "sha256": "a266cb2efe3745dd4d9e512cc38be2b9d9777b59f785c1f58f43ea0f9998c4c4",
+    "bytes": 470
+  },
+  "mc1211/roundtrip.json": {
+    "sha256": "e226a5c71c6c61ec651c8bd2176e2a38b7c76b05910d2333040a2e711b6588b1",
+    "bytes": 2315
+  },
+  "mc1211/runtime_reload.server.log": {
+    "sha256": "b50d798469077f9f618a625cf910f9e3ddb36110dcfd5f9434ab033b26e0f5e8",
+    "bytes": 11235
+  },
+  "mc1211/selected-tests.json": {
+    "sha256": "fd275b7ca78c50c7373f565ecd748c7842b239767d38eca93c1437a147a1607a",
+    "bytes": 7170
+  },
+  "mc1211/source-cache-manifest.json": {
+    "sha256": "b8ca7b5c77c89138270aa2d61c82d848fbea37244ede7b338d3f7989f612b4b6",
+    "bytes": 1637
+  },
+  "mc1211/source-world-manifest.json": {
+    "sha256": "1351a6326ccbf560369e041e5befcffac196a864cd9334bc80a6772815e63e9a",
+    "bytes": 7163
+  },
+  "mc1211/travel-smoke-command.json": {
+    "sha256": "684607bd716edd9c5da2c684b17d322b8a8acae25188fc2fd92f170efcbf1bf3",
+    "bytes": 1076
+  },
+  "mc1211/travel-smoke-controller.log": {
+    "sha256": "d28eb37ec7dabeebe4e3e7d9683efc09057ec27cc511aae6b88885dc10956999",
+    "bytes": 24937
+  },
+  "mc1211/travel-smoke.json": {
+    "sha256": "4f7eb5f987a0facfa600dae362c7124010c527c6ff8eaec6b5ae0ff2af2738f7",
+    "bytes": 185205
+  },
+  "mc1211/travel-tests.init.gradle": {
+    "sha256": "efca5cfaa6d38777c673d6eb9bad0b96771ab33dffe29b098a028206d001cbc4",
+    "bytes": 366
+  }
+}

@@ -135,7 +135,11 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--expected-columns", type=int, default=13_824)
     parser.add_argument("--expected-column-mismatches", type=int, default=0)
     parser.add_argument("--expected-biome-cases", type=int, default=7)
-    parser.add_argument("--expected-biome-mismatches", type=int, default=1)
+    parser.add_argument("--biome-baseline", choices=("travel-environment-v2", "historical-v1"),
+                        default="travel-environment-v2",
+                        help="current seven/zero gate; explicitly select historical-v1 to replay archived seven/one evidence")
+    parser.add_argument("--expected-biome-mismatches", type=int, default=None,
+                        help="explicit mismatch-count override (also supports legacy replay commands)")
     parser.add_argument("--known-biome-case", default="bare/BWh")
     parser.add_argument("--require-block-digests", action="store_true", help="require full-column SHA-256 on every native column row")
     parser.add_argument("--require-original-biome-cases", action="store_true", help="require the seven original case/climate identifiers")
@@ -145,6 +149,8 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
 
 def run(argv: list[str]) -> tuple[int, dict[str, object]]:
     args = _parse_args(argv)
+    if args.expected_biome_mismatches is None:
+        args.expected_biome_mismatches = 1 if args.biome_baseline == "historical-v1" else 0
     try:
         left = read_manifest(args.columns_left, "columns")
         right = read_manifest(args.columns_right, "columns")
@@ -172,6 +178,7 @@ def run(argv: list[str]) -> tuple[int, dict[str, object]]:
         "columns": columns,
         "biome": biome_result,
         "expected": {
+            "biomeBaseline": args.biome_baseline,
             "columns": args.expected_columns,
             "columnMismatches": args.expected_column_mismatches,
             "biomeCases": args.expected_biome_cases,

@@ -1,0 +1,8 @@
+test_cli_routes_target_release_and_options (test_cube_net_travel_datapack.CubeNetTravelDatapackTest.test_cli_routes_target_release_and_options) ... ok
+test_defaults_and_existing_output_remain_intact (test_cube_net_travel_datapack.CubeNetTravelDatapackTest.test_defaults_and_existing_output_remain_intact) ... ok
+test_release_metadata_and_real_setting_keys (test_cube_net_travel_datapack.CubeNetTravelDatapackTest.test_release_metadata_and_real_setting_keys) ... ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.439s
+
+OK

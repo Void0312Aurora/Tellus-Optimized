@@ -32,7 +32,12 @@ def create_pack(output: Path, world: str, scale: float, sea: int, min_y: int, he
                  add_ancient_cities: bool | None = None, add_trial_chambers: bool | None = None,
                  add_trail_ruins: bool | None = None, add_abandoned_camps: bool | None = None,
                   spawn_latitude: float = 27.9881, spawn_longitude: float = 86.925,
-                   terrestrial_height_scale: float = 1.0, oceanic_height_scale: float = 1.0) -> list[Path]:
+                    terrestrial_height_scale: float = 1.0, oceanic_height_scale: float = 1.0,
+                    custom_trees: bool = True, huge_red_mushrooms: bool = False,
+                    climate_based_built_up_terrain: bool = False,
+                    minecraft_version: str = "1.20.1") -> list[Path]:
+    if minecraft_version not in ("1.20.1", "1.21.1"):
+        raise ValueError("minecraft_version must be 1.20.1 or 1.21.1")
     if not IDENTIFIER.fullmatch(world):
         raise ValueError("world must be a namespace:path identifier")
     namespace, name = world.split(":", 1)
@@ -56,6 +61,7 @@ def create_pack(output: Path, world: str, scale: float, sea: int, min_y: int, he
         raise ValueError("terrestrial_height_scale must be finite and positive")
     if not math.isfinite(oceanic_height_scale) or oceanic_height_scale <= 0.0:
         raise ValueError("oceanic_height_scale must be finite and positive")
+    if output.exists() and (not output.is_dir() or any(output.iterdir())):
         raise ValueError("output must be a new or empty directory")
 
     dimension_type = {
@@ -129,6 +135,9 @@ def create_pack(output: Path, world: str, scale: float, sea: int, min_y: int, he
                 "spawn_longitude": spawn_longitude,
                 "terrestrial_height_scale": terrestrial_height_scale,
                 "oceanic_height_scale": oceanic_height_scale,
+                "custom_trees": custom_trees,
+                "huge_red_mushrooms": huge_red_mushrooms,
+                "climate_based_built_up_terrain": climate_based_built_up_terrain,
                 **structure_values,
             },
         }
@@ -148,7 +157,7 @@ def create_pack(output: Path, world: str, scale: float, sea: int, min_y: int, he
     documents = {
         "pack.mcmeta": {
             "pack": {
-                "pack_format": 15,
+                "pack_format": 15 if minecraft_version == "1.20.1" else 48,
                 "description": f"Tellus cube-net world {world}, scale {scale}",
             }
         },
@@ -172,7 +181,9 @@ def main() -> None:
     parser.add_argument("--output", type=Path, required=True,
                         help="New world/datapacks directory; existing content is refused.")
     parser.add_argument("--world", default="tellus:earth",
-                        help="Namespace and path used for the dimension (default: tellus:earth).")
+                         help="Namespace and path used for the dimension (default: tellus:earth).")
+    parser.add_argument("--minecraft-version", choices=("1.20.1", "1.21.1"), default="1.20.1",
+                        help="Target release for datapack metadata (default: 1.20.1).")
     parser.add_argument("--scale", type=float, default=1.0)
     parser.add_argument("--sea-level", type=int, default=64)
     parser.add_argument("--min-y", type=int, default=-2032)
@@ -220,7 +231,13 @@ def main() -> None:
     parser.add_argument("--terrestrial-height-scale", type=float, default=1.0,
                         help="Land elevation multiplier (default: 1.0).")
     parser.add_argument("--oceanic-height-scale", type=float, default=1.0,
-                        help="Ocean elevation multiplier (default: 1.0).")
+                         help="Ocean elevation multiplier (default: 1.0).")
+    parser.add_argument("--custom-trees", action=argparse.BooleanOptionalAction, default=True,
+                        help="Use canopy-sized procedural trees; --no-custom-trees uses native biome tree features.")
+    parser.add_argument("--huge-red-mushrooms", action=argparse.BooleanOptionalAction, default=False,
+                        help="Retain huge red mushrooms in native tree feature selection (default: false).")
+    parser.add_argument("--climate-based-built-up-terrain", action=argparse.BooleanOptionalAction, default=False,
+                        help="Choose built-up ground cover from the regional biome (default: false, matching Earth).")
     structure_group = parser.add_mutually_exclusive_group()
     structure_group.add_argument("--structures", dest="structures", action="store_true",
                                 help="Enable all Tellus structure sets.")
@@ -250,7 +267,9 @@ def main() -> None:
                              args.add_igloos, args.add_witch_huts, args.add_ancient_cities,
                              args.add_trial_chambers, args.add_trail_ruins, args.add_abandoned_camps,
                              args.spawn_latitude, args.spawn_longitude,
-                             args.terrestrial_height_scale, args.oceanic_height_scale)
+                              args.terrestrial_height_scale, args.oceanic_height_scale,
+                              args.custom_trees, args.huge_red_mushrooms, args.climate_based_built_up_terrain,
+                              args.minecraft_version)
     except ValueError as error:
         parser.error(str(error))
     print(f"Created {len(files)} files for {args.world}: {args.output}")

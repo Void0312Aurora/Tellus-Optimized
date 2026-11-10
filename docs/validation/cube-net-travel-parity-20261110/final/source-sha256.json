@@ -1,0 +1,122 @@
+[
+  {
+    "path": "tools/create_cube_net_datapack.py",
+    "beforeOrigin": "captured-before-edit-worktree-bytes",
+    "beforeSHA256": "6bf34ceb7adc3918c8f00337773f4da0227230e9053db248e6339339d8692ae8",
+    "afterSHA256": "c2b0587f697135a9905a09c3447e7f48d0a4960df605d0e59cf7360346215ca9"
+  },
+  {
+    "path": "docs/architecture/generator-parity-audit-20261110.md",
+    "beforeOrigin": "captured-before-edit-worktree-bytes",
+    "beforeSHA256": "12e8ab22fb1bdbf817017b0a3e35135aa9f39b7ecede65acd699abf60d56490f",
+    "afterSHA256": "96f47ac1bb8cf7f6219e9f7c6dd1cf9df42562501f8186a6a42db8f43263e3dc"
+  },
+  {
+    "path": "mc1201/src/main/java/com/yucareux/tellus/worldgen/CubeNetChunkGenerator.java",
+    "beforeOrigin": "captured-before-edit-worktree-bytes",
+    "beforeSHA256": "3d01e16e8b0279b6cdf0a7c49abaddfde155ee623fb10ad4f0831bd95efae6e2",
+    "afterSHA256": "4682eada788d376a6ca425d94ad9606389137bcbae18a6ff181f87503d55adb5"
+  },
+  {
+    "path": "shared/mc1201/src/main/java/com/yucareux/tellus/worldgen/runtime/CubeNetGeneratorSettingsViewAdapter.java",
+    "beforeOrigin": "captured-before-edit-worktree-bytes",
+    "beforeSHA256": "102232145cd07abeb3492651df4b01a0acdb90868478837958b53a7d921e9a19",
+    "afterSHA256": "1ac98f0cd39e80c2b47a4dea39f29be3a50242d7db3bba6d02520fe7806beee1"
+  },
+  {
+    "path": "shared/mc1211/src/main/java/com/yucareux/tellus/worldgen/CubeNetChunkGenerator.java",
+    "beforeOrigin": "captured-before-edit-worktree-bytes",
+    "beforeSHA256": "a1d094204de4f9ec541cc42790f2331c14901d7931d420bbfa96fb1f5e30a13b",
+    "afterSHA256": "04ef71cb695f4b450802754f0b5383f0086cac307feb622eb9e88e13555e361a"
+  },
+  {
+    "path": "shared/mc1211/src/main/java/com/yucareux/tellus/worldgen/runtime/CubeNetGeneratorSettingsViewAdapter.java",
+    "beforeOrigin": "captured-before-edit-worktree-bytes",
+    "beforeSHA256": "b5af22093ff9f23973e1d1ba482bda61ea7aef2eaa85540cec6f7eb5a494eab1",
+    "afterSHA256": "26ff8491fffd3dbe1fae91717398f9d1092fc2a2986da1a207a1ad1a5e732406"
+  },
+  {
+    "path": "tools/tellus_parity_compare.py",
+    "beforeOrigin": "captured-before-edit-worktree-bytes",
+    "beforeSHA256": "f0fdf3db8b819edc27eace5b1c7cb8e89e6d7f3343a2749b976c449044649935",
+    "afterSHA256": "eec3bf13ae0884628ff94d236eec8c3e196482acdeb318fcc2719501aa9a516d"
+  },
+  {
+    "path": "tools/test_tellus_parity_compare.py",
+    "beforeOrigin": "captured-before-edit-worktree-bytes",
+    "beforeSHA256": "b1ecd950f6485df91fdd75cc82a30a676cfa2337a29e7637ec25bed0211c75c1",
+    "afterSHA256": "0475bba90c49627b249b56c8ec4d503567057fc4d32adff5515ce7b655b34335"
+  },
+  {
+    "path": "mc1201/src/test/java/com/yucareux/tellus/worldgen/EarthCubeBiomeParityProbeTest.java",
+    "beforeOrigin": "captured-before-edit-worktree-bytes",
+    "beforeSHA256": "9c6f3a1e40b703f38a985a06da56ace2a104d44261fdace3f506ed1c2b625d05",
+    "afterSHA256": "bceb591c41581da8841c97057255208b679b31bf04de007a894d6a4a55d9ea89"
+  },
+  {
+    "path": "mc1201/src/test/java/com/yucareux/tellus/worldgen/TellusParityManifestExportTest.java",
+    "beforeOrigin": "captured-before-edit-worktree-bytes",
+    "beforeSHA256": "16be64b0db46b4f3f17a374e36b9e02386c00487366ccca9f6bb801d1a858717",
+    "afterSHA256": "2a990029d0b90d7414efe677133c694bcde7785e5304c671870086e3fa1e85d9"
+  },
+  {
+    "path": "src/main/java/com/yucareux/tellus/worldgen/CubeNetBiomeSource.java",
+    "beforeOrigin": "captured-before-edit-worktree-bytes",
+    "beforeSHA256": "f51d604e7693329eb7920225322fdfea469d93978bcd6a20953433368e473cdd",
+    "afterSHA256": "ea3fc2c4d8ec39813ab128067a8f5d0f647dff3b8c10fd85bb919347d34e1239"
+  },
+  {
+    "path": "src/main/java/com/yucareux/tellus/world/data/geology/SphericalGeologySource.java",
+    "beforeOrigin": "captured-before-edit-worktree-bytes",
+    "beforeSHA256": "798b66f078e68e9226acb48d3469591707941c5e107684ba5a2fffaf5582b670",
+    "afterSHA256": "d9dc5131858c898b46dee696bbcb1b927b7eb5b7cafd9da908b60e5693d01a13"
+  },
+  {
+    "path": "src/main/java/com/yucareux/tellus/worldgen/CubeNetTravelTerrainRules.java",
+    "beforeOrigin": "new-this-round",
+    "beforeSHA256": null,
+    "afterSHA256": "f26aee4de436caaf345cbbeb0630e97ab799f328818d35b1887f0baa0598d7ef"
+  },
+  {
+    "path": "src/test/java/com/yucareux/tellus/worldgen/CubeNetLandEnvironmentTest.java",
+    "beforeOrigin": "new-this-round",
+    "beforeSHA256": null,
+    "afterSHA256": "b8a54425ecb314d63aa7ca9e585dcaa2fb738949d8d9f9ffbc64cec456be3b3b"
+  },
+  {
+    "path": "src/test/java/com/yucareux/tellus/worldgen/CubeNetTravelTerrainSettingsTest.java",
+    "beforeOrigin": "new-this-round",
+    "beforeSHA256": null,
+    "afterSHA256": "bed52157c25ba17ecf3f627a5c74df93e0cb78f8e9b23d57494e776c6e9dd560"
+  },
+  {
+    "path": "src/test/java/com/yucareux/tellus/world/data/elevation/TellusCanonicalDemSelectionTest.java",
+    "beforeOrigin": "new-this-round",
+    "beforeSHA256": null,
+    "afterSHA256": "c0470d60e8a64e9ca9b77c12a8067a7d1c64488415f2cd7ceab5031915b0c03d"
+  },
+  {
+    "path": "src/test/java/com/yucareux/tellus/world/data/geology/SphericalGeologySourceTest.java",
+    "beforeOrigin": "new-this-round",
+    "beforeSHA256": null,
+    "afterSHA256": "e77ddbe9fec6732687f75f7dd788a4a44529ee56df8a029d400bd5f27d2de643"
+  },
+  {
+    "path": "tools/test_cube_net_travel_datapack.py",
+    "beforeOrigin": "new-this-round",
+    "beforeSHA256": null,
+    "afterSHA256": "8c17acc728bc77b2febfe717cf1001945abeb72a73d0700568ee7f7b5514ad31"
+  },
+  {
+    "path": "tools/run_cube_net_travel_smoke.py",
+    "beforeOrigin": "new-this-round",
+    "beforeSHA256": null,
+    "afterSHA256": "ee5d7826c3522026a23cd23cc118c985f74191d4bb244166e44c3ae0233a852b"
+  },
+  {
+    "path": "tools/test_run_cube_net_travel_smoke.py",
+    "beforeOrigin": "new-this-round",
+    "beforeSHA256": null,
+    "afterSHA256": "c29d4701cecfb0fd78a4cae6adeba78c0b16ef467106f7659b1eaebbd8478b2d"
+  }
+]

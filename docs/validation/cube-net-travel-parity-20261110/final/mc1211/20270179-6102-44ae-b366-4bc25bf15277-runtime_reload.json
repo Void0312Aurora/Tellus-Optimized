@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "phase": "runtime_reload",
+  "probeId": "20270179-6102-44ae-b366-4bc25bf15277",
+  "chunkX": 616262,
+  "chunkZ": -351597,
+  "binding": {
+    "worldRoot": "D:\\Temp\\tellus-travel-mc1211-20261110-a\\world",
+    "dimension": "tellus:earth_cube_net",
+    "seed": 2025402140,
+    "generatorType": "com.yucareux.tellus.worldgen.CubeNetChunkGenerator",
+    "generatorProfile": "35e1790c74e5d655d7b0af5a7caebf5a7727c1d754acce096c989a7e15fef24e",
+    "minY": -2032,
+    "height": 4064,
+    "seaLevel": 64
+  },
+  "syntheticSampler": false,
+  "runtimeLifecycle": {
+    "bootstrapInstalled": true,
+    "configuredMode": "UNIFIED",
+    "registrations": 1,
+    "attached": 1,
+    "tickCallbacks": 1,
+    "chunkUnloadCallbacks": 0,
+    "targetAttached": true,
+    "targetAdapter": "CubeNetGeneratorRuntimeAdapter",
+    "adapters": [
+      {
+        "adapter": "CubeNetGeneratorRuntimeAdapter",
+        "attached": true,
+        "nativeDeferredTickCallbacks": 0,
+        "nativeUnloadCallbacks": 0
+      }
+    ]
+  },
+  "sourceBoundary": "pre-existing native FULL world chunk; GIS provenance recorded by isolated runner",
+  "diskReadBeforeDemandLoad": true,
+  "blockDigest": "bcfa9230cdb841bcb02d22b19a092612dba4756e3fe0d22f2cf876c52938dd4e",
+  "biomeDigest": "32836bbd0750d9b68f8c3528eddfbe11dcce1d5f60cc0bfe78de7d9fe56494b6",
+  "nativeNBTDigest": "e33e4d87832cf58d5e6f54efbb39105a6fb8b42eeba95e00e797c7eac1836fb7",
+  "nativeSavedPayloadEqual": true,
+  "status": "PASS"
+}

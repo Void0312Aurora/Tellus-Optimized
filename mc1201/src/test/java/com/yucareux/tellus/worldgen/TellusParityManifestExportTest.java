@@ -130,11 +130,13 @@ class TellusParityManifestExportTest {
             var face = model.continuousForGeo(new SphereWorldModel.GeoPoint(c.lat(),c.lon(),0));
             var planar = layout.toPlanar(new CubeNetLayout.FacePoint(CubeNetLayout.Face.of(face.face()),face.blockX(),face.blockZ()));
             String b = key(cube.getNoiseBiome(QuartPos.fromBlock((int)Math.floor(planar.x())),QuartPos.fromBlock(64),QuartPos.fromBlock((int)Math.floor(planar.z())),null));
-            if (!a.equals(b)) { mismatches++; assertEquals("bare",c.name()); assertEquals("minecraft:desert",a); assertEquals("minecraft:stony_peaks",b); }
+             if (!a.equals(b)) mismatches++;
+             assertEquals(a,b,c.name()+"/"+c.climate());
+             if (c.name().equals("bare")) assertEquals("minecraft:desert",b);
             rows.add(JSON.toJson(Map.of("case",c.name()+"/"+c.climate(),"earth",a,"cube",b)));
         }
-        assertEquals(1,mismatches); assertEquals(7,rows.size()); write("earth-cube-biome.jsonl",rows);
-        System.out.println("PARITY_MANIFEST_EXPORT biomeCases=7 mismatches=1 known=bare/BWh output="+OUTPUT);
+         assertEquals(0,mismatches); assertEquals(7,rows.size()); write("earth-cube-biome.jsonl",rows);
+         System.out.println("PARITY_MANIFEST_EXPORT biomeCases=7 mismatches=0 baseline=travel-environment-v2 output="+OUTPUT);
     }
     private static Case at(SphereWorldModel.GeoPoint p) {
         for (int i=0;i<CASES.length-1;i++) { Case c=CASES[i]; if(Math.abs(c.lat()-p.latitude())<0.01 && Math.abs(c.lon()-p.longitude())<0.01)return c; }

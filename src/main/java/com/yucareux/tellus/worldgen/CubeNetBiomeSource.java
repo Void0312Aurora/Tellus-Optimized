@@ -88,9 +88,12 @@ public final class CubeNetBiomeSource extends TellusBiomeSourceBridge {
        boolean teleportProgress,
        int heightOffset,
        double spawnLatitude,
-       double spawnLongitude,
-       double terrestrialHeightScale,
-       double oceanicHeightScale
+        double spawnLongitude,
+        double terrestrialHeightScale,
+        double oceanicHeightScale,
+        boolean customTrees,
+        boolean hugeRedMushrooms,
+        boolean climateBasedBuiltUpTerrain
    ) {
       public static final Settings DEFAULT = new Settings(
          false,
@@ -131,8 +134,11 @@ public final class CubeNetBiomeSource extends TellusBiomeSourceBridge {
           EarthGeneratorSettings.DEFAULT.heightOffset(),
           EarthGeneratorSettings.DEFAULT.spawnLatitude(),
           EarthGeneratorSettings.DEFAULT.spawnLongitude(),
-          EarthGeneratorSettings.DEFAULT.terrestrialHeightScale(),
-          EarthGeneratorSettings.DEFAULT.oceanicHeightScale()
+           EarthGeneratorSettings.DEFAULT.terrestrialHeightScale(),
+           EarthGeneratorSettings.DEFAULT.oceanicHeightScale(),
+           EarthGeneratorSettings.DEFAULT.customTrees(),
+           EarthGeneratorSettings.DEFAULT.hugeRedMushrooms(),
+           EarthGeneratorSettings.DEFAULT.climateBasedBuiltUpTerrain()
       );
        private record BaseSettings(boolean randomBiomes, double randomBiomeDensity, long randomBiomeSeed,
           List<String> randomBiomeIds, boolean caveGeneration, boolean deepDark, int undergroundDepth,
@@ -184,7 +190,8 @@ public final class CubeNetBiomeSource extends TellusBiomeSourceBridge {
        private record BaseAndB(BaseAndA baseAndA, StructureSettingsB structures) { }
         private record WorldSettings(boolean lakeFreezing, boolean lavaPools, boolean geodes, boolean enableWater,
            boolean teleportProgress, int heightOffset, double spawnLatitude, double spawnLongitude,
-          double terrestrialHeightScale, double oceanicHeightScale) { }
+           double terrestrialHeightScale, double oceanicHeightScale,
+           boolean customTrees, boolean hugeRedMushrooms, boolean climateBasedBuiltUpTerrain) { }
         private static final MapCodec<WorldSettings> WORLD_CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
           Codec.BOOL.optionalFieldOf("lake_freezing", DEFAULT.lakeFreezing()).forGetter(WorldSettings::lakeFreezing),
           Codec.BOOL.optionalFieldOf("lava_pools", DEFAULT.lavaPools()).forGetter(WorldSettings::lavaPools),
@@ -195,7 +202,10 @@ public final class CubeNetBiomeSource extends TellusBiomeSourceBridge {
           Codec.DOUBLE.optionalFieldOf("spawn_latitude", DEFAULT.spawnLatitude()).forGetter(WorldSettings::spawnLatitude),
           Codec.DOUBLE.optionalFieldOf("spawn_longitude", DEFAULT.spawnLongitude()).forGetter(WorldSettings::spawnLongitude),
           Codec.DOUBLE.optionalFieldOf("terrestrial_height_scale", DEFAULT.terrestrialHeightScale()).forGetter(WorldSettings::terrestrialHeightScale),
-          Codec.DOUBLE.optionalFieldOf("oceanic_height_scale", DEFAULT.oceanicHeightScale()).forGetter(WorldSettings::oceanicHeightScale)
+           Codec.DOUBLE.optionalFieldOf("oceanic_height_scale", DEFAULT.oceanicHeightScale()).forGetter(WorldSettings::oceanicHeightScale),
+           Codec.BOOL.optionalFieldOf("custom_trees", DEFAULT.customTrees()).forGetter(WorldSettings::customTrees),
+           Codec.BOOL.optionalFieldOf("huge_red_mushrooms", DEFAULT.hugeRedMushrooms()).forGetter(WorldSettings::hugeRedMushrooms),
+           Codec.BOOL.optionalFieldOf("climate_based_built_up_terrain", DEFAULT.climateBasedBuiltUpTerrain()).forGetter(WorldSettings::climateBasedBuiltUpTerrain)
        ).apply(instance, WorldSettings::new));
        public static final Codec<Settings> CODEC = MapCodec.of(
           new com.mojang.serialization.MapEncoder.Implementation<Settings>() {
@@ -207,9 +217,10 @@ public final class CubeNetBiomeSource extends TellusBiomeSourceBridge {
                    input.addWoodlandMansions(), input.addDesertTemples(), input.addJungleTemples(), input.addPillagerOutposts(), input.addRuinedPortals());
                 StructureSettingsB b = new StructureSettingsB(input.addShipwrecks(), input.addOceanRuins(), input.addBuriedTreasure(), input.addIgloos(),
                    input.addWitchHuts(), input.addAncientCities(), input.addTrialChambers(), input.addTrailRuins(), input.addAbandonedCamps());
-                WorldSettings world = new WorldSettings(input.lakeFreezing(), input.lavaPools(), input.geodes(), input.enableWater(),
-                   input.teleportProgress(), input.heightOffset(), input.spawnLatitude(), input.spawnLongitude(),
-                   input.terrestrialHeightScale(), input.oceanicHeightScale());
+                 WorldSettings world = new WorldSettings(input.lakeFreezing(), input.lavaPools(), input.geodes(), input.enableWater(),
+                    input.teleportProgress(), input.heightOffset(), input.spawnLatitude(), input.spawnLongitude(),
+                    input.terrestrialHeightScale(), input.oceanicHeightScale(),
+                    input.customTrees(), input.hugeRedMushrooms(), input.climateBasedBuiltUpTerrain());
                 return WORLD_CODEC.encode(world, ops, STRUCTURES_B_CODEC.encode(b, ops, STRUCTURES_A_CODEC.encode(a, ops, BASE_CODEC.encode(base, ops, prefix))));
              }
              public <T> Stream<T> keys(DynamicOps<T> ops) {
@@ -235,8 +246,9 @@ public final class CubeNetBiomeSource extends TellusBiomeSourceBridge {
                           baseAndB.structures().addWitchHuts(), baseAndB.structures().addAncientCities(), baseAndB.structures().addTrialChambers(),
                           baseAndB.structures().addTrailRuins(), baseAndB.structures().addAbandonedCamps(),
                           world.lakeFreezing(), world.lavaPools(), world.geodes(), world.enableWater(), world.teleportProgress(),
-                          world.heightOffset(), world.spawnLatitude(), world.spawnLongitude(),
-                          world.terrestrialHeightScale(), world.oceanicHeightScale()), WORLD_CODEC.decode(ops, input));
+                           world.heightOffset(), world.spawnLatitude(), world.spawnLongitude(),
+                           world.terrestrialHeightScale(), world.oceanicHeightScale(),
+                           world.customTrees(), world.hugeRedMushrooms(), world.climateBasedBuiltUpTerrain()), WORLD_CODEC.decode(ops, input));
              }
              public <T> Stream<T> keys(DynamicOps<T> ops) {
                 return Stream.concat(BASE_CODEC.keys(ops), Stream.concat(STRUCTURES_A_CODEC.keys(ops), Stream.concat(STRUCTURES_B_CODEC.keys(ops), WORLD_CODEC.keys(ops))));
@@ -265,6 +277,26 @@ public final class CubeNetBiomeSource extends TellusBiomeSourceBridge {
              this.addTrailRuins(),
              this.addAbandonedCamps()
           );
+       }
+
+       /** Retains the pre-travel-options constructor for integrations and old callers. */
+       public Settings(boolean randomBiomes, double randomBiomeDensity, long randomBiomeSeed, List<String> randomBiomeIds,
+          boolean caveGeneration, boolean deepDark, int undergroundDepth, boolean oreVeins, boolean geologicalStonePatches,
+          boolean cavesReachSurface, boolean roads, boolean buildings, boolean addStrongholds, boolean addVillages,
+          boolean addMineshafts, boolean addOceanMonuments, boolean addWoodlandMansions, boolean addDesertTemples,
+          boolean addJungleTemples, boolean addPillagerOutposts, boolean addRuinedPortals, boolean addShipwrecks,
+          boolean addOceanRuins, boolean addBuriedTreasure, boolean addIgloos, boolean addWitchHuts,
+          boolean addAncientCities, boolean addTrialChambers, boolean addTrailRuins, boolean addAbandonedCamps,
+          boolean lakeFreezing, boolean lavaPools, boolean geodes, boolean enableWater, boolean teleportProgress,
+          int heightOffset, double spawnLatitude, double spawnLongitude, double terrestrialHeightScale, double oceanicHeightScale) {
+          this(randomBiomes, randomBiomeDensity, randomBiomeSeed, randomBiomeIds, caveGeneration, deepDark,
+             undergroundDepth, oreVeins, geologicalStonePatches, cavesReachSurface, roads, buildings,
+             addStrongholds, addVillages, addMineshafts, addOceanMonuments, addWoodlandMansions, addDesertTemples,
+             addJungleTemples, addPillagerOutposts, addRuinedPortals, addShipwrecks, addOceanRuins, addBuriedTreasure,
+             addIgloos, addWitchHuts, addAncientCities, addTrialChambers, addTrailRuins, addAbandonedCamps,
+             lakeFreezing, lavaPools, geodes, enableWater, teleportProgress, heightOffset, spawnLatitude, spawnLongitude,
+             terrestrialHeightScale, oceanicHeightScale, EarthGeneratorSettings.DEFAULT.customTrees(),
+             EarthGeneratorSettings.DEFAULT.hugeRedMushrooms(), EarthGeneratorSettings.DEFAULT.climateBasedBuiltUpTerrain());
        }
 
        public Settings {
@@ -342,6 +374,7 @@ public final class CubeNetBiomeSource extends TellusBiomeSourceBridge {
    private final Holder<Biome> deepDark;
    private final Supplier<SphereChunkSampler> sampler;
    private final ClimateSampler climateSampler;
+   private final boolean usingDefaultClimate;
    private final InlandWaterSampler inlandWaterSampler;
    private final Settings settings;
    private final RandomBiomeMixer randomBiomeMixer;
@@ -434,6 +467,7 @@ public final class CubeNetBiomeSource extends TellusBiomeSourceBridge {
       this.sampler = Suppliers.memoize(() -> pointSampler == null
          ? TellusWorldgenSources.sphericalSampler(this.model)
          : new SphereChunkSampler(this.model, pointSampler));
+      this.usingDefaultClimate = climateSampler == null;
       this.climateSampler = climateSampler == null ? CubeNetBiomeSource::sampleDefaultClimate : climateSampler;
       this.inlandWaterSampler = inlandWaterSampler == null
          ? CubeNetBiomeSource::sampleDefaultInlandWater : inlandWaterSampler;
@@ -670,17 +704,28 @@ public final class CubeNetBiomeSource extends TellusBiomeSourceBridge {
          return this.settings.randomBiomes() ? this.randomBiomeMixer.mixLand(snow, blockX, blockZ, koppen) : snow;
       }
 
-      String climate = koppen;
-      if (BadlandsTerrainPolicy.isDryCanyonCover(visualCover)) {
-         String coherent = TellusWorldgenSources.koppen().sampleCoherentCode(
-            EarthProjection.longitudeToBlockX(point.longitude(), this.model.config().worldScale()),
-            EarthProjection.latToBlockZ(point.latitude(), this.model.config().worldScale()),
-            this.model.config().worldScale());
-         if (BadlandsTerrainPolicy.shouldUseCoherentAridClimate(visualCover, coherent)) climate = coherent;
-      }
-
-      ResourceKey<Biome> key = BiomeClassificationProviders.findBiomeKey(visualCover, climate, blockX, blockZ,
-         this.model.config().worldScale());
+       // The selected climate sampler is authoritative; only the default production source
+       // participates in the native regional smoothing below.
+       String climate = koppen;
+       // Regional climate belongs to the production data source, not an injected test/preview sampler.
+       if (this.usingDefaultClimate && BadlandsTerrainPolicy.isDryCanyonCover(visualCover)) {
+          String coherent = TellusWorldgenSources.koppen().sampleCoherentCode(
+             EarthProjection.longitudeToBlockX(point.longitude(), this.model.config().worldScale()),
+             EarthProjection.latToBlockZ(point.latitude(), this.model.config().worldScale()),
+             this.model.config().worldScale());
+          if (BadlandsTerrainPolicy.shouldUseCoherentAridClimate(visualCover, coherent)) climate = coherent;
+       }
+       // blockX/Z are the spherical noise domain, not Earth projection coordinates. Geographic
+       // providers (notably RESOLVE) must see the same location as the cover and climate samplers.
+       int earthX = coordinateForClassification(Math.floor(
+          EarthProjection.longitudeToBlockX(point.longitude(), this.model.config().worldScale())));
+       int earthZ = coordinateForClassification(Math.floor(
+          EarthProjection.latToBlockZ(point.latitude(), this.model.config().worldScale())));
+       // Match the native Earth classifier for this release: 1.20.1 uses ESA/Koppen only;
+       // later releases give regional providers precedence. Do not retrofit Earth to fit a fixture.
+       ResourceKey<Biome> key = "1.20.1".equals(com.yucareux.tellus.compat.MinecraftRelease.VERSION) ? null
+          : BiomeClassificationProviders.findBiomeKey(visualCover, climate, earthX, earthZ,
+             this.model.config().worldScale());
       if (key == null) key = BiomeClassification.findBiomeKey(visualCover, climate);
       if (key == null) key = BiomeClassification.findFallbackKey(visualCover);
       Holder<Biome> biome = this.resolveBiome(key, this.plains);
@@ -756,15 +801,17 @@ public final class CubeNetBiomeSource extends TellusBiomeSourceBridge {
       return surfaceBiome;
    }
 
-   private Holder<Biome> resolveSnowBiome(SphereWorldModel.GeoPoint point, int blockX, int blockZ) {
-      int baseline = SnowBiomePolicy.baselineBlocks(this.model.config().worldScale());
-      double center = this.sampleElevation(point);
-      double east = this.sampleElevationAtPlanar(blockX + baseline, blockZ);
-      double west = this.sampleElevationAtPlanar(blockX - baseline, blockZ);
-      double north = this.sampleElevationAtPlanar(blockX, blockZ - baseline);
-      double south = this.sampleElevationAtPlanar(blockX, blockZ + baseline);
-      double metersX = baseline * EarthProjection.groundMetersPerBlockX(blockZ, this.model.config().worldScale());
-      double metersZ = baseline * EarthProjection.groundMetersPerBlockZ(blockZ, this.model.config().worldScale());
+    private Holder<Biome> resolveSnowBiome(SphereWorldModel.GeoPoint point, int blockX, int blockZ) {
+       int baseline = SnowBiomePolicy.baselineBlocks(this.model.config().worldScale());
+       double earthX = EarthProjection.longitudeToBlockX(point.longitude(), this.model.config().worldScale());
+       double earthZ = EarthProjection.latToBlockZ(point.latitude(), this.model.config().worldScale());
+       double center = this.sampleElevation(point);
+       double east = this.sampleElevationAtEarth(earthX + baseline, earthZ);
+       double west = this.sampleElevationAtEarth(earthX - baseline, earthZ);
+       double north = this.sampleElevationAtEarth(earthX, earthZ - baseline);
+       double south = this.sampleElevationAtEarth(earthX, earthZ + baseline);
+       double metersX = baseline * EarthProjection.groundMetersPerBlockX(earthZ, this.model.config().worldScale());
+       double metersZ = baseline * EarthProjection.groundMetersPerBlockZ(earthZ, this.model.config().worldScale());
       return switch (SnowBiomePolicy.classify(center, east, west, north, south, metersX, metersZ)) {
          case JAGGED_PEAKS -> this.jaggedPeaks;
          case SNOWY_SLOPES -> this.snowySlopes;
@@ -772,14 +819,16 @@ public final class CubeNetBiomeSource extends TellusBiomeSourceBridge {
       };
    }
 
-   private double sampleRegionalRelief(SphereWorldModel.GeoPoint point, int blockX, int blockZ) {
-      int offset = Math.max(16, (int)Math.ceil(BadlandsTerrainPolicy.CANYON_RELIEF_SAMPLE_METERS
-         / Math.max(1.0, this.model.config().worldScale())));
-      double center = this.sampleElevation(point);
-      double east = this.sampleElevationAtPlanar(blockX + offset, blockZ);
-      double west = this.sampleElevationAtPlanar(blockX - offset, blockZ);
-      double north = this.sampleElevationAtPlanar(blockX, blockZ - offset);
-      double south = this.sampleElevationAtPlanar(blockX, blockZ + offset);
+    private double sampleRegionalRelief(SphereWorldModel.GeoPoint point, int blockX, int blockZ) {
+       int offset = Math.max(16, (int)Math.ceil(BadlandsTerrainPolicy.CANYON_RELIEF_SAMPLE_METERS
+          / Math.max(1.0, this.model.config().worldScale())));
+       double earthX = EarthProjection.longitudeToBlockX(point.longitude(), this.model.config().worldScale());
+       double earthZ = EarthProjection.latToBlockZ(point.latitude(), this.model.config().worldScale());
+       double center = this.sampleElevation(point);
+       double east = this.sampleElevationAtEarth(earthX + offset, earthZ);
+       double west = this.sampleElevationAtEarth(earthX - offset, earthZ);
+       double north = this.sampleElevationAtEarth(earthX, earthZ - offset);
+       double south = this.sampleElevationAtEarth(earthX, earthZ + offset);
       double min = center;
       double max = center;
       for (double value : new double[]{east, west, north, south}) {
@@ -792,10 +841,15 @@ public final class CubeNetBiomeSource extends TellusBiomeSourceBridge {
       return this.sampler.get().samplePoint(point).elevationMeters();
    }
 
-   private double sampleElevationAtPlanar(int blockX, int blockZ) {
-      return this.resolveAddress(blockX, blockZ)
-         .map(address -> this.sampleElevation(this.model.surfacePoint(address)))
-         .orElse(Double.NaN);
+    private double sampleElevationAtEarth(double blockX, double blockZ) {
+       if (!Double.isFinite(blockX) || !Double.isFinite(blockZ)) return Double.NaN;
+        double longitude = EarthProjection.blockXToLongitude(blockX, this.model.config().worldScale());
+        double latitude = EarthProjection.blockZToLat(blockZ, this.model.config().worldScale());
+        if (!Double.isFinite(longitude) || !Double.isFinite(latitude)
+           || latitude < -90.0 || latitude > 90.0) return Double.NaN;
+        // Geographic neighbours cross the date line; a chart boundary is not missing elevation.
+        longitude -= 360.0 * Math.floor((longitude + 180.0) / 360.0);
+        return this.sampleElevation(new SphereWorldModel.GeoPoint(latitude, longitude, 0.0));
    }
 
    private boolean isAntarcticSnow(int rawCover, SphereWorldModel.GeoPoint point) {

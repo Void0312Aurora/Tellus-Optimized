@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 1,
+  "status": "PREPARED_NOT_EXECUTED",
+  "module": "mc1211",
+  "targetVersion": "1.21.1",
+  "probeId": "dc939190-2a37-4e55-b30c-c241b5b48d7d",
+  "sourceOrigin": "Existing 20261026 real Mapterhorn/ESA GIS save and cache, disposable geodetic biome and nondefault travel options; current native generation then stored-LevelStem reload",
+  "sourceMode": "existing-real-gis-world-and-copied-cache",
+  "syntheticSampler": false,
+  "templateUpgradeOnCopy": true,
+  "provenance": [
+    {
+      "path": "D:\\workshop\\Game\\Tellus-Optimized-rfc\\docs\\validation\\terrain-stability-20261026\\summary.json",
+      "sha256": "cbb0d1b92013d4a154e71849def633e7901ca58731292efa7d6522aea509d3e8",
+      "bytes": 1763
+    }
+  ],
+  "runDir": "D:\\Temp\\tellus-travel-mc1211-20261110-a",
+  "template": {
+    "world": "D:\\workshop\\Game\\mc-pilot-deployment\\run\\tellus-boundary-20261025\\world-terrain-20261026",
+    "levelSha256": "896bab856a28b19a0e4ed5c3e80247793a6807712ae9445e5a4ef7f801ba9eed",
+    "dataVersion": 3465,
+    "version": {
+      "Snapshot": 0,
+      "Series": "main",
+      "Id": 3465,
+      "Name": "1.20.1"
+    },
+    "spawn": [
+      0,
+      87,
+      0
+    ],
+    "seed": 2025402140,
+    "dimension": "tellus:earth_cube_net",
+    "generator": {
+      "mapping": "rancic-ccam30-double-v1",
+      "world_scale": 1.0,
+      "geometry_version": 3,
+      "sea_level": 64,
+      "biome_source": {
+        "biome": "minecraft:plains"
+      },
+      "type": "tellus:cube_net",
+      "min_y": -2032,
+      "height": 4064
+    },
+    "region": "D:\\workshop\\Game\\mc-pilot-deployment\\run\\tellus-boundary-20261025\\world-terrain-20261026\\dimensions\\tellus\\earth_cube_net\\region\\r.19257.-10988.mca",
+    "regionSha256": "ab575be30328ca6108c1df1081b93e25ad27ac7267d2467d8d7cb8e17cc2012a",
+    "chunkX": 616246,
+    "chunkZ": -351597,
+    "chunkDataVersion": 3465,
+    "status": "minecraft:full",
+    "sectionCount": 254,
+    "nativeChunkSha256": "12d55d10b57afb21fce6dd38dc158096744859a0810f96ec96820dfb0e3b2f8d",
+    "palette": [
+      "minecraft:air",
+      "minecraft:bedrock",
+      "minecraft:stone"
+    ]
+  },
+  "phases": [],
+  "sourceWorldFiles": 46,
+  "sourceCacheFiles": 10,
+  "sourceWorldAndCacheUnchanged": true
+}

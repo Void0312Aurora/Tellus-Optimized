@@ -92,7 +92,7 @@ class EarthCubeBiomeParityProbeTest {
             System.out.println("BIOME_PROBE case=" + value.name() + " earth=" + earthKey + " cube=" + cubeKey + " equal=" + equal);
         }
         System.out.println("BIOME_PROBE cases=" + cases.length + " mismatches=" + mismatches);
-        assertEquals(cases.length, cases.length);
+         assertEquals(0, mismatches, "Actual Earth/Cube output parity; historical bare/BWh is now desert on both");
     }
 
     private static int coverFor(SphereWorldModel.GeoPoint point) {

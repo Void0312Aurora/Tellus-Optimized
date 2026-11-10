@@ -4,7 +4,9 @@
 
 ## 1. 结论摘要
 
-**主仓库已确认；mc1201/mc1211 的统一生产链迁移和可回退默认接入已完成其已声明验收范围，但自定义生成器与原生 Earth 的全部功能尚未完全等价。**
+**主仓库已确认；mc1201/mc1211 的统一生产链迁移和可回退默认接入已完成其已声明验收范围。后续等价性以全球旅行受到影响的地形、环境与实际运行组合为准，不以原生每处细节或全部 loader 一致为交付条件。**
+
+2026-11-10 晚间旅行主线修正：分类 provider 的 Earth/球面 noise 坐标分离，雪/峡谷邻域改为同一地理位置的邻点；接入 `custom_trees`、`huge_red_mushrooms`、`climate_based_built_up_terrain`；球面 Macrostrat 默认跟随原生启用策略。**DEM 可选源缺口是前次审计误判**：当前 Earth 的 `DemSelection` 构造/自动/手动/未知 ID 都归一到已有 Mapterhorn（兼容 ID `terrarium`），海底沿用 OpenWaters；没有一项实际可选源能力需要在 Cube 再造开关。新代码、回归和真实原生进程证据集中在[旅行修正记录](../validation/cube-net-travel-parity-20261110/README.md)。下文 A1–A3 保留最初审计快照，完成状态以其后结构补齐记录为准。
 
 这里须分开两个命题：
 
@@ -121,11 +123,11 @@ mode 在生成器构造时确定，不支持运行中热切换。无需转换既
 
 [Earth:12063–12268](../../src/main/java/com/yucareux/tellus/worldgen/EarthChunkGenerator.java#L12063-L12268)具有 ocean/tooShallow/terrain-shell 条件，以及由 world seed/坐标决定的随机深度，例如 stronghold `42 + random(17)`、ancient city `92 + random(29)`、trial chambers `72 + random(25)`，矿井有 normal/mesa 不同规则。两者有基础放置能力，但不是规则完全等价。
 
-### A4 / 已知差异：bare/BWh biome
+### A4 / 已修正：bare/BWh 与地理邻域坐标
 
-严格清单保留 Earth=`minecraft:desert`、Cube=`minecraft:stony_peaks`。7 cases 中 1 个差异是历史 golden baseline，不是本轮新增回归，也尚非 7/0。
+历史清单的 Earth=`minecraft:desert`、Cube=`minecraft:stony_peaks` 来自 Cube 将球面 noise 坐标传给期望 Earth 投影 block 坐标的 RESOLVE provider：阿拉伯采样点误查到南极 Rock and Ice 区。当前改为正确地理坐标，并保持各版本原生分类次序：1.20.1 使用 ESA/Köppen，1.21.1 provider 优先。未修改 Earth 原生分类来迁就测试。
 
-[manifest exporter:115–136](../../mc1201/src/test/java/com/yucareux/tellus/worldgen/TellusParityManifestExportTest.java#L115-L136)明确断言该差异；[最新验收汇总:271–310](../validation/native-runtime-default/validation.json#L271-L310)保留它。
+[新 exporter](../../mc1201/src/test/java/com/yucareux/tellus/worldgen/TellusParityManifestExportTest.java)要求实际生成的 7/0；历史 7/1 清单原样保留，重放需显式使用 `--biome-baseline historical-v1`。同时修正原先把球面 noise 当 Cube planar 查询的雪/峡谷邻域；跨日期变更线的地理邻居正常 wrap，未知高程仍为 NaN。详见[旅行修正记录](../validation/cube-net-travel-parity-20261110/README.md)。
 
 ### A5 / 范围差异：Sphere-Face 不等于完整 Earth 或完整 Cube-Net
 
@@ -139,17 +141,17 @@ mode 在生成器构造时确定，不支持运行中热切换。无需转换既
 
 仍应逐项区分：
 
-- `customTrees`：Cube canonical canopy/procedural 树路径存在，但没有 Earth 同等的 settings toggle/替代选择；[Cube trees:3358–3406](../../mc1201/src/main/java/com/yucareux/tellus/worldgen/CubeNetChunkGenerator.java#L3358-L3406)。
-- `hugeRedMushrooms`：Cube 未提供对应设置项/专门选择路径，不代表普通 biome features 完全没有蘑菇。
-- `demSelection`：球面地理采样重载沿用 Earth 默认选择，未暴露与 Earth 世界设置等价的选择能力。
-- `climateBasedBuiltUpTerrain`：Cube 已有实际 climate surface 决策，但未提供同等设置开关；不应表述为整套 climate surface 缺失。
+- `customTrees`：已接入实际生成选择：true 使用 canopy/procedural；false 使用原生 biome configured tree features 与 5-block placement grid。canonical/apron ownership 保持原设计。
+- `hugeRedMushrooms`：已接入与 Earth 相同的原生树 feature 列表过滤，包括包含红蘑菇的 composite selector；不是关闭全部蘑菇的全局开关。
+- `demSelection`：**误判已纠正**。当前 Earth 本身强制归一 Mapterhorn/OpenWaters；Cube 使用相同实际源家族。本轮新增回归验证选择归一、陆地覆盖与海底来源、未知保持，不添加假选择 UI/Codec/API。
+- `climateBasedBuiltUpTerrain`：已接入实际 built-up cover 决策与 Codec；true 按区域 biome 选择对应地表 cover，false 保留原有 visual cover。默认与当前 Earth 一致为 false，未强行改变旧世界 built-up 默认。
 - Earth 的 shell/自动高度/LOD/Voxy/实时等能力需要按具体 capability/原生 manager 接入逐项判定；统一 view 中存在字段，不等于所有生成器支持该能力。
 
-### A7 / 配置差异：球面 Macrostrat 默认另有 opt-in
+### A7 / 已修正：球面 Macrostrat 默认跟随原生
 
-[MacrostratGeologySource:60](../../src/main/java/com/yucareux/tellus/world/data/geology/MacrostratGeologySource.java#L60)默认启用 Macrostrat source，而 [SphericalGeologySource:58–63](../../src/main/java/com/yucareux/tellus/world/data/geology/SphericalGeologySource.java#L58-L63)还要求 `tellus.sphericalGeology.macrostrat=true`，默认关闭该球面 overlay。
+[MacrostratGeologySource](../../src/main/java/com/yucareux/tellus/world/data/geology/MacrostratGeologySource.java)默认启用；[SphericalGeologySource](../../src/main/java/com/yucareux/tellus/world/data/geology/SphericalGeologySource.java)现在也默认启用 overlay，同时服从全局 `tellus.macrostrat.enabled=false` 与球面单独 `tellus.sphericalGeology.macrostrat=false`。未知、无覆盖、过粗分辨率仍回退 GLiM；cache-only 继续使用原生本地读取策略，不发网络请求。
 
-这是本 fork 当前 Earth 与球面配置路径的差异，不是“原生 upstream 本来就有 Macrostrat 而我们遗漏”的归属声明。球面 GLiM 已接入，不代表精细 overlay 默认与当前 Earth 相同。
+这是本 fork 当前 Earth/球面默认差异的修正；没有改变 GLiM/Macrostrat reader、原生 Earth default 或球面地理 identity。非 cache-only 冷缓存可能新增原生 Macrostrat tile 请求，沿用现有 timeout/concurrency/backoff；可用上述球面 flag 在重启后恢复旧 overlay 默认。
 
 ### A8 / 输入与性能：有限真实样本不证明全场景等价
 
@@ -168,7 +170,7 @@ mode 在生成器构造时确定，不支持运行中热切换。无需转换既
 
 证据：[mc1201 entry:34–67](../../mc1201/src/main/java/com/yucareux/tellus/Tellus.java#L34-L67)、[mc1211 entry:42–84](../../mc1211/src/main/java/com/yucareux/tellus/Tellus.java#L42-L84)、[mc1211 client](../../mc1211/src/client/java/com/yucareux/tellus/TellusClient.java)、[mc1211 apron helper:9–35](../../shared/mc1211/src/main/java/com/yucareux/tellus/worldgen/CubeNetApronChunkSync.java#L9-L35)。特别是 1211 `readyForStaging` 目前直接返回 true，不能将它当作完整编辑覆盖层就绪证明。
 
-两个 Python datapack 工具仍固定 `pack_format=15`：[Cube:150–152](../../tools/create_cube_net_datapack.py#L150-L152)、[Sphere:36–48](../../tools/create_sphere_datapack.py#L36-L48)。它们缺少按目标版本选择 metadata 的参数；不能直接用服务端 generator 验收替代工具全版本适配验收。
+Cube [datapack 工具](../../tools/create_cube_net_datapack.py)已新增 `--minecraft-version 1.20.1|1.21.1`（默认兼容 1.20.1），分别写入 pack_format 15/48，并输出三个旅行设置。Sphere 工具仍固定基础模式的原 metadata，不在本轮产品主线修正范围。
 
 客户端 [现有验收矩阵:41–53](../validation/cube-net-acceptance-matrix-20261106/README.md#L41-L53)仍记录 M4 GeoTP、M8 shader、M10 DH direct 尚待验收，M11 zero-hold open；这些记录本轮没有重新执行。
 
@@ -185,7 +187,7 @@ mode 在生成器构造时确定，不支持运行中热切换。无需转换既
 严格重放命令：
 
 ```powershell
-python -B tools/tellus_parity_compare.py --columns-left docs/validation/round59-production-integration/manifests/cube-net.jsonl --columns-right docs/validation/round59-production-integration/manifests/sphere-face.jsonl --biome docs/validation/round59-production-integration/manifests/earth-cube-biome.jsonl --require-block-digests --require-original-biome-cases --json
+python -B tools/tellus_parity_compare.py --columns-left docs/validation/round59-production-integration/manifests/cube-net.jsonl --columns-right docs/validation/round59-production-integration/manifests/sphere-face.jsonl --biome docs/validation/round59-production-integration/manifests/earth-cube-biome.jsonl --require-block-digests --require-original-biome-cases --biome-baseline historical-v1 --json
 ```
 
 ## 8. 后续主线与验收次序

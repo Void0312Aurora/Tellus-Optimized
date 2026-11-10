@@ -1,0 +1,13 @@
+test_complete_block_digests_are_not_ignored (test_tellus_parity_compare.ParityComparatorTest.test_complete_block_digests_are_not_ignored) ... ok
+test_current_seven_zero_and_explicit_historical_seven_one_are_distinct (test_tellus_parity_compare.ParityComparatorTest.test_current_seven_zero_and_explicit_historical_seven_one_are_distinct) ... ok
+test_empty_manifest_fails_closed (test_tellus_parity_compare.ParityComparatorTest.test_empty_manifest_fails_closed) ... ok
+test_explicit_small_manifests_compare_without_sample_generation (test_tellus_parity_compare.ParityComparatorTest.test_explicit_small_manifests_compare_without_sample_generation) ... ok
+test_invalid_digest_and_one_sided_digest_fail (test_tellus_parity_compare.ParityComparatorTest.test_invalid_digest_and_one_sided_digest_fail) ... ok
+test_jsonl_and_csv_parse (test_tellus_parity_compare.ParityComparatorTest.test_jsonl_and_csv_parse) ... ok
+test_missing_manifest_is_evidence_gap (test_tellus_parity_compare.ParityComparatorTest.test_missing_manifest_is_evidence_gap) ... ok
+test_strict_original_biome_case_domain_rejects_same_count_substitution (test_tellus_parity_compare.ParityComparatorTest.test_strict_original_biome_case_domain_rejects_same_count_substitution) ... ok
+
+----------------------------------------------------------------------
+Ran 8 tests in 0.196s
+
+OK

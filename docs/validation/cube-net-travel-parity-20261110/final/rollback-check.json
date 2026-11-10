@@ -1,0 +1,15 @@
+{
+  "sourceFiles": 20,
+  "reverseCheckPassed": true,
+  "reversePatchSemanticRehearsalPassed": true,
+  "patchRehearsalUsesLFNormalizedDisposableCopy": true,
+  "patchEOLConversions": [
+    "tools/create_cube_net_datapack.py",
+    "mc1201/src/main/java/com/yucareux/tellus/worldgen/CubeNetChunkGenerator.java",
+    "shared/mc1211/src/main/java/com/yucareux/tellus/worldgen/CubeNetChunkGenerator.java",
+    "src/main/java/com/yucareux/tellus/worldgen/CubeNetBiomeSource.java"
+  ],
+  "zipBeforeBytesExactlyRestoredInDisposableCopy": true,
+  "newFilesAbsentAfterReverse": true,
+  "scope": "source-only; README excluded; no changes to real checkout during rehearsal"
+}

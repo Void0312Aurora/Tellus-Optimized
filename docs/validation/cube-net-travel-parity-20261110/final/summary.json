@@ -1,0 +1,416 @@
+{
+  "status": "PASS",
+  "scope": "travel-affecting Cube terrain/environment options and spherical geology defaults, mc1201/mc1211 Fabric; not full client seam port or visual acceptance",
+  "head": "1c35ccbb2441fd146ceb28ee35700f684dec8ed3",
+  "branch": "feat/cube-net-parity",
+  "indexSHA256": "bae6810ce206f7dc0defb2c8e7165750ec848381488d4584ad527ee6d592a18c",
+  "earthProductionUnchanged": {
+    "src/main/java/com/yucareux/tellus/worldgen/EarthChunkGenerator.java": "a527d0684cb0d6ae4554b5ef09b6e5dd0aba1a341e8b0e8be679cd8764752177",
+    "src/main/java/com/yucareux/tellus/worldgen/EarthGeneratorSettings.java": "4d4078cde8991e9328d18d1f059f9a51fafc8b656e29d8cdf4d1ad9f5c5d8738",
+    "src/main/java/com/yucareux/tellus/worldgen/EarthBiomeSource.java": "a37ee8b270dcd60ba8497a44f7de7a6d525d0925771239793ddf3457e2ecf6d0",
+    "shared/mc1201/src/main/java/com/yucareux/tellus/worldgen/EarthBiomeSource.java": "9d1af6bad7b8f0a0862133722b82aa4e92d73c478f34f282bd5401761a2e725b"
+  },
+  "javaSourceFileCount": 1057,
+  "modules": {
+    "mc1201": {
+      "regression": {
+        "tests": 656,
+        "classes": 108,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "nativeSmoke": {
+        "status": "PASS",
+        "worldAndCacheUnchanged": true,
+        "javaSourceUnchanged": true,
+        "datapackOverrideRemovedForStoredLevelStemReload": true,
+        "phases": [
+          {
+            "phase": "generate",
+            "launcherPid": 33640,
+            "exitCode": 0,
+            "binding": {
+              "worldRoot": "D:\\Temp\\tellus-travel-mc1201-20261110-a\\world",
+              "dimension": "tellus:earth_cube_net",
+              "seed": 2025402140,
+              "generatorType": "com.yucareux.tellus.worldgen.CubeNetChunkGenerator",
+              "generatorProfile": "35e1790c74e5d655d7b0af5a7caebf5a7727c1d754acce096c989a7e15fef24e",
+              "minY": -2032,
+              "height": 4064,
+              "seaLevel": 64
+            },
+            "nativeRuntime": {
+              "bootstrapInstalled": true,
+              "configuredMode": "UNIFIED",
+              "registrations": 1,
+              "attached": 1,
+              "tickCallbacks": 1,
+              "chunkUnloadCallbacks": 0,
+              "targetAttached": true,
+              "targetAdapter": "CubeNetGeneratorRuntimeAdapter",
+              "adapters": [
+                {
+                  "adapter": "CubeNetGeneratorRuntimeAdapter",
+                  "attached": true,
+                  "nativeDeferredTickCallbacks": 0,
+                  "nativeUnloadCallbacks": 0
+                }
+              ]
+            },
+            "reportedChunkDigests": {
+              "generatedBlockDigest": "9f345d267d182fa86cdb6e475844c38e2c108bc86d88f922b3120f82ec24c11d",
+              "generatedBiomeDigest": "32836bbd0750d9b68f8c3528eddfbe11dcce1d5f60cc0bfe78de7d9fe56494b6",
+              "generatedNativeNBTDigest": "03d693135d51f57cd89c04f751ef2af4417bd6cd15a5eaaecb3e9fd6ccc3dc9b"
+            },
+            "nativeSavedGenerator": {
+              "mapping": "rancic-ccam30-double-v1",
+              "world_scale": 1.0,
+              "geometry_version": 3,
+              "experimental_apron_chunks": 2,
+              "sea_level": 64,
+              "biome_source": {
+                "settings": {
+                  "custom_trees": 0,
+                  "huge_red_mushrooms": 1,
+                  "climate_based_built_up_terrain": 1
+                },
+                "world_scale": 1.0,
+                "apron_chunks": 2,
+                "fallback": {
+                  "biome": "minecraft:plains"
+                }
+              },
+              "type": "tellus:cube_net",
+              "min_y": -2032,
+              "height": 4064
+            }
+          },
+          {
+            "phase": "runtime_reload",
+            "launcherPid": 40524,
+            "exitCode": 0,
+            "binding": {
+              "worldRoot": "D:\\Temp\\tellus-travel-mc1201-20261110-a\\world",
+              "dimension": "tellus:earth_cube_net",
+              "seed": 2025402140,
+              "generatorType": "com.yucareux.tellus.worldgen.CubeNetChunkGenerator",
+              "generatorProfile": "35e1790c74e5d655d7b0af5a7caebf5a7727c1d754acce096c989a7e15fef24e",
+              "minY": -2032,
+              "height": 4064,
+              "seaLevel": 64
+            },
+            "nativeRuntime": {
+              "bootstrapInstalled": true,
+              "configuredMode": "UNIFIED",
+              "registrations": 1,
+              "attached": 1,
+              "tickCallbacks": 1,
+              "chunkUnloadCallbacks": 0,
+              "targetAttached": true,
+              "targetAdapter": "CubeNetGeneratorRuntimeAdapter",
+              "adapters": [
+                {
+                  "adapter": "CubeNetGeneratorRuntimeAdapter",
+                  "attached": true,
+                  "nativeDeferredTickCallbacks": 0,
+                  "nativeUnloadCallbacks": 0
+                }
+              ]
+            },
+            "reportedChunkDigests": {
+              "blockDigest": "9f345d267d182fa86cdb6e475844c38e2c108bc86d88f922b3120f82ec24c11d",
+              "biomeDigest": "32836bbd0750d9b68f8c3528eddfbe11dcce1d5f60cc0bfe78de7d9fe56494b6",
+              "nativeNBTDigest": "03d693135d51f57cd89c04f751ef2af4417bd6cd15a5eaaecb3e9fd6ccc3dc9b"
+            },
+            "nativeSavedGenerator": {
+              "mapping": "rancic-ccam30-double-v1",
+              "world_scale": 1.0,
+              "geometry_version": 3,
+              "experimental_apron_chunks": 2,
+              "sea_level": 64,
+              "biome_source": {
+                "settings": {
+                  "custom_trees": 0,
+                  "huge_red_mushrooms": 1,
+                  "climate_based_built_up_terrain": 1
+                },
+                "world_scale": 1.0,
+                "apron_chunks": 2,
+                "fallback": {
+                  "biome": "minecraft:plains"
+                }
+              },
+              "type": "tellus:cube_net",
+              "min_y": -2032,
+              "height": 4064
+            }
+          }
+        ],
+        "scope": "real GIS generation and native travel-settings save/reload; not visual or structure acceptance",
+        "pidScope": "launcher/wrapper PID; independent native starts established by serial process exit and owned JobObject cleanup, not JVM-PID introspection"
+      },
+      "artifact": {
+        "path": "D:\\workshop\\Tellus-Optimized\\mc1201\\build\\libs\\Tellus-fabric-1.20.1-0.8.5.jar",
+        "sha256": "0085cc23f37de4d4cea1f155dc42cb76ccfbd4ba74e7a4fbc1e819ace1d1119c",
+        "bytes": 27382692
+      }
+    },
+    "mc1211": {
+      "regression": {
+        "tests": 647,
+        "classes": 102,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "nativeSmoke": {
+        "status": "PASS",
+        "worldAndCacheUnchanged": true,
+        "javaSourceUnchanged": true,
+        "datapackOverrideRemovedForStoredLevelStemReload": true,
+        "phases": [
+          {
+            "phase": "generate",
+            "launcherPid": 5548,
+            "exitCode": 0,
+            "binding": {
+              "worldRoot": "D:\\Temp\\tellus-travel-mc1211-20261110-a\\world",
+              "dimension": "tellus:earth_cube_net",
+              "seed": 2025402140,
+              "generatorType": "com.yucareux.tellus.worldgen.CubeNetChunkGenerator",
+              "generatorProfile": "35e1790c74e5d655d7b0af5a7caebf5a7727c1d754acce096c989a7e15fef24e",
+              "minY": -2032,
+              "height": 4064,
+              "seaLevel": 64
+            },
+            "nativeRuntime": {
+              "bootstrapInstalled": true,
+              "configuredMode": "UNIFIED",
+              "registrations": 1,
+              "attached": 1,
+              "tickCallbacks": 1,
+              "chunkUnloadCallbacks": 0,
+              "targetAttached": true,
+              "targetAdapter": "CubeNetGeneratorRuntimeAdapter",
+              "adapters": [
+                {
+                  "adapter": "CubeNetGeneratorRuntimeAdapter",
+                  "attached": true,
+                  "nativeDeferredTickCallbacks": 0,
+                  "nativeUnloadCallbacks": 0
+                }
+              ]
+            },
+            "reportedChunkDigests": {
+              "generatedBlockDigest": "bcfa9230cdb841bcb02d22b19a092612dba4756e3fe0d22f2cf876c52938dd4e",
+              "generatedBiomeDigest": "32836bbd0750d9b68f8c3528eddfbe11dcce1d5f60cc0bfe78de7d9fe56494b6",
+              "generatedNativeNBTDigest": "e33e4d87832cf58d5e6f54efbb39105a6fb8b42eeba95e00e797c7eac1836fb7"
+            },
+            "nativeSavedGenerator": {
+              "mapping": "rancic-ccam30-double-v1",
+              "world_scale": 1.0,
+              "geometry_version": 3,
+              "experimental_apron_chunks": 2,
+              "sea_level": 64,
+              "biome_source": {
+                "settings": {
+                  "custom_trees": 0,
+                  "huge_red_mushrooms": 1,
+                  "climate_based_built_up_terrain": 1
+                },
+                "world_scale": 1.0,
+                "apron_chunks": 2,
+                "fallback": {
+                  "biome": "minecraft:plains"
+                }
+              },
+              "type": "tellus:cube_net",
+              "min_y": -2032,
+              "height": 4064
+            }
+          },
+          {
+            "phase": "runtime_reload",
+            "launcherPid": 9948,
+            "exitCode": 0,
+            "binding": {
+              "worldRoot": "D:\\Temp\\tellus-travel-mc1211-20261110-a\\world",
+              "dimension": "tellus:earth_cube_net",
+              "seed": 2025402140,
+              "generatorType": "com.yucareux.tellus.worldgen.CubeNetChunkGenerator",
+              "generatorProfile": "35e1790c74e5d655d7b0af5a7caebf5a7727c1d754acce096c989a7e15fef24e",
+              "minY": -2032,
+              "height": 4064,
+              "seaLevel": 64
+            },
+            "nativeRuntime": {
+              "bootstrapInstalled": true,
+              "configuredMode": "UNIFIED",
+              "registrations": 1,
+              "attached": 1,
+              "tickCallbacks": 1,
+              "chunkUnloadCallbacks": 0,
+              "targetAttached": true,
+              "targetAdapter": "CubeNetGeneratorRuntimeAdapter",
+              "adapters": [
+                {
+                  "adapter": "CubeNetGeneratorRuntimeAdapter",
+                  "attached": true,
+                  "nativeDeferredTickCallbacks": 0,
+                  "nativeUnloadCallbacks": 0
+                }
+              ]
+            },
+            "reportedChunkDigests": {
+              "blockDigest": "bcfa9230cdb841bcb02d22b19a092612dba4756e3fe0d22f2cf876c52938dd4e",
+              "biomeDigest": "32836bbd0750d9b68f8c3528eddfbe11dcce1d5f60cc0bfe78de7d9fe56494b6",
+              "nativeNBTDigest": "e33e4d87832cf58d5e6f54efbb39105a6fb8b42eeba95e00e797c7eac1836fb7"
+            },
+            "nativeSavedGenerator": {
+              "mapping": "rancic-ccam30-double-v1",
+              "world_scale": 1.0,
+              "geometry_version": 3,
+              "experimental_apron_chunks": 2,
+              "sea_level": 64,
+              "biome_source": {
+                "settings": {
+                  "custom_trees": 0,
+                  "huge_red_mushrooms": 1,
+                  "climate_based_built_up_terrain": 1
+                },
+                "world_scale": 1.0,
+                "apron_chunks": 2,
+                "fallback": {
+                  "biome": "minecraft:plains"
+                }
+              },
+              "type": "tellus:cube_net",
+              "min_y": -2032,
+              "height": 4064
+            }
+          }
+        ],
+        "scope": "real GIS generation and native travel-settings save/reload; not visual or structure acceptance",
+        "pidScope": "launcher/wrapper PID; independent native starts established by serial process exit and owned JobObject cleanup, not JVM-PID introspection",
+        "upgrade": "Native DataFixer upgrade admitted only on disposable copy, original remains DataVersion 3465"
+      },
+      "artifact": {
+        "path": "D:\\workshop\\Tellus-Optimized\\mc1211\\build\\libs\\Tellus-fabric-1.21.1-0.8.5.jar",
+        "sha256": "2085ae18a3f75f1b1ab87892fc1979cb6fc0a668945d1c88618eb2d08e1c8e48",
+        "bytes": 27205160
+      }
+    }
+  },
+  "strictParity": {
+    "biome": {
+      "cases": 7,
+      "mismatches": []
+    },
+    "checks": {
+      "biomeCaseSet": true,
+      "biomeCount": true,
+      "biomeMismatches": true,
+      "columnCount": true,
+      "columnMismatches": true
+    },
+    "columns": {
+      "mismatches": [],
+      "rightRows": 13824,
+      "rows": 13824
+    },
+    "expected": {
+      "biomeBaseline": "travel-environment-v2",
+      "biomeCases": 7,
+      "biomeMismatches": 0,
+      "columnMismatches": 0,
+      "columns": 13824,
+      "knownBiomeCase": "bare/BWh",
+      "originalBiomeCases": [
+        "bare/BWh",
+        "cropland/Dfb",
+        "forest/Cfb",
+        "grassland/Cfa",
+        "mangrove/Af",
+        "snow/ET",
+        "wetland/Cfa"
+      ]
+    },
+    "status": "PASS"
+  },
+  "historicalReplay": {
+    "biome": {
+      "cases": 7,
+      "mismatches": [
+        {
+          "case": "bare/BWh",
+          "cube": "minecraft:stony_peaks",
+          "earth": "minecraft:desert"
+        }
+      ]
+    },
+    "checks": {
+      "biomeCaseSet": true,
+      "biomeCount": true,
+      "biomeMismatches": true,
+      "columnCount": true,
+      "columnMismatches": true
+    },
+    "columns": {
+      "mismatches": [],
+      "rightRows": 13824,
+      "rows": 13824
+    },
+    "expected": {
+      "biomeBaseline": "historical-v1",
+      "biomeCases": 7,
+      "biomeMismatches": 1,
+      "columnMismatches": 0,
+      "columns": 13824,
+      "knownBiomeCase": "bare/BWh",
+      "originalBiomeCases": [
+        "bare/BWh",
+        "cropland/Dfb",
+        "forest/Cfb",
+        "grassland/Cfa",
+        "mangrove/Af",
+        "snow/ET",
+        "wetland/Cfa"
+      ]
+    },
+    "status": "PASS"
+  },
+  "pythonTests": {
+    "comparator": 8,
+    "existingNativeControllers": 14,
+    "datapack": 3,
+    "travelSmokeAdmission": 2,
+    "total": 27
+  },
+  "remaining": {
+    "mc1201M11": "open; no new visual frames, packet/light/mesh gate retained",
+    "mc1211Client": "missing Cube receiver/staging/renderer and complete apron edit lifecycle; existing vanilla teleport fallback remains",
+    "sphereOtherLoaders": "outside current Cube travel changes"
+  },
+  "demAuditCorrection": "Current native Earth and Cube share canonical Mapterhorn/TERRARIUM plus OpenWaters. No actual selectable-provider gap; no new facade/provider/routing added.",
+  "defaults": {
+    "custom_trees": true,
+    "huge_red_mushrooms": false,
+    "climate_based_built_up_terrain": false
+  },
+  "rollback": {
+    "sourceFiles": 20,
+    "reverseCheckPassed": true,
+    "reversePatchSemanticRehearsalPassed": true,
+    "patchRehearsalUsesLFNormalizedDisposableCopy": true,
+    "patchEOLConversions": [
+      "tools/create_cube_net_datapack.py",
+      "mc1201/src/main/java/com/yucareux/tellus/worldgen/CubeNetChunkGenerator.java",
+      "shared/mc1211/src/main/java/com/yucareux/tellus/worldgen/CubeNetChunkGenerator.java",
+      "src/main/java/com/yucareux/tellus/worldgen/CubeNetBiomeSource.java"
+    ],
+    "zipBeforeBytesExactlyRestoredInDisposableCopy": true,
+    "newFilesAbsentAfterReverse": true,
+    "scope": "source-only; README excluded; no changes to real checkout during rehearsal"
+  }
+}

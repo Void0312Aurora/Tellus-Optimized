@@ -1,0 +1,12 @@
+
+> Configure project :mc1201
+Fabric Loom: 1.14.10
+
+> Configure project :mc1211
+Fabric Loom: 1.14.10
+
+> Task :mc1201:compileJava
+> Task :mc1211:compileJava
+
+BUILD SUCCESSFUL in 1m 35s
+2 actionable tasks: 2 executed

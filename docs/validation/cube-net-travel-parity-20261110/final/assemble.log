@@ -1,0 +1,32 @@
+
+> Configure project :mc1201
+Fabric Loom: 1.14.10
+
+> Configure project :mc1211
+Fabric Loom: 1.14.10
+
+> Task :mc1201:compileJava UP-TO-DATE
+> Task :mc1201:processResources UP-TO-DATE
+> Task :mc1201:classes UP-TO-DATE
+> Task :mc1201:compileClientJava UP-TO-DATE
+> Task :mc1201:processClientResources UP-TO-DATE
+> Task :mc1201:jar
+> Task :mc1201:processIncludeJars UP-TO-DATE
+> Task :mc1201:remapJar
+> Task :mc1201:sourcesJar
+> Task :mc1201:remapSourcesJar
+> Task :mc1201:assemble
+> Task :mc1211:compileJava UP-TO-DATE
+> Task :mc1211:processResources UP-TO-DATE
+> Task :mc1211:classes UP-TO-DATE
+> Task :mc1211:compileClientJava UP-TO-DATE
+> Task :mc1211:processClientResources UP-TO-DATE
+> Task :mc1211:jar
+> Task :mc1211:processIncludeJars UP-TO-DATE
+> Task :mc1211:remapJar
+> Task :mc1211:sourcesJar
+> Task :mc1211:remapSourcesJar
+> Task :mc1211:assemble
+
+BUILD SUCCESSFUL in 3m 7s
+18 actionable tasks: 8 executed, 10 up-to-date

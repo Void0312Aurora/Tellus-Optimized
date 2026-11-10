@@ -1,0 +1,2001 @@
+--- a/tools/create_cube_net_datapack.py
++++ b/tools/create_cube_net_datapack.py
+@@ -32,7 +32,12 @@
+                  add_ancient_cities: bool | None = None, add_trial_chambers: bool | None = None,
+                  add_trail_ruins: bool | None = None, add_abandoned_camps: bool | None = None,
+                   spawn_latitude: float = 27.9881, spawn_longitude: float = 86.925,
+-                   terrestrial_height_scale: float = 1.0, oceanic_height_scale: float = 1.0) -> list[Path]:
++                    terrestrial_height_scale: float = 1.0, oceanic_height_scale: float = 1.0,
++                    custom_trees: bool = True, huge_red_mushrooms: bool = False,
++                    climate_based_built_up_terrain: bool = False,
++                    minecraft_version: str = "1.20.1") -> list[Path]:
++    if minecraft_version not in ("1.20.1", "1.21.1"):
++        raise ValueError("minecraft_version must be 1.20.1 or 1.21.1")
+     if not IDENTIFIER.fullmatch(world):
+         raise ValueError("world must be a namespace:path identifier")
+     namespace, name = world.split(":", 1)
+@@ -56,6 +61,7 @@
+         raise ValueError("terrestrial_height_scale must be finite and positive")
+     if not math.isfinite(oceanic_height_scale) or oceanic_height_scale <= 0.0:
+         raise ValueError("oceanic_height_scale must be finite and positive")
++    if output.exists() and (not output.is_dir() or any(output.iterdir())):
+         raise ValueError("output must be a new or empty directory")
+ 
+     dimension_type = {
+@@ -129,6 +135,9 @@
+                 "spawn_longitude": spawn_longitude,
+                 "terrestrial_height_scale": terrestrial_height_scale,
+                 "oceanic_height_scale": oceanic_height_scale,
++                "custom_trees": custom_trees,
++                "huge_red_mushrooms": huge_red_mushrooms,
++                "climate_based_built_up_terrain": climate_based_built_up_terrain,
+                 **structure_values,
+             },
+         }
+@@ -148,7 +157,7 @@
+     documents = {
+         "pack.mcmeta": {
+             "pack": {
+-                "pack_format": 15,
++                "pack_format": 15 if minecraft_version == "1.20.1" else 48,
+                 "description": f"Tellus cube-net world {world}, scale {scale}",
+             }
+         },
+@@ -172,7 +181,9 @@
+     parser.add_argument("--output", type=Path, required=True,
+                         help="New world/datapacks directory; existing content is refused.")
+     parser.add_argument("--world", default="tellus:earth",
+-                        help="Namespace and path used for the dimension (default: tellus:earth).")
++                         help="Namespace and path used for the dimension (default: tellus:earth).")
++    parser.add_argument("--minecraft-version", choices=("1.20.1", "1.21.1"), default="1.20.1",
++                        help="Target release for datapack metadata (default: 1.20.1).")
+     parser.add_argument("--scale", type=float, default=1.0)
+     parser.add_argument("--sea-level", type=int, default=64)
+     parser.add_argument("--min-y", type=int, default=-2032)
+@@ -220,7 +231,13 @@
+     parser.add_argument("--terrestrial-height-scale", type=float, default=1.0,
+                         help="Land elevation multiplier (default: 1.0).")
+     parser.add_argument("--oceanic-height-scale", type=float, default=1.0,
+-                        help="Ocean elevation multiplier (default: 1.0).")
++                         help="Ocean elevation multiplier (default: 1.0).")
++    parser.add_argument("--custom-trees", action=argparse.BooleanOptionalAction, default=True,
++                        help="Use canopy-sized procedural trees; --no-custom-trees uses native biome tree features.")
++    parser.add_argument("--huge-red-mushrooms", action=argparse.BooleanOptionalAction, default=False,
++                        help="Retain huge red mushrooms in native tree feature selection (default: false).")
++    parser.add_argument("--climate-based-built-up-terrain", action=argparse.BooleanOptionalAction, default=False,
++                        help="Choose built-up ground cover from the regional biome (default: false, matching Earth).")
+     structure_group = parser.add_mutually_exclusive_group()
+     structure_group.add_argument("--structures", dest="structures", action="store_true",
+                                 help="Enable all Tellus structure sets.")
+@@ -250,7 +267,9 @@
+                              args.add_igloos, args.add_witch_huts, args.add_ancient_cities,
+                              args.add_trial_chambers, args.add_trail_ruins, args.add_abandoned_camps,
+                              args.spawn_latitude, args.spawn_longitude,
+-                             args.terrestrial_height_scale, args.oceanic_height_scale)
++                              args.terrestrial_height_scale, args.oceanic_height_scale,
++                              args.custom_trees, args.huge_red_mushrooms, args.climate_based_built_up_terrain,
++                              args.minecraft_version)
+     except ValueError as error:
+         parser.error(str(error))
+     print(f"Created {len(files)} files for {args.world}: {args.output}")
+--- a/docs/architecture/generator-parity-audit-20261110.md
++++ b/docs/architecture/generator-parity-audit-20261110.md
+@@ -4,7 +4,9 @@
+ 
+ ## 1. 结论摘要
+ 
+-**主仓库已确认；mc1201/mc1211 的统一生产链迁移和可回退默认接入已完成其已声明验收范围，但自定义生成器与原生 Earth 的全部功能尚未完全等价。**
++**主仓库已确认；mc1201/mc1211 的统一生产链迁移和可回退默认接入已完成其已声明验收范围。后续等价性以全球旅行受到影响的地形、环境与实际运行组合为准，不以原生每处细节或全部 loader 一致为交付条件。**
++
++2026-11-10 晚间旅行主线修正：分类 provider 的 Earth/球面 noise 坐标分离，雪/峡谷邻域改为同一地理位置的邻点；接入 `custom_trees`、`huge_red_mushrooms`、`climate_based_built_up_terrain`；球面 Macrostrat 默认跟随原生启用策略。**DEM 可选源缺口是前次审计误判**：当前 Earth 的 `DemSelection` 构造/自动/手动/未知 ID 都归一到已有 Mapterhorn（兼容 ID `terrarium`），海底沿用 OpenWaters；没有一项实际可选源能力需要在 Cube 再造开关。新代码、回归和真实原生进程证据集中在[旅行修正记录](../validation/cube-net-travel-parity-20261110/README.md)。下文 A1–A3 保留最初审计快照，完成状态以其后结构补齐记录为准。
+ 
+ 这里须分开两个命题：
+ 
+@@ -121,11 +123,11 @@
+ 
+ [Earth:12063–12268](../../src/main/java/com/yucareux/tellus/worldgen/EarthChunkGenerator.java#L12063-L12268)具有 ocean/tooShallow/terrain-shell 条件，以及由 world seed/坐标决定的随机深度，例如 stronghold `42 + random(17)`、ancient city `92 + random(29)`、trial chambers `72 + random(25)`，矿井有 normal/mesa 不同规则。两者有基础放置能力，但不是规则完全等价。
+ 
+-### A4 / 已知差异：bare/BWh biome
+-
+-严格清单保留 Earth=`minecraft:desert`、Cube=`minecraft:stony_peaks`。7 cases 中 1 个差异是历史 golden baseline，不是本轮新增回归，也尚非 7/0。
+-
+-[manifest exporter:115–136](../../mc1201/src/test/java/com/yucareux/tellus/worldgen/TellusParityManifestExportTest.java#L115-L136)明确断言该差异；[最新验收汇总:271–310](../validation/native-runtime-default/validation.json#L271-L310)保留它。
++### A4 / 已修正：bare/BWh 与地理邻域坐标
++
++历史清单的 Earth=`minecraft:desert`、Cube=`minecraft:stony_peaks` 来自 Cube 将球面 noise 坐标传给期望 Earth 投影 block 坐标的 RESOLVE provider：阿拉伯采样点误查到南极 Rock and Ice 区。当前改为正确地理坐标，并保持各版本原生分类次序：1.20.1 使用 ESA/Köppen，1.21.1 provider 优先。未修改 Earth 原生分类来迁就测试。
++
++[新 exporter](../../mc1201/src/test/java/com/yucareux/tellus/worldgen/TellusParityManifestExportTest.java)要求实际生成的 7/0；历史 7/1 清单原样保留，重放需显式使用 `--biome-baseline historical-v1`。同时修正原先把球面 noise 当 Cube planar 查询的雪/峡谷邻域；跨日期变更线的地理邻居正常 wrap，未知高程仍为 NaN。详见[旅行修正记录](../validation/cube-net-travel-parity-20261110/README.md)。
+ 
+ ### A5 / 范围差异：Sphere-Face 不等于完整 Earth 或完整 Cube-Net
+ 
+@@ -139,17 +141,17 @@
+ 
+ 仍应逐项区分：
+ 
+-- `customTrees`：Cube canonical canopy/procedural 树路径存在，但没有 Earth 同等的 settings toggle/替代选择；[Cube trees:3358–3406](../../mc1201/src/main/java/com/yucareux/tellus/worldgen/CubeNetChunkGenerator.java#L3358-L3406)。
+-- `hugeRedMushrooms`：Cube 未提供对应设置项/专门选择路径，不代表普通 biome features 完全没有蘑菇。
+-- `demSelection`：球面地理采样重载沿用 Earth 默认选择，未暴露与 Earth 世界设置等价的选择能力。
+-- `climateBasedBuiltUpTerrain`：Cube 已有实际 climate surface 决策，但未提供同等设置开关；不应表述为整套 climate surface 缺失。
++- `customTrees`：已接入实际生成选择：true 使用 canopy/procedural；false 使用原生 biome configured tree features 与 5-block placement grid。canonical/apron ownership 保持原设计。
++- `hugeRedMushrooms`：已接入与 Earth 相同的原生树 feature 列表过滤，包括包含红蘑菇的 composite selector；不是关闭全部蘑菇的全局开关。
++- `demSelection`：**误判已纠正**。当前 Earth 本身强制归一 Mapterhorn/OpenWaters；Cube 使用相同实际源家族。本轮新增回归验证选择归一、陆地覆盖与海底来源、未知保持，不添加假选择 UI/Codec/API。
++- `climateBasedBuiltUpTerrain`：已接入实际 built-up cover 决策与 Codec；true 按区域 biome 选择对应地表 cover，false 保留原有 visual cover。默认与当前 Earth 一致为 false，未强行改变旧世界 built-up 默认。
+ - Earth 的 shell/自动高度/LOD/Voxy/实时等能力需要按具体 capability/原生 manager 接入逐项判定；统一 view 中存在字段，不等于所有生成器支持该能力。
+ 
+-### A7 / 配置差异：球面 Macrostrat 默认另有 opt-in
+-
+-[MacrostratGeologySource:60](../../src/main/java/com/yucareux/tellus/world/data/geology/MacrostratGeologySource.java#L60)默认启用 Macrostrat source，而 [SphericalGeologySource:58–63](../../src/main/java/com/yucareux/tellus/world/data/geology/SphericalGeologySource.java#L58-L63)还要求 `tellus.sphericalGeology.macrostrat=true`，默认关闭该球面 overlay。
+-
+-这是本 fork 当前 Earth 与球面配置路径的差异，不是“原生 upstream 本来就有 Macrostrat 而我们遗漏”的归属声明。球面 GLiM 已接入，不代表精细 overlay 默认与当前 Earth 相同。
++### A7 / 已修正：球面 Macrostrat 默认跟随原生
++
++[MacrostratGeologySource](../../src/main/java/com/yucareux/tellus/world/data/geology/MacrostratGeologySource.java)默认启用；[SphericalGeologySource](../../src/main/java/com/yucareux/tellus/world/data/geology/SphericalGeologySource.java)现在也默认启用 overlay，同时服从全局 `tellus.macrostrat.enabled=false` 与球面单独 `tellus.sphericalGeology.macrostrat=false`。未知、无覆盖、过粗分辨率仍回退 GLiM；cache-only 继续使用原生本地读取策略，不发网络请求。
++
++这是本 fork 当前 Earth/球面默认差异的修正；没有改变 GLiM/Macrostrat reader、原生 Earth default 或球面地理 identity。非 cache-only 冷缓存可能新增原生 Macrostrat tile 请求，沿用现有 timeout/concurrency/backoff；可用上述球面 flag 在重启后恢复旧 overlay 默认。
+ 
+ ### A8 / 输入与性能：有限真实样本不证明全场景等价
+ 
+@@ -168,7 +170,7 @@
+ 
+ 证据：[mc1201 entry:34–67](../../mc1201/src/main/java/com/yucareux/tellus/Tellus.java#L34-L67)、[mc1211 entry:42–84](../../mc1211/src/main/java/com/yucareux/tellus/Tellus.java#L42-L84)、[mc1211 client](../../mc1211/src/client/java/com/yucareux/tellus/TellusClient.java)、[mc1211 apron helper:9–35](../../shared/mc1211/src/main/java/com/yucareux/tellus/worldgen/CubeNetApronChunkSync.java#L9-L35)。特别是 1211 `readyForStaging` 目前直接返回 true，不能将它当作完整编辑覆盖层就绪证明。
+ 
+-两个 Python datapack 工具仍固定 `pack_format=15`：[Cube:150–152](../../tools/create_cube_net_datapack.py#L150-L152)、[Sphere:36–48](../../tools/create_sphere_datapack.py#L36-L48)。它们缺少按目标版本选择 metadata 的参数；不能直接用服务端 generator 验收替代工具全版本适配验收。
++Cube [datapack 工具](../../tools/create_cube_net_datapack.py)已新增 `--minecraft-version 1.20.1|1.21.1`（默认兼容 1.20.1），分别写入 pack_format 15/48，并输出三个旅行设置。Sphere 工具仍固定基础模式的原 metadata，不在本轮产品主线修正范围。
+ 
+ 客户端 [现有验收矩阵:41–53](../validation/cube-net-acceptance-matrix-20261106/README.md#L41-L53)仍记录 M4 GeoTP、M8 shader、M10 DH direct 尚待验收，M11 zero-hold open；这些记录本轮没有重新执行。
+ 
+@@ -185,7 +187,7 @@
+ 严格重放命令：
+ 
+ ```powershell
+-python -B tools/tellus_parity_compare.py --columns-left docs/validation/round59-production-integration/manifests/cube-net.jsonl --columns-right docs/validation/round59-production-integration/manifests/sphere-face.jsonl --biome docs/validation/round59-production-integration/manifests/earth-cube-biome.jsonl --require-block-digests --require-original-biome-cases --json
++python -B tools/tellus_parity_compare.py --columns-left docs/validation/round59-production-integration/manifests/cube-net.jsonl --columns-right docs/validation/round59-production-integration/manifests/sphere-face.jsonl --biome docs/validation/round59-production-integration/manifests/earth-cube-biome.jsonl --require-block-digests --require-original-biome-cases --biome-baseline historical-v1 --json
+ ```
+ 
+ ## 8. 后续主线与验收次序
+--- a/mc1201/src/main/java/com/yucareux/tellus/worldgen/CubeNetChunkGenerator.java
++++ b/mc1201/src/main/java/com/yucareux/tellus/worldgen/CubeNetChunkGenerator.java
+@@ -357,6 +357,9 @@
+    private final int cubeNetHeightOffset;
+    private final double cubeNetTerrestrialHeightScale;
+    private final double cubeNetOceanicHeightScale;
++   private final boolean cubeNetCustomTrees;
++   private final boolean cubeNetHugeRedMushrooms;
++   private final boolean cubeNetClimateBasedBuiltUpTerrain;
+    private static final boolean CUBE_NET_CAVES_DEFAULT = Boolean.parseBoolean(
+       System.getProperty("tellus.cubeNet.caves", "true")
+    );
+@@ -529,6 +532,10 @@
+       this.cubeNetHeightOffset = resolveHeightOffset(biome);
+       this.cubeNetTerrestrialHeightScale = resolveTerrestrialHeightScale(biome);
+       this.cubeNetOceanicHeightScale = resolveOceanicHeightScale(biome);
++      var travelSettings = biome instanceof CubeNetBiomeSource cubeNet ? cubeNet.settings() : CubeNetBiomeSource.Settings.DEFAULT;
++      this.cubeNetCustomTrees = travelSettings.customTrees();
++      this.cubeNetHugeRedMushrooms = travelSettings.hugeRedMushrooms();
++      this.cubeNetClimateBasedBuiltUpTerrain = travelSettings.climateBasedBuiltUpTerrain();
+ 
+       Preconditions.checkArgument(minY % 16 == 0 && height % 16 == 0 && height >= 16
+          && minY >= -2032 && (long)minY + height <= 2032,
+@@ -1234,6 +1241,8 @@
+          // Cache misses retain the canonical raw cover, matching the source's
+          // non-blocking fallback used by the biome source.
+       }
++      visualCover = CubeNetTravelTerrainRules.surfaceCover(surface.coverClass(), visualCover, biome,
++         this.cubeNetClimateBasedBuiltUpTerrain);
+       byte climateGroup = cubeNetClimateGroupForBiome(biome);
+       int heightAboveSea = surfaceY - this.seaLevel;
+       int slopeDiff = finite(surface.neighbourhood().gradient().slopeDegrees())
+@@ -3323,7 +3332,7 @@
+          .filter(this.singularityPolicy::admitsTerrainMaterialization).orElse(null);
+       if (address == null) return;
+       int face = address.face();
+-      int cellSize = TellusProceduralTreeGenerator.PLACEMENT_CELL_SIZE;
++      int cellSize = CubeNetTravelTerrainRules.treeCellSize(this.cubeNetCustomTrees);
+       int minFaceX = Math.toIntExact(address.blockX());
+       int minFaceZ = Math.toIntExact(address.blockZ());
+       int maxFaceX = minFaceX + 15;
+@@ -3336,8 +3345,8 @@
+       TellusCanopyHeightSource canopy = TellusWorldgenSources.canopyHeight();
+       for (int cellX = minCellX; cellX <= maxCellX; cellX++) {
+          for (int cellZ = minCellZ; cellZ <= maxCellZ; cellZ++) {
+-            TellusProceduralTreeGenerator.TreeAnchor anchor = TellusProceduralTreeGenerator.anchorForCell(
+-               cellX, cellZ, this.worldSeed ^ (long)face * 0x9E3779B97F4A7C15L
++            TellusProceduralTreeGenerator.TreeAnchor anchor = CubeNetTravelTerrainRules.treeAnchor(
++               cellX, cellZ, this.worldSeed ^ (long)face * 0x9E3779B97F4A7C15L, this.cubeNetCustomTrees
+             );
+             int faceX = anchor.worldX();
+             int faceZ = anchor.worldZ();
+@@ -3360,12 +3369,18 @@
+                && !level.getBlockState(ground).is(Blocks.DIRT)
+                && !level.getBlockState(ground).is(Blocks.MUD)) continue;
+             if (this.hasNearbyTree(level, ground)) continue;
+-            TellusCanopyHeightSource.CanopySample sample = canopy.sampleCanopy(
+-               column.point(), this.worldScale(), this.worldScale()
+-            );
+-            TellusProceduralTreeGenerator.place(
+-               level, ground, level.getBiome(ground.above()), sample, anchor.seed()
+-            );
++            Holder<Biome> biome = level.getBiome(ground.above());
++            if (biome.is(Biomes.MANGROVE_SWAMP)) continue; // Retained native biome features already own mangroves.
++            var features = CubeNetTravelTerrainRules.treeFeatures(biome, this.cubeNetHugeRedMushrooms);
++            if (features.isEmpty()) continue;
++            if (this.cubeNetCustomTrees) {
++               TellusCanopyHeightSource.CanopySample sample = canopy.sampleCanopy(
++                  column.point(), this.worldScale(), this.worldScale());
++               TellusProceduralTreeGenerator.place(level, ground, biome, sample, anchor.seed());
++            } else {
++               RandomSource random = RandomSource.create(anchor.seed());
++               features.get(random.nextInt(features.size())).place(level, this, random, ground.above());
++            }
+          }
+       }
+    }
+--- a/shared/mc1201/src/main/java/com/yucareux/tellus/worldgen/runtime/CubeNetGeneratorSettingsViewAdapter.java
++++ b/shared/mc1201/src/main/java/com/yucareux/tellus/worldgen/runtime/CubeNetGeneratorSettingsViewAdapter.java
+@@ -94,12 +94,12 @@
+          this.settings.roads(),
+          this.settings.buildings(),
+          this.settings.cavesReachSurface(),
+-         this.settings.undergroundDepth(),
+-         false,
+-         false,
+-         this.settings.lakeFreezing(),
+-         false,
+-         false
++          this.settings.undergroundDepth(),
++          false,
++          this.settings.climateBasedBuiltUpTerrain(),
++          this.settings.lakeFreezing(),
++          this.settings.customTrees(),
++          this.settings.hugeRedMushrooms()
+       ));
+    }
+ 
+--- a/shared/mc1211/src/main/java/com/yucareux/tellus/worldgen/CubeNetChunkGenerator.java
++++ b/shared/mc1211/src/main/java/com/yucareux/tellus/worldgen/CubeNetChunkGenerator.java
+@@ -358,6 +358,9 @@
+    private final int cubeNetHeightOffset;
+    private final double cubeNetTerrestrialHeightScale;
+    private final double cubeNetOceanicHeightScale;
++   private final boolean cubeNetCustomTrees;
++   private final boolean cubeNetHugeRedMushrooms;
++   private final boolean cubeNetClimateBasedBuiltUpTerrain;
+    private static final boolean CUBE_NET_CAVES_DEFAULT = Boolean.parseBoolean(
+       System.getProperty("tellus.cubeNet.caves", "true")
+    );
+@@ -530,6 +533,10 @@
+       this.cubeNetHeightOffset = resolveHeightOffset(biome);
+       this.cubeNetTerrestrialHeightScale = resolveTerrestrialHeightScale(biome);
+       this.cubeNetOceanicHeightScale = resolveOceanicHeightScale(biome);
++      var travelSettings = biome instanceof CubeNetBiomeSource cubeNet ? cubeNet.settings() : CubeNetBiomeSource.Settings.DEFAULT;
++      this.cubeNetCustomTrees = travelSettings.customTrees();
++      this.cubeNetHugeRedMushrooms = travelSettings.hugeRedMushrooms();
++      this.cubeNetClimateBasedBuiltUpTerrain = travelSettings.climateBasedBuiltUpTerrain();
+ 
+       Preconditions.checkArgument(minY % 16 == 0 && height % 16 == 0 && height >= 16
+          && minY >= -2032 && (long)minY + height <= 2032,
+@@ -1247,6 +1254,8 @@
+          // Cache misses retain the canonical raw cover, matching the source's
+          // non-blocking fallback used by the biome source.
+       }
++      visualCover = CubeNetTravelTerrainRules.surfaceCover(surface.coverClass(), visualCover, biome,
++         this.cubeNetClimateBasedBuiltUpTerrain);
+       byte climateGroup = cubeNetClimateGroupForBiome(biome);
+       int heightAboveSea = surfaceY - this.seaLevel;
+       int slopeDiff = finite(surface.neighbourhood().gradient().slopeDegrees())
+@@ -3336,7 +3345,7 @@
+          .filter(this.singularityPolicy::admitsTerrainMaterialization).orElse(null);
+       if (address == null) return;
+       int face = address.face();
+-      int cellSize = TellusProceduralTreeGenerator.PLACEMENT_CELL_SIZE;
++      int cellSize = CubeNetTravelTerrainRules.treeCellSize(this.cubeNetCustomTrees);
+       int minFaceX = Math.toIntExact(address.blockX());
+       int minFaceZ = Math.toIntExact(address.blockZ());
+       int maxFaceX = minFaceX + 15;
+@@ -3349,8 +3358,8 @@
+       TellusCanopyHeightSource canopy = TellusWorldgenSources.canopyHeight();
+       for (int cellX = minCellX; cellX <= maxCellX; cellX++) {
+          for (int cellZ = minCellZ; cellZ <= maxCellZ; cellZ++) {
+-            TellusProceduralTreeGenerator.TreeAnchor anchor = TellusProceduralTreeGenerator.anchorForCell(
+-               cellX, cellZ, this.worldSeed ^ (long)face * 0x9E3779B97F4A7C15L
++            TellusProceduralTreeGenerator.TreeAnchor anchor = CubeNetTravelTerrainRules.treeAnchor(
++               cellX, cellZ, this.worldSeed ^ (long)face * 0x9E3779B97F4A7C15L, this.cubeNetCustomTrees
+             );
+             int faceX = anchor.worldX();
+             int faceZ = anchor.worldZ();
+@@ -3373,12 +3382,18 @@
+                && !level.getBlockState(ground).is(Blocks.DIRT)
+                && !level.getBlockState(ground).is(Blocks.MUD)) continue;
+             if (this.hasNearbyTree(level, ground)) continue;
+-            TellusCanopyHeightSource.CanopySample sample = canopy.sampleCanopy(
+-               column.point(), this.worldScale(), this.worldScale()
+-            );
+-            TellusProceduralTreeGenerator.place(
+-               level, ground, level.getBiome(ground.above()), sample, anchor.seed()
+-            );
++            Holder<Biome> biome = level.getBiome(ground.above());
++            if (biome.is(Biomes.MANGROVE_SWAMP)) continue; // Retained native biome features already own mangroves.
++            var features = CubeNetTravelTerrainRules.treeFeatures(biome, this.cubeNetHugeRedMushrooms);
++            if (features.isEmpty()) continue;
++            if (this.cubeNetCustomTrees) {
++               TellusCanopyHeightSource.CanopySample sample = canopy.sampleCanopy(
++                  column.point(), this.worldScale(), this.worldScale());
++               TellusProceduralTreeGenerator.place(level, ground, biome, sample, anchor.seed());
++            } else {
++               RandomSource random = RandomSource.create(anchor.seed());
++               features.get(random.nextInt(features.size())).place(level, this, random, ground.above());
++            }
+          }
+       }
+    }
+--- a/shared/mc1211/src/main/java/com/yucareux/tellus/worldgen/runtime/CubeNetGeneratorSettingsViewAdapter.java
++++ b/shared/mc1211/src/main/java/com/yucareux/tellus/worldgen/runtime/CubeNetGeneratorSettingsViewAdapter.java
+@@ -55,7 +55,8 @@
+          this.settings.caveGeneration(), this.settings.oreVeins(), this.settings.geologicalStonePatches(),
+          this.settings.lavaPools(), this.settings.geodes(), this.settings.deepDark(), this.settings.enableWater(),
+          this.settings.roads(), this.settings.buildings(), this.settings.cavesReachSurface(), this.settings.undergroundDepth(),
+-         false, false, this.settings.lakeFreezing(), false, false
++          false, this.settings.climateBasedBuiltUpTerrain(), this.settings.lakeFreezing(),
++          this.settings.customTrees(), this.settings.hugeRedMushrooms()
+       ));
+    }
+ 
+--- a/tools/tellus_parity_compare.py
++++ b/tools/tellus_parity_compare.py
+@@ -135,7 +135,11 @@
+     parser.add_argument("--expected-columns", type=int, default=13_824)
+     parser.add_argument("--expected-column-mismatches", type=int, default=0)
+     parser.add_argument("--expected-biome-cases", type=int, default=7)
+-    parser.add_argument("--expected-biome-mismatches", type=int, default=1)
++    parser.add_argument("--biome-baseline", choices=("travel-environment-v2", "historical-v1"),
++                        default="travel-environment-v2",
++                        help="current seven/zero gate; explicitly select historical-v1 to replay archived seven/one evidence")
++    parser.add_argument("--expected-biome-mismatches", type=int, default=None,
++                        help="explicit mismatch-count override (also supports legacy replay commands)")
+     parser.add_argument("--known-biome-case", default="bare/BWh")
+     parser.add_argument("--require-block-digests", action="store_true", help="require full-column SHA-256 on every native column row")
+     parser.add_argument("--require-original-biome-cases", action="store_true", help="require the seven original case/climate identifiers")
+@@ -145,6 +149,8 @@
+ 
+ def run(argv: list[str]) -> tuple[int, dict[str, object]]:
+     args = _parse_args(argv)
++    if args.expected_biome_mismatches is None:
++        args.expected_biome_mismatches = 1 if args.biome_baseline == "historical-v1" else 0
+     try:
+         left = read_manifest(args.columns_left, "columns")
+         right = read_manifest(args.columns_right, "columns")
+@@ -172,6 +178,7 @@
+         "columns": columns,
+         "biome": biome_result,
+         "expected": {
++            "biomeBaseline": args.biome_baseline,
+             "columns": args.expected_columns,
+             "columnMismatches": args.expected_column_mismatches,
+             "biomeCases": args.expected_biome_cases,
+--- a/tools/test_tellus_parity_compare.py
++++ b/tools/test_tellus_parity_compare.py
+@@ -49,6 +49,7 @@
+                 "--biome", biome,
+                 "--expected-columns", "1",
+                 "--expected-biome-cases", "1",
++                "--biome-baseline", "historical-v1",
+             ])
+             self.assertEqual(code, 0)
+             self.assertEqual(result["status"], "PASS")
+@@ -63,7 +64,8 @@
+             right = self._write(directory, "right.jsonl", json.dumps({**base, "blockSha256": "b" * 64}))
+             biome = self._write(directory, "biome.jsonl", '{"case":"bare/BWh","earth":"desert","cube":"stony_peaks"}')
+             args = ["--columns-left", left, "--columns-right", right, "--biome", biome,
+-                    "--expected-columns", "1", "--expected-biome-cases", "1", "--require-block-digests"]
++                    "--expected-columns", "1", "--expected-biome-cases", "1", "--require-block-digests",
++                    "--biome-baseline", "historical-v1"]
+             code, result = run(args)
+             self.assertEqual((code, result["status"]), (1, "MISMATCH"))
+             self.assertEqual(len(result["columns"]["mismatches"]), 1)
+@@ -83,7 +85,8 @@
+             right = self._write(directory, "right.jsonl", json.dumps(base))
+             biome = self._write(directory, "biome.jsonl", '{"case":"bare/BWh","earth":"desert","cube":"stony_peaks"}')
+             code, result = run(["--columns-left", left, "--columns-right", right, "--biome", biome,
+-                                "--expected-columns", "1", "--expected-biome-cases", "1"])
++                                "--expected-columns", "1", "--expected-biome-cases", "1",
++                                "--biome-baseline", "historical-v1"])
+             self.assertEqual((code, result["status"]), (1, "MISMATCH"))
+ 
+     def test_strict_original_biome_case_domain_rejects_same_count_substitution(self):
+@@ -97,7 +100,8 @@
+                      "cube": "stony_peaks" if case == "bare/BWh" else "forest"} for case in cases]
+             biome = self._write(directory, "biome.jsonl", "\n".join(map(json.dumps, rows)))
+             args = ["--columns-left", left, "--columns-right", right, "--biome", biome,
+-                    "--expected-columns", "1", "--require-original-biome-cases"]
++                    "--expected-columns", "1", "--require-original-biome-cases",
++                    "--biome-baseline", "historical-v1"]
+             self.assertEqual(run(args)[0], 0)
+             rows[0]["case"] = "fabricated/AAA"
+             Path(biome).write_text("\n".join(map(json.dumps, rows)), encoding="utf-8")
+@@ -106,6 +110,31 @@
+             self.assertFalse(result["checks"]["biomeCaseSet"])
+             self.assertTrue(result["checks"]["biomeCount"])
+ 
++    def test_current_seven_zero_and_explicit_historical_seven_one_are_distinct(self):
++        with tempfile.TemporaryDirectory() as raw:
++            directory = Path(raw)
++            column = '{"key":"a","material":"STONE","height":"80","status":"AVAILABLE"}'
++            left = self._write(directory, "left.jsonl", column)
++            right = self._write(directory, "right.jsonl", column)
++            cases = ["forest/Cfb", "grassland/Cfa", "cropland/Dfb", "bare/BWh", "snow/ET", "wetland/Cfa", "mangrove/Af"]
++            rows = [{"case": case, "earth": "desert" if case == "bare/BWh" else "forest",
++                     "cube": "desert" if case == "bare/BWh" else "forest"} for case in cases]
++            biome = self._write(directory, "biome.jsonl", "\n".join(map(json.dumps, rows)))
++            args = ["--columns-left", left, "--columns-right", right, "--biome", biome,
++                    "--expected-columns", "1", "--require-original-biome-cases"]
++            code, result = run(args)
++            self.assertEqual((code, result["biome"]["cases"], result["biome"]["mismatches"]), (0, 7, []))
++            self.assertEqual(result["expected"]["biomeBaseline"], "travel-environment-v2")
++            self.assertEqual(run(args + ["--biome-baseline", "historical-v1"])[0], 1)
++            rows[3]["cube"] = "stony_peaks"
++            Path(biome).write_text("\n".join(map(json.dumps, rows)), encoding="utf-8")
++            self.assertEqual(run(args)[0], 1, "historical mismatch must not pass the new gate")
++            self.assertEqual(run(args + ["--biome-baseline", "historical-v1"])[0], 0)
++            self.assertEqual(run(args + ["--expected-biome-mismatches", "1"])[0], 0)
++            rows[3]["case"] = "substituted/BWh"
++            Path(biome).write_text("\n".join(map(json.dumps, rows)), encoding="utf-8")
++            self.assertEqual(run(args + ["--biome-baseline", "historical-v1"])[0], 1)
++
+ 
+ if __name__ == "__main__":
+     unittest.main()
+--- a/mc1201/src/test/java/com/yucareux/tellus/worldgen/EarthCubeBiomeParityProbeTest.java
++++ b/mc1201/src/test/java/com/yucareux/tellus/worldgen/EarthCubeBiomeParityProbeTest.java
+@@ -92,7 +92,7 @@
+             System.out.println("BIOME_PROBE case=" + value.name() + " earth=" + earthKey + " cube=" + cubeKey + " equal=" + equal);
+         }
+         System.out.println("BIOME_PROBE cases=" + cases.length + " mismatches=" + mismatches);
+-        assertEquals(cases.length, cases.length);
++         assertEquals(0, mismatches, "Actual Earth/Cube output parity; historical bare/BWh is now desert on both");
+     }
+ 
+     private static int coverFor(SphereWorldModel.GeoPoint point) {
+--- a/mc1201/src/test/java/com/yucareux/tellus/worldgen/TellusParityManifestExportTest.java
++++ b/mc1201/src/test/java/com/yucareux/tellus/worldgen/TellusParityManifestExportTest.java
+@@ -130,11 +130,13 @@
+             var face = model.continuousForGeo(new SphereWorldModel.GeoPoint(c.lat(),c.lon(),0));
+             var planar = layout.toPlanar(new CubeNetLayout.FacePoint(CubeNetLayout.Face.of(face.face()),face.blockX(),face.blockZ()));
+             String b = key(cube.getNoiseBiome(QuartPos.fromBlock((int)Math.floor(planar.x())),QuartPos.fromBlock(64),QuartPos.fromBlock((int)Math.floor(planar.z())),null));
+-            if (!a.equals(b)) { mismatches++; assertEquals("bare",c.name()); assertEquals("minecraft:desert",a); assertEquals("minecraft:stony_peaks",b); }
++             if (!a.equals(b)) mismatches++;
++             assertEquals(a,b,c.name()+"/"+c.climate());
++             if (c.name().equals("bare")) assertEquals("minecraft:desert",b);
+             rows.add(JSON.toJson(Map.of("case",c.name()+"/"+c.climate(),"earth",a,"cube",b)));
+         }
+-        assertEquals(1,mismatches); assertEquals(7,rows.size()); write("earth-cube-biome.jsonl",rows);
+-        System.out.println("PARITY_MANIFEST_EXPORT biomeCases=7 mismatches=1 known=bare/BWh output="+OUTPUT);
++         assertEquals(0,mismatches); assertEquals(7,rows.size()); write("earth-cube-biome.jsonl",rows);
++         System.out.println("PARITY_MANIFEST_EXPORT biomeCases=7 mismatches=0 baseline=travel-environment-v2 output="+OUTPUT);
+     }
+     private static Case at(SphereWorldModel.GeoPoint p) {
+         for (int i=0;i<CASES.length-1;i++) { Case c=CASES[i]; if(Math.abs(c.lat()-p.latitude())<0.01 && Math.abs(c.lon()-p.longitude())<0.01)return c; }
+--- a/src/main/java/com/yucareux/tellus/worldgen/CubeNetBiomeSource.java
++++ b/src/main/java/com/yucareux/tellus/worldgen/CubeNetBiomeSource.java
+@@ -88,9 +88,12 @@
+        boolean teleportProgress,
+        int heightOffset,
+        double spawnLatitude,
+-       double spawnLongitude,
+-       double terrestrialHeightScale,
+-       double oceanicHeightScale
++        double spawnLongitude,
++        double terrestrialHeightScale,
++        double oceanicHeightScale,
++        boolean customTrees,
++        boolean hugeRedMushrooms,
++        boolean climateBasedBuiltUpTerrain
+    ) {
+       public static final Settings DEFAULT = new Settings(
+          false,
+@@ -131,8 +134,11 @@
+           EarthGeneratorSettings.DEFAULT.heightOffset(),
+           EarthGeneratorSettings.DEFAULT.spawnLatitude(),
+           EarthGeneratorSettings.DEFAULT.spawnLongitude(),
+-          EarthGeneratorSettings.DEFAULT.terrestrialHeightScale(),
+-          EarthGeneratorSettings.DEFAULT.oceanicHeightScale()
++           EarthGeneratorSettings.DEFAULT.terrestrialHeightScale(),
++           EarthGeneratorSettings.DEFAULT.oceanicHeightScale(),
++           EarthGeneratorSettings.DEFAULT.customTrees(),
++           EarthGeneratorSettings.DEFAULT.hugeRedMushrooms(),
++           EarthGeneratorSettings.DEFAULT.climateBasedBuiltUpTerrain()
+       );
+        private record BaseSettings(boolean randomBiomes, double randomBiomeDensity, long randomBiomeSeed,
+           List<String> randomBiomeIds, boolean caveGeneration, boolean deepDark, int undergroundDepth,
+@@ -184,7 +190,8 @@
+        private record BaseAndB(BaseAndA baseAndA, StructureSettingsB structures) { }
+         private record WorldSettings(boolean lakeFreezing, boolean lavaPools, boolean geodes, boolean enableWater,
+            boolean teleportProgress, int heightOffset, double spawnLatitude, double spawnLongitude,
+-          double terrestrialHeightScale, double oceanicHeightScale) { }
++           double terrestrialHeightScale, double oceanicHeightScale,
++           boolean customTrees, boolean hugeRedMushrooms, boolean climateBasedBuiltUpTerrain) { }
+         private static final MapCodec<WorldSettings> WORLD_CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
+           Codec.BOOL.optionalFieldOf("lake_freezing", DEFAULT.lakeFreezing()).forGetter(WorldSettings::lakeFreezing),
+           Codec.BOOL.optionalFieldOf("lava_pools", DEFAULT.lavaPools()).forGetter(WorldSettings::lavaPools),
+@@ -195,7 +202,10 @@
+           Codec.DOUBLE.optionalFieldOf("spawn_latitude", DEFAULT.spawnLatitude()).forGetter(WorldSettings::spawnLatitude),
+           Codec.DOUBLE.optionalFieldOf("spawn_longitude", DEFAULT.spawnLongitude()).forGetter(WorldSettings::spawnLongitude),
+           Codec.DOUBLE.optionalFieldOf("terrestrial_height_scale", DEFAULT.terrestrialHeightScale()).forGetter(WorldSettings::terrestrialHeightScale),
+-          Codec.DOUBLE.optionalFieldOf("oceanic_height_scale", DEFAULT.oceanicHeightScale()).forGetter(WorldSettings::oceanicHeightScale)
++           Codec.DOUBLE.optionalFieldOf("oceanic_height_scale", DEFAULT.oceanicHeightScale()).forGetter(WorldSettings::oceanicHeightScale),
++           Codec.BOOL.optionalFieldOf("custom_trees", DEFAULT.customTrees()).forGetter(WorldSettings::customTrees),
++           Codec.BOOL.optionalFieldOf("huge_red_mushrooms", DEFAULT.hugeRedMushrooms()).forGetter(WorldSettings::hugeRedMushrooms),
++           Codec.BOOL.optionalFieldOf("climate_based_built_up_terrain", DEFAULT.climateBasedBuiltUpTerrain()).forGetter(WorldSettings::climateBasedBuiltUpTerrain)
+        ).apply(instance, WorldSettings::new));
+        public static final Codec<Settings> CODEC = MapCodec.of(
+           new com.mojang.serialization.MapEncoder.Implementation<Settings>() {
+@@ -207,9 +217,10 @@
+                    input.addWoodlandMansions(), input.addDesertTemples(), input.addJungleTemples(), input.addPillagerOutposts(), input.addRuinedPortals());
+                 StructureSettingsB b = new StructureSettingsB(input.addShipwrecks(), input.addOceanRuins(), input.addBuriedTreasure(), input.addIgloos(),
+                    input.addWitchHuts(), input.addAncientCities(), input.addTrialChambers(), input.addTrailRuins(), input.addAbandonedCamps());
+-                WorldSettings world = new WorldSettings(input.lakeFreezing(), input.lavaPools(), input.geodes(), input.enableWater(),
+-                   input.teleportProgress(), input.heightOffset(), input.spawnLatitude(), input.spawnLongitude(),
+-                   input.terrestrialHeightScale(), input.oceanicHeightScale());
++                 WorldSettings world = new WorldSettings(input.lakeFreezing(), input.lavaPools(), input.geodes(), input.enableWater(),
++                    input.teleportProgress(), input.heightOffset(), input.spawnLatitude(), input.spawnLongitude(),
++                    input.terrestrialHeightScale(), input.oceanicHeightScale(),
++                    input.customTrees(), input.hugeRedMushrooms(), input.climateBasedBuiltUpTerrain());
+                 return WORLD_CODEC.encode(world, ops, STRUCTURES_B_CODEC.encode(b, ops, STRUCTURES_A_CODEC.encode(a, ops, BASE_CODEC.encode(base, ops, prefix))));
+              }
+              public <T> Stream<T> keys(DynamicOps<T> ops) {
+@@ -235,8 +246,9 @@
+                           baseAndB.structures().addWitchHuts(), baseAndB.structures().addAncientCities(), baseAndB.structures().addTrialChambers(),
+                           baseAndB.structures().addTrailRuins(), baseAndB.structures().addAbandonedCamps(),
+                           world.lakeFreezing(), world.lavaPools(), world.geodes(), world.enableWater(), world.teleportProgress(),
+-                          world.heightOffset(), world.spawnLatitude(), world.spawnLongitude(),
+-                          world.terrestrialHeightScale(), world.oceanicHeightScale()), WORLD_CODEC.decode(ops, input));
++                           world.heightOffset(), world.spawnLatitude(), world.spawnLongitude(),
++                           world.terrestrialHeightScale(), world.oceanicHeightScale(),
++                           world.customTrees(), world.hugeRedMushrooms(), world.climateBasedBuiltUpTerrain()), WORLD_CODEC.decode(ops, input));
+              }
+              public <T> Stream<T> keys(DynamicOps<T> ops) {
+                 return Stream.concat(BASE_CODEC.keys(ops), Stream.concat(STRUCTURES_A_CODEC.keys(ops), Stream.concat(STRUCTURES_B_CODEC.keys(ops), WORLD_CODEC.keys(ops))));
+@@ -265,6 +277,26 @@
+              this.addTrailRuins(),
+              this.addAbandonedCamps()
+           );
++       }
++
++       /** Retains the pre-travel-options constructor for integrations and old callers. */
++       public Settings(boolean randomBiomes, double randomBiomeDensity, long randomBiomeSeed, List<String> randomBiomeIds,
++          boolean caveGeneration, boolean deepDark, int undergroundDepth, boolean oreVeins, boolean geologicalStonePatches,
++          boolean cavesReachSurface, boolean roads, boolean buildings, boolean addStrongholds, boolean addVillages,
++          boolean addMineshafts, boolean addOceanMonuments, boolean addWoodlandMansions, boolean addDesertTemples,
++          boolean addJungleTemples, boolean addPillagerOutposts, boolean addRuinedPortals, boolean addShipwrecks,
++          boolean addOceanRuins, boolean addBuriedTreasure, boolean addIgloos, boolean addWitchHuts,
++          boolean addAncientCities, boolean addTrialChambers, boolean addTrailRuins, boolean addAbandonedCamps,
++          boolean lakeFreezing, boolean lavaPools, boolean geodes, boolean enableWater, boolean teleportProgress,
++          int heightOffset, double spawnLatitude, double spawnLongitude, double terrestrialHeightScale, double oceanicHeightScale) {
++          this(randomBiomes, randomBiomeDensity, randomBiomeSeed, randomBiomeIds, caveGeneration, deepDark,
++             undergroundDepth, oreVeins, geologicalStonePatches, cavesReachSurface, roads, buildings,
++             addStrongholds, addVillages, addMineshafts, addOceanMonuments, addWoodlandMansions, addDesertTemples,
++             addJungleTemples, addPillagerOutposts, addRuinedPortals, addShipwrecks, addOceanRuins, addBuriedTreasure,
++             addIgloos, addWitchHuts, addAncientCities, addTrialChambers, addTrailRuins, addAbandonedCamps,
++             lakeFreezing, lavaPools, geodes, enableWater, teleportProgress, heightOffset, spawnLatitude, spawnLongitude,
++             terrestrialHeightScale, oceanicHeightScale, EarthGeneratorSettings.DEFAULT.customTrees(),
++             EarthGeneratorSettings.DEFAULT.hugeRedMushrooms(), EarthGeneratorSettings.DEFAULT.climateBasedBuiltUpTerrain());
+        }
+ 
+        public Settings {
+@@ -342,6 +374,7 @@
+    private final Holder<Biome> deepDark;
+    private final Supplier<SphereChunkSampler> sampler;
+    private final ClimateSampler climateSampler;
++   private final boolean usingDefaultClimate;
+    private final InlandWaterSampler inlandWaterSampler;
+    private final Settings settings;
+    private final RandomBiomeMixer randomBiomeMixer;
+@@ -434,6 +467,7 @@
+       this.sampler = Suppliers.memoize(() -> pointSampler == null
+          ? TellusWorldgenSources.sphericalSampler(this.model)
+          : new SphereChunkSampler(this.model, pointSampler));
++      this.usingDefaultClimate = climateSampler == null;
+       this.climateSampler = climateSampler == null ? CubeNetBiomeSource::sampleDefaultClimate : climateSampler;
+       this.inlandWaterSampler = inlandWaterSampler == null
+          ? CubeNetBiomeSource::sampleDefaultInlandWater : inlandWaterSampler;
+@@ -670,17 +704,28 @@
+          return this.settings.randomBiomes() ? this.randomBiomeMixer.mixLand(snow, blockX, blockZ, koppen) : snow;
+       }
+ 
+-      String climate = koppen;
+-      if (BadlandsTerrainPolicy.isDryCanyonCover(visualCover)) {
+-         String coherent = TellusWorldgenSources.koppen().sampleCoherentCode(
+-            EarthProjection.longitudeToBlockX(point.longitude(), this.model.config().worldScale()),
+-            EarthProjection.latToBlockZ(point.latitude(), this.model.config().worldScale()),
+-            this.model.config().worldScale());
+-         if (BadlandsTerrainPolicy.shouldUseCoherentAridClimate(visualCover, coherent)) climate = coherent;
+-      }
+-
+-      ResourceKey<Biome> key = BiomeClassificationProviders.findBiomeKey(visualCover, climate, blockX, blockZ,
+-         this.model.config().worldScale());
++       // The selected climate sampler is authoritative; only the default production source
++       // participates in the native regional smoothing below.
++       String climate = koppen;
++       // Regional climate belongs to the production data source, not an injected test/preview sampler.
++       if (this.usingDefaultClimate && BadlandsTerrainPolicy.isDryCanyonCover(visualCover)) {
++          String coherent = TellusWorldgenSources.koppen().sampleCoherentCode(
++             EarthProjection.longitudeToBlockX(point.longitude(), this.model.config().worldScale()),
++             EarthProjection.latToBlockZ(point.latitude(), this.model.config().worldScale()),
++             this.model.config().worldScale());
++          if (BadlandsTerrainPolicy.shouldUseCoherentAridClimate(visualCover, coherent)) climate = coherent;
++       }
++       // blockX/Z are the spherical noise domain, not Earth projection coordinates. Geographic
++       // providers (notably RESOLVE) must see the same location as the cover and climate samplers.
++       int earthX = coordinateForClassification(Math.floor(
++          EarthProjection.longitudeToBlockX(point.longitude(), this.model.config().worldScale())));
++       int earthZ = coordinateForClassification(Math.floor(
++          EarthProjection.latToBlockZ(point.latitude(), this.model.config().worldScale())));
++       // Match the native Earth classifier for this release: 1.20.1 uses ESA/Koppen only;
++       // later releases give regional providers precedence. Do not retrofit Earth to fit a fixture.
++       ResourceKey<Biome> key = "1.20.1".equals(com.yucareux.tellus.compat.MinecraftRelease.VERSION) ? null
++          : BiomeClassificationProviders.findBiomeKey(visualCover, climate, earthX, earthZ,
++             this.model.config().worldScale());
+       if (key == null) key = BiomeClassification.findBiomeKey(visualCover, climate);
+       if (key == null) key = BiomeClassification.findFallbackKey(visualCover);
+       Holder<Biome> biome = this.resolveBiome(key, this.plains);
+@@ -756,15 +801,17 @@
+       return surfaceBiome;
+    }
+ 
+-   private Holder<Biome> resolveSnowBiome(SphereWorldModel.GeoPoint point, int blockX, int blockZ) {
+-      int baseline = SnowBiomePolicy.baselineBlocks(this.model.config().worldScale());
+-      double center = this.sampleElevation(point);
+-      double east = this.sampleElevationAtPlanar(blockX + baseline, blockZ);
+-      double west = this.sampleElevationAtPlanar(blockX - baseline, blockZ);
+-      double north = this.sampleElevationAtPlanar(blockX, blockZ - baseline);
+-      double south = this.sampleElevationAtPlanar(blockX, blockZ + baseline);
+-      double metersX = baseline * EarthProjection.groundMetersPerBlockX(blockZ, this.model.config().worldScale());
+-      double metersZ = baseline * EarthProjection.groundMetersPerBlockZ(blockZ, this.model.config().worldScale());
++    private Holder<Biome> resolveSnowBiome(SphereWorldModel.GeoPoint point, int blockX, int blockZ) {
++       int baseline = SnowBiomePolicy.baselineBlocks(this.model.config().worldScale());
++       double earthX = EarthProjection.longitudeToBlockX(point.longitude(), this.model.config().worldScale());
++       double earthZ = EarthProjection.latToBlockZ(point.latitude(), this.model.config().worldScale());
++       double center = this.sampleElevation(point);
++       double east = this.sampleElevationAtEarth(earthX + baseline, earthZ);
++       double west = this.sampleElevationAtEarth(earthX - baseline, earthZ);
++       double north = this.sampleElevationAtEarth(earthX, earthZ - baseline);
++       double south = this.sampleElevationAtEarth(earthX, earthZ + baseline);
++       double metersX = baseline * EarthProjection.groundMetersPerBlockX(earthZ, this.model.config().worldScale());
++       double metersZ = baseline * EarthProjection.groundMetersPerBlockZ(earthZ, this.model.config().worldScale());
+       return switch (SnowBiomePolicy.classify(center, east, west, north, south, metersX, metersZ)) {
+          case JAGGED_PEAKS -> this.jaggedPeaks;
+          case SNOWY_SLOPES -> this.snowySlopes;
+@@ -772,14 +819,16 @@
+       };
+    }
+ 
+-   private double sampleRegionalRelief(SphereWorldModel.GeoPoint point, int blockX, int blockZ) {
+-      int offset = Math.max(16, (int)Math.ceil(BadlandsTerrainPolicy.CANYON_RELIEF_SAMPLE_METERS
+-         / Math.max(1.0, this.model.config().worldScale())));
+-      double center = this.sampleElevation(point);
+-      double east = this.sampleElevationAtPlanar(blockX + offset, blockZ);
+-      double west = this.sampleElevationAtPlanar(blockX - offset, blockZ);
+-      double north = this.sampleElevationAtPlanar(blockX, blockZ - offset);
+-      double south = this.sampleElevationAtPlanar(blockX, blockZ + offset);
++    private double sampleRegionalRelief(SphereWorldModel.GeoPoint point, int blockX, int blockZ) {
++       int offset = Math.max(16, (int)Math.ceil(BadlandsTerrainPolicy.CANYON_RELIEF_SAMPLE_METERS
++          / Math.max(1.0, this.model.config().worldScale())));
++       double earthX = EarthProjection.longitudeToBlockX(point.longitude(), this.model.config().worldScale());
++       double earthZ = EarthProjection.latToBlockZ(point.latitude(), this.model.config().worldScale());
++       double center = this.sampleElevation(point);
++       double east = this.sampleElevationAtEarth(earthX + offset, earthZ);
++       double west = this.sampleElevationAtEarth(earthX - offset, earthZ);
++       double north = this.sampleElevationAtEarth(earthX, earthZ - offset);
++       double south = this.sampleElevationAtEarth(earthX, earthZ + offset);
+       double min = center;
+       double max = center;
+       for (double value : new double[]{east, west, north, south}) {
+@@ -792,10 +841,15 @@
+       return this.sampler.get().samplePoint(point).elevationMeters();
+    }
+ 
+-   private double sampleElevationAtPlanar(int blockX, int blockZ) {
+-      return this.resolveAddress(blockX, blockZ)
+-         .map(address -> this.sampleElevation(this.model.surfacePoint(address)))
+-         .orElse(Double.NaN);
++    private double sampleElevationAtEarth(double blockX, double blockZ) {
++       if (!Double.isFinite(blockX) || !Double.isFinite(blockZ)) return Double.NaN;
++        double longitude = EarthProjection.blockXToLongitude(blockX, this.model.config().worldScale());
++        double latitude = EarthProjection.blockZToLat(blockZ, this.model.config().worldScale());
++        if (!Double.isFinite(longitude) || !Double.isFinite(latitude)
++           || latitude < -90.0 || latitude > 90.0) return Double.NaN;
++        // Geographic neighbours cross the date line; a chart boundary is not missing elevation.
++        longitude -= 360.0 * Math.floor((longitude + 180.0) / 360.0);
++        return this.sampleElevation(new SphereWorldModel.GeoPoint(latitude, longitude, 0.0));
+    }
+ 
+    private boolean isAntarcticSnow(int rawCover, SphereWorldModel.GeoPoint point) {
+--- a/src/main/java/com/yucareux/tellus/world/data/geology/SphericalGeologySource.java
++++ b/src/main/java/com/yucareux/tellus/world/data/geology/SphericalGeologySource.java
+@@ -25,6 +25,12 @@
+ 
+    public static SphericalGeologySource shared() {
+       return SharedHolder.INSTANCE;
++   }
++
++   /** Match Earth's default; retain a spherical-only rollback without overriding the global disable. */
++   static boolean configuredMacrostratEnabled() {
++      return Boolean.parseBoolean(System.getProperty("tellus.macrostrat.enabled", "true"))
++         && Boolean.parseBoolean(System.getProperty("tellus.sphericalGeology.macrostrat", "true"));
+    }
+ 
+    public Sample sample(SphereWorldModel.GeoPoint point, double worldScale, double resolutionMeters) {
+@@ -59,7 +65,7 @@
+       private static final SphericalGeologySource INSTANCE = new SphericalGeologySource(
+          TellusLithologySource.shared(),
+          MacrostratGeologySource.shared(),
+-         Boolean.getBoolean("tellus.sphericalGeology.macrostrat")
++         configuredMacrostratEnabled()
+       );
+ 
+       private SharedHolder() {
+--- /dev/null
++++ b/src/main/java/com/yucareux/tellus/worldgen/CubeNetTravelTerrainRules.java
+@@ -0,0 +1,67 @@
++package com.yucareux.tellus.worldgen;
++
++import com.yucareux.tellus.worldgen.tree.TellusProceduralTreeGenerator;
++import java.util.ArrayList;
++import java.util.List;
++import java.util.Map;
++import java.util.concurrent.ConcurrentHashMap;
++import net.minecraft.core.Holder;
++import net.minecraft.tags.BiomeTags;
++import net.minecraft.util.RandomSource;
++import net.minecraft.world.level.biome.Biome;
++import net.minecraft.world.level.biome.Biomes;
++
++/** Native Earth vegetation and built-up-cover options, without changing spherical ownership. */
++final class CubeNetTravelTerrainRules {
++   private static final Map<TreeKey, List<WorldgenApi.TreeFeatureHandle>> TREE_FEATURES = new ConcurrentHashMap<>();
++
++   private CubeNetTravelTerrainRules() { }
++
++   static int surfaceCover(int rawCover, int visualCover, Holder<Biome> biome, boolean climateBased) {
++      if (!climateBased || rawCover != MountainSurfaceRules.ESA_BUILT) return visualCover;
++      if (biome == null) return MountainSurfaceRules.ESA_GRASSLAND;
++      if (biome.is(BiomeTags.IS_BADLANDS) || biome.is(Biomes.DESERT) || biome.is(Biomes.STONY_PEAKS)
++         || biome.is(Biomes.WINDSWEPT_GRAVELLY_HILLS)) return MountainSurfaceRules.ESA_BARE;
++      if (biome.is(BiomeTags.IS_JUNGLE) || biome.is(BiomeTags.IS_TAIGA) || biome.is(Biomes.FOREST)
++         || biome.is(Biomes.BIRCH_FOREST) || biome.is(Biomes.DARK_FOREST) || biome.is(Biomes.OLD_GROWTH_BIRCH_FOREST)
++         || biome.is(Biomes.OLD_GROWTH_PINE_TAIGA) || biome.is(Biomes.OLD_GROWTH_SPRUCE_TAIGA)) {
++         return MountainSurfaceRules.ESA_TREE_COVER;
++      }
++      return biome.is(BiomeTags.IS_SAVANNA) ? MountainSurfaceRules.ESA_SHRUBLAND : MountainSurfaceRules.ESA_GRASSLAND;
++   }
++
++   static int treeCellSize(boolean customTrees) {
++      return customTrees ? TellusProceduralTreeGenerator.PLACEMENT_CELL_SIZE : 5;
++   }
++
++   static TellusProceduralTreeGenerator.TreeAnchor treeAnchor(int cellX, int cellZ, long seed, boolean customTrees) {
++      if (customTrees) return TellusProceduralTreeGenerator.anchorForCell(cellX, cellZ, seed);
++      // Match Earth's intentional int overflow in x * 3129871 and signed shift.
++      long anchorSeed = cellX * 3129871 ^ cellZ * 116129781L;
++      anchorSeed = anchorSeed * anchorSeed * 42317861L + anchorSeed * 11L;
++      anchorSeed = (anchorSeed >> 16) ^ seed;
++      RandomSource random = RandomSource.create(anchorSeed);
++      return new TellusProceduralTreeGenerator.TreeAnchor(cellX * 5 + random.nextInt(5),
++         cellZ * 5 + random.nextInt(5), anchorSeed);
++   }
++
++   static List<WorldgenApi.TreeFeatureHandle> treeFeatures(Holder<Biome> biome, boolean hugeRedMushrooms) {
++      return TREE_FEATURES.computeIfAbsent(new TreeKey(biome, hugeRedMushrooms), key -> {
++         List<WorldgenApi.TreeFeatureHandle> result = new ArrayList<>();
++         for (var set : biome.value().getGenerationSettings().features()) {
++            for (var feature : set) {
++               var placed = feature.value();
++               if (!WorldgenApi.features(placed).anyMatch(WorldgenApi.TreeFeatureHandle::isTree)) continue;
++               if (hugeRedMushrooms || !WorldgenApi.features(placed).anyMatch(WorldgenApi.TreeFeatureHandle::isHugeRedMushroom)) {
++                  result.add(WorldgenApi.primaryFeature(placed));
++               } else {
++                  WorldgenApi.features(placed).filter(tree -> tree.isTree() && !tree.isHugeRedMushroom()).forEach(result::add);
++               }
++            }
++         }
++         return List.copyOf(result);
++      });
++   }
++
++   private record TreeKey(Holder<Biome> biome, boolean hugeRedMushrooms) { }
++}
+--- /dev/null
++++ b/src/test/java/com/yucareux/tellus/worldgen/CubeNetLandEnvironmentTest.java
+@@ -0,0 +1,235 @@
++package com.yucareux.tellus.worldgen;
++
++import static org.junit.jupiter.api.Assertions.*;
++
++import com.google.common.cache.Cache;
++import com.yucareux.tellus.compat.MinecraftRelease;
++import com.yucareux.tellus.integration.distant_horizons.managed.ManagedTerrainNetworkPolicy;
++import com.yucareux.tellus.test.MinecraftTestRegistries;
++import com.yucareux.tellus.world.data.biome.BiomeClassification;
++import com.yucareux.tellus.world.data.biome.BiomeClassificationProviders;
++import com.yucareux.tellus.world.data.koppen.TellusKoppenSource;
++import com.yucareux.tellus.world.data.resolve.TellusResolveSource;
++import com.yucareux.tellus.worldgen.global.CubeNetLayout;
++import com.yucareux.tellus.worldgen.global.SphereChunkSampler;
++import com.yucareux.tellus.worldgen.global.SphereSingularityPolicy;
++import com.yucareux.tellus.worldgen.global.SphereWorldModel;
++import java.lang.reflect.Field;
++import java.nio.channels.FileChannel;
++import java.nio.file.Path;
++import java.util.ArrayList;
++import java.util.Arrays;
++import java.util.List;
++import java.util.concurrent.atomic.AtomicReference;
++import net.minecraft.SharedConstants;
++import net.minecraft.core.Holder;
++import net.minecraft.core.HolderLookup;
++import net.minecraft.core.QuartPos;
++import net.minecraft.core.registries.Registries;
++import net.minecraft.resources.ResourceKey;
++import net.minecraft.server.Bootstrap;
++import net.minecraft.world.level.biome.Biome;
++import net.minecraft.world.level.biome.Biomes;
++import net.minecraft.world.level.biome.FixedBiomeSource;
++import org.junit.jupiter.api.AfterAll;
++import org.junit.jupiter.api.BeforeAll;
++import org.junit.jupiter.api.Test;
++import org.junit.jupiter.api.io.TempDir;
++import org.junit.jupiter.api.parallel.ResourceLock;
++
++/** Travel environment decisions, with injected terrain/climate and bundled offline regional data. */
++@ResourceLock("tellus-worldgen-sources")
++class CubeNetLandEnvironmentTest {
++    private static final double SCALE = 30.0;
++    private static final SphereWorldModel MODEL = SphereWorldModel.forWorldScale(SCALE);
++    private static final CubeNetLayout LAYOUT = CubeNetLayout.standard(MODEL.config().faceBlocks());
++    @TempDir static Path directory;
++    private static HolderLookup.RegistryLookup<Biome> biomes;
++    private static String oldGame, oldConfig;
++
++    @BeforeAll static void bootstrap() {
++        oldGame = System.getProperty("tellus.gameDir"); oldConfig = System.getProperty("tellus.configDir");
++        System.setProperty("tellus.gameDir", directory.toString());
++        System.setProperty("tellus.configDir", directory.resolve("config").toString());
++        SharedConstants.tryDetectVersion(); Bootstrap.bootStrap();
++        biomes = MinecraftTestRegistries.create().lookupOrThrow(Registries.BIOME);
++    }
++
++    @AfterAll static void restoreProperties() {
++        if (oldGame == null) System.clearProperty("tellus.gameDir"); else System.setProperty("tellus.gameDir", oldGame);
++        if (oldConfig == null) System.clearProperty("tellus.configDir"); else System.setProperty("tellus.configDir", oldConfig);
++    }
++
++    private static CubeNetBiomeSource source(int cover, String climate, SphereChunkSampler.PointSampler terrain) {
++        return new CubeNetBiomeSource(biomes, SCALE, 0, SphereSingularityPolicy.DEFAULT_CONFIG,
++            new FixedBiomeSource(biomes.getOrThrow(Biomes.PLAINS)), terrain,
++            (point, scale, water) -> new CubeNetBiomeSource.ClimateData(climate, null),
++            (point, scale) -> CubeNetBiomeSource.WaterData.dry());
++    }
++
++    private static Holder<Biome> query(CubeNetBiomeSource source, SphereWorldModel.GeoPoint point) {
++        var face = MODEL.continuousForGeo(point);
++        return query(source, new CubeNetLayout.FacePoint(CubeNetLayout.Face.of(face.face()), face.blockX(), face.blockZ()));
++    }
++
++    private static Holder<Biome> query(CubeNetBiomeSource source, CubeNetLayout.FacePoint point) {
++        var planar = LAYOUT.toPlanar(point);
++        return source.getNoiseBiome(QuartPos.fromBlock((int)Math.floor(planar.x())), QuartPos.fromBlock(64),
++            QuartPos.fromBlock((int)Math.floor(planar.z())), null);
++    }
++
++    private static ResourceKey<Biome> expected(int cover, String climate, SphereWorldModel.GeoPoint point) {
++        int x = (int)Math.floor(EarthProjection.longitudeToBlockX(point.longitude(), SCALE));
++        int z = (int)Math.floor(EarthProjection.latToBlockZ(point.latitude(), SCALE));
++        ResourceKey<Biome> key = "1.20.1".equals(MinecraftRelease.VERSION) ? null
++            : BiomeClassificationProviders.findBiomeKey(cover, climate, x, z, SCALE);
++        if (key == null) key = BiomeClassification.findBiomeKey(cover, climate);
++        return key == null ? BiomeClassification.findFallbackKey(cover) : key;
++    }
++
++    @Test void historicalBareBWhWasClassifiedAtAntarcticRockInsteadOfArabianDesert() {
++        try (var ignored = ManagedTerrainNetworkPolicy.cacheOnly()) {
++            // The old spherical noise coordinates at (24N,55E), incorrectly consumed as Earth blocks.
++            var regional = TellusResolveSource.shared();
++            assertEquals("Rock and Ice", regional.sampleEcoregion(539037, 785345, SCALE).name());
++            int earthX = (int)Math.floor(EarthProjection.longitudeToBlockX(55, SCALE));
++            int earthZ = (int)Math.floor(EarthProjection.latToBlockZ(24, SCALE));
++            assertEquals("Arabian sand desert", regional.sampleEcoregion(earthX, earthZ, SCALE).name());
++            assertEquals(Biomes.STONY_PEAKS, BiomeClassificationProviders.findBiomeKey(60, "BWh", 539037, 785345, SCALE));
++            assertEquals(Biomes.DESERT, BiomeClassificationProviders.findBiomeKey(60, "BWh", earthX, earthZ, SCALE));
++            var source = source(60, "BWh", (point, resolution) -> new SphereChunkSampler.SurfaceData(10, 60));
++            assertTrue(query(source, new SphereWorldModel.GeoPoint(24, 55, 0)).is(Biomes.DESERT));
++        }
++    }
++
++    @Test void allSixFacesKeepNativeReleaseClassificationAcrossHotColdSteppeTemperateAndAlpineClimate() {
++        int cases = 0;
++        try (var ignored = ManagedTerrainNetworkPolicy.cacheOnly()) {
++            for (String climate : new String[]{"BWh", "BWk", "BSh", "BSk", "Cfb", "ET", null}) {
++                AtomicReference<SphereWorldModel.GeoPoint> sampled = new AtomicReference<>();
++                var source = source(60, climate, (point, resolution) -> {
++                    sampled.compareAndSet(null, point); return new SphereChunkSampler.SurfaceData(10, 60);
++                });
++                for (var face : CubeNetLayout.Face.values()) {
++                    sampled.set(null);
++                    var result = query(source, new CubeNetLayout.FacePoint(face, LAYOUT.faceSize() * 0.32, LAYOUT.faceSize() * 0.41));
++                    assertEquals(expected(60, climate, sampled.get()), result.unwrapKey().orElseThrow(), face + "/" + climate);
++                    cases++;
++                }
++            }
++        }
++        assertEquals(42, cases);
++    }
++
++    @Test void bareDoesNotMeanDesertInTemperateOrAlpineRockyTerrain() {
++        try (var ignored = ManagedTerrainNetworkPolicy.cacheOnly()) {
++            for (String climate : new String[]{"Cfb", "ET", null}) {
++                var source = source(60, climate, (point, resolution) -> new SphereChunkSampler.SurfaceData(1800, 60));
++                var result = query(source, new SphereWorldModel.GeoPoint(46, 12, 0));
++                assertFalse(result.is(Biomes.DESERT)); assertFalse(result.is(Biomes.BADLANDS));
++                assertTrue(result.is(Biomes.STONY_PEAKS) || result.is(Biomes.WINDSWEPT_GRAVELLY_HILLS));
++            }
++        }
++    }
++
++    @Test void hotDesertColdDesertAndSteppeKeepTheirDistinctNativeMappings() {
++        try (var ignored = ManagedTerrainNetworkPolicy.cacheOnly()) {
++            for (String climate : new String[]{"BWh", "BWk", "BSh", "BSk"}) {
++                var source = source(60, climate, (point, resolution) -> new SphereChunkSampler.SurfaceData(10, 60));
++                assertTrue(query(source, new SphereWorldModel.GeoPoint(24, 55, 0))
++                    .is(climate.equals("BWh") ? Biomes.DESERT : Biomes.BADLANDS), climate);
++            }
++        }
++    }
++
++    @Test void regionalClassificationFollowsNativeReleaseRatherThanChangingEarthToFitTheProbe() {
++        try (var ignored = ManagedTerrainNetworkPolicy.cacheOnly()) {
++            var source = source(10, "Cfb", (point, resolution) -> new SphereChunkSampler.SurfaceData(10, 10));
++             var nativeKey = "1.20.1".equals(MinecraftRelease.VERSION)
++                 ? Biomes.OLD_GROWTH_BIRCH_FOREST : Biomes.OLD_GROWTH_SPRUCE_TAIGA;
++             assertEquals(nativeKey, query(source, new SphereWorldModel.GeoPoint(46, 12, 0)).unwrapKey().orElseThrow());
++        }
++    }
++
++    @Test void injectedClimateSurvivesConflictingGlobalCoherentAridRaster() throws Exception {
++        try (var ignored = ManagedTerrainNetworkPolicy.cacheOnly()) {
++            TellusKoppenSource global = TellusWorldgenSources.koppen();
++            Field rasterField = TellusKoppenSource.class.getDeclaredField("raster"); rasterField.setAccessible(true);
++            Object previous = rasterField.get(global);
++            try {
++                rasterField.set(global, constantRaster(5)); // BWk everywhere, unlike injected BWh.
++                double x = EarthProjection.longitudeToBlockX(55, SCALE), z = EarthProjection.latToBlockZ(24, SCALE);
++                assertEquals("BWk", global.sampleCoherentCode(x, z, SCALE), "The conflicting source must really be available");
++                var source = source(60, "BWh", (point, resolution) -> new SphereChunkSampler.SurfaceData(10, 60));
++                assertTrue(query(source, new SphereWorldModel.GeoPoint(24, 55, 0)).is(Biomes.DESERT),
++                    "A global coherent climate must not replace the selected ClimateSampler");
++            } finally { rasterField.set(global, previous); }
++        }
++    }
++
++    @SuppressWarnings("unchecked")
++    private static Object constantRaster(int climateClass) throws Exception {
++        Class<?> type = Class.forName(TellusKoppenSource.class.getName() + "$GeoTiffRaster");
++        var constructor = type.getDeclaredConstructor(Path.class, FileChannel.class, int.class, int.class,
++            int.class, int.class, int.class, long[].class, int[].class, double.class, double.class, double.class, double.class);
++        constructor.setAccessible(true);
++        Object raster = constructor.newInstance(null, null, 360, 180, 360, 180, 8,
++            new long[]{0}, new int[]{0}, 1.0, 1.0, -180.0, 90.0);
++        Field cacheField = type.getDeclaredField("tileCache"); cacheField.setAccessible(true);
++        byte[] tile = new byte[360 * 180]; Arrays.fill(tile, (byte)climateClass);
++        ((Cache<Integer, byte[]>)cacheField.get(raster)).put(0, tile);
++        return raster;
++    }
++
++    @Test void canyonReliefSamplesNearbyGeographyOnEveryFaceAndRetainsBadlandsPromotion() {
++        try (var ignored = ManagedTerrainNetworkPolicy.cacheOnly()) {
++            for (var face : CubeNetLayout.Face.values()) for (int cover : new int[]{20, 30, 60, 100}) {
++                List<SphereWorldModel.GeoPoint> reads = new ArrayList<>();
++                var source = source(cover, "BWh", (point, resolution) -> {
++                    reads.add(point);
++                    return new SphereChunkSampler.SurfaceData(reads.size() <= 2 ? 10 : 300, cover);
++                });
++                assertTrue(query(source, new CubeNetLayout.FacePoint(face, LAYOUT.faceSize() * 0.32, LAYOUT.faceSize() * 0.41)).is(Biomes.BADLANDS));
++                assertEquals(6, reads.size()); // surface, center, four geodetic neighbours
++                assertNearby(reads);
++            }
++        }
++    }
++
++    @Test void snowSamplesLocalGeographyAndUnavailableElevationStaysNaN() throws Exception {
++        try (var ignored = ManagedTerrainNetworkPolicy.cacheOnly()) {
++            for (var face : CubeNetLayout.Face.values()) {
++                List<SphereWorldModel.GeoPoint> reads = new ArrayList<>();
++                var source = source(70, "ET", (point, resolution) -> {
++                    reads.add(point); return new SphereChunkSampler.SurfaceData(2000, 70);
++                });
++                assertTrue(query(source, new CubeNetLayout.FacePoint(face, LAYOUT.faceSize() * 0.32, LAYOUT.faceSize() * 0.41)).is(Biomes.FROZEN_PEAKS));
++                assertEquals(6, reads.size()); assertNearby(reads);
++            }
++            var unavailable = source(60, "BWh", (point, resolution) -> new SphereChunkSampler.SurfaceData(Double.NaN, 60));
++            var sample = CubeNetBiomeSource.class.getDeclaredMethod("sampleElevationAtEarth", double.class, double.class);
++            sample.setAccessible(true);
++             assertTrue(Double.isNaN((double)sample.invoke(unavailable, 0.0, 0.0)));
++             assertTrue(Double.isNaN((double)sample.invoke(unavailable, Double.NaN, 0.0)));
++             List<SphereWorldModel.GeoPoint> reads = new ArrayList<>();
++             var wrapping = source(60, "Cfb", (point, resolution) -> {
++                 reads.add(point); return new SphereChunkSampler.SurfaceData(123, 60);
++             });
++             for (double longitude : new double[]{180.01, -180.01}) {
++                 assertEquals(123.0, (double)sample.invoke(wrapping,
++                     EarthProjection.longitudeToBlockX(longitude, SCALE), EarthProjection.latToBlockZ(24, SCALE)));
++                 var actual = reads.get(reads.size() - 1);
++                 assertTrue(actual.longitude() >= -180.0 && actual.longitude() < 180.0);
++                 assertEquals(longitude > 180.0 ? -179.99 : 179.99, actual.longitude(), 1.0E-9);
++             }
++        }
++    }
++
++    private static void assertNearby(List<SphereWorldModel.GeoPoint> reads) {
++        var center = reads.get(0);
++        for (var point : reads) {
++            assertTrue(Math.abs(point.latitude() - center.latitude()) < 0.03, reads.toString());
++            assertTrue(Math.abs(point.longitude() - center.longitude()) < 0.03, reads.toString());
++        }
++    }
++}
+--- /dev/null
++++ b/src/test/java/com/yucareux/tellus/worldgen/CubeNetTravelTerrainSettingsTest.java
+@@ -0,0 +1,307 @@
++package com.yucareux.tellus.worldgen;
++
++import static org.junit.jupiter.api.Assertions.*;
++
++import com.google.gson.JsonObject;
++import com.google.gson.JsonParser;
++import com.mojang.serialization.JsonOps;
++import com.yucareux.tellus.integration.distant_horizons.managed.ManagedTerrainNetworkPolicy;
++import com.yucareux.tellus.worldgen.global.CubeNetLayout;
++import com.yucareux.tellus.worldgen.global.SphereChunkSampler;
++import com.yucareux.tellus.worldgen.global.SphereWorldModel;
++import com.yucareux.tellus.worldgen.tree.TellusProceduralTreeGenerator;
++import java.lang.reflect.Method;
++import java.lang.reflect.Proxy;
++import java.nio.file.Path;
++import java.util.ArrayList;
++import java.util.Arrays;
++import java.util.HashSet;
++import java.util.List;
++import java.util.Random;
++import java.util.Set;
++import java.util.concurrent.atomic.AtomicInteger;
++import net.minecraft.SharedConstants;
++import net.minecraft.core.BlockPos;
++import net.minecraft.core.Holder;
++import net.minecraft.world.level.ChunkPos;
++import net.minecraft.world.level.WorldGenLevel;
++import net.minecraft.world.level.biome.Biome;
++import net.minecraft.world.level.biome.Biomes;
++import net.minecraft.world.level.block.Blocks;
++import org.junit.jupiter.api.AfterAll;
++import org.junit.jupiter.api.BeforeAll;
++import org.junit.jupiter.api.Test;
++import org.junit.jupiter.api.io.TempDir;
++
++/**
++ * Shared mc1201/mc1211 codec, projection and native dispatch regressions.
++ * The placement probe is a controlled object, not a live world: it stops at the
++ * first world access inside the selected tree implementation, before any write.
++ */
++class CubeNetTravelTerrainSettingsTest {
++   @TempDir static Path directory;
++   private static final String[] TRAVEL_JSON = {
++      "custom_trees", "huge_red_mushrooms", "climate_based_built_up_terrain"
++   };
++
++   @BeforeAll static void initialize() throws Exception {
++      try (var ignored = ManagedTerrainNetworkPolicy.cacheOnly()) {
++         SphereFaceNativeBiomeKernelBridgeTest.directory = directory;
++         SphereFaceNativeBiomeKernelBridgeTest.bootstrap();
++      }
++   }
++
++   @AfterAll static void restore() {
++      SphereFaceNativeBiomeKernelBridgeTest.restore();
++   }
++
++   private static CubeNetBiomeSource.Settings decode(JsonObject json) {
++      return CubeNetBiomeSource.Settings.CODEC.parse(JsonOps.INSTANCE, json).result().orElseThrow();
++   }
++
++   private static JsonObject rawSettings(boolean customTrees, boolean red, boolean climate) {
++      // Raw input, rather than encoding DEFAULT, also exercises the decoder's names.
++      var json = JsonParser.parseString("""
++         {"random_biomes":false,"cave_generation":false,"deep_dark":false,"buildings":false,
++          "height_offset":76,"spawn_latitude":12.5,"spawn_longitude":-130.25,
++          "terrestrial_height_scale":1.75,"oceanic_height_scale":2.5}
++         """).getAsJsonObject();
++      json.addProperty(TRAVEL_JSON[0], customTrees);
++      json.addProperty(TRAVEL_JSON[1], red);
++      json.addProperty(TRAVEL_JSON[2], climate);
++      return json;
++   }
++
++   private static void assertTravel(CubeNetBiomeSource.Settings settings, boolean custom, boolean red, boolean climate) {
++      assertEquals(custom, settings.customTrees(), "custom_trees");
++      assertEquals(red, settings.hugeRedMushrooms(), "huge_red_mushrooms");
++      assertEquals(climate, settings.climateBasedBuiltUpTerrain(), "climate_based_built_up_terrain");
++   }
++
++   @Test void missingFieldsUseCurrentEarthDefaultsAndDoNotDisturbOldSettings() {
++      var earth = EarthGeneratorSettings.DEFAULT;
++      assertTrue(earth.customTrees());
++      assertFalse(earth.hugeRedMushrooms());
++       assertFalse(earth.climateBasedBuiltUpTerrain());
++       assertTravel(CubeNetBiomeSource.Settings.DEFAULT, true, false, false);
++      assertEquals(CubeNetBiomeSource.Settings.DEFAULT, decode(new JsonObject()));
++      var legacyJson = rawSettings(false, true, false);
++      for (String name : TRAVEL_JSON) legacyJson.remove(name);
++      var legacy = decode(legacyJson);
++      assertTravel(legacy, earth.customTrees(), earth.hugeRedMushrooms(), earth.climateBasedBuiltUpTerrain());
++      assertEquals(76, legacy.heightOffset());
++      assertEquals(12.5, legacy.spawnLatitude());
++      assertEquals(-130.25, legacy.spawnLongitude());
++      assertEquals(1.75, legacy.terrestrialHeightScale());
++      assertEquals(2.5, legacy.oceanicHeightScale());
++   }
++
++   @Test void actualCodecRoundTripsEveryBooleanCombinationIncludingExplicitFalseAndTrue() {
++      for (boolean custom : new boolean[]{false, true}) for (boolean red : new boolean[]{false, true})
++         for (boolean climate : new boolean[]{false, true}) {
++            var settings = decode(rawSettings(custom, red, climate));
++            assertTravel(settings, custom, red, climate);
++            var encoded = CubeNetBiomeSource.Settings.CODEC.encodeStart(JsonOps.INSTANCE, settings)
++               .result().orElseThrow().getAsJsonObject();
++            assertEquals(settings, decode(encoded));
++            // Optional fields may omit defaults; nondefaults must survive in the actual JSON.
++            if (!custom) assertFalse(encoded.get(TRAVEL_JSON[0]).getAsBoolean());
++            if (red) assertTrue(encoded.get(TRAVEL_JSON[1]).getAsBoolean());
++             if (climate) assertTrue(encoded.get(TRAVEL_JSON[2]).getAsBoolean());
++         }
++   }
++
++   @Test void retainedFortyArgumentConstructorPreservesEveryOldComponentAndDefaultsOnlyTheNewThree() throws Exception {
++      var components = CubeNetBiomeSource.Settings.class.getRecordComponents();
++      assertEquals(43, components.length);
++      assertEquals(List.of("customTrees", "hugeRedMushrooms", "climateBasedBuiltUpTerrain"),
++         Arrays.stream(components).skip(40).map(component -> component.getName()).toList());
++      var input = decode(rawSettings(false, true, false));
++      Class<?>[] types = Arrays.stream(components).limit(components.length - 3)
++         .map(component -> component.getType()).toArray(Class<?>[]::new);
++      Object[] arguments = new Object[types.length];
++      for (int i = 0; i < arguments.length; i++) arguments[i] = components[i].getAccessor().invoke(input);
++      var retained = CubeNetBiomeSource.Settings.class.getConstructor(types).newInstance(arguments);
++      for (int i = 0; i < arguments.length; i++) {
++         assertEquals(arguments[i], components[i].getAccessor().invoke(retained), components[i].getName());
++      }
++      assertTravel(retained, EarthGeneratorSettings.DEFAULT.customTrees(), EarthGeneratorSettings.DEFAULT.hugeRedMushrooms(),
++         EarthGeneratorSettings.DEFAULT.climateBasedBuiltUpTerrain());
++   }
++
++   @Test void generatorFieldsAndTypedSettingsViewProjectTheSameDecodedValuesOnBothTargets() throws Exception {
++      try (var ignored = ManagedTerrainNetworkPolicy.cacheOnly()) {
++         for (boolean custom : new boolean[]{false, true}) for (boolean red : new boolean[]{false, true})
++            for (boolean climate : new boolean[]{false, true}) {
++               var settings = decode(rawSettings(custom, red, climate));
++               var source = CubeNetNativeBaseProviderPipelineTest.source(settings, new AtomicInteger());
++               var generator = CubeNetNativeBaseProviderPipelineTest.generator(source,
++                  (point, resolution) -> new SphereChunkSampler.SurfaceData(1010.1, MountainSurfaceRules.ESA_TREE_COVER), false, 42);
++               assertEquals(custom, CubeNetNativeBaseProviderPipelineTest.field(generator, "cubeNetCustomTrees"));
++               assertEquals(red, CubeNetNativeBaseProviderPipelineTest.field(generator, "cubeNetHugeRedMushrooms"));
++               assertEquals(climate, CubeNetNativeBaseProviderPipelineTest.field(generator, "cubeNetClimateBasedBuiltUpTerrain"));
++               var view = CubeNetGeneratorSettingsViewFactory.viewFor(generator);
++                assertEquals("tellus:cube_net", view.generatorId());
++                assertSame(generator, view.generator());
++               assertEquals(settings, view.sourceSettings());
++               var terrain = view.terrain().orElseThrow();
++               assertEquals(custom, terrain.customTrees());
++               assertEquals(red, terrain.hugeRedMushrooms());
++               assertEquals(climate, terrain.climateBasedBuiltUpTerrain());
++            }
++      }
++   }
++
++   private static Method earthMethod(String name, Class<?>... types) throws Exception {
++      var method = EarthChunkGenerator.class.getDeclaredMethod(name, types);
++      method.setAccessible(true);
++      return method;
++   }
++
++   @Test void builtUpCoverMatchesOriginalEarthOracleAndOtherwisePreservesVisualCover() throws Exception {
++      Method oracle = earthMethod("climateBasedBuiltUpCoverClass", Holder.class);
++      List<Holder<Biome>> biomes = new ArrayList<>();
++      biomes.add(null);
++      SphereFaceNativeBiomeKernelBridgeTest.biomes.listElements().forEach(biomes::add);
++      Set<Integer> observed = new HashSet<>();
++      for (var biome : biomes) {
++         int expected = (int)oracle.invoke(null, biome);
++         observed.add(expected);
++         for (int visual : new int[]{MountainSurfaceRules.ESA_BUILT, MountainSurfaceRules.ESA_CROPLAND, MountainSurfaceRules.ESA_WETLAND}) {
++            assertEquals(expected, CubeNetTravelTerrainRules.surfaceCover(MountainSurfaceRules.ESA_BUILT, visual, biome, true));
++            assertEquals(visual, CubeNetTravelTerrainRules.surfaceCover(MountainSurfaceRules.ESA_BUILT, visual, biome, false));
++            for (int raw : new int[]{MountainSurfaceRules.ESA_TREE_COVER, MountainSurfaceRules.ESA_GRASSLAND, MountainSurfaceRules.ESA_WATER}) {
++               assertEquals(visual, CubeNetTravelTerrainRules.surfaceCover(raw, visual, biome, true));
++               assertEquals(visual, CubeNetTravelTerrainRules.surfaceCover(raw, visual, biome, false));
++            }
++         }
++      }
++      assertTrue(observed.contains(MountainSurfaceRules.ESA_BARE));
++      assertTrue(observed.contains(MountainSurfaceRules.ESA_TREE_COVER));
++      assertTrue(observed.contains(MountainSurfaceRules.ESA_GRASSLAND));
++   }
++
++   /** Independent Earth hash: explicitly retain 32-bit overflow before widening. */
++   private static TellusProceduralTreeGenerator.TreeAnchor earthAnchor(int cellX, int cellZ, long worldSeed) {
++      int overflowedX = cellX * 3129871;
++      long hash = (long)overflowedX ^ cellZ * 116129781L;
++      hash = hash * hash * 42317861L + hash * 11L;
++      long seed = (hash >> 16) ^ worldSeed;
++      Random random = new Random(seed);
++      return new TellusProceduralTreeGenerator.TreeAnchor(cellX * 5 + random.nextInt(5), cellZ * 5 + random.nextInt(5), seed);
++   }
++
++   @Test void nativeFiveBlockGridMatchesEarthHashIncludingSignedOverflowAndCustomAnchorsStayUnchanged() {
++      assertEquals(5, CubeNetTravelTerrainRules.treeCellSize(false));
++      assertEquals(TellusProceduralTreeGenerator.PLACEMENT_CELL_SIZE, CubeNetTravelTerrainRules.treeCellSize(true));
++      int[] coordinates = {0, 1, -1, 686, -687, 123456, -234567, Integer.MIN_VALUE, Integer.MAX_VALUE};
++      for (int x : coordinates) for (int z : coordinates) for (long seed : new long[]{0, 42, -1, Long.MIN_VALUE, Long.MAX_VALUE}) {
++         assertEquals(earthAnchor(x, z, seed), CubeNetTravelTerrainRules.treeAnchor(x, z, seed, false), "native cell=" + x + "," + z);
++         assertEquals(TellusProceduralTreeGenerator.anchorForCell(x, z, seed), CubeNetTravelTerrainRules.treeAnchor(x, z, seed, true),
++            "procedural cell=" + x + "," + z);
++      }
++      // This fixture explicitly distinguishes accidental long multiplication from Earth's int multiplication.
++      assertNotEquals((long)(123456 * 3129871), 123456L * 3129871L);
++   }
++
++   @SuppressWarnings("unchecked")
++   @Test void mushroomFilteringMatchesOriginalEarthListsIncludingCompositeNativeRoots() throws Exception {
++      Method oracle = earthMethod("treeFeaturesForBiome", Holder.class, boolean.class);
++      int changed = 0, compositeRoots = 0, biomes = 0;
++      for (var biome : SphereFaceNativeBiomeKernelBridgeTest.biomes.listElements().toList()) {
++         List<WorldgenApi.TreeFeatureHandle> enabled = CubeNetTravelTerrainRules.treeFeatures(biome, true);
++         List<WorldgenApi.TreeFeatureHandle> disabled = CubeNetTravelTerrainRules.treeFeatures(biome, false);
++         for (boolean red : new boolean[]{false, true}) {
++            var expected = (List<WorldgenApi.TreeFeatureHandle>)oracle.invoke(null, biome, red);
++            var actual = red ? enabled : disabled;
++            assertEquals(expected, actual, biome.unwrapKey().orElseThrow().location() + " hugeRedMushrooms=" + red);
++         }
++         // A native random-selector root is valid: only its nested configured features need be trees.
++         compositeRoots += (int)enabled.stream().filter(feature -> !feature.isTree()).count();
++         if (!enabled.equals(disabled)) changed++;
++         assertFalse(disabled.stream().anyMatch(WorldgenApi.TreeFeatureHandle::isHugeRedMushroom));
++         biomes++;
++      }
++      assertTrue(biomes > 20, "Use actual vanilla biome/feature registries");
++      assertTrue(compositeRoots > 0, "Exercise native composite selectors, not only direct tree roots");
++      assertTrue(changed > 0, "Exercise red-mushroom-bearing native feature graphs");
++   }
++
++   private static final class PlacementBoundary extends RuntimeException {
++      final boolean procedural;
++      PlacementBoundary(boolean procedural) { this.procedural = procedural; }
++   }
++
++   @SuppressWarnings("unchecked")
++   @Test void actualPrivatePlacementDispatchesNativeAndProceduralAtTheExpectedCanonicalAnchor() throws Exception {
++      try (var ignored = ManagedTerrainNetworkPolicy.cacheOnly()) {
++         for (boolean custom : new boolean[]{false, true}) {
++            AtomicInteger samples = new AtomicInteger();
++            var source = CubeNetNativeBaseProviderPipelineTest.source(decode(rawSettings(custom, false, true)), new AtomicInteger());
++            var generator = CubeNetNativeBaseProviderPipelineTest.generator(source, (point, resolution) -> {
++               assertEquals(CubeNetNativeBaseProviderPipelineTest.SCALE, resolution);
++               assertTrue(Double.isFinite(point.latitude()) && Double.isFinite(point.longitude()));
++               samples.incrementAndGet();
++               return new SphereChunkSampler.SurfaceData(1010.1, MountainSurfaceRules.ESA_TREE_COVER);
++            }, false, 42);
++            var coordinate = CubeNetNativeBaseProviderPipelineTest.coordinate(generator, CubeNetLayout.Face.NEG_X, 1, 2);
++            var owner = (com.yucareux.tellus.worldgen.global.CubeNetCanonicalOwnerView)coordinate.owner();
++            var planar = generator.adapter().layout().toPlanar(new CubeNetLayout.FacePoint(CubeNetLayout.Face.NEG_X,
++               owner.block().blockX() + 0.5, owner.block().blockZ() + 0.5));
++            var position = new ChunkPos(Math.floorDiv((int)Math.floor(planar.x()), 16), Math.floorDiv((int)Math.floor(planar.z()), 16));
++            var chunk = SphereFaceNativeBiomeKernelBridgeTest.chunk(position);
++            int groundY = ((SphereTerrainMaterializer)CubeNetNativeBaseProviderPipelineTest.field(generator, "materializer")).height(1010.1);
++            List<BlockPos> biomeQueries = new ArrayList<>();
++            WorldGenLevel controlledWorld = (WorldGenLevel)Proxy.newProxyInstance(WorldGenLevel.class.getClassLoader(),
++               new Class<?>[]{WorldGenLevel.class}, (proxy, method, args) -> {
++                  // Observe the implementation actually entered, not a flag or helper result.
++                  // Stop at its first world access: no partial native/procedural write simulation.
++                  for (var frame : Thread.currentThread().getStackTrace()) {
++                     if (!frame.getMethodName().equals("place")) continue;
++                     if (frame.getClassName().equals(TellusProceduralTreeGenerator.class.getName())) throw new PlacementBoundary(true);
++                     if (frame.getClassName().equals(WorldgenApi.TreeFeatureHandle.class.getName())) throw new PlacementBoundary(false);
++                  }
++                  return switch (method.getName()) {
++                     case "getBlockState" -> ((BlockPos)args[0]).getY() == groundY
++                        ? Blocks.GRASS_BLOCK.defaultBlockState() : Blocks.AIR.defaultBlockState();
++                     case "getBiome" -> {
++                        biomeQueries.add(((BlockPos)args[0]).immutable());
++                        yield SphereFaceNativeBiomeKernelBridgeTest.biomes.getOrThrow(Biomes.FOREST);
++                     }
++                     case "toString" -> "controlled-tree-dispatch-object-not-live-world";
++                     case "hashCode" -> System.identityHashCode(proxy);
++                     case "equals" -> proxy == args[0];
++                     default -> throw new AssertionError("Unexpected controlled-world call: " + method);
++                  };
++               });
++            var reached = assertThrows(PlacementBoundary.class, () -> CubeNetNativeBaseProviderPipelineTest.invoke(generator,
++               "placeCubeNetTrees", new Class<?>[]{WorldGenLevel.class, net.minecraft.world.level.chunk.ChunkAccess.class}, controlledWorld, chunk));
++            assertEquals(custom, reached.procedural, "The private production branch must select the requested implementation");
++            assertEquals(1, biomeQueries.size());
++            assertTrue(samples.get() > 0, "Placement must use the injected GeoPoint terrain sampler");
++            var address = ((java.util.Optional<SphereWorldModel.SphereChunkAddress>)CubeNetNativeBaseProviderPipelineTest.invoke(generator,
++               "address", new Class<?>[]{ChunkPos.class}, position)).orElseThrow();
++            int cellSize = custom ? TellusProceduralTreeGenerator.PLACEMENT_CELL_SIZE : 5;
++            BlockPos expected = null;
++            outer: for (int x = Math.floorDiv((int)address.blockX(), cellSize) - 1;
++               x <= Math.floorDiv((int)address.blockX() + 15, cellSize) + 1; x++) {
++               for (int z = Math.floorDiv((int)address.blockZ(), cellSize) - 1;
++                  z <= Math.floorDiv((int)address.blockZ() + 15, cellSize) + 1; z++) {
++                  long seed = 42L ^ (long)address.face() * 0x9E3779B97F4A7C15L;
++                  var anchor = custom ? TellusProceduralTreeGenerator.anchorForCell(x, z, seed) : earthAnchor(x, z, seed);
++                  if (anchor.worldX() < address.blockX() || anchor.worldX() > address.blockX() + 15
++                     || anchor.worldZ() < address.blockZ() || anchor.worldZ() > address.blockZ() + 15) continue;
++                  var mapped = generator.adapter().layout().toPlanar(new CubeNetLayout.FacePoint(CubeNetLayout.Face.of(address.face()),
++                     anchor.worldX() + 0.5, anchor.worldZ() + 0.5));
++                  int worldX = (int)Math.floor(mapped.x()), worldZ = (int)Math.floor(mapped.z());
++                  if (Math.floorDiv(worldX, 16) != position.x || Math.floorDiv(worldZ, 16) != position.z) continue;
++                  expected = new BlockPos(worldX, groundY + 1, worldZ);
++                  break outer;
++               }
++            }
++            assertNotNull(expected, "Fixture must contain an admitted canonical tree anchor");
++            assertEquals(expected, biomeQueries.get(0), "Face-salted anchor, clipping, planar ownership and above-ground position");
++         }
++      }
++   }
++}
+--- /dev/null
++++ b/src/test/java/com/yucareux/tellus/world/data/elevation/TellusCanonicalDemSelectionTest.java
+@@ -0,0 +1,152 @@
++package com.yucareux.tellus.world.data.elevation;
++
++import static org.junit.jupiter.api.Assertions.assertEquals;
++import static org.junit.jupiter.api.Assertions.assertFalse;
++import static org.junit.jupiter.api.Assertions.assertTrue;
++import static org.junit.jupiter.api.Assumptions.assumeFalse;
++
++import com.google.common.cache.Cache;
++import com.yucareux.tellus.integration.distant_horizons.managed.ManagedTerrainNetworkPolicy;
++import com.yucareux.tellus.world.data.geo.WebMercatorTileMath;
++import com.yucareux.tellus.worldgen.EarthGeneratorSettings;
++import com.yucareux.tellus.worldgen.EarthProjection;
++import com.yucareux.tellus.worldgen.global.SphereWorldModel;
++import java.lang.reflect.Constructor;
++import java.lang.reflect.Field;
++import java.nio.file.Path;
++import java.util.List;
++import net.minecraft.SharedConstants;
++import net.minecraft.server.Bootstrap;
++import org.junit.jupiter.api.BeforeAll;
++import org.junit.jupiter.api.Test;
++import org.junit.jupiter.api.io.TempDir;
++
++/** Guards the actual single-land-provider contract, not a hypothetical selectable DEM API. */
++class TellusCanonicalDemSelectionTest {
++   private static final double SCALE = 30.0;
++   private static final SphereWorldModel.GeoPoint POINT = new SphereWorldModel.GeoPoint(1.0, 1.0, 0.0);
++
++   @TempDir
++   Path gameDirectory;
++
++   @BeforeAll
++   static void bootstrapMinecraft() {
++      assumeFalse(TellusCanonicalDemSelectionTest.class.getClassLoader()
++         .getResource("net/minecraftforge/fml/ModList.class") != null,
++         "Forge's raw JUnit bootstrap cannot initialize vanilla registries");
++      SharedConstants.tryDetectVersion();
++      Bootstrap.bootStrap();
++   }
++
++   @Test
++   void allSelectionInputsAndUnknownProviderIdsRetainTheOnlySupportedLandProvider() {
++      assertEquals(EarthGeneratorSettings.DemProvider.AUTO,
++         EarthGeneratorSettings.DemProvider.fromId("not-a-real-dem"));
++      assertEquals(List.of(EarthGeneratorSettings.DemProvider.TERRARIUM),
++         EarthGeneratorSettings.DemSelection.userSelectableProviders());
++      for (var selection : selections()) {
++         assertEquals(EarthGeneratorSettings.DEFAULT.demSelection(), selection);
++         assertFalse(selection.automatic());
++         assertTrue(selection.terrainTilesEnabled());
++         assertEquals(List.of("terrarium"), selection.enabledProviderIds());
++         assertEquals("mapterhorn", selection.fingerprint());
++      }
++      assertEquals(EarthGeneratorSettings.DemSelection.fullUserSelectableMask(),
++         EarthGeneratorSettings.DemSelection.maskFromProviderIds(List.of("not-a-real-dem")));
++   }
++
++   @Test
++   void earthAndGeoPointSamplingKeepMapterhornLandAndOpenWatersOceanForEverySelectionInput() throws Exception {
++      String previousGameDir = System.getProperty("tellus.gameDir");
++      System.setProperty("tellus.gameDir", this.gameDirectory.toString());
++      try (var ignored = ManagedTerrainNetworkPolicy.cacheOnly()) {
++         TellusElevationSource source = new TellusElevationSource();
++         seed(source, "cache", (short)125);
++         seed(source, "oceanCache", (short)-340);
++         for (var selection : selections()) {
++            // Positive Mapterhorn remains land even when the coarse ocean mask says ocean.
++            assertSelected(source, selection, true, 125.0, TellusElevationSource.DemUsage.TERRAIN_TILES);
++         }
++         seed(source, "cache", (short)-8);
++         for (var selection : selections()) {
++            assertSelected(source, selection, false, -8.0, TellusElevationSource.DemUsage.TERRAIN_TILES);
++            assertSelected(source, selection, true, -340.0, TellusElevationSource.DemUsage.OPENWATERS);
++         }
++      } finally {
++         restoreGameDir(previousGameDir);
++      }
++   }
++
++   @Test
++   void memoryMissStaysUnknownInBothCoordinateLanes() {
++      String previousGameDir = System.getProperty("tellus.gameDir");
++      System.setProperty("tellus.gameDir", this.gameDirectory.toString());
++      try {
++         TellusElevationSource source = new TellusElevationSource();
++         var spherical = source.sampleResolvedPreviewElevationMetersMemoryOnly(POINT, SCALE, true, SCALE);
++         assertTrue(Double.isNaN(spherical.elevationMeters()));
++         assertFalse(spherical.mapterhornAvailable());
++         for (var selection : selections()) {
++            var earth = source.sampleResolvedPreviewElevationMetersMemoryOnly(
++               EarthProjection.longitudeToBlockX(POINT.longitude(), SCALE),
++               EarthProjection.latToBlockZ(POINT.latitude(), SCALE), SCALE, true, selection, SCALE);
++            assertTrue(Double.isNaN(earth.elevationMeters()));
++            assertFalse(earth.mapterhornAvailable());
++         }
++      } finally {
++         restoreGameDir(previousGameDir);
++      }
++   }
++
++   private static List<EarthGeneratorSettings.DemSelection> selections() {
++      return List.of(
++         EarthGeneratorSettings.DemSelection.automaticSelection(),
++         EarthGeneratorSettings.DemSelection.manual(0),
++         EarthGeneratorSettings.DemSelection.manual(-1),
++         EarthGeneratorSettings.DemSelection.manual(List.of()),
++         new EarthGeneratorSettings.DemSelection(true, 0),
++         EarthGeneratorSettings.DemSelection.fromLegacyProvider(
++            EarthGeneratorSettings.DemProvider.fromId("not-a-real-dem")));
++   }
++
++   private static void assertSelected(TellusElevationSource source,
++      EarthGeneratorSettings.DemSelection selection, boolean ocean, double expected,
++      TellusElevationSource.DemUsage provider) {
++      var spherical = source.sampleResolvedPreviewElevationMeters(POINT, SCALE, ocean, selection, SCALE);
++      var earth = source.sampleResolvedPreviewElevationMeters(
++         EarthProjection.longitudeToBlockX(POINT.longitude(), SCALE),
++         EarthProjection.latToBlockZ(POINT.latitude(), SCALE), SCALE, ocean, selection, SCALE);
++      for (var sample : List.of(spherical, earth)) {
++         assertEquals(expected, sample.elevationMeters(), 1.0E-9);
++         assertEquals(provider, sample.primaryProvider());
++         assertEquals(provider.bit(), sample.providerMask());
++         assertTrue(sample.mapterhornAvailable());
++      }
++   }
++
++   /** Seed existing provider caches; no loader, file download, or network fixture is involved. */
++   @SuppressWarnings("unchecked")
++   private static void seed(TellusElevationSource source, String cacheName, short height) throws Exception {
++      Field field = TellusElevationSource.class.getDeclaredField(cacheName);
++      field.setAccessible(true);
++      Cache<Object, ShortRaster> cache = (Cache<Object, ShortRaster>)field.get(source);
++      Class<?> keyClass = Class.forName(TellusElevationSource.class.getName() + "$TileKey");
++      Constructor<?> key = keyClass.getDeclaredConstructor(int.class, int.class, int.class);
++      key.setAccessible(true);
++      int zoom = TellusElevationSource.selectPreviewZoom(SCALE, SCALE, 17);
++      var coordinate = WebMercatorTileMath.project(POINT.longitude(), POINT.latitude(), zoom, 512);
++      ShortRaster raster = ShortRaster.create(512, 512);
++      raster.fill(height);
++      // Include a halo to keep both interpolation implementations within the seeded fixture.
++      for (int z = -1; z <= 1; z++) {
++         for (int x = -1; x <= 1; x++) {
++            cache.put(key.newInstance(zoom, coordinate.tileX() + x, coordinate.tileY() + z), raster);
++         }
++      }
++   }
++
++   private static void restoreGameDir(String previous) {
++      if (previous == null) System.clearProperty("tellus.gameDir");
++      else System.setProperty("tellus.gameDir", previous);
++   }
++}
+--- /dev/null
++++ b/src/test/java/com/yucareux/tellus/world/data/geology/SphericalGeologySourceTest.java
+@@ -0,0 +1,239 @@
++package com.yucareux.tellus.world.data.geology;
++
++import static org.junit.jupiter.api.Assertions.assertEquals;
++import static org.junit.jupiter.api.Assertions.assertFalse;
++import static org.junit.jupiter.api.Assertions.assertNull;
++import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
++import static org.junit.jupiter.api.Assertions.assertTrue;
++
++import com.google.common.cache.Cache;
++import com.yucareux.tellus.integration.distant_horizons.managed.ManagedTerrainNetworkPolicy;
++import com.yucareux.tellus.worldgen.global.SphereWorldModel;
++import io.github.sebasbaumh.mapbox.vectortile.VectorTile.Tile;
++import io.github.sebasbaumh.mapbox.vectortile.VectorTile.Tile.Feature;
++import io.github.sebasbaumh.mapbox.vectortile.VectorTile.Tile.GeomType;
++import io.github.sebasbaumh.mapbox.vectortile.VectorTile.Tile.Layer;
++import io.github.sebasbaumh.mapbox.vectortile.VectorTile.Tile.Value;
++import java.lang.reflect.Constructor;
++import java.lang.reflect.Field;
++import java.nio.file.Files;
++import java.nio.file.Path;
++import java.time.Duration;
++import java.util.HashMap;
++import java.util.Map;
++import java.util.concurrent.Semaphore;
++import net.minecraft.SharedConstants;
++import net.minecraft.server.Bootstrap;
++import org.junit.jupiter.api.AfterEach;
++import org.junit.jupiter.api.BeforeAll;
++import org.junit.jupiter.api.BeforeEach;
++import org.junit.jupiter.api.Test;
++import org.junit.jupiter.api.io.TempDir;
++import org.junit.jupiter.api.parallel.ResourceLock;
++import org.junit.jupiter.api.parallel.Resources;
++
++/** Real bundled GLiM and parsed vector-tile fixtures in the native Macrostrat memory cache; no remote GIS. */
++@ResourceLock(Resources.SYSTEM_PROPERTIES)
++@ResourceLock("tellus-worldgen-sources")
++class SphericalGeologySourceTest {
++   private static final String GLOBAL_FLAG = "tellus.macrostrat.enabled";
++   private static final String SPHERICAL_FLAG = "tellus.sphericalGeology.macrostrat";
++   private static final String[] PROPERTIES = {
++      GLOBAL_FLAG, SPHERICAL_FLAG, "tellus.gameDir", "tellus.configDir", "tellus.macrostrat.tileUrl"
++   };
++   private static final double SCALE = 30.0;
++   private static final SphereWorldModel.GeoPoint YOSEMITE = new SphereWorldModel.GeoPoint(37.746, -119.533, 0.0);
++
++   @TempDir Path gameDir;
++   private final Map<String, String> previousProperties = new HashMap<>();
++
++   @BeforeAll
++   static void bootstrap() {
++      SharedConstants.tryDetectVersion();
++      Bootstrap.bootStrap();
++   }
++
++   @BeforeEach
++   void isolateProperties() {
++      for (String property : PROPERTIES) previousProperties.put(property, System.getProperty(property));
++      System.clearProperty(GLOBAL_FLAG);
++      System.clearProperty(SPHERICAL_FLAG);
++      System.setProperty("tellus.gameDir", gameDir.toString());
++      System.setProperty("tellus.configDir", gameDir.resolve("config").toString());
++      System.setProperty("tellus.macrostrat.tileUrl", MacrostratGeologySource.DEFAULT_TILE_URL);
++   }
++
++   @AfterEach
++   void restoreProperties() {
++      previousProperties.forEach((property, value) -> {
++         if (value == null) System.clearProperty(property);
++         else System.setProperty(property, value);
++      });
++   }
++
++   @Test
++   void defaultFollowsEarthAndExplicitSphericalFalseRollsBack() {
++      assertTrue(SphericalGeologySource.configuredMacrostratEnabled(), "unset flags follow Earth's enabled default");
++      System.setProperty(SPHERICAL_FLAG, "false");
++      assertFalse(SphericalGeologySource.configuredMacrostratEnabled());
++      System.setProperty(SPHERICAL_FLAG, "TrUe");
++      assertTrue(SphericalGeologySource.configuredMacrostratEnabled());
++   }
++
++   @Test
++   void globalDisableWinsEvenOverExplicitSphericalTrue() {
++      System.setProperty(GLOBAL_FLAG, "false");
++      assertFalse(SphericalGeologySource.configuredMacrostratEnabled());
++      System.setProperty(SPHERICAL_FLAG, "true");
++      assertFalse(SphericalGeologySource.configuredMacrostratEnabled());
++      System.setProperty(GLOBAL_FLAG, "true");
++      assertTrue(SphericalGeologySource.configuredMacrostratEnabled());
++      System.setProperty(SPHERICAL_FLAG, "false");
++      assertFalse(SphericalGeologySource.configuredMacrostratEnabled());
++   }
++
++   @Test
++   void defaultOverlayReadsTheActualNativeCacheByGeodeticLonLat() throws Exception {
++      MacrostratGeologySource nativeSource = nativeSource();
++      seed(nativeSource, YOSEMITE, limestoneTile());
++      var source = configuredSource(nativeSource);
++      try (var ignored = ManagedTerrainNetworkPolicy.cacheOnly()) {
++         assertEquals(MapUnit.of(Rock.LIMESTONE),
++            nativeSource.sampleUnitAtLonLat(YOSEMITE.longitude(), YOSEMITE.latitude(), SCALE, SCALE));
++         var sample = source.sample(YOSEMITE, SCALE, SCALE);
++         assertEquals(MapUnit.of(Rock.LIMESTONE), sample.mapUnit());
++         assertEquals(Lithology.ACID_PLUTONIC, sample.lithology(), "bundled Yosemite GLiM remains intact below the overlay");
++         assertTrue(sample.available());
++         var wrapped = new SphereWorldModel.GeoPoint(YOSEMITE.latitude(), YOSEMITE.longitude() + 360.0, 0.0);
++         assertEquals(sample, source.sample(wrapped, SCALE, SCALE), "longitude wrapping belongs to the native readers");
++      }
++   }
++
++   @Test
++   void explicitFalseKeepsBundledGlimEvenWithACachedOverlay() throws Exception {
++      MacrostratGeologySource nativeSource = nativeSource();
++      seed(nativeSource, YOSEMITE, limestoneTile());
++      System.setProperty(SPHERICAL_FLAG, "false");
++      try (var ignored = ManagedTerrainNetworkPolicy.cacheOnly()) {
++         assertEquals(MapUnit.of(Rock.LIMESTONE),
++            nativeSource.sampleUnitAtLonLat(YOSEMITE.longitude(), YOSEMITE.latitude(), SCALE, SCALE));
++         var sample = configuredSource(nativeSource).sample(YOSEMITE, SCALE, SCALE);
++         assertNull(sample.mapUnit());
++         assertEquals(Lithology.ACID_PLUTONIC, sample.lithology());
++         assertTrue(sample.available());
++      }
++   }
++
++   @Test
++   void globalDisableKeepsBundledGlimWithSphericalOptInAndCachedOverlay() throws Exception {
++      MacrostratGeologySource nativeSource = nativeSource();
++      seed(nativeSource, YOSEMITE, limestoneTile());
++      System.setProperty(GLOBAL_FLAG, "false");
++      System.setProperty(SPHERICAL_FLAG, "true");
++      try (var ignored = ManagedTerrainNetworkPolicy.cacheOnly()) {
++         var sample = configuredSource(nativeSource).sample(YOSEMITE, SCALE, SCALE);
++         assertNull(sample.mapUnit());
++         assertEquals(Lithology.ACID_PLUTONIC, sample.lithology());
++      }
++   }
++
++   @Test
++   void cacheOnlyMissKeepsGlimWithoutEnteringTheNativeNetworkRequestGate() throws Exception {
++      MacrostratGeologySource nativeSource = nativeSource();
++      assertEquals(Lithology.ACID_PLUTONIC, TellusLithologySource.shared().sampleAtLonLat(YOSEMITE.longitude(), YOSEMITE.latitude()),
++         "warm the local GLiM raster before timing only the missing Macrostrat lookup");
++      Field requestsField = MacrostratGeologySource.class.getDeclaredField("requests");
++      requestsField.setAccessible(true);
++      Semaphore requests = (Semaphore)requestsField.get(nativeSource);
++      int permits = requests.drainPermits();
++      try {
++         // Enter cacheOnly inside the timeout worker: the policy is thread-local. A fetch would wait on the drained gate.
++         assertTimeoutPreemptively(Duration.ofSeconds(2), () -> {
++            try (var ignored = ManagedTerrainNetworkPolicy.cacheOnly()) {
++               var sample = configuredSource(nativeSource).sample(YOSEMITE, SCALE, SCALE);
++               assertNull(sample.mapUnit());
++               assertEquals(Lithology.ACID_PLUTONIC, sample.lithology());
++               assertTrue(sample.available());
++            }
++         });
++         assertFalse(Files.exists(gameDir.resolve("tellus/cache/geology/macrostrat-carto")), "cache miss writes no tile");
++      } finally {
++         requests.release(permits);
++      }
++   }
++
++   @Test
++   void emptyCoverageAndCoarseScaleKeepGlimRatherThanInventingMapUnits() throws Exception {
++      MacrostratGeologySource nativeSource = nativeSource();
++      seed(nativeSource, YOSEMITE, MacrostratTile.EMPTY);
++      try (var ignored = ManagedTerrainNetworkPolicy.cacheOnly()) {
++         var source = configuredSource(nativeSource);
++         assertEquals(new SphericalGeologySource.Sample(Lithology.ACID_PLUTONIC, null), source.sample(YOSEMITE, SCALE, SCALE));
++         assertEquals(new SphericalGeologySource.Sample(Lithology.ACID_PLUTONIC, null), source.sample(YOSEMITE, 5000.0, 5000.0));
++         var ocean = source.sample(new SphereWorldModel.GeoPoint(0.0, -150.0, 0.0), SCALE, SCALE);
++         assertEquals(Lithology.UNDEFINED, ocean.lithology(), "unmapped GLiM is still undefined, not a fabricated rock");
++         assertNull(ocean.mapUnit());
++         assertFalse(ocean.available());
++      }
++   }
++
++   @Test
++   void invalidScaleOrResolutionStaysUnknownEvenWithACachedOverlay() throws Exception {
++      MacrostratGeologySource nativeSource = nativeSource();
++      seed(nativeSource, YOSEMITE, limestoneTile());
++      var source = configuredSource(nativeSource);
++      try (var ignored = ManagedTerrainNetworkPolicy.cacheOnly()) {
++         for (double invalid : new double[]{0.0, -1.0, Double.NaN, Double.POSITIVE_INFINITY}) {
++            assertUnknown(source.sample(YOSEMITE, invalid, SCALE));
++            assertUnknown(source.sample(YOSEMITE, SCALE, invalid));
++         }
++      }
++   }
++
++   private static void assertUnknown(SphericalGeologySource.Sample sample) {
++      assertEquals(Lithology.UNKNOWN, sample.lithology());
++      assertNull(sample.mapUnit());
++      assertFalse(sample.available());
++   }
++
++   private static SphericalGeologySource configuredSource(MacrostratGeologySource nativeSource) {
++      return new SphericalGeologySource(TellusLithologySource.shared(), nativeSource,
++         SphericalGeologySource.configuredMacrostratEnabled());
++   }
++
++   private static MacrostratGeologySource nativeSource() throws Exception {
++      Constructor<MacrostratGeologySource> constructor = MacrostratGeologySource.class.getDeclaredConstructor();
++      constructor.setAccessible(true);
++      return constructor.newInstance();
++   }
++
++   @SuppressWarnings("unchecked")
++   private static void seed(MacrostratGeologySource source, SphereWorldModel.GeoPoint point, MacrostratTile tile) throws Exception {
++      int zoom = MacrostratGeologySource.zoomFor(SCALE, SCALE);
++      double tiles = 1 << zoom;
++      int x = (int)Math.floor((point.longitude() + 180.0) / 360.0 * tiles);
++      double latitude = Math.toRadians(point.latitude());
++      int y = (int)Math.floor((1.0 - Math.log(Math.tan(latitude) + 1.0 / Math.cos(latitude)) / Math.PI) / 2.0 * tiles);
++      Class<?> key = Class.forName(MacrostratGeologySource.class.getName() + "$TileKey");
++      Constructor<?> constructor = key.getDeclaredConstructor(int.class, int.class, int.class);
++      constructor.setAccessible(true);
++      Field cacheField = MacrostratGeologySource.class.getDeclaredField("cache");
++      cacheField.setAccessible(true);
++      ((Cache<Object, MacrostratTile>)cacheField.get(source)).put(constructor.newInstance(zoom, x, y), tile);
++   }
++
++   /** Synthetic MVT polygon, parsed/rasterized/classified by the production reader, not claimed as a downloaded GIS tile. */
++   private static MacrostratTile limestoneTile() throws Exception {
++      Layer.Builder layer = Layer.newBuilder().setVersion(2).setName("units").setExtent(4096)
++         .addKeys("source_id").addKeys("legend_id").addKeys("name")
++         .addValues(Value.newBuilder().setIntValue(34))
++         .addValues(Value.newBuilder().setIntValue(1))
++         .addValues(Value.newBuilder().setStringValue("Limestone"));
++      layer.addFeatures(Feature.newBuilder().setType(GeomType.POLYGON)
++         .addTags(0).addTags(0).addTags(1).addTags(1).addTags(2).addTags(2)
++         .addGeometry(9).addGeometry(0).addGeometry(0)
++         .addGeometry(26).addGeometry(8192).addGeometry(0)
++         .addGeometry(0).addGeometry(8192).addGeometry(8191).addGeometry(0).addGeometry(15));
++      return MacrostratTile.parse(Tile.newBuilder().addLayers(layer).build().toByteArray(), MacrostratGeologySource.GRID_SIZE, source -> false);
++   }
++}
+--- /dev/null
++++ b/tools/test_cube_net_travel_datapack.py
+@@ -0,0 +1,55 @@
++import json
++from pathlib import Path
++import subprocess
++import sys
++import tempfile
++import unittest
++
++from create_cube_net_datapack import create_pack
++
++
++class CubeNetTravelDatapackTest(unittest.TestCase):
++    def test_release_metadata_and_real_setting_keys(self):
++        for version, pack_format in (("1.20.1", 15), ("1.21.1", 48)):
++            with self.subTest(version=version), tempfile.TemporaryDirectory() as temp:
++                root = Path(temp) / "pack"
++                create_pack(root, "tellus:travel", 30, 64, -64, 384, custom_trees=False,
++                            huge_red_mushrooms=True, climate_based_built_up_terrain=False,
++                            minecraft_version=version)
++                self.assertEqual(pack_format, json.loads((root / "pack.mcmeta").read_text())["pack"]["pack_format"])
++                source = json.loads((root / "data/tellus/dimension/travel_cube_net.json").read_text())["generator"]["biome_source"]
++                self.assertFalse(source["settings"]["custom_trees"])
++                self.assertTrue(source["settings"]["huge_red_mushrooms"])
++                self.assertFalse(source["settings"]["climate_based_built_up_terrain"])
++
++    def test_defaults_and_existing_output_remain_intact(self):
++        with tempfile.TemporaryDirectory() as temp:
++            root = Path(temp) / "pack"
++            files = create_pack(root, "tellus:travel", 30, 64, -64, 384)
++            before = {path: path.read_bytes() for path in files}
++            settings = json.loads(files[-1].read_text())["generator"]["biome_source"]["settings"]
++            self.assertTrue(settings["custom_trees"])
++            self.assertFalse(settings["huge_red_mushrooms"])
++            self.assertFalse(settings["climate_based_built_up_terrain"])
++            with self.assertRaisesRegex(ValueError, "new or empty"):
++                create_pack(root, "tellus:travel", 30, 64, -64, 384)
++            self.assertEqual(before, {path: path.read_bytes() for path in files})
++            with self.assertRaisesRegex(ValueError, "minecraft_version"):
++                create_pack(Path(temp) / "other", "tellus:travel", 30, 64, -64, 384, minecraft_version="future")
++
++    def test_cli_routes_target_release_and_options(self):
++        with tempfile.TemporaryDirectory() as temp:
++            root = Path(temp) / "pack"
++            result = subprocess.run([sys.executable, "-B", str(Path(__file__).with_name("create_cube_net_datapack.py")),
++                                     "--output", str(root), "--world", "tellus:travel", "--scale", "30",
++                                     "--minecraft-version", "1.21.1", "--no-custom-trees", "--huge-red-mushrooms",
++                                     "--no-climate-based-built-up-terrain"], capture_output=True, text=True)
++            self.assertEqual(0, result.returncode, result.stderr)
++            self.assertEqual(48, json.loads((root / "pack.mcmeta").read_text())["pack"]["pack_format"])
++            settings = json.loads((root / "data/tellus/dimension/travel_cube_net.json").read_text())["generator"]["biome_source"]["settings"]
++            self.assertEqual((False, True, False), (settings["custom_trees"], settings["huge_red_mushrooms"],
++                                                    settings["climate_based_built_up_terrain"]))
++
++
++if __name__ == "__main__":
++    unittest.main()
+--- /dev/null
++++ b/tools/run_cube_net_travel_smoke.py
+@@ -0,0 +1,152 @@
++#!/usr/bin/env python3
++"""Generate real GIS terrain with travel settings, then reload its native saved LevelStem.
++
++Reuses immutable-copy admission and the owned native launcher. Only the disposable
++datapack is configured; Minecraft writes and reloads both the LevelStem and chunk.
++This is not a visual seam, vegetation-placement, or natural-structure acceptance.
++"""
++from __future__ import annotations
++
++import argparse
++import json
++import os
++from pathlib import Path
++import sys
++import uuid
++
++import run_native_persistence_roundtrip as native
++from run_native_generation_parity import code_manifest
++from run_native_sea_offset_restart import generator_record
++
++
++TRAVEL = {"custom_trees": False, "huge_red_mushrooms": True, "climate_based_built_up_terrain": True}
++
++
++def configure_disposable(world: Path, dimension: str, module: str) -> dict:
++    namespace, name = dimension.split(":", 1)
++    definitions = list(world.glob(f"datapacks/*/data/{namespace}/dimension/{name}.json"))
++    if len(definitions) != 1:
++        raise ValueError("exactly one copied Cube datapack definition required")
++    definition = definitions[0].resolve(strict=True)
++    if not definition.is_relative_to(world.resolve(strict=True)):
++        raise ValueError("definition escaped disposable world")
++    before = definition.read_bytes()
++    document = json.loads(before)
++    generator = document["generator"]
++    if generator.get("type") != "tellus:cube_net" or set(generator["biome_source"]) != {"biome"}:
++        raise ValueError("original fixed-biome Cube definition required")
++    source = {"world_scale": generator["world_scale"], "apron_chunks": generator.get("experimental_apron_chunks", 5),
++              "fallback": generator["biome_source"], "settings": dict(TRAVEL)}
++    for key in ("excluded_radius_meters", "transition_width_meters"):
++        if key in generator:
++            source[key] = generator[key]
++    generator["biome_source"] = source
++    definition.write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8")
++    # The two supported releases use different metadata, even though generator IDs agree.
++    pack = definition.parents[3] / "pack.mcmeta"
++    if not pack.is_file() or not pack.resolve().is_relative_to(world.resolve(strict=True)):
++        raise ValueError("copied datapack metadata required")
++    metadata = json.loads(pack.read_text(encoding="utf-8"))
++    metadata["pack"]["pack_format"] = {"mc1201": 15, "mc1211": 48}[module]
++    pack.write_text(json.dumps(metadata, indent=2) + "\n", encoding="utf-8")
++    return {"definition": str(definition), "beforeSHA256": __import__("hashlib").sha256(before).hexdigest(),
++            "configuredSHA256": native.sha256(definition), "configuredGenerator": generator,
++            "travelSettings": dict(TRAVEL), "authority": "copied-datapack-for-first-process-only"}
++
++
++def main(argv=None):
++    parser = argparse.ArgumentParser(add_help=False)
++    parser.add_argument("--target-x", type=int, required=True)
++    parser.add_argument("--target-z", type=int, required=True)
++    extra, remaining = parser.parse_known_args(argv)
++    args = native.parse_args(remaining)
++    if not args.execute or args.populate_lifecycle:
++        raise ValueError("explicit execution without lifecycle mutation required")
++    root = args.project_root.resolve(strict=True)
++    world, cache = args.world_template.resolve(strict=True), args.cache_template.resolve(strict=True)
++    run = args.run_dir.resolve()
++    if run.exists():
++        raise ValueError("fresh disposable run directory required")
++    for source in (root, world, cache):
++        native.assert_separate(run, source)
++    before_world, before_cache, before_code = native.file_manifest(world), native.file_manifest(cache), code_manifest(root)
++    report = {"status": "RUNNING", "module": args.module, "syntheticSampler": False,
++              "scope": "real GIS generation and native travel-settings save/reload; not visual or structure acceptance",
++              "target": [extra.target_x, extra.target_z], "phases": [], "sourceCodeSHA256": before_code}
++    try:
++        prepare = list(remaining)
++        prepare.remove("--execute")
++        prepare.append("--prepare-only")
++        if native.main(prepare):
++            raise ValueError("immutable source admission/copy failed")
++        report["configuration"] = configure_disposable(run / "world", args.dimension, args.module)
++        args.chunk_x, args.chunk_z = extra.target_x, extra.target_z
++        args.require_native_runtime = True
++        for phase in ("generate", "runtime_reload"):
++            probe_id = str(uuid.uuid4())
++            environment = os.environ.copy()
++            for name in ("JAVA_TOOL_OPTIONS", "_JAVA_OPTIONS", "JDK_JAVA_OPTIONS"):
++                if "tellus." in environment.get(name, ""):
++                    raise ValueError("clean ambient Tellus JVM options required")
++            options = ["tellus.persistence.probe=true", f"tellus.persistence.probe.id={probe_id}",
++                       f"tellus.persistence.probeRoot={run / 'world'}", "tellus.persistence.probe.awaitDetails=true",
++                       "tellus.sphere.syntheticSampler=false", f"tellus.gameDir={run}",
++                       f"tellus.configDir={run / 'config'}", "tellus.chunkgen.threads.max=1",
++                       f"tellus.persistence.probe.allowUpgrade={str(args.allow_template_upgrade).lower()}"]
++            environment["JAVA_TOOL_OPTIONS"] = " ".join(filter(None, [environment.get("JAVA_TOOL_OPTIONS", ""),
++                                                          *(f'"-D{option}"' for option in options)]))
++            command = [str(root / ("gradlew.bat" if os.name == "nt" else "gradlew")),
++                       f"-PtellusTargets={args.module}", f"-PtellusRunDir={run}", f"-PtellusBenchmarkHeap={args.heap}",
++                       f":{args.module}:runServer", "--args=--nogui", "--offline", "--no-daemon",
++                       "--no-parallel", "--max-workers=1", "--console=plain"]
++            evidence = run / "evidence" / phase
++            evidence.mkdir()
++            result = native.run_phase(args, run, evidence, command, environment, phase, probe_id)
++            saved = generator_record(run / "world", args.dimension)
++            actual = saved.get("biome_source", {}).get("settings", {})
++            if any(bool(actual.get(key)) != value for key, value in TRAVEL.items()) or any(key not in actual for key in TRAVEL):
++                raise ValueError("native saved travel settings differ or disappeared")
++            result.update({"savedGenerator": saved, "savedLevelSHA256": native.sha256(run / "world/level.dat"),
++                           "command": command, "jvmProperties": options})
++            report["phases"].append(result)
++            native.write_json(run / "travel-smoke.json", report)
++            if phase == "generate":
++                definition = Path(report["configuration"]["definition"]).resolve(strict=True)
++                retained = (run / "evidence/disabled-bootstrap-dimension.json").resolve()
++                if not definition.is_relative_to((run / "world").resolve(strict=True)) or retained.exists():
++                    raise ValueError("owned copied definition move target differs")
++                if native.sha256(definition) != report["configuration"]["configuredSHA256"]:
++                    raise ValueError("copied bootstrap definition changed unexpectedly")
++                definition.rename(retained)
++                report["datapackOverrideRemovedForIndependentRestart"] = True
++        first, restarted = [item["native"] for item in report["phases"]]
++        if first["binding"] != restarted["binding"] or report["phases"][0]["pid"] == report["phases"][1]["pid"]:
++            raise ValueError("independent native process/profile binding differs")
++        for original, reloaded in (("generatedBlockDigest", "blockDigest"), ("generatedBiomeDigest", "biomeDigest"),
++                                   ("generatedNativeNBTDigest", "nativeNBTDigest")):
++            if first[original] != restarted[reloaded]:
++                raise ValueError(f"native generated/restarted payload differs: {original}")
++        if report["phases"][0]["savedGenerator"] != report["phases"][1]["savedGenerator"]:
++            raise ValueError("native settings/profile changed after stored-LevelStem restart")
++        report["status"] = "PASS"
++        return 0
++    except BaseException as error:
++        report["status"], report["error"] = "FAILED", f"{type(error).__name__}: {error}"
++        raise
++    finally:
++        report["sourceWorldAndCacheUnchanged"] = native.file_manifest(world) == before_world and native.file_manifest(cache) == before_cache
++        report["sourceCodeUnchangedDuringRun"] = code_manifest(root) == before_code
++        if not report["sourceWorldAndCacheUnchanged"] or not report["sourceCodeUnchangedDuringRun"]:
++            report["status"] = "FAILED"
++        if run.is_dir():
++            native.write_json(run / "travel-smoke.json", report)
++        if not report["sourceWorldAndCacheUnchanged"] or not report["sourceCodeUnchangedDuringRun"]:
++            raise ValueError("source world/cache/code changed during isolated travel smoke")
++
++
++if __name__ == "__main__":
++    try:
++        raise SystemExit(main())
++    except Exception as error:
++        print(f"cube travel smoke: {type(error).__name__}: {error}", file=sys.stderr)
++        raise SystemExit(2)
+--- /dev/null
++++ b/tools/test_run_cube_net_travel_smoke.py
+@@ -0,0 +1,35 @@
++import json
++from pathlib import Path
++import tempfile
++import unittest
++
++from create_cube_net_datapack import create_pack
++from run_cube_net_travel_smoke import configure_disposable, TRAVEL
++
++
++class TravelSmokeAdmissionTest(unittest.TestCase):
++    def test_only_explicit_disposable_definition_is_configured(self):
++        for module, pack_format in (("mc1201", 15), ("mc1211", 48)):
++            with self.subTest(module=module), tempfile.TemporaryDirectory() as temporary:
++                world = Path(temporary) / "world"
++                pack = world / "datapacks/tellus"
++                files = create_pack(pack, "tellus:travel", 30, 64, -64, 384, geodetic_biomes=False)
++                dimension_type = files[1].read_bytes()
++                report = configure_disposable(world, "tellus:travel_cube_net", module)
++                self.assertEqual(TRAVEL, report["configuredGenerator"]["biome_source"]["settings"])
++                self.assertEqual(dimension_type, files[1].read_bytes())
++                self.assertEqual(pack_format, json.loads(files[0].read_text())["pack"]["pack_format"])
++                self.assertNotEqual(report["beforeSHA256"], report["configuredSHA256"])
++                with self.assertRaisesRegex(ValueError, "fixed-biome"):
++                    configure_disposable(world, "tellus:travel_cube_net", module)
++
++    def test_missing_definition_is_not_silently_created(self):
++        with tempfile.TemporaryDirectory() as temporary:
++            world = Path(temporary)
++            with self.assertRaisesRegex(ValueError, "exactly one"):
++                configure_disposable(world, "tellus:missing", "mc1201")
++            self.assertEqual([], list(world.iterdir()))
++
++
++if __name__ == "__main__":
++    unittest.main()

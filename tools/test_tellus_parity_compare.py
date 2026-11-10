@@ -49,6 +49,7 @@ class ParityComparatorTest(unittest.TestCase):
                 "--biome", biome,
                 "--expected-columns", "1",
                 "--expected-biome-cases", "1",
+                "--biome-baseline", "historical-v1",
             ])
             self.assertEqual(code, 0)
             self.assertEqual(result["status"], "PASS")
@@ -63,7 +64,8 @@ class ParityComparatorTest(unittest.TestCase):
             right = self._write(directory, "right.jsonl", json.dumps({**base, "blockSha256": "b" * 64}))
             biome = self._write(directory, "biome.jsonl", '{"case":"bare/BWh","earth":"desert","cube":"stony_peaks"}')
             args = ["--columns-left", left, "--columns-right", right, "--biome", biome,
-                    "--expected-columns", "1", "--expected-biome-cases", "1", "--require-block-digests"]
+                    "--expected-columns", "1", "--expected-biome-cases", "1", "--require-block-digests",
+                    "--biome-baseline", "historical-v1"]
             code, result = run(args)
             self.assertEqual((code, result["status"]), (1, "MISMATCH"))
             self.assertEqual(len(result["columns"]["mismatches"]), 1)
@@ -83,7 +85,8 @@ class ParityComparatorTest(unittest.TestCase):
             right = self._write(directory, "right.jsonl", json.dumps(base))
             biome = self._write(directory, "biome.jsonl", '{"case":"bare/BWh","earth":"desert","cube":"stony_peaks"}')
             code, result = run(["--columns-left", left, "--columns-right", right, "--biome", biome,
-                                "--expected-columns", "1", "--expected-biome-cases", "1"])
+                                "--expected-columns", "1", "--expected-biome-cases", "1",
+                                "--biome-baseline", "historical-v1"])
             self.assertEqual((code, result["status"]), (1, "MISMATCH"))
 
     def test_strict_original_biome_case_domain_rejects_same_count_substitution(self):
@@ -97,7 +100,8 @@ class ParityComparatorTest(unittest.TestCase):
                      "cube": "stony_peaks" if case == "bare/BWh" else "forest"} for case in cases]
             biome = self._write(directory, "biome.jsonl", "\n".join(map(json.dumps, rows)))
             args = ["--columns-left", left, "--columns-right", right, "--biome", biome,
-                    "--expected-columns", "1", "--require-original-biome-cases"]
+                    "--expected-columns", "1", "--require-original-biome-cases",
+                    "--biome-baseline", "historical-v1"]
             self.assertEqual(run(args)[0], 0)
             rows[0]["case"] = "fabricated/AAA"
             Path(biome).write_text("\n".join(map(json.dumps, rows)), encoding="utf-8")
@@ -105,6 +109,31 @@ class ParityComparatorTest(unittest.TestCase):
             self.assertEqual((code, result["status"]), (1, "MISMATCH"))
             self.assertFalse(result["checks"]["biomeCaseSet"])
             self.assertTrue(result["checks"]["biomeCount"])
+
+    def test_current_seven_zero_and_explicit_historical_seven_one_are_distinct(self):
+        with tempfile.TemporaryDirectory() as raw:
+            directory = Path(raw)
+            column = '{"key":"a","material":"STONE","height":"80","status":"AVAILABLE"}'
+            left = self._write(directory, "left.jsonl", column)
+            right = self._write(directory, "right.jsonl", column)
+            cases = ["forest/Cfb", "grassland/Cfa", "cropland/Dfb", "bare/BWh", "snow/ET", "wetland/Cfa", "mangrove/Af"]
+            rows = [{"case": case, "earth": "desert" if case == "bare/BWh" else "forest",
+                     "cube": "desert" if case == "bare/BWh" else "forest"} for case in cases]
+            biome = self._write(directory, "biome.jsonl", "\n".join(map(json.dumps, rows)))
+            args = ["--columns-left", left, "--columns-right", right, "--biome", biome,
+                    "--expected-columns", "1", "--require-original-biome-cases"]
+            code, result = run(args)
+            self.assertEqual((code, result["biome"]["cases"], result["biome"]["mismatches"]), (0, 7, []))
+            self.assertEqual(result["expected"]["biomeBaseline"], "travel-environment-v2")
+            self.assertEqual(run(args + ["--biome-baseline", "historical-v1"])[0], 1)
+            rows[3]["cube"] = "stony_peaks"
+            Path(biome).write_text("\n".join(map(json.dumps, rows)), encoding="utf-8")
+            self.assertEqual(run(args)[0], 1, "historical mismatch must not pass the new gate")
+            self.assertEqual(run(args + ["--biome-baseline", "historical-v1"])[0], 0)
+            self.assertEqual(run(args + ["--expected-biome-mismatches", "1"])[0], 0)
+            rows[3]["case"] = "substituted/BWh"
+            Path(biome).write_text("\n".join(map(json.dumps, rows)), encoding="utf-8")
+            self.assertEqual(run(args + ["--biome-baseline", "historical-v1"])[0], 1)
 
 
 if __name__ == "__main__":

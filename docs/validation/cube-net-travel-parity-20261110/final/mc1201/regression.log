@@ -1,0 +1,17 @@
+
+> Configure project :mc1201
+Fabric Loom: 1.14.10
+
+> Task :mc1201:compileJava UP-TO-DATE
+> Task :mc1201:processResources UP-TO-DATE
+> Task :mc1201:classes UP-TO-DATE
+> Task :mc1201:compileClientJava UP-TO-DATE
+> Task :mc1201:processClientResources UP-TO-DATE
+> Task :mc1201:clientClasses UP-TO-DATE
+> Task :mc1201:compileTestJava
+> Task :mc1201:processTestResources UP-TO-DATE
+> Task :mc1201:testClasses
+> Task :mc1201:test
+
+BUILD SUCCESSFUL in 3m 4s
+7 actionable tasks: 2 executed, 5 up-to-date

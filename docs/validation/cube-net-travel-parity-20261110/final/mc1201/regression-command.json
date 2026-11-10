@@ -1,0 +1,11 @@
+[
+  "D:\\workshop\\Tellus-Optimized\\gradlew.bat",
+  "-PtellusTargets=mc1201",
+  "--init-script",
+  "C:\\Users\\30483\\AppData\\Local\\Temp\\tellus-travel-fix-20261110-2110\\mc1201\\travel-tests.init.gradle",
+  ":mc1201:test",
+  "--offline",
+  "--no-parallel",
+  "--max-workers=1",
+  "--console=plain"
+]
