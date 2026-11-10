@@ -1,0 +1,102 @@
+{
+  "status": "PASS",
+  "scope": "Cube-Net structure code, dual-version retained cohort and actual-native controlled Mixin smoke; not natural structure acceptance",
+  "naturalStructureAcceptance": false,
+  "versions": {
+    "mc1201": {
+      "regression": {
+        "tests": 615,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "classes": 102,
+      "nativeSmoke": {
+        "status": "PASS",
+        "probeId": "a48bc7fe-4aac-43e4-97f4-555a1f89c582",
+        "rootChildren": 31,
+        "reloadedChildren": 32,
+        "seaRedirectResult": 37,
+        "generatedBlockDigest": "0d20c7149574253fb93d17bd62927ddfe2246cbb7fcbf749d6688410730696eb",
+        "generatedBiomeDigest": "a8ea2860d86e1bde0d01bdd6f5f501769ab06b507da5260e537e348608f1b095",
+        "generatedNativeNBTDigest": "34343012d0c50c24cf819d1a2537e7f4cedf54beac6df6110607d080dd1548b2",
+        "generatedDiskMatchesMaterialized": true,
+        "worldGenerateStructures": false,
+        "naturalStartCountInGeneratedChunk": 0,
+        "sourceWorldAndCacheUnchanged": true,
+        "sourceCodeUnchangedDuringRun": true
+      }
+    },
+    "mc1211": {
+      "regression": {
+        "tests": 606,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "classes": 96,
+      "nativeSmoke": {
+        "status": "PASS",
+        "probeId": "91ac4c18-ff91-4962-a66f-2de9d745d13c",
+        "rootChildren": 31,
+        "reloadedChildren": 32,
+        "seaRedirectResult": 37,
+        "generatedBlockDigest": "d9db01c32d21828990b966fa5e5ebbe43496586a032b10175fff58b954c465cb",
+        "generatedBiomeDigest": "a8ea2860d86e1bde0d01bdd6f5f501769ab06b507da5260e537e348608f1b095",
+        "generatedNativeNBTDigest": "a3d663c1ac22821593d2f31be10748de229695bc886ec292389e77c25a95a578",
+        "generatedDiskMatchesMaterialized": true,
+        "worldGenerateStructures": false,
+        "naturalStartCountInGeneratedChunk": 0,
+        "sourceWorldAndCacheUnchanged": true,
+        "sourceCodeUnchangedDuringRun": true
+      }
+    }
+  },
+  "strictParity": {
+    "biome": {
+      "cases": 7,
+      "mismatches": [
+        {
+          "case": "bare/BWh",
+          "cube": "minecraft:stony_peaks",
+          "earth": "minecraft:desert"
+        }
+      ]
+    },
+    "checks": {
+      "biomeCaseSet": true,
+      "biomeCount": true,
+      "biomeMismatches": true,
+      "columnCount": true,
+      "columnMismatches": true
+    },
+    "columns": {
+      "mismatches": [],
+      "rightRows": 13824,
+      "rows": 13824
+    },
+    "expected": {
+      "biomeCases": 7,
+      "biomeMismatches": 1,
+      "columnMismatches": 0,
+      "columns": 13824,
+      "knownBiomeCase": "bare/BWh",
+      "originalBiomeCases": [
+        "bare/BWh",
+        "cropland/Dfb",
+        "forest/Cfb",
+        "grassland/Cfa",
+        "mangrove/Af",
+        "snow/ET",
+        "wetland/Cfa"
+      ]
+    },
+    "status": "PASS"
+  },
+  "baselineRef": "recovery/tellus-native-runtime-default",
+  "head": "1c35ccbb2441fd146ceb28ee35700f684dec8ed3",
+  "branch": "feat/cube-net-parity",
+  "indexUnchanged": true,
+  "indexSHA256": "bae6810ce206f7dc0defb2c8e7165750ec848381488d4584ad527ee6d592a18c",
+  "unchangedEarthSHA256": "a527d0684cb0d6ae4554b5ef09b6e5dd0aba1a341e8b0e8be679cd8764752177"
+}

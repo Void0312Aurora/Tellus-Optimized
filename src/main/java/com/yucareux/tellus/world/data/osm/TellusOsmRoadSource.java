@@ -101,6 +101,16 @@ public final class TellusOsmRoadSource implements TellusCacheHandle {
       return this.available;
    }
 
+   /** Allocation-free admission at the actual header-resolved query zoom; road areas share this tile grid. */
+   public boolean canQueryGeoAreaWithinBudget(GeodeticBounds bounds, int maxTiles) {
+      java.util.Objects.requireNonNull(bounds, "bounds");
+      if (maxTiles < 1) throw new IllegalArgumentException("positive query tile budget required");
+      this.ensureInitialized();
+      return this.available && !bounds.mercatorWindows().isEmpty()
+         && this.queryZoom >= 0 && this.queryZoom <= 20
+         && OsmGeoQueryBudget.withinBudget(bounds,this.queryZoom,maxTiles);
+   }
+
    public List<RoadFeature> roadsForArea(int minBlockX, int minBlockZ, int maxBlockX, int maxBlockZ, double worldScale, int marginBlocks) {
       return this.roadsForArea(minBlockX, minBlockZ, maxBlockX, maxBlockZ, worldScale, marginBlocks, OsmQueryMode.BLOCKING);
    }

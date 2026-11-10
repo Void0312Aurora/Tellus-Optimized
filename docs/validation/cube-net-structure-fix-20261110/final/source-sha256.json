@@ -1,0 +1,77 @@
+{
+  "mc1201/src/main/java/com/yucareux/tellus/worldgen/CubeNetChunkGenerator.java": {
+    "beforeSHA256": "b57318c926120a7d1ea1f7bb172ea0f9fb60cd3a82acec048397ed25f1eb5a0b",
+    "afterSHA256": "3d01e16e8b0279b6cdf0a7c49abaddfde155ee623fb10ad4f0831bd95efae6e2",
+    "beforeOrigin": "captured-before-edit-worktree-bytes"
+  },
+  "shared/mc1211/src/main/java/com/yucareux/tellus/worldgen/CubeNetChunkGenerator.java": {
+    "beforeSHA256": "9bec38b885f47975289dbc1ea09ffb86bc8e1ec6947dc643bee29d75028369de",
+    "afterSHA256": "a1d094204de4f9ec541cc42790f2331c14901d7931d420bbfa96fb1f5e30a13b",
+    "beforeOrigin": "captured-before-edit-worktree-bytes"
+  },
+  "src/main/java/com/yucareux/tellus/mixin/OceanMonumentBuildingMixin.java": {
+    "beforeSHA256": "051311f8f21225dc07a083c1eade8ba25df24a7356644abfb1e26066622bf151",
+    "afterSHA256": "ddeca385d055c6d569373432d967ba43abd480e821c43a2f41d87ddb09a88a94",
+    "beforeOrigin": "checkpoint-blob:recovery/tellus-native-runtime-default"
+  },
+  "src/main/java/com/yucareux/tellus/worldgen/TellusPersistenceProbeCommand.java": {
+    "beforeSHA256": "69ab047ea42e85b12e6db0b3d4626b9918ab2dd5743e1d238a7369030bb162f6",
+    "afterSHA256": "d06af20bef7415ead5ba69cb73729eb9be8273760628d87edda9feedeca33fc0",
+    "beforeOrigin": "checkpoint-blob:recovery/tellus-native-runtime-default"
+  },
+  "src/main/java/com/yucareux/tellus/world/data/osm/TellusOsmBuildingSource.java": {
+    "beforeSHA256": "7b56e84fd461a4f853033af57fb3515bbc51c1f6e1349c9b06d92e6fc7dd825b",
+    "afterSHA256": "c2af737548b33aa322f9c82decaedff301de92c1439010d4fb8caa5d1edab13f",
+    "beforeOrigin": "captured-before-edit-worktree-bytes"
+  },
+  "src/main/java/com/yucareux/tellus/world/data/osm/TellusOsmRoadSource.java": {
+    "beforeSHA256": "abd917e4d698ce35808075bb91e5b4b4f35e69cb6b76fc460da0788cef4d5d5c",
+    "afterSHA256": "5f3e9fed049d23668acff96a3206322d3a7a623e04918316f43acfdff39b4df7",
+    "beforeOrigin": "captured-before-edit-worktree-bytes"
+  },
+  "src/main/java/com/yucareux/tellus/worldgen/global/SphereChunkSampler.java": {
+    "beforeSHA256": "0edd44f8838e431714a3c44156202451aec2c2395c56103bdd4c2e79ae2490c2",
+    "afterSHA256": "f6b1a2e8ce65842261f2a0d0540a350f8bb7fa007cba1d1cac692e22f8a78e47",
+    "beforeOrigin": "captured-before-edit-worktree-bytes"
+  },
+  "src/main/java/com/yucareux/tellus/worldgen/CubeNetStructureCollision.java": {
+    "beforeSHA256": null,
+    "afterSHA256": "df538603d0b44a271491cf60b2eb6d150233d83cd7ef35cb65e39bbdeb3abf00"
+  },
+  "src/main/java/com/yucareux/tellus/worldgen/CubeNetNativeStructureAdapter.java": {
+    "beforeSHA256": null,
+    "afterSHA256": "32d925fbdf74a537cb2c1b5d08e89a9c7152d38b0d16a36edc002db36728d4fc"
+  },
+  "src/main/java/com/yucareux/tellus/worldgen/TellusStructureAdaptationRules.java": {
+    "beforeSHA256": null,
+    "afterSHA256": "c4817cb0f8cd88f9ccd692e1019ff729cd9b70eca2478fd3553b7fce01103cab"
+  },
+  "src/main/java/com/yucareux/tellus/worldgen/TellusNativeStructureMixinProbe.java": {
+    "beforeSHA256": null,
+    "afterSHA256": "407c5d01163e3909543c70bafffcadecdb6e6a2ba75c29b419905f416e9ab9e8"
+  },
+  "src/test/java/com/yucareux/tellus/worldgen/CubeNetStructureCollisionTest.java": {
+    "beforeSHA256": null,
+    "afterSHA256": "b36f946a801f4b0a793d69a02d7db71c0ce667843b2d4ebcd1d934323d8b99d2"
+  },
+  "src/test/java/com/yucareux/tellus/worldgen/CubeNetNativeStructureAdapterTest.java": {
+    "beforeSHA256": null,
+    "afterSHA256": "878a0cf18e55700115e6de7a7e48713f45b643270593f8fc6f5b63e8d0c67806"
+  },
+  "src/test/java/com/yucareux/tellus/worldgen/TellusStructureAdaptationRulesTest.java": {
+    "beforeSHA256": null,
+    "afterSHA256": "1425eb4f74633af5e8d6648a0938853d77567a4ca561651396758911a4eab50c"
+  },
+  "src/main/java/com/yucareux/tellus/world/data/osm/OsmGeoQueryBudget.java": {
+    "beforeSHA256": null,
+    "afterSHA256": "a25c07fe27420babb4df1e37dd4d86ddc9f5a7623c74626601c830e95584f0b5"
+  },
+  "src/test/java/com/yucareux/tellus/world/data/osm/OsmGeoQueryBudgetTest.java": {
+    "beforeSHA256": null,
+    "afterSHA256": "32158f31dc5c7e515deea81b62de1dfb1cd3a45cf8dd47dd911d43f0c3dd8791"
+  },
+  "tools/run_native_structure_smoke.py": {
+    "beforeSHA256": null,
+    "afterSHA256": "2fc09c125803739c6739f94f46f5ceae66e345c7e2611b544394a60c275fa017"
+  }
+}

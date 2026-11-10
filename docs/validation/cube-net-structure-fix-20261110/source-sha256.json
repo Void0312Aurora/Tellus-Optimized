@@ -1,0 +1,46 @@
+{
+  "mc1201/src/main/java/com/yucareux/tellus/worldgen/CubeNetChunkGenerator.java": {
+    "beforeSHA256": "b57318c926120a7d1ea1f7bb172ea0f9fb60cd3a82acec048397ed25f1eb5a0b",
+    "afterSHA256": "328daa93f1a2b1eeb7659d85cefa424d2aca507d830007714d9f78f8707db7e9"
+  },
+  "shared/mc1211/src/main/java/com/yucareux/tellus/worldgen/CubeNetChunkGenerator.java": {
+    "beforeSHA256": "9bec38b885f47975289dbc1ea09ffb86bc8e1ec6947dc643bee29d75028369de",
+    "afterSHA256": "ee8e92ea3c1bd72489450e8315e11081e56a84d16cc636c5314067d210df74a3"
+  },
+  "src/main/java/com/yucareux/tellus/mixin/OceanMonumentBuildingMixin.java": {
+    "beforeSHA256": "051311f8f21225dc07a083c1eade8ba25df24a7356644abfb1e26066622bf151",
+    "afterSHA256": "ddeca385d055c6d569373432d967ba43abd480e821c43a2f41d87ddb09a88a94"
+  },
+  "src/main/java/com/yucareux/tellus/worldgen/TellusPersistenceProbeCommand.java": {
+    "beforeSHA256": "69ab047ea42e85b12e6db0b3d4626b9918ab2dd5743e1d238a7369030bb162f6",
+    "afterSHA256": "d06af20bef7415ead5ba69cb73729eb9be8273760628d87edda9feedeca33fc0"
+  },
+  "src/main/java/com/yucareux/tellus/worldgen/CubeNetStructureCollision.java": {
+    "beforeSHA256": null,
+    "afterSHA256": "9938e19daf3c1ca4ce9f26e9bc0c3e5f369408b5d094c66ff8508d30ff9b54c9"
+  },
+  "src/main/java/com/yucareux/tellus/worldgen/CubeNetNativeStructureAdapter.java": {
+    "beforeSHA256": null,
+    "afterSHA256": "32d925fbdf74a537cb2c1b5d08e89a9c7152d38b0d16a36edc002db36728d4fc"
+  },
+  "src/main/java/com/yucareux/tellus/worldgen/TellusStructureAdaptationRules.java": {
+    "beforeSHA256": null,
+    "afterSHA256": "c4817cb0f8cd88f9ccd692e1019ff729cd9b70eca2478fd3553b7fce01103cab"
+  },
+  "src/main/java/com/yucareux/tellus/worldgen/TellusNativeStructureMixinProbe.java": {
+    "beforeSHA256": null,
+    "afterSHA256": "407c5d01163e3909543c70bafffcadecdb6e6a2ba75c29b419905f416e9ab9e8"
+  },
+  "src/test/java/com/yucareux/tellus/worldgen/CubeNetStructureCollisionTest.java": {
+    "beforeSHA256": null,
+    "afterSHA256": "516b1a2b3d8f66b550df2fdd9c60c5937bb8d00ae7f76b07a01170e5fd48313b"
+  },
+  "src/test/java/com/yucareux/tellus/worldgen/CubeNetNativeStructureAdapterTest.java": {
+    "beforeSHA256": null,
+    "afterSHA256": "878a0cf18e55700115e6de7a7e48713f45b643270593f8fc6f5b63e8d0c67806"
+  },
+  "src/test/java/com/yucareux/tellus/worldgen/TellusStructureAdaptationRulesTest.java": {
+    "beforeSHA256": null,
+    "afterSHA256": "1425eb4f74633af5e8d6648a0938853d77567a4ca561651396758911a4eab50c"
+  }
+}

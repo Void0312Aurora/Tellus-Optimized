@@ -1,0 +1,16 @@
+[
+  {
+    "module": "mc1201",
+    "path": "D:\\workshop\\Tellus-Optimized\\mc1201\\build\\libs\\Tellus-fabric-1.20.1-0.8.5.jar",
+    "sha256": "f1f96baf2e5693c0b5d6b048ff4989bf0db69f8b9e06fbd566a03fbf2511653f",
+    "bytes": 27376591,
+    "hasFinalQueryBudgetClass": true
+  },
+  {
+    "module": "mc1211",
+    "path": "D:\\workshop\\Tellus-Optimized\\mc1211\\build\\libs\\Tellus-fabric-1.21.1-0.8.5.jar",
+    "sha256": "122cfcdcf98bb535cbab15f904ff498741fd4cbcc69f8a3bbe205e5869c7f27d",
+    "bytes": 27198964,
+    "hasFinalQueryBudgetClass": true
+  }
+]

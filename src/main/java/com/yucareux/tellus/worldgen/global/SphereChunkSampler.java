@@ -176,12 +176,17 @@ public final class SphereChunkSampler {
     * distance from the center to a corner is 16 block units.
     */
    public GeodeticBounds featureBounds(SphereWorldModel.SphereChunkAddress address, double marginMeters) {
-      this.model.chartForChunk(address);
+      return featureBounds(this.model,address,marginMeters);
+   }
+
+   /** Same exact query envelope, available for admission before any source enumerates tiles. */
+   public static GeodeticBounds featureBounds(SphereWorldModel model, SphereWorldModel.SphereChunkAddress address, double marginMeters) {
+      model.chartForChunk(address);
       if (!(marginMeters >= 0.0) || !Double.isFinite(marginMeters)) {
          throw new IllegalArgumentException("marginMeters must be finite and non-negative");
       }
       return GeodeticBounds.around(
-         this.model.exactSurfacePoint(address), 32.0 * this.model.nominalBlockScaleMeters() + marginMeters
+         model.exactSurfacePoint(address), 32.0 * model.nominalBlockScaleMeters() + marginMeters
       );
    }
 

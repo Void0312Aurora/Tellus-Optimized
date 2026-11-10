@@ -1,6 +1,6 @@
 package com.yucareux.tellus.mixin;
 
-import com.yucareux.tellus.worldgen.EarthChunkGenerator;
+import com.yucareux.tellus.worldgen.TellusGeodeticPosition;
 import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.util.RandomSource;
@@ -56,6 +56,7 @@ public abstract class OceanMonumentBuildingMixin extends StructurePiece {
       ChunkPos chunkPos,
       BlockPos pos
    ) {
-      return generator instanceof EarthChunkGenerator ? seaLevel : Math.max(seaLevel, minimumSeaLevel);
+      return generator instanceof TellusGeodeticPosition
+         ? seaLevel : Math.max(seaLevel, minimumSeaLevel);
    }
 }

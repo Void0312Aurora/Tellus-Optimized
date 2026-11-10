@@ -1805,47 +1805,20 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
    }
 
    private void retargetCubeNetUndergroundStarts(RegistryAccess registryAccess, ChunkAccess chunk) {
-      Registry<Structure> registry = MinecraftVersionCompat.registry(registryAccess, Registries.STRUCTURE);
-      int chunkMinY = MinecraftVersionCompat.minY(chunk);
-      int chunkMaxY = chunkMinY + chunk.getHeight() - 1;
       Map<Long, SphereChunkSampler.SurfaceData> cache = new HashMap<>();
-      for (var entry : new ArrayList<>(chunk.getAllStarts().entrySet())) {
-         StructureStart start = entry.getValue();
-         if (start == null || !start.isValid()) continue;
-         String path = MinecraftVersionCompat.registryKeyPath(registry, entry.getKey());
-         if (path == null) continue;
-         BoundingBox box = start.getBoundingBox();
-         boolean underground = path.equals("stronghold") || path.startsWith("mineshaft")
-            || path.equals("ancient_city") || path.equals("trial_chambers");
-         if (!underground) continue;
-         int lowestSurface = Integer.MAX_VALUE;
-         for (int z = box.minZ(); z <= box.maxZ(); z += 8) {
-            for (int x = box.minX(); x <= box.maxX(); x += 8) {
-               lowestSurface = Math.min(lowestSurface, this.structureSurfaceY(x, z, cache));
-            }
-         }
-         lowestSurface = Math.min(lowestSurface,
-            this.structureSurfaceY(box.maxX(), box.maxZ(), cache));
-         int clearance = path.startsWith("mineshaft") && path.endsWith("_mesa") ? 4 : 8;
-         int depth = path.equals("stronghold") ? 42 : path.startsWith("mineshaft") ? 30
-            : path.equals("ancient_city") ? 92 : 72;
-         int topTarget = lowestSurface - depth;
-         VanillaStructurePlacement.VerticalPlacementBounds bounds = VanillaStructurePlacement.verticalPlacementBounds(
-            box.minY(), box.maxY(), lowestSurface, chunkMinY, chunkMaxY, 4, clearance);
-         if (!bounds.canFit()) {
-            chunk.setStartForStructure(entry.getKey(), StructureStart.INVALID_START);
-            continue;
-         }
-         int offsetY = Mth.clamp(topTarget - box.getCenter().getY(), bounds.minOffsetY(), bounds.maxOffsetY());
-         if (offsetY == 0) continue;
-         List<StructurePiece> movedPieces = new ArrayList<>(start.getPieces().size());
-         for (StructurePiece piece : start.getPieces()) {
-            piece.move(0, offsetY, 0);
-            movedPieces.add(piece);
-         }
-         chunk.setStartForStructure(entry.getKey(), new StructureStart(entry.getKey(), start.getChunkPos(),
-            start.getReferences(), new PiecesContainer(movedPieces)));
-      }
+      int min = MinecraftVersionCompat.minY(chunk), max = min + chunk.getHeight() - 1;
+      CubeNetNativeStructureAdapter.adapt(registryAccess,chunk,min,max,this.seaLevel,this.cubeNetEnableWater,
+         this.worldScale(),this.worldSeed,(x,z) -> {
+            var surface = this.surfaceDataAtPlanar(x,z,cache);
+            if (surface == null || !surface.elevationAvailable()) return null;
+            int terrain = Mth.clamp(this.materializer.height(surface.elevationMeters()),min,max);
+            int water = this.cubeNetEnableWater && surface.waterAvailable()
+               ? Mth.clamp(this.materializer.height(surface.waterSurfaceMeters()),min,max) : terrain;
+            return new CubeNetNativeStructureAdapter.Column(terrain,water,surface.oceanWater());
+         }, (x,z) -> {
+            BlockAddress block = this.resolveBlock(x,z).orElse(null);
+            return block == null ? null : this.model.exactSurfacePoint(block.address().face(),block.x()+0.5,block.z()+0.5);
+         });
    }
 
    private void filterCubeNetOsmCollisions(RegistryAccess registryAccess, ChunkAccess chunk) {
@@ -1853,11 +1826,23 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
       SphereWorldModel.SphereChunkAddress address = this.address(chunk.getPos())
          .filter(this.singularityPolicy::admitsTerrainMaterialization).orElse(null);
       if (address == null) return;
-      SphereChunkSampler.FeatureData data = this.faces[address.face()].sampleFeatures(address, 96.0, OsmQueryMode.NON_BLOCKING);
-      boolean buildingsMiss = data.buildings().hadCacheMiss() && data.buildings().features().isEmpty();
-      boolean roadsMiss = data.roads().hadCacheMiss() && data.roads().features().isEmpty();
-      if (buildingsMiss && roadsMiss) return;
       Registry<Structure> registry = MinecraftVersionCompat.registry(registryAccess, Registries.STRUCTURE);
+      double marginMeters = 96.0;
+      boolean hasCandidate = false;
+      for (var entry : chunk.getAllStarts().entrySet()) {
+         StructureStart start = entry.getValue();
+         if (start == null || !start.isValid() || !cubeNetOsmCollisionStructure(registry, entry.getKey())) continue;
+         hasCandidate = true;
+         BoundingBox box = start.getBoundingBox();
+         marginMeters = Math.max(marginMeters, CubeNetStructureCollision.queryMarginMeters(
+            chunk.getPos().getMinBlockX(), chunk.getPos().getMinBlockZ(),
+            new CubeNetStructureCollision.Rectangle(box.minX(), box.minZ(), box.maxX(), box.maxZ()), this.worldScale()));
+       }
+       if (!hasCandidate) return;
+       var queryBounds = SphereChunkSampler.featureBounds(this.model,address,marginMeters);
+       // NON_BLOCKING alone does not bound synchronous tile-key allocation.
+       SphereChunkSampler.FeatureData data = CubeNetStructureCollision.boundedFeatures(queryBounds,
+          this.cubeNetBuildings,this.cubeNetRoads,TellusWorldgenSources.osmBuildings(),TellusWorldgenSources.osmRoads());
       for (var entry : new ArrayList<>(chunk.getAllStarts().entrySet())) {
          StructureStart start = entry.getValue();
          if (start == null || !start.isValid() || !cubeNetOsmCollisionStructure(registry, entry.getKey())) continue;
@@ -1881,34 +1866,11 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
 
    private boolean cubeNetStructureCollides(BoundingBox box, SphereChunkSampler.FeatureData data,
       SphereWorldModel.SphereChunkAddress address) {
-      CubeNetLayout.Face face = CubeNetLayout.Face.of(address.face());
-      int chunkMinX = Math.toIntExact(address.blockX() * 16L);
-      int chunkMinZ = Math.toIntExact(address.blockZ() * 16L);
-      int minX = Math.max(chunkMinX - 96, box.minX());
-      int minZ = Math.max(chunkMinZ - 96, box.minZ());
-      int maxX = Math.min(chunkMinX + 111, box.maxX());
-      int maxZ = Math.min(chunkMinZ + 111, box.maxZ());
-      if (minX > maxX || minZ > maxZ) return false;
-      if (this.cubeNetBuildings && !this.landmarks.intersecting(box.minX(), box.minZ(), box.maxX(), box.maxZ()).isEmpty()) {
-         return true;
-      }
-      if (this.cubeNetBuildings && !data.buildings().features().isEmpty()) {
-         for (OsmBuildingFeature building : data.buildings().features()) {
-            if (!CubeNetFeatureRasterizer.buildingCells(this.model, this.adapter.layout(), building,
-               face, minX, minZ, maxX, maxZ).isEmpty()) return true;
-         }
-      }
-      if (this.cubeNetRoads && !data.roads().features().isEmpty()) {
-         for (RoadFeature road : data.roads().features()) {
-            if (!CubeNetFeatureRasterizer.roadCells(this.model, this.adapter.layout(), road,
-               face, minX, minZ, maxX, maxZ, this.worldScale()).isEmpty()) return true;
-         }
-         for (RoadAreaFeature area : data.roadAreas().features()) {
-            if (!CubeNetFeatureRasterizer.roadAreaCells(this.model, this.adapter.layout(), area,
-               face, minX, minZ, maxX, maxZ).isEmpty()) return true;
-         }
-      }
-      return false;
+      return CubeNetStructureCollision.collides(this.model, this.adapter.layout(),
+         new CubeNetStructureCollision.Rectangle(box.minX(), box.minZ(), box.maxX(), box.maxZ()),
+         data, this.cubeNetRoads, this.cubeNetBuildings,
+         !this.cubeNetBuildings || this.landmarks.placements().isEmpty() ? null
+            : (x, z) -> !this.landmarks.intersecting(x, z, x, z).isEmpty());
    }
 
    private void filterCubeNetSurfaceStructureStarts(RegistryAccess registryAccess, ChunkAccess chunk) {

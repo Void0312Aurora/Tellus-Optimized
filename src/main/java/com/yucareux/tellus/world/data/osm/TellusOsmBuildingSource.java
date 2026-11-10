@@ -110,6 +110,16 @@ public final class TellusOsmBuildingSource implements TellusCacheHandle {
       }
    }
 
+   /** Allocation-free admission at the actual header-resolved query zoom; never truncates the bounds. */
+   public boolean canQueryGeoAreaWithinBudget(GeodeticBounds bounds, int maxTiles) {
+      java.util.Objects.requireNonNull(bounds, "bounds");
+      if (maxTiles < 1) throw new IllegalArgumentException("positive query tile budget required");
+      this.ensureInitialized();
+      return this.available && !bounds.mercatorWindows().isEmpty()
+         && this.queryZoom >= 0 && this.queryZoom <= 20
+         && OsmGeoQueryBudget.withinBudget(bounds,this.queryZoom,maxTiles);
+   }
+
    /** Queries source geometry directly in latitude/longitude, including date-line crossings. */
    public BuildingQueryResult buildingsForGeoAreaWithStatus(GeodeticBounds bounds, OsmQueryMode mode) {
       java.util.Objects.requireNonNull(bounds, "bounds");

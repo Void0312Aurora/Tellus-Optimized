@@ -1,0 +1,116 @@
+{
+  "status": "PASS",
+  "scope": "Final bounded-query Cube-Net structure fixes; controlled native Mixin smoke, not natural structure acceptance",
+  "naturalStructureAcceptance": false,
+  "versions": {
+    "mc1201": {
+      "regression": {
+        "tests": 629,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "classes": 104,
+      "smoke": {
+        "status": "PASS",
+        "probeId": "0129db0a-e2ce-44cd-a63d-077be849d22c",
+        "initialChildren": 31,
+        "regeneratedChildren": 32,
+        "seaRedirectResult": 37,
+        "generatedDiskMatchesMaterialized": true,
+        "worldGenerateStructures": false,
+        "naturalStartCount": 0,
+        "sourceWorldAndCacheAndCodeUnchanged": true
+      }
+    },
+    "mc1211": {
+      "regression": {
+        "tests": 620,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "classes": 98,
+      "smoke": {
+        "status": "PASS",
+        "probeId": "8520676a-13e3-4abd-97fc-2fd20e19fc88",
+        "initialChildren": 31,
+        "regeneratedChildren": 32,
+        "seaRedirectResult": 37,
+        "generatedDiskMatchesMaterialized": true,
+        "worldGenerateStructures": false,
+        "naturalStartCount": 0,
+        "sourceWorldAndCacheAndCodeUnchanged": true
+      }
+    }
+  },
+  "reversePatchCheckPASS": true,
+  "textReversePatchSemanticallyExact": true,
+  "patchEOLConversions": [
+    "src/main/java/com/yucareux/tellus/mixin/OceanMonumentBuildingMixin.java",
+    "src/main/java/com/yucareux/tellus/worldgen/TellusPersistenceProbeCommand.java"
+  ],
+  "zipBeforeBytesExactlyRestoredInDisposableCopy": true,
+  "head": "1c35ccbb2441fd146ceb28ee35700f684dec8ed3",
+  "branch": "feat/cube-net-parity",
+  "strictParity": {
+    "biome": {
+      "cases": 7,
+      "mismatches": [
+        {
+          "case": "bare/BWh",
+          "cube": "minecraft:stony_peaks",
+          "earth": "minecraft:desert"
+        }
+      ]
+    },
+    "checks": {
+      "biomeCaseSet": true,
+      "biomeCount": true,
+      "biomeMismatches": true,
+      "columnCount": true,
+      "columnMismatches": true
+    },
+    "columns": {
+      "mismatches": [],
+      "rightRows": 13824,
+      "rows": 13824
+    },
+    "expected": {
+      "biomeCases": 7,
+      "biomeMismatches": 1,
+      "columnMismatches": 0,
+      "columns": 13824,
+      "knownBiomeCase": "bare/BWh",
+      "originalBiomeCases": [
+        "bare/BWh",
+        "cropland/Dfb",
+        "forest/Cfb",
+        "grassland/Cfa",
+        "mangrove/Af",
+        "snow/ET",
+        "wetland/Cfa"
+      ]
+    },
+    "status": "PASS"
+  },
+  "artifacts": [
+    {
+      "module": "mc1201",
+      "path": "D:\\workshop\\Tellus-Optimized\\mc1201\\build\\libs\\Tellus-fabric-1.20.1-0.8.5.jar",
+      "sha256": "f1f96baf2e5693c0b5d6b048ff4989bf0db69f8b9e06fbd566a03fbf2511653f",
+      "bytes": 27376591,
+      "hasFinalQueryBudgetClass": true
+    },
+    {
+      "module": "mc1211",
+      "path": "D:\\workshop\\Tellus-Optimized\\mc1211\\build\\libs\\Tellus-fabric-1.21.1-0.8.5.jar",
+      "sha256": "122cfcdcf98bb535cbab15f904ff498741fd4cbcc69f8a3bbe205e5869c7f27d",
+      "bytes": 27198964,
+      "hasFinalQueryBudgetClass": true
+    }
+  ],
+  "indexSHA256": "bae6810ce206f7dc0defb2c8e7165750ec848381488d4584ad527ee6d592a18c",
+  "indexUnchanged": true,
+  "unchangedEarthSHA256": "a527d0684cb0d6ae4554b5ef09b6e5dd0aba1a341e8b0e8be679cd8764752177"
+}

@@ -1,0 +1,1791 @@
+--- a/mc1201/src/main/java/com/yucareux/tellus/worldgen/CubeNetChunkGenerator.java
++++ b/mc1201/src/main/java/com/yucareux/tellus/worldgen/CubeNetChunkGenerator.java
+@@ -1792,47 +1792,20 @@
+    }
+ 
+    private void retargetCubeNetUndergroundStarts(RegistryAccess registryAccess, ChunkAccess chunk) {
+-      Registry<Structure> registry = MinecraftVersionCompat.registry(registryAccess, Registries.STRUCTURE);
+-      int chunkMinY = MinecraftVersionCompat.minY(chunk);
+-      int chunkMaxY = chunkMinY + chunk.getHeight() - 1;
+       Map<Long, SphereChunkSampler.SurfaceData> cache = new HashMap<>();
+-      for (var entry : new ArrayList<>(chunk.getAllStarts().entrySet())) {
+-         StructureStart start = entry.getValue();
+-         if (start == null || !start.isValid()) continue;
+-         String path = MinecraftVersionCompat.registryKeyPath(registry, entry.getKey());
+-         if (path == null) continue;
+-         BoundingBox box = start.getBoundingBox();
+-         boolean underground = path.equals("stronghold") || path.startsWith("mineshaft")
+-            || path.equals("ancient_city") || path.equals("trial_chambers");
+-         if (!underground) continue;
+-         int lowestSurface = Integer.MAX_VALUE;
+-         for (int z = box.minZ(); z <= box.maxZ(); z += 8) {
+-            for (int x = box.minX(); x <= box.maxX(); x += 8) {
+-               lowestSurface = Math.min(lowestSurface, this.structureSurfaceY(x, z, cache));
+-            }
+-         }
+-         lowestSurface = Math.min(lowestSurface,
+-            this.structureSurfaceY(box.maxX(), box.maxZ(), cache));
+-         int clearance = path.startsWith("mineshaft") && path.endsWith("_mesa") ? 4 : 8;
+-         int depth = path.equals("stronghold") ? 42 : path.startsWith("mineshaft") ? 30
+-            : path.equals("ancient_city") ? 92 : 72;
+-         int topTarget = lowestSurface - depth;
+-         VanillaStructurePlacement.VerticalPlacementBounds bounds = VanillaStructurePlacement.verticalPlacementBounds(
+-            box.minY(), box.maxY(), lowestSurface, chunkMinY, chunkMaxY, 4, clearance);
+-         if (!bounds.canFit()) {
+-            chunk.setStartForStructure(entry.getKey(), StructureStart.INVALID_START);
+-            continue;
+-         }
+-         int offsetY = Mth.clamp(topTarget - box.getCenter().getY(), bounds.minOffsetY(), bounds.maxOffsetY());
+-         if (offsetY == 0) continue;
+-         List<StructurePiece> movedPieces = new ArrayList<>(start.getPieces().size());
+-         for (StructurePiece piece : start.getPieces()) {
+-            piece.move(0, offsetY, 0);
+-            movedPieces.add(piece);
+-         }
+-         chunk.setStartForStructure(entry.getKey(), new StructureStart(entry.getKey(), start.getChunkPos(),
+-            start.getReferences(), new PiecesContainer(movedPieces)));
+-      }
++      int min = MinecraftVersionCompat.minY(chunk), max = min + chunk.getHeight() - 1;
++      CubeNetNativeStructureAdapter.adapt(registryAccess,chunk,min,max,this.seaLevel,this.cubeNetEnableWater,
++         this.worldScale(),this.worldSeed,(x,z) -> {
++            var surface = this.surfaceDataAtPlanar(x,z,cache);
++            if (surface == null || !surface.elevationAvailable()) return null;
++            int terrain = Mth.clamp(this.materializer.height(surface.elevationMeters()),min,max);
++            int water = this.cubeNetEnableWater && surface.waterAvailable()
++               ? Mth.clamp(this.materializer.height(surface.waterSurfaceMeters()),min,max) : terrain;
++            return new CubeNetNativeStructureAdapter.Column(terrain,water,surface.oceanWater());
++         }, (x,z) -> {
++            BlockAddress block = this.resolveBlock(x,z).orElse(null);
++            return block == null ? null : this.model.exactSurfacePoint(block.address().face(),block.x()+0.5,block.z()+0.5);
++         });
+    }
+ 
+    private void filterCubeNetOsmCollisions(RegistryAccess registryAccess, ChunkAccess chunk) {
+@@ -1840,11 +1813,20 @@
+       SphereWorldModel.SphereChunkAddress address = this.address(chunk.getPos())
+          .filter(this.singularityPolicy::admitsTerrainMaterialization).orElse(null);
+       if (address == null) return;
+-      SphereChunkSampler.FeatureData data = this.faces[address.face()].sampleFeatures(address, 96.0, OsmQueryMode.NON_BLOCKING);
+-      boolean buildingsMiss = data.buildings().hadCacheMiss() && data.buildings().features().isEmpty();
+-      boolean roadsMiss = data.roads().hadCacheMiss() && data.roads().features().isEmpty();
+-      if (buildingsMiss && roadsMiss) return;
+       Registry<Structure> registry = MinecraftVersionCompat.registry(registryAccess, Registries.STRUCTURE);
++      double marginMeters = 96.0;
++      boolean hasCandidate = false;
++      for (var entry : chunk.getAllStarts().entrySet()) {
++         StructureStart start = entry.getValue();
++         if (start == null || !start.isValid() || !cubeNetOsmCollisionStructure(registry, entry.getKey())) continue;
++         hasCandidate = true;
++         BoundingBox box = start.getBoundingBox();
++         marginMeters = Math.max(marginMeters, CubeNetStructureCollision.queryMarginMeters(
++            chunk.getPos().getMinBlockX(), chunk.getPos().getMinBlockZ(),
++            new CubeNetStructureCollision.Rectangle(box.minX(), box.minZ(), box.maxX(), box.maxZ()), this.worldScale()));
++      }
++      if (!hasCandidate) return;
++      SphereChunkSampler.FeatureData data = this.faces[address.face()].sampleFeatures(address, marginMeters, OsmQueryMode.NON_BLOCKING);
+       for (var entry : new ArrayList<>(chunk.getAllStarts().entrySet())) {
+          StructureStart start = entry.getValue();
+          if (start == null || !start.isValid() || !cubeNetOsmCollisionStructure(registry, entry.getKey())) continue;
+@@ -1868,34 +1850,11 @@
+ 
+    private boolean cubeNetStructureCollides(BoundingBox box, SphereChunkSampler.FeatureData data,
+       SphereWorldModel.SphereChunkAddress address) {
+-      CubeNetLayout.Face face = CubeNetLayout.Face.of(address.face());
+-      int chunkMinX = Math.toIntExact(address.blockX() * 16L);
+-      int chunkMinZ = Math.toIntExact(address.blockZ() * 16L);
+-      int minX = Math.max(chunkMinX - 96, box.minX());
+-      int minZ = Math.max(chunkMinZ - 96, box.minZ());
+-      int maxX = Math.min(chunkMinX + 111, box.maxX());
+-      int maxZ = Math.min(chunkMinZ + 111, box.maxZ());
+-      if (minX > maxX || minZ > maxZ) return false;
+-      if (this.cubeNetBuildings && !this.landmarks.intersecting(box.minX(), box.minZ(), box.maxX(), box.maxZ()).isEmpty()) {
+-         return true;
+-      }
+-      if (this.cubeNetBuildings && !data.buildings().features().isEmpty()) {
+-         for (OsmBuildingFeature building : data.buildings().features()) {
+-            if (!CubeNetFeatureRasterizer.buildingCells(this.model, this.adapter.layout(), building,
+-               face, minX, minZ, maxX, maxZ).isEmpty()) return true;
+-         }
+-      }
+-      if (this.cubeNetRoads && !data.roads().features().isEmpty()) {
+-         for (RoadFeature road : data.roads().features()) {
+-            if (!CubeNetFeatureRasterizer.roadCells(this.model, this.adapter.layout(), road,
+-               face, minX, minZ, maxX, maxZ, this.worldScale()).isEmpty()) return true;
+-         }
+-         for (RoadAreaFeature area : data.roadAreas().features()) {
+-            if (!CubeNetFeatureRasterizer.roadAreaCells(this.model, this.adapter.layout(), area,
+-               face, minX, minZ, maxX, maxZ).isEmpty()) return true;
+-         }
+-      }
+-      return false;
++      return CubeNetStructureCollision.collides(this.model, this.adapter.layout(),
++         new CubeNetStructureCollision.Rectangle(box.minX(), box.minZ(), box.maxX(), box.maxZ()),
++         data, this.cubeNetRoads, this.cubeNetBuildings,
++         !this.cubeNetBuildings || this.landmarks.placements().isEmpty() ? null
++            : (x, z) -> !this.landmarks.intersecting(x, z, x, z).isEmpty());
+    }
+ 
+    private void filterCubeNetSurfaceStructureStarts(RegistryAccess registryAccess, ChunkAccess chunk) {
+--- a/shared/mc1211/src/main/java/com/yucareux/tellus/worldgen/CubeNetChunkGenerator.java
++++ b/shared/mc1211/src/main/java/com/yucareux/tellus/worldgen/CubeNetChunkGenerator.java
+@@ -1805,47 +1805,20 @@
+    }
+ 
+    private void retargetCubeNetUndergroundStarts(RegistryAccess registryAccess, ChunkAccess chunk) {
+-      Registry<Structure> registry = MinecraftVersionCompat.registry(registryAccess, Registries.STRUCTURE);
+-      int chunkMinY = MinecraftVersionCompat.minY(chunk);
+-      int chunkMaxY = chunkMinY + chunk.getHeight() - 1;
+       Map<Long, SphereChunkSampler.SurfaceData> cache = new HashMap<>();
+-      for (var entry : new ArrayList<>(chunk.getAllStarts().entrySet())) {
+-         StructureStart start = entry.getValue();
+-         if (start == null || !start.isValid()) continue;
+-         String path = MinecraftVersionCompat.registryKeyPath(registry, entry.getKey());
+-         if (path == null) continue;
+-         BoundingBox box = start.getBoundingBox();
+-         boolean underground = path.equals("stronghold") || path.startsWith("mineshaft")
+-            || path.equals("ancient_city") || path.equals("trial_chambers");
+-         if (!underground) continue;
+-         int lowestSurface = Integer.MAX_VALUE;
+-         for (int z = box.minZ(); z <= box.maxZ(); z += 8) {
+-            for (int x = box.minX(); x <= box.maxX(); x += 8) {
+-               lowestSurface = Math.min(lowestSurface, this.structureSurfaceY(x, z, cache));
+-            }
+-         }
+-         lowestSurface = Math.min(lowestSurface,
+-            this.structureSurfaceY(box.maxX(), box.maxZ(), cache));
+-         int clearance = path.startsWith("mineshaft") && path.endsWith("_mesa") ? 4 : 8;
+-         int depth = path.equals("stronghold") ? 42 : path.startsWith("mineshaft") ? 30
+-            : path.equals("ancient_city") ? 92 : 72;
+-         int topTarget = lowestSurface - depth;
+-         VanillaStructurePlacement.VerticalPlacementBounds bounds = VanillaStructurePlacement.verticalPlacementBounds(
+-            box.minY(), box.maxY(), lowestSurface, chunkMinY, chunkMaxY, 4, clearance);
+-         if (!bounds.canFit()) {
+-            chunk.setStartForStructure(entry.getKey(), StructureStart.INVALID_START);
+-            continue;
+-         }
+-         int offsetY = Mth.clamp(topTarget - box.getCenter().getY(), bounds.minOffsetY(), bounds.maxOffsetY());
+-         if (offsetY == 0) continue;
+-         List<StructurePiece> movedPieces = new ArrayList<>(start.getPieces().size());
+-         for (StructurePiece piece : start.getPieces()) {
+-            piece.move(0, offsetY, 0);
+-            movedPieces.add(piece);
+-         }
+-         chunk.setStartForStructure(entry.getKey(), new StructureStart(entry.getKey(), start.getChunkPos(),
+-            start.getReferences(), new PiecesContainer(movedPieces)));
+-      }
++      int min = MinecraftVersionCompat.minY(chunk), max = min + chunk.getHeight() - 1;
++      CubeNetNativeStructureAdapter.adapt(registryAccess,chunk,min,max,this.seaLevel,this.cubeNetEnableWater,
++         this.worldScale(),this.worldSeed,(x,z) -> {
++            var surface = this.surfaceDataAtPlanar(x,z,cache);
++            if (surface == null || !surface.elevationAvailable()) return null;
++            int terrain = Mth.clamp(this.materializer.height(surface.elevationMeters()),min,max);
++            int water = this.cubeNetEnableWater && surface.waterAvailable()
++               ? Mth.clamp(this.materializer.height(surface.waterSurfaceMeters()),min,max) : terrain;
++            return new CubeNetNativeStructureAdapter.Column(terrain,water,surface.oceanWater());
++         }, (x,z) -> {
++            BlockAddress block = this.resolveBlock(x,z).orElse(null);
++            return block == null ? null : this.model.exactSurfacePoint(block.address().face(),block.x()+0.5,block.z()+0.5);
++         });
+    }
+ 
+    private void filterCubeNetOsmCollisions(RegistryAccess registryAccess, ChunkAccess chunk) {
+@@ -1853,11 +1826,20 @@
+       SphereWorldModel.SphereChunkAddress address = this.address(chunk.getPos())
+          .filter(this.singularityPolicy::admitsTerrainMaterialization).orElse(null);
+       if (address == null) return;
+-      SphereChunkSampler.FeatureData data = this.faces[address.face()].sampleFeatures(address, 96.0, OsmQueryMode.NON_BLOCKING);
+-      boolean buildingsMiss = data.buildings().hadCacheMiss() && data.buildings().features().isEmpty();
+-      boolean roadsMiss = data.roads().hadCacheMiss() && data.roads().features().isEmpty();
+-      if (buildingsMiss && roadsMiss) return;
+       Registry<Structure> registry = MinecraftVersionCompat.registry(registryAccess, Registries.STRUCTURE);
++      double marginMeters = 96.0;
++      boolean hasCandidate = false;
++      for (var entry : chunk.getAllStarts().entrySet()) {
++         StructureStart start = entry.getValue();
++         if (start == null || !start.isValid() || !cubeNetOsmCollisionStructure(registry, entry.getKey())) continue;
++         hasCandidate = true;
++         BoundingBox box = start.getBoundingBox();
++         marginMeters = Math.max(marginMeters, CubeNetStructureCollision.queryMarginMeters(
++            chunk.getPos().getMinBlockX(), chunk.getPos().getMinBlockZ(),
++            new CubeNetStructureCollision.Rectangle(box.minX(), box.minZ(), box.maxX(), box.maxZ()), this.worldScale()));
++      }
++      if (!hasCandidate) return;
++      SphereChunkSampler.FeatureData data = this.faces[address.face()].sampleFeatures(address, marginMeters, OsmQueryMode.NON_BLOCKING);
+       for (var entry : new ArrayList<>(chunk.getAllStarts().entrySet())) {
+          StructureStart start = entry.getValue();
+          if (start == null || !start.isValid() || !cubeNetOsmCollisionStructure(registry, entry.getKey())) continue;
+@@ -1881,34 +1863,11 @@
+ 
+    private boolean cubeNetStructureCollides(BoundingBox box, SphereChunkSampler.FeatureData data,
+       SphereWorldModel.SphereChunkAddress address) {
+-      CubeNetLayout.Face face = CubeNetLayout.Face.of(address.face());
+-      int chunkMinX = Math.toIntExact(address.blockX() * 16L);
+-      int chunkMinZ = Math.toIntExact(address.blockZ() * 16L);
+-      int minX = Math.max(chunkMinX - 96, box.minX());
+-      int minZ = Math.max(chunkMinZ - 96, box.minZ());
+-      int maxX = Math.min(chunkMinX + 111, box.maxX());
+-      int maxZ = Math.min(chunkMinZ + 111, box.maxZ());
+-      if (minX > maxX || minZ > maxZ) return false;
+-      if (this.cubeNetBuildings && !this.landmarks.intersecting(box.minX(), box.minZ(), box.maxX(), box.maxZ()).isEmpty()) {
+-         return true;
+-      }
+-      if (this.cubeNetBuildings && !data.buildings().features().isEmpty()) {
+-         for (OsmBuildingFeature building : data.buildings().features()) {
+-            if (!CubeNetFeatureRasterizer.buildingCells(this.model, this.adapter.layout(), building,
+-               face, minX, minZ, maxX, maxZ).isEmpty()) return true;
+-         }
+-      }
+-      if (this.cubeNetRoads && !data.roads().features().isEmpty()) {
+-         for (RoadFeature road : data.roads().features()) {
+-            if (!CubeNetFeatureRasterizer.roadCells(this.model, this.adapter.layout(), road,
+-               face, minX, minZ, maxX, maxZ, this.worldScale()).isEmpty()) return true;
+-         }
+-         for (RoadAreaFeature area : data.roadAreas().features()) {
+-            if (!CubeNetFeatureRasterizer.roadAreaCells(this.model, this.adapter.layout(), area,
+-               face, minX, minZ, maxX, maxZ).isEmpty()) return true;
+-         }
+-      }
+-      return false;
++      return CubeNetStructureCollision.collides(this.model, this.adapter.layout(),
++         new CubeNetStructureCollision.Rectangle(box.minX(), box.minZ(), box.maxX(), box.maxZ()),
++         data, this.cubeNetRoads, this.cubeNetBuildings,
++         !this.cubeNetBuildings || this.landmarks.placements().isEmpty() ? null
++            : (x, z) -> !this.landmarks.intersecting(x, z, x, z).isEmpty());
+    }
+ 
+    private void filterCubeNetSurfaceStructureStarts(RegistryAccess registryAccess, ChunkAccess chunk) {
+--- a/src/main/java/com/yucareux/tellus/mixin/OceanMonumentBuildingMixin.java
++++ b/src/main/java/com/yucareux/tellus/mixin/OceanMonumentBuildingMixin.java
+@@ -1,61 +1,62 @@
+-package com.yucareux.tellus.mixin;
+-
+-import com.yucareux.tellus.worldgen.EarthChunkGenerator;
+-import java.util.List;
+-import net.minecraft.core.BlockPos;
+-import net.minecraft.util.RandomSource;
+-import net.minecraft.world.level.ChunkPos;
+-import net.minecraft.world.level.StructureManager;
+-import net.minecraft.world.level.WorldGenLevel;
+-import net.minecraft.world.level.chunk.ChunkGenerator;
+-import net.minecraft.world.level.levelgen.structure.BoundingBox;
+-import net.minecraft.world.level.levelgen.structure.StructurePiece;
+-import net.minecraft.world.level.levelgen.structure.pieces.StructurePieceType;
+-import net.minecraft.world.level.levelgen.structure.structures.OceanMonumentPieces;
+-import org.spongepowered.asm.mixin.Final;
+-import org.spongepowered.asm.mixin.Mixin;
+-import org.spongepowered.asm.mixin.Shadow;
+-import org.spongepowered.asm.mixin.injection.At;
+-import org.spongepowered.asm.mixin.injection.Redirect;
+-
+-@Mixin(OceanMonumentPieces.MonumentBuilding.class)
+-public abstract class OceanMonumentBuildingMixin extends StructurePiece {
+-   @Shadow
+-   @Final
+-   private List<StructurePiece> childPieces;
+-
+-   protected OceanMonumentBuildingMixin(StructurePieceType type, int genDepth, BoundingBox boundingBox) {
+-      super(type, genDepth, boundingBox);
+-   }
+-
+-   // Vanilla never moves monuments, so its move() only shifts the shell and leaves every room at the vanilla Y.
+-   @Override
+-   public void move(int x, int y, int z) {
+-      super.move(x, y, z);
+-      for (StructurePiece child : this.childPieces) {
+-         child.move(x, y, z);
+-      }
+-   }
+-
+-   @Redirect(
+-      method = "postProcess",
+-      at = @At(
+-         value = "INVOKE",
+-         target = "Ljava/lang/Math;max(II)I",
+-         remap = false
+-      )
+-   )
+-   private int tellus$useTellusSeaLevel(
+-      int seaLevel,
+-      int minimumSeaLevel,
+-      WorldGenLevel level,
+-      StructureManager structureManager,
+-      ChunkGenerator generator,
+-      RandomSource random,
+-      BoundingBox box,
+-      ChunkPos chunkPos,
+-      BlockPos pos
+-   ) {
+-      return generator instanceof EarthChunkGenerator ? seaLevel : Math.max(seaLevel, minimumSeaLevel);
+-   }
+-}
++package com.yucareux.tellus.mixin;
++
++import com.yucareux.tellus.worldgen.TellusGeodeticPosition;
++import java.util.List;
++import net.minecraft.core.BlockPos;
++import net.minecraft.util.RandomSource;
++import net.minecraft.world.level.ChunkPos;
++import net.minecraft.world.level.StructureManager;
++import net.minecraft.world.level.WorldGenLevel;
++import net.minecraft.world.level.chunk.ChunkGenerator;
++import net.minecraft.world.level.levelgen.structure.BoundingBox;
++import net.minecraft.world.level.levelgen.structure.StructurePiece;
++import net.minecraft.world.level.levelgen.structure.pieces.StructurePieceType;
++import net.minecraft.world.level.levelgen.structure.structures.OceanMonumentPieces;
++import org.spongepowered.asm.mixin.Final;
++import org.spongepowered.asm.mixin.Mixin;
++import org.spongepowered.asm.mixin.Shadow;
++import org.spongepowered.asm.mixin.injection.At;
++import org.spongepowered.asm.mixin.injection.Redirect;
++
++@Mixin(OceanMonumentPieces.MonumentBuilding.class)
++public abstract class OceanMonumentBuildingMixin extends StructurePiece {
++   @Shadow
++   @Final
++   private List<StructurePiece> childPieces;
++
++   protected OceanMonumentBuildingMixin(StructurePieceType type, int genDepth, BoundingBox boundingBox) {
++      super(type, genDepth, boundingBox);
++   }
++
++   // Vanilla never moves monuments, so its move() only shifts the shell and leaves every room at the vanilla Y.
++   @Override
++   public void move(int x, int y, int z) {
++      super.move(x, y, z);
++      for (StructurePiece child : this.childPieces) {
++         child.move(x, y, z);
++      }
++   }
++
++   @Redirect(
++      method = "postProcess",
++      at = @At(
++         value = "INVOKE",
++         target = "Ljava/lang/Math;max(II)I",
++         remap = false
++      )
++   )
++   private int tellus$useTellusSeaLevel(
++      int seaLevel,
++      int minimumSeaLevel,
++      WorldGenLevel level,
++      StructureManager structureManager,
++      ChunkGenerator generator,
++      RandomSource random,
++      BoundingBox box,
++      ChunkPos chunkPos,
++      BlockPos pos
++   ) {
++      return generator instanceof TellusGeodeticPosition
++         ? seaLevel : Math.max(seaLevel, minimumSeaLevel);
++   }
++}
+--- a/src/main/java/com/yucareux/tellus/worldgen/TellusPersistenceProbeCommand.java
++++ b/src/main/java/com/yucareux/tellus/worldgen/TellusPersistenceProbeCommand.java
+@@ -249,6 +249,13 @@
+                 ChunkAccess generated = ChunkBenchmarkVersionCompat.requestFullChunk(level.getChunkSource(), x, z);
+                 if (generated == null) throw new IllegalStateException("native generation returned no FULL chunk");
+                 result.addProperty("generationNanos", System.nanoTime() - started);
++                if (Boolean.getBoolean("tellus.persistence.probe.structureMixins")) {
++                    result.add("monumentNativeMixin", TellusNativeStructureMixinProbe.verify(level));
++                    result.addProperty("worldGenerateStructures", source.getServer().getWorldData().worldGenOptions().generateStructures());
++                    result.addProperty("naturalStartCountInGeneratedChunk", generated.getAllStarts().values().stream()
++                        .filter(start -> start != null && start.isValid()).count());
++                    result.addProperty("naturalStructureAcceptance", false);
++                }
+                 if (level.getChunkSource().getGenerator() instanceof com.yucareux.tellus.worldgen.runtime.TellusNativeProductionOwner owner) {
+                     var pipeline = owner.nativeProductionPipeline();
+                     result.addProperty("nativeProductionMode", pipeline.mode().name());
+--- /dev/null
++++ b/src/main/java/com/yucareux/tellus/worldgen/CubeNetStructureCollision.java
+@@ -0,0 +1,85 @@
++package com.yucareux.tellus.worldgen;
++
++import com.yucareux.tellus.worldgen.global.CubeNetFeatureRasterizer;
++import com.yucareux.tellus.worldgen.global.CubeNetLayout;
++import com.yucareux.tellus.worldgen.global.SphereChunkSampler;
++import com.yucareux.tellus.worldgen.global.SphereWorldModel;
++import java.util.Optional;
++
++/** One coordinate boundary for native structure boxes and geodetic feature footprints. */
++final class CubeNetStructureCollision {
++   private CubeNetStructureCollision() { }
++
++   record Rectangle(int minX, int minZ, int maxX, int maxZ) { }
++
++   /** Inclusive engine block rectangle -> inclusive canonical cell rectangle on one face. */
++   static Optional<Rectangle> faceBounds(CubeNetLayout layout, CubeNetLayout.Face face, Rectangle engine) {
++      if (engine.minX() > engine.maxX() || engine.minZ() > engine.maxZ()) return Optional.empty();
++      var placement = layout.placement(face);
++      long minU = Long.MAX_VALUE, minV = Long.MAX_VALUE, maxU = Long.MIN_VALUE, maxV = Long.MIN_VALUE;
++      for (int x : new int[]{engine.minX(), engine.maxX()}) {
++         for (int z : new int[]{engine.minZ(), engine.maxZ()}) {
++            double dx = x + 0.5 - (double)placement.originX() * layout.faceSize();
++            double dz = z + 0.5 - (double)placement.originZ() * layout.faceSize();
++            long u = (long)Math.floor(placement.uAxisX() * dx + placement.uAxisZ() * dz);
++            long v = (long)Math.floor(placement.vAxisX() * dx + placement.vAxisZ() * dz);
++            minU = Math.min(minU, u); maxU = Math.max(maxU, u);
++            minV = Math.min(minV, v); maxV = Math.max(maxV, v);
++         }
++      }
++      minU = Math.max(0L, minU); minV = Math.max(0L, minV);
++      maxU = Math.min(layout.faceSize() - 1L, maxU); maxV = Math.min(layout.faceSize() - 1L, maxV);
++      if (minU > maxU || minV > maxV) return Optional.empty();
++      return Optional.of(new Rectangle((int)minU, (int)minV, (int)maxU, (int)maxV));
++   }
++
++   /** Feature queries use metres, not engine blocks. Cover the full structure, not just its start chunk. */
++   static double queryMarginMeters(int chunkMinX, int chunkMinZ, Rectangle box, double worldScale) {
++      double extent = Math.max(Math.max(Math.abs((double)box.minX() - chunkMinX - 8.0),
++            Math.abs((double)box.maxX() - chunkMinX - 8.0)),
++         Math.max(Math.abs((double)box.minZ() - chunkMinZ - 8.0),
++            Math.abs((double)box.maxZ() - chunkMinZ - 8.0)));
++      // The spherical sampler already covers the chunk itself. A two-axis path and the
++      // conformal chart's bounded derivative conservatively cover this extra rectangle.
++      return Math.max(96.0, 4.0 * extent * worldScale);
++   }
++
++   static boolean collides(SphereWorldModel model, CubeNetLayout layout, Rectangle engine,
++      SphereChunkSampler.FeatureData data, boolean roads, boolean buildings,
++      CubeNetStructurePlacement.ColumnPredicate landmarkAtEarthGrid) {
++      if (!roads && !buildings) return false;
++      // A structure can reach an ordinary planar neighbour. Intersect each chart separately;
++      // never rasterize across the gap, reinterpret an apron as an owner, or multiply blockX by 16 again.
++      for (var face : CubeNetLayout.Face.values()) {
++         var intersection = faceBounds(layout, face, engine);
++         if (intersection.isEmpty()) continue;
++         var box = intersection.orElseThrow();
++         if (buildings && landmarkAtEarthGrid != null) {
++            for (int z = box.minZ(); z <= box.maxZ(); z++) for (int x = box.minX(); x <= box.maxX(); x++) {
++               var point = model.exactSurfacePoint(face.index(), x + 0.5, z + 0.5);
++               double earthX = EarthProjection.longitudeToBlockX(point.longitude(), model.config().worldScale());
++               double earthZ = EarthProjection.latToBlockZ(point.latitude(), model.config().worldScale());
++               if (Double.isFinite(earthX) && Double.isFinite(earthZ)
++                  && earthX >= Integer.MIN_VALUE && earthX < (double)Integer.MAX_VALUE + 1.0
++                  && earthZ >= Integer.MIN_VALUE && earthZ < (double)Integer.MAX_VALUE + 1.0
++                  && landmarkAtEarthGrid.test((int)Math.floor(earthX), (int)Math.floor(earthZ))) return true;
++            }
++         }
++         if (buildings) for (var building : data.buildings().features()) {
++            if (!CubeNetFeatureRasterizer.buildingCells(model, layout, building, face,
++               box.minX(), box.minZ(), box.maxX(), box.maxZ()).isEmpty()) return true;
++         }
++         if (roads) {
++            for (var road : data.roads().features()) {
++               if (!CubeNetFeatureRasterizer.roadCells(model, layout, road, face,
++                  box.minX(), box.minZ(), box.maxX(), box.maxZ(), model.config().worldScale()).isEmpty()) return true;
++            }
++            for (var area : data.roadAreas().features()) {
++               if (!CubeNetFeatureRasterizer.roadAreaCells(model, layout, area, face,
++                  box.minX(), box.minZ(), box.maxX(), box.maxZ()).isEmpty()) return true;
++            }
++         }
++      }
++      return false;
++   }
++}
+--- /dev/null
++++ b/src/main/java/com/yucareux/tellus/worldgen/CubeNetNativeStructureAdapter.java
+@@ -0,0 +1,88 @@
++package com.yucareux.tellus.worldgen;
++
++import com.yucareux.tellus.compat.MinecraftVersionCompat;
++import com.yucareux.tellus.worldgen.global.SphereWorldModel;
++import java.util.ArrayList;
++import java.util.function.BiFunction;
++import net.minecraft.core.RegistryAccess;
++import net.minecraft.core.registries.Registries;
++import net.minecraft.world.level.chunk.ChunkAccess;
++import net.minecraft.world.level.levelgen.structure.BoundingBox;
++import net.minecraft.world.level.levelgen.structure.StructurePiece;
++import net.minecraft.world.level.levelgen.structure.StructureStart;
++import net.minecraft.world.level.levelgen.structure.pieces.PiecesContainer;
++
++/** Target-version-neutral native piece application; Earth's decision rules are shared, not simplified. */
++final class CubeNetNativeStructureAdapter {
++   private CubeNetNativeStructureAdapter() { }
++
++   record Column(int terrainSurface, int waterSurface, boolean ocean) {
++      int oceanDepth() { return ocean && waterSurface > terrainSurface ? waterSurface - terrainSurface : 0; }
++   }
++
++   /** Missing geography is not a zero-height dry column and must not reject or move a valid start. */
++   private static final class UnavailableColumn extends RuntimeException { }
++   private static Column requireColumn(BiFunction<Integer,Integer,Column> columns, int x, int z) {
++      Column result = columns.apply(x,z);
++      if (result == null) throw new UnavailableColumn();
++      return result;
++   }
++
++   static void adapt(RegistryAccess registryAccess, ChunkAccess chunk, int minY, int maxY,
++      int seaLevel, boolean enableWater, double worldScale, long worldSeed,
++      BiFunction<Integer,Integer,Column> columns,
++      BiFunction<Integer,Integer,SphereWorldModel.GeoPoint> geography) {
++      var registry = MinecraftVersionCompat.registry(registryAccess, Registries.STRUCTURE);
++      for (var entry : new ArrayList<>(chunk.getAllStarts().entrySet())) {
++         StructureStart start = entry.getValue();
++         if (start == null || !start.isValid()) continue;
++         String path = MinecraftVersionCompat.registryKeyPath(registry, entry.getKey());
++         if (path == null) continue;
++         BoundingBox box = start.getBoundingBox();
++         var bounds = new TellusStructureAdaptationRules.Bounds(box.minX(),box.minY(),box.minZ(),box.maxX(),box.maxY(),box.maxZ());
++         TellusStructureAdaptationRules.Decision decision;
++         try {
++         if (path.equals("monument") || path.equals("ocean_monument")) {
++            decision = TellusStructureAdaptationRules.monument(true, enableWater, bounds, seaLevel, minY, maxY,
++               (x,z) -> requireColumn(columns,x,z).oceanDepth());
++         } else {
++            var kind = switch (path) {
++               case "stronghold" -> TellusStructureAdaptationRules.UndergroundKind.STRONGHOLD;
++               case "mineshaft" -> TellusStructureAdaptationRules.UndergroundKind.NORMAL_MINESHAFT;
++               case "mineshaft_mesa" -> TellusStructureAdaptationRules.UndergroundKind.MESA_MINESHAFT;
++               case "ancient_city" -> TellusStructureAdaptationRules.UndergroundKind.ANCIENT_CITY;
++               case "trial_chambers" -> TellusStructureAdaptationRules.UndergroundKind.TRIAL_CHAMBERS;
++               default -> null;
++            };
++            if (kind == null || kind == TellusStructureAdaptationRules.UndergroundKind.MESA_MINESHAFT) continue;
++            var point = geography.apply(box.getCenter().getX(),box.getCenter().getZ());
++            if (point == null) continue; // no invented projection at an excluded/cut-gap center
++            double earthX = EarthProjection.longitudeToBlockX(point.longitude(),worldScale);
++            double earthZ = EarthProjection.latToBlockZ(point.latitude(),worldScale);
++            if (!Double.isFinite(earthX) || !Double.isFinite(earthZ)
++               || earthX < Integer.MIN_VALUE || earthX >= (double)Integer.MAX_VALUE + 1.0
++               || earthZ < Integer.MIN_VALUE || earthZ >= (double)Integer.MAX_VALUE + 1.0) continue;
++            decision = TellusStructureAdaptationRules.underground(kind,true,false,bounds,
++               (int)Math.floor(earthX),(int)Math.floor(earthZ),worldSeed,minY,maxY,
++               (x,z) -> {
++                  var column = requireColumn(columns,x,z);
++                  return new TellusStructureAdaptationRules.CenterColumn(column.terrainSurface(),column.oceanDepth()>0);
++               }, (x,z) -> requireColumn(columns,x,z).terrainSurface());
++         }
++         } catch (UnavailableColumn unavailable) {
++            continue; // preflight sampled nothing authoritative; all native pieces are still untouched
++         }
++         if (decision.outcome() == TellusStructureAdaptationRules.Outcome.INVALIDATE) {
++            chunk.setStartForStructure(entry.getKey(),StructureStart.INVALID_START);
++         } else if (decision.outcome() == TellusStructureAdaptationRules.Outcome.MOVE) {
++            var pieces = new ArrayList<StructurePiece>(start.getPieces().size());
++            for (var piece : start.getPieces()) {
++               piece.move(0,decision.offsetY(),0);
++               pieces.add(piece);
++            }
++            chunk.setStartForStructure(entry.getKey(),new StructureStart(entry.getKey(),start.getChunkPos(),
++               start.getReferences(),new PiecesContainer(pieces)));
++         }
++      }
++   }
++}
+--- /dev/null
++++ b/src/main/java/com/yucareux/tellus/worldgen/TellusStructureAdaptationRules.java
+@@ -0,0 +1,241 @@
++package com.yucareux.tellus.worldgen;
++
++/**
++ * Minecraft-free copy of Earth's post-start underground and monument rules.
++ *
++ * <p>Bounds and sampler arguments use the caller's placement coordinates. Only
++ * {@code earthCenterX/Z} use the converted Earth projection: they determine the
++ * random depth, never the sampling footprint. World/profile/owner selection,
++ * water-column normalization and application to pieces belong to the caller.
++ * Cube callers pass {@code usesTerrainShell=false}.</p>
++ */
++public final class TellusStructureAdaptationRules {
++   private static final Decision KEEP = new Decision(Outcome.KEEP, 0);
++   private static final Decision INVALIDATE = new Decision(Outcome.INVALIDATE, 0);
++
++   private TellusStructureAdaptationRules() {
++   }
++
++   public enum UndergroundKind {
++      STRONGHOLD, NORMAL_MINESHAFT, MESA_MINESHAFT, ANCIENT_CITY, TRIAL_CHAMBERS
++   }
++
++   public enum Outcome {
++      KEEP, MOVE, INVALIDATE
++   }
++
++   /** Inclusive block bounds, with Minecraft BoundingBox's upper-middle center. */
++   public record Bounds(int minX, int minY, int minZ, int maxX, int maxY, int maxZ) {
++      public int centerX() {
++         return this.minX + (this.maxX - this.minX + 1) / 2;
++      }
++
++      public int centerY() {
++         return this.minY + this.ySpan() / 2;
++      }
++
++      public int centerZ() {
++         return this.minZ + (this.maxZ - this.minZ + 1) / 2;
++      }
++
++      public int ySpan() {
++         return this.maxY - this.minY + 1;
++      }
++   }
++
++   /** KEEP includes absent/invalid input starts; INVALIDATE is a newly rejected start. */
++   public record Decision(Outcome outcome, int offsetY) {
++   }
++
++   /** inOceanColumn means hasWater && isOcean && waterSurface > terrainSurface. */
++   public record CenterColumn(int terrainSurface, boolean inOceanColumn) {
++   }
++
++   @FunctionalInterface
++   public interface CenterColumnSampler {
++      CenterColumn sample(int x, int z);
++   }
++
++   @FunctionalInterface
++   public interface SurfaceHeightSampler {
++      int sample(int x, int z);
++   }
++
++   /** Returns positive normalized ocean depth, or zero for a dry/non-ocean column. */
++   @FunctionalInterface
++   public interface WaterDepthSampler {
++      int sample(int x, int z);
++   }
++
++   /**
++    * Preserves Earth's lazy sampling order. Invalid starts and non-shell mesa
++    * mineshafts sample nothing. Strongholds first sample their center column,
++    * then sample the footprint only if retargeting is needed. Cities/chambers
++    * always sample center then footprint before testing their top-cover rule.
++    * Mineshafts use the surface sampler for both center and footprint.
++    * Both world Y limits are inclusive.
++    */
++   public static Decision underground(
++      UndergroundKind kind, boolean validStart, boolean usesTerrainShell, Bounds box,
++      int earthCenterX, int earthCenterZ, long worldSeed, int worldMinY, int worldMaxY,
++      CenterColumnSampler centerColumns, SurfaceHeightSampler surfaces
++   ) {
++      if (!validStart || (kind == UndergroundKind.MESA_MINESHAFT && !usesTerrainShell)) {
++         return KEEP;
++      }
++
++      int terrainSurface;
++      if (kind == UndergroundKind.NORMAL_MINESHAFT || kind == UndergroundKind.MESA_MINESHAFT) {
++         terrainSurface = surfaces.sample(box.centerX(), box.centerZ());
++      } else {
++         CenterColumn column = centerColumns.sample(box.centerX(), box.centerZ());
++         terrainSurface = column.terrainSurface();
++         if (kind == UndergroundKind.STRONGHOLD
++            && !(usesTerrainShell || column.inOceanColumn() || box.centerY() > terrainSurface - 20)) {
++            return KEEP;
++         }
++      }
++
++      int lowestSurface = lowestSurface(box, surfaces);
++      if ((kind == UndergroundKind.ANCIENT_CITY || kind == UndergroundKind.TRIAL_CHAMBERS)
++         && !usesTerrainShell && box.maxY() <= lowestSurface - 8) {
++         return KEEP;
++      }
++
++      int topCover = switch (kind) {
++         case NORMAL_MINESHAFT -> 14;
++         case MESA_MINESHAFT -> 4;
++         default -> 8;
++      };
++      // VanillaStructurePlacement uses max(worldMinY + 4, minimumStructureY).
++      // The protective capsule is one bedrock plus four stone blocks thick.
++      int minOffset = Math.max(worldMinY + 4, worldMinY + 5) - box.minY();
++      int maxOffset = Math.min(worldMaxY - topCover, lowestSurface - topCover) - box.maxY();
++      if (minOffset > maxOffset) {
++         return INVALIDATE;
++      }
++
++      int depth = targetDepth(kind, earthCenterX, earthCenterZ, worldSeed);
++      return shifted(clamp(terrainSurface - depth - box.centerY(), minOffset, maxOffset));
++   }
++
++   /** Full Earth viability test followed by its sea-level and world-bound offset. */
++   public static Decision monument(
++      boolean validStart, boolean enableWater, Bounds box, int seaLevel,
++      int worldMinY, int worldMaxY, WaterDepthSampler depths
++   ) {
++      if (!validStart) {
++         return KEEP;
++      }
++      if (enableWater && !monumentViable(box, depths)) {
++         return INVALIDATE;
++      }
++      int targetTopY = seaLevel - 2;
++      int desiredMinY = targetTopY - box.ySpan() + 1;
++      int offset = clamp(desiredMinY - box.minY(), worldMinY + 1 - box.minY(), worldMaxY - box.maxY());
++      return box.maxY() + offset > targetTopY ? INVALIDATE : shifted(offset);
++   }
++
++   private static int lowestSurface(Bounds box, SurfaceHeightSampler surfaces) {
++      int lowest = Integer.MAX_VALUE;
++      for (int z = box.minZ(); ; z = Math.min(z + 8, box.maxZ())) {
++         for (int x = box.minX(); ; x = Math.min(x + 8, box.maxX())) {
++            lowest = Math.min(lowest, surfaces.sample(x, z));
++            if (x == box.maxX()) {
++               break;
++            }
++         }
++         if (z == box.maxZ()) {
++            return lowest;
++         }
++      }
++   }
++
++   private static boolean monumentViable(Bounds box, WaterDepthSampler depths) {
++      int minX = box.minX() - 8;
++      int maxX = box.maxX() + 8;
++      int minZ = box.minZ() - 8;
++      int maxZ = box.maxZ() + 8;
++      int requiredCoreDepth = Math.max(19, box.ySpan() - 4);
++      int total = 0;
++      int ocean = 0;
++      int deepOcean = 0;
++      int core = 0;
++      for (int z = minZ; ; z = Math.min(z + 8, maxZ)) {
++         for (int x = minX; ; x = Math.min(x + 8, maxX)) {
++            int depth = depths.sample(x, z);
++            total++;
++            if (depth > 0) {
++               ocean++;
++            }
++            if (depth >= 12) {
++               deepOcean++;
++            }
++            if (x >= box.minX() + 8 && x <= box.maxX() - 8
++               && z >= box.minZ() + 8 && z <= box.maxZ() - 8) {
++               core++;
++               if (depth <= 0 || depth < requiredCoreDepth) {
++                  return false;
++               }
++            }
++            if (x == maxX) {
++               break;
++            }
++         }
++         if (z == maxZ) {
++            return core > 0 && (double)ocean / total >= 0.85 && (double)deepOcean / total >= 0.7;
++         }
++      }
++   }
++
++   private static int targetDepth(UndergroundKind kind, int earthX, int earthZ, long worldSeed) {
++      int seedY;
++      long salt;
++      int base;
++      int range;
++      switch (kind) {
++         case STRONGHOLD -> {
++            seedY = 19; salt = 8927292519556160640L; base = 42; range = 17;
++         }
++         case NORMAL_MINESHAFT -> {
++            seedY = 14; salt = 2115183054018638465L; base = 30; range = 21;
++         }
++         case MESA_MINESHAFT -> {
++            seedY = 14; salt = 2115183054018638465L; base = 8; range = 25;
++         }
++         case ANCIENT_CITY -> {
++            seedY = 23; salt = 7099176517079344131L; base = 92; range = 29;
++         }
++         case TRIAL_CHAMBERS -> {
++            seedY = 17; salt = 4235900233171027605L; base = 72; range = 25;
++         }
++         default -> throw new AssertionError(kind);
++      }
++      // Deliberately keep the int overflow in x * 3129871 and the signed shift.
++      long seed = earthX * 3129871 ^ earthZ * 116129781L ^ seedY;
++      seed = seed * seed * 42317861L + seed * 11L;
++      return base + seededRandomInt((seed >> 16) ^ worldSeed ^ salt, range);
++   }
++
++   /** Earth's allocation-free java.util.Random(seed).nextInt(bound). */
++   private static int seededRandomInt(long seed, int bound) {
++      long state = (seed ^ 25214903917L) & ((1L << 48) - 1);
++      int bits;
++      int value;
++      do {
++         state = (state * 25214903917L + 11L) & ((1L << 48) - 1);
++         bits = (int)(state >>> 17);
++         value = bits % bound;
++      } while (bits - value + (bound - 1) < 0);
++      return value;
++   }
++
++   // Preserve Mth.clamp's branch order even for an inverted monument interval.
++   private static int clamp(int value, int min, int max) {
++      return value < min ? min : Math.min(value, max);
++   }
++
++   private static Decision shifted(int offset) {
++      return offset == 0 ? KEEP : new Decision(Outcome.MOVE, offset);
++   }
++}
+--- /dev/null
++++ b/src/main/java/com/yucareux/tellus/worldgen/TellusNativeStructureMixinProbe.java
+@@ -0,0 +1,184 @@
++package com.yucareux.tellus.worldgen;
++
++import com.google.gson.JsonArray;
++import com.google.gson.JsonObject;
++import java.lang.reflect.Field;
++import java.lang.reflect.Method;
++import java.util.ArrayList;
++import java.util.Arrays;
++import java.util.List;
++import net.minecraft.core.BlockPos;
++import net.minecraft.core.Direction;
++import net.minecraft.server.level.ServerLevel;
++import net.minecraft.util.RandomSource;
++import net.minecraft.world.level.ChunkPos;
++import net.minecraft.world.level.StructureManager;
++import net.minecraft.world.level.WorldGenLevel;
++import net.minecraft.world.level.chunk.ChunkGenerator;
++import net.minecraft.world.level.levelgen.structure.BoundingBox;
++import net.minecraft.world.level.levelgen.structure.StructurePiece;
++import net.minecraft.world.level.levelgen.structure.pieces.PiecesContainer;
++import net.minecraft.world.level.levelgen.structure.structures.OceanMonumentPieces;
++import net.minecraft.world.level.levelgen.structure.structures.OceanMonumentStructure;
++
++/** Controlled native objects in an actual transformed server; never places or saves blocks. */
++public final class TellusNativeStructureMixinProbe {
++    private static final long SEED = 773L;
++    private static final int SHIFT_Y = 17;
++
++    private TellusNativeStructureMixinProbe() { }
++
++    public static JsonObject verify(ServerLevel level) {
++        require(level != null, "actual server level required");
++        require(Boolean.getBoolean("tellus.persistence.probe"), "explicit persistence probe required");
++        require(!Boolean.getBoolean("tellus.sphere.syntheticSampler"), "synthetic sampler excluded");
++        require(level.getServer().isSameThread(), "actual server main thread required");
++        ChunkGenerator generator = level.getChunkSource().getGenerator();
++        require(generator instanceof TellusGeodeticPosition, "actual Tellus geodetic generator required");
++
++        try {
++            var root = new OceanMonumentPieces.MonumentBuilding(RandomSource.create(SEED), 0, 0, Direction.NORTH);
++            List<StructurePiece> children = children(root);
++            Box before = box(root);
++            List<Box> childBefore = boxes(children);
++            root.move(0, SHIFT_Y, 0);
++            requireShift(before, box(root), SHIFT_Y, "root move");
++            require(children.size() == children(root).size(), "move changed child count");
++            JsonArray moves = new JsonArray();
++            for (int i = 0; i < children.size(); i++) {
++                require(children.get(i) == children(root).get(i), "move changed child identity/order");
++                requireShift(childBefore.get(i), box(children.get(i)), SHIFT_Y, "child move " + i);
++                moves.add(change(childBefore.get(i), box(children.get(i))));
++            }
++
++            // Native regeneration has its own seeded room construction. Compare shifted and
++            // unshifted calls, not an assumed match to the constructor's original room graph.
++            var baselineRoot = new OceanMonumentPieces.MonumentBuilding(RandomSource.create(SEED), 0, 0, Direction.NORTH);
++            PiecesContainer baseline = OceanMonumentStructure.regeneratePiecesAfterLoad(
++                new ChunkPos(0, 0), SEED, new PiecesContainer(List.of(baselineRoot)));
++            PiecesContainer reloaded = OceanMonumentStructure.regeneratePiecesAfterLoad(
++                new ChunkPos(0, 0), SEED, new PiecesContainer(List.of(root)));
++            require(baseline.pieces().size() == 1 && reloaded.pieces().size() == 1,
++                "expected one regenerated monument root");
++            StructurePiece loadedRoot = reloaded.pieces().get(0);
++            StructurePiece unshiftedRoot = baseline.pieces().get(0);
++            require(loadedRoot != root, "native reload must reconstruct the root");
++            require(box(loadedRoot).minY() == box(root).minY()
++                && box(loadedRoot).maxY() == box(root).maxY(), "reload lost loaded root Y");
++            requireShift(box(unshiftedRoot), box(loadedRoot), SHIFT_Y, "regenerated root");
++            List<StructurePiece> reloadChildren = children(loadedRoot);
++            List<StructurePiece> baselineChildren = children(unshiftedRoot);
++            require(reloadChildren.size() == baselineChildren.size(), "regenerated room count differs");
++            JsonArray reloadMoves = new JsonArray();
++            for (int i = 0; i < reloadChildren.size(); i++) {
++                require(reloadChildren.get(i).getClass() == baselineChildren.get(i).getClass(),
++                    "regenerated room type/order differs");
++                requireShift(box(baselineChildren.get(i)), box(reloadChildren.get(i)), SHIFT_Y,
++                    "regenerated child " + i);
++                reloadMoves.add(change(box(baselineChildren.get(i)), box(reloadChildren.get(i))));
++            }
++
++            Class<?>[] signature = {int.class, int.class, WorldGenLevel.class, StructureManager.class,
++                ChunkGenerator.class, RandomSource.class, BoundingBox.class, ChunkPos.class, BlockPos.class};
++            List<Method> redirects = Arrays.stream(root.getClass().getDeclaredMethods())
++                .filter(method -> method.getName().contains("useTellusSeaLevel")
++                    && method.getReturnType() == int.class && Arrays.equals(method.getParameterTypes(), signature))
++                .toList();
++            require(redirects.size() == 1, "unique actual transformed sea-level redirect required");
++            Method redirect = redirects.get(0);
++            require(redirect.trySetAccessible(), "sea-level redirect inaccessible");
++            // The redirect only examines generator and the two ints. Other arguments are
++            // inert context, with no postProcess invocation or writes to this real level.
++            int sea = (Integer)redirect.invoke(root, 37, 63, level, null, generator,
++                RandomSource.create(SEED), root.getBoundingBox(), new ChunkPos(0, 0), new BlockPos(0, 0, 0));
++            require(sea == 37, "actual Tellus generator did not select shifted sea branch");
++
++            JsonObject result = new JsonObject();
++            result.addProperty("scope", "actual-native-mixin-controlled-objects-not-natural-starts");
++            result.addProperty("passed", true);
++            result.addProperty("worldWrites", false);
++            result.addProperty("nativeSaveInvoked", false);
++            result.addProperty("generatorClass", generator.getClass().getName());
++            result.addProperty("seed", SEED);
++            result.addProperty("shiftY", SHIFT_Y);
++            result.addProperty("rootCount", 1);
++            result.addProperty("childCount", children.size());
++            result.add("rootMove", change(before, box(root)));
++            result.add("childMoves", moves);
++            JsonObject reload = new JsonObject();
++            reload.addProperty("nativeRegeneratePiecesAfterLoad", true);
++            reload.addProperty("rootReconstructed", true);
++            reload.addProperty("loadedRootYPreserved", true);
++            reload.addProperty("rootCount", reloaded.pieces().size());
++            reload.addProperty("childCount", reloadChildren.size());
++            reload.add("rootMove", change(box(unshiftedRoot), box(loadedRoot)));
++            reload.add("childMoves", reloadMoves);
++            result.add("reload", reload);
++            JsonObject branch = new JsonObject();
++            branch.addProperty("transformedMethod", redirect.getName());
++            branch.addProperty("seaLevel", 37);
++            branch.addProperty("minimumSeaLevel", 63);
++            branch.addProperty("actualResult", sea);
++            branch.addProperty("tellusBranch", true);
++            result.add("seaBranch", branch);
++            return result;
++        } catch (ReflectiveOperationException failure) {
++            throw new IllegalStateException("actual native monument mixin reflection failed", failure);
++        }
++    }
++
++    private static List<StructurePiece> children(StructurePiece root) throws IllegalAccessException {
++        // Field names may be remapped. MonumentBuilding has one List field whose
++        // actual nonempty contents are StructurePieces; never depend on its name.
++        List<Field> fields = Arrays.stream(root.getClass().getDeclaredFields())
++            .filter(field -> List.class.isAssignableFrom(field.getType())).toList();
++        require(fields.size() == 1, "unique native monument child list required");
++        Field field = fields.get(0);
++        require(field.trySetAccessible(), "monument child list inaccessible");
++        Object value = field.get(root);
++        require(value instanceof List<?>, "native monument child list missing");
++        List<?> values = (List<?>)value;
++        require(!values.isEmpty(), "native monument child list empty");
++        List<StructurePiece> result = new ArrayList<>();
++        for (Object child : values) {
++            require(child instanceof StructurePiece, "native child is not a structure piece");
++            result.add((StructurePiece)child);
++        }
++        return List.copyOf(result);
++    }
++
++    private record Box(int minX, int minY, int minZ, int maxX, int maxY, int maxZ) { }
++
++    private static Box box(StructurePiece piece) {
++        BoundingBox b = piece.getBoundingBox();
++        return new Box(b.minX(), b.minY(), b.minZ(), b.maxX(), b.maxY(), b.maxZ());
++    }
++
++    private static List<Box> boxes(List<StructurePiece> pieces) {
++        return pieces.stream().map(TellusNativeStructureMixinProbe::box).toList();
++    }
++
++    private static void requireShift(Box before, Box after, int shift, String label) {
++        require(before.minX() == after.minX() && before.maxX() == after.maxX()
++            && before.minZ() == after.minZ() && before.maxZ() == after.maxZ()
++            && after.minY() == before.minY() + shift && after.maxY() == before.maxY() + shift,
++            label + " did not preserve X/Z and shift both Y bounds exactly");
++    }
++
++    private static JsonObject change(Box before, Box after) {
++        JsonObject value = new JsonObject();
++        value.addProperty("beforeY", before.minY());
++        value.addProperty("beforeMaxY", before.maxY());
++        value.addProperty("afterY", after.minY());
++        value.addProperty("afterMaxY", after.maxY());
++        value.addProperty("minX", before.minX());
++        value.addProperty("maxX", before.maxX());
++        value.addProperty("minZ", before.minZ());
++        value.addProperty("maxZ", before.maxZ());
++        return value;
++    }
++
++    private static void require(boolean condition, String message) {
++        if (!condition) throw new IllegalStateException(message);
++    }
++}
+--- /dev/null
++++ b/src/test/java/com/yucareux/tellus/worldgen/CubeNetStructureCollisionTest.java
+@@ -0,0 +1,144 @@
++package com.yucareux.tellus.worldgen;
++
++import static org.junit.jupiter.api.Assertions.*;
++
++import com.yucareux.tellus.integration.distant_horizons.managed.ManagedTerrainNetworkPolicy;
++import com.yucareux.tellus.world.data.osm.*;
++import com.yucareux.tellus.worldgen.global.*;
++import java.lang.reflect.Method;
++import java.nio.file.Path;
++import java.util.List;
++import java.util.concurrent.atomic.AtomicInteger;
++import net.minecraft.world.level.biome.Biomes;
++import net.minecraft.world.level.biome.FixedBiomeSource;
++import net.minecraft.world.level.levelgen.structure.BoundingBox;
++import org.junit.jupiter.api.*;
++import org.junit.jupiter.api.io.TempDir;
++
++/** Shared tests call each target's real private generator adapter, not a copied adapter body. */
++class CubeNetStructureCollisionTest {
++   @TempDir static Path directory;
++   static CubeNetChunkGenerator generator;
++   static SphereWorldModel model;
++   static CubeNetLayout layout;
++   static Method nativeCollision;
++
++   @BeforeAll static void bootstrap() throws Exception {
++      SphereFaceNativeBiomeKernelBridgeTest.directory = directory;
++      SphereFaceNativeBiomeKernelBridgeTest.bootstrap();
++      try (var ignored = ManagedTerrainNetworkPolicy.cacheOnly()) {
++         generator = new CubeNetChunkGenerator(new FixedBiomeSource(
++            SphereFaceNativeBiomeKernelBridgeTest.biomes.getOrThrow(Biomes.PLAINS)), 1000.0, 64, -64, 384,
++            (point, resolution) -> new SphereChunkSampler.SurfaceData(10.0, 30), 0);
++      }
++      model = generator.model(); layout = generator.adapter().layout();
++      nativeCollision = CubeNetChunkGenerator.class.getDeclaredMethod("cubeNetStructureCollides",
++         BoundingBox.class, SphereChunkSampler.FeatureData.class, SphereWorldModel.SphereChunkAddress.class);
++      nativeCollision.setAccessible(true);
++   }
++   @AfterAll static void restore() { SphereFaceNativeBiomeKernelBridgeTest.restore(); }
++
++   static int u() { return ((layout.faceSize() * 37 / 100) / 16) * 16; }
++   static int v() { return ((layout.faceSize() * 42 / 100) / 16) * 16; }
++   static CubeNetStructureCollision.Rectangle engineBox(CubeNetLayout.Face face, int u0, int v0, int u1, int v1) {
++      int minX = Integer.MAX_VALUE, minZ = Integer.MAX_VALUE, maxX = Integer.MIN_VALUE, maxZ = Integer.MIN_VALUE;
++      for (int u : new int[]{u0,u1}) for (int v : new int[]{v0,v1}) {
++         var p = layout.toPlanar(new CubeNetLayout.FacePoint(face, u + 0.5, v + 0.5));
++         int x = (int)Math.floor(p.x()), z = (int)Math.floor(p.z());
++         minX = Math.min(minX,x); minZ = Math.min(minZ,z); maxX = Math.max(maxX,x); maxZ = Math.max(maxZ,z);
++      }
++      return new CubeNetStructureCollision.Rectangle(minX,minZ,maxX,maxZ);
++   }
++   static double[][] ring(CubeNetLayout.Face face, boolean longitude) {
++      int x = u()+4, z = v()+4;
++      int[][] corners = {{x-2,z-2},{x+3,z-2},{x+3,z+3},{x-2,z+3},{x-2,z-2}};
++      double[] values = new double[corners.length];
++      for (int i=0;i<corners.length;i++) {
++         var p = model.exactSurfacePoint(face.index(),corners[i][0],corners[i][1]);
++         values[i] = longitude ? p.longitude() : p.latitude();
++      }
++      return new double[][]{values};
++   }
++   static SphereChunkSampler.FeatureData data(CubeNetLayout.Face face, int kind, boolean miss) {
++      double[][] lon = ring(face,true), lat = ring(face,false);
++      var building = new OsmBuildingFeature(OsmBuildingKind.FOOTPRINT, 77, "structure-overlap", false,
++         new OsmBuildingMetadata("residential",null,null,null,1,null,null,null,null,null),6,0,lon,lat);
++      var road = new RoadFeature(78,RoadClass.NORMAL,RoadMode.NORMAL,0,"residential",
++         new double[]{lon[0][0],lon[0][2]},new double[]{lat[0][0],lat[0][2]});
++      var area = new RoadAreaFeature(79,RoadClass.NORMAL,"residential","asphalt","",lon,lat);
++      return new SphereChunkSampler.FeatureData(
++         new TellusOsmBuildingSource.BuildingQueryResult(kind==0 ? List.of(building) : List.of(),miss),
++         new TellusOsmRoadSource.RoadQueryResult(kind==1 ? List.of(road) : List.of(),miss),
++         new TellusOsmWaterSource.WaterQueryResult(List.of(),TellusOsmWaterSource.CoverageStatus.COMPLETE,0),
++         new TellusOsmRoadSource.RoadAreaQueryResult(kind==2 ? List.of(area) : List.of(),miss));
++   }
++   static boolean actual(CubeNetLayout.Face face, CubeNetStructureCollision.Rectangle box,
++      SphereChunkSampler.FeatureData data) throws Exception {
++      var address = new SphereWorldModel.SphereChunkAddress(face.index(),u()/16,v()/16);
++      return (boolean)nativeCollision.invoke(generator,new BoundingBox(box.minX(),20,box.minZ(),box.maxX(),40,box.maxZ()),data,address);
++   }
++
++   @Test void nativeAdapterDetectsBuildingsRoadsAndRoadAreasOnEveryRotatedTranslatedFace() throws Exception {
++      int checked = 0;
++      for (var face : CubeNetLayout.Face.values()) {
++         var box = engineBox(face,u(),v(),u()+15,v()+15);
++         // Frozen pre-fix clipping: address.blockX() was already a block origin.
++         int oldX=u()*16, oldZ=v()*16;
++         assertTrue(Math.max(oldX-96,box.minX())>Math.min(oldX+111,box.maxX())
++            || Math.max(oldZ-96,box.minZ())>Math.min(oldZ+111,box.maxZ()),"original defect fixture "+face);
++         for (int kind=0;kind<3;kind++) {
++            assertTrue(actual(face,box,data(face,kind,false)),face+" kind="+kind);
++            assertFalse(actual(face,engineBox(face,u()+128,v()+128,u()+143,v()+143),data(face,kind,false)),face+" disjoint");
++            checked++;
++         }
++      }
++      assertEquals(18,checked);
++   }
++   @Test void partialCacheResultsRemainUsableAndEmptyMissDoesNotInventCollision() throws Exception {
++      for (var face : CubeNetLayout.Face.values()) {
++         var box=engineBox(face,u(),v(),u()+15,v()+15);
++         assertFalse(actual(face,box,data(face,-1,true)));
++         assertTrue(actual(face,box,data(face,0,true)));
++         assertTrue(actual(face,box,data(face,2,true)),"road areas independent of empty building/road caches");
++      }
++   }
++   @Test void inclusiveCellBoundsAreExactForNegativeEngineCoordinatesAndAllFaceOrientations() {
++      for (var face:CubeNetLayout.Face.values()) for (int size:new int[]{1,2,16,33}) {
++         var box=engineBox(face,u(),v(),u()+size-1,v()+size-1);
++         assertEquals(new CubeNetStructureCollision.Rectangle(u(),v(),u()+size-1,v()+size-1),
++            CubeNetStructureCollision.faceBounds(layout,face,box).orElseThrow());
++      }
++   }
++   @Test void faceEdgesAreClippedAndEmptyPlanarGapIsNotRasterizedAsCanonicalTerrain() {
++      for (var face:CubeNetLayout.Face.values()) {
++         var box=engineBox(face,0,0,15,15);
++         var grown=new CubeNetStructureCollision.Rectangle(box.minX()-32,box.minZ()-32,box.maxX()+32,box.maxZ()+32);
++         var clipped=CubeNetStructureCollision.faceBounds(layout,face,grown).orElseThrow();
++         assertEquals(0,clipped.minX());assertEquals(0,clipped.minZ());
++         assertTrue(clipped.maxX()<layout.faceSize());assertTrue(clipped.maxZ()<layout.faceSize());
++      }
++      var gap=new CubeNetStructureCollision.Rectangle(layout.faceSize()+16,layout.faceSize()+16,
++         layout.faceSize()+31,layout.faceSize()+31);
++      assertTrue(java.util.Arrays.stream(CubeNetLayout.Face.values()).allMatch(face ->
++         CubeNetStructureCollision.faceBounds(layout,face,gap).isEmpty()));
++   }
++   @Test void landmarkQueriesUseGeodeticEarthGridRatherThanEnginePlanarCoordinates() {
++      for (var face:CubeNetLayout.Face.values()) {
++         int x=u()+4,z=v()+4;
++         var point=model.exactSurfacePoint(face.index(),x+0.5,z+0.5);
++         int earthX=(int)Math.floor(EarthProjection.longitudeToBlockX(point.longitude(),1000.0));
++         int earthZ=(int)Math.floor(EarthProjection.latToBlockZ(point.latitude(),1000.0));
++         var calls=new AtomicInteger();
++         assertTrue(CubeNetStructureCollision.collides(model,layout,engineBox(face,x,z,x,z),data(face,-1,true),false,true,
++            (ex,ez)->{calls.incrementAndGet();return ex==earthX&&ez==earthZ;}));
++         assertEquals(1,calls.get());
++      }
++   }
++   @Test void disabledFamiliesDoNotInspectGeometryAndQueryMarginUsesWorldMetresAndFullFootprint() {
++      assertFalse(CubeNetStructureCollision.collides(null,null,null,null,false,false,null));
++      var box=new CubeNetStructureCollision.Rectangle(-100,-200,300,400);
++      assertEquals(1_568_000.0,CubeNetStructureCollision.queryMarginMeters(0,0,box,1000.0));
++      assertEquals(96.0,CubeNetStructureCollision.queryMarginMeters(0,0,
++         new CubeNetStructureCollision.Rectangle(0,0,15,15),1.0));
++   }
++}
+--- /dev/null
++++ b/src/test/java/com/yucareux/tellus/worldgen/CubeNetNativeStructureAdapterTest.java
+@@ -0,0 +1,140 @@
++package com.yucareux.tellus.worldgen;
++
++import static org.junit.jupiter.api.Assertions.*;
++
++import com.mojang.serialization.Lifecycle;
++import com.yucareux.tellus.integration.distant_horizons.managed.ManagedTerrainNetworkPolicy;
++import com.yucareux.tellus.worldgen.global.*;
++import java.lang.reflect.Method;
++import java.nio.file.Path;
++import java.util.*;
++import net.minecraft.core.*;
++import net.minecraft.core.registries.Registries;
++import net.minecraft.nbt.CompoundTag;
++import net.minecraft.resources.ResourceKey;
++import net.minecraft.util.RandomSource;
++import net.minecraft.world.level.*;
++import net.minecraft.world.level.biome.*;
++import net.minecraft.world.level.chunk.*;
++import net.minecraft.world.level.levelgen.structure.*;
++import net.minecraft.world.level.levelgen.structure.pieces.*;
++import org.junit.jupiter.api.*;
++import org.junit.jupiter.api.io.TempDir;
++
++/** Actual generator -> shared rule -> native starts/pieces on both target versions; controlled source, not live GIS. */
++class CubeNetNativeStructureAdapterTest {
++   @TempDir static Path directory;
++   static Registry<Structure> structures;
++   static RegistryAccess access;
++   static Method adapt;
++   @BeforeAll static void bootstrap() throws Exception {
++      SphereFaceNativeBiomeKernelBridgeTest.directory=directory;
++      SphereFaceNativeBiomeKernelBridgeTest.bootstrap();
++      var mapped=new MappedRegistry<Structure>(Registries.STRUCTURE,Lifecycle.stable());
++      SphereFaceNativeBiomeKernelBridgeTest.lookup.lookupOrThrow(Registries.STRUCTURE).listElements().forEach(entry ->
++         Registry.register(mapped,entry.key(),entry.value()));
++      structures=mapped.freeze();access=new RegistryAccess.ImmutableRegistryAccess(List.of(structures));
++      adapt=CubeNetChunkGenerator.class.getDeclaredMethod("retargetCubeNetUndergroundStarts",RegistryAccess.class,ChunkAccess.class);
++      adapt.setAccessible(true);
++   }
++   @AfterAll static void restore() { SphereFaceNativeBiomeKernelBridgeTest.restore(); }
++   static Structure structure(String path) {
++      return structures.entrySet().stream().filter(e->e.getKey().location().getPath().equals(path))
++         .map(Map.Entry::getValue).findFirst().orElseThrow();
++   }
++   static CubeNetChunkGenerator generator(boolean ocean, double elevation) throws Exception {
++      return generator(ocean,elevation,64);
++   }
++   static CubeNetChunkGenerator generator(boolean ocean, double elevation, int seaLevel) throws Exception {
++      try(var ignored=ManagedTerrainNetworkPolicy.cacheOnly()) {
++         var gen=new CubeNetChunkGenerator(new FixedBiomeSource(SphereFaceNativeBiomeKernelBridgeTest.biomes.getOrThrow(Biomes.PLAINS)),
++            1000.0,seaLevel,-64,384,(p,r)->ocean ? new SphereChunkSampler.SurfaceData(elevation,80,0)
++               : new SphereChunkSampler.SurfaceData(elevation,30),0);
++         var seed=CubeNetChunkGenerator.class.getDeclaredField("worldSeed");seed.setAccessible(true);seed.setLong(gen,773L);
++         return gen;
++      }
++   }
++   static ChunkPos pos(CubeNetChunkGenerator gen,CubeNetLayout.Face face) {
++      var layout=gen.adapter().layout();int u=(layout.faceSize()/2/16)*16;
++      var p=layout.toPlanar(new CubeNetLayout.FacePoint(face,u+0.5,u+0.5));
++      return new ChunkPos(Math.floorDiv((int)Math.floor(p.x()),16),Math.floorDiv((int)Math.floor(p.z()),16));
++   }
++   static StructureStart start(Structure structure,ChunkPos pos,int minY,int maxY) {
++      return new StructureStart(structure,pos,2,new PiecesContainer(List.of(
++         new TestPiece(new BoundingBox(pos.getMinBlockX(),minY,pos.getMinBlockZ(),pos.getMinBlockX()+31,maxY,pos.getMinBlockZ()+31)),
++         new TestPiece(new BoundingBox(pos.getMinBlockX()+2,minY+1,pos.getMinBlockZ()+2,pos.getMinBlockX()+8,maxY-1,pos.getMinBlockZ()+8)))));
++   }
++   @Test void realGeneratorUsesGeodeticSeedAndEarthDepthConditionsThenMovesEveryPiece() throws Exception {
++      var kinds=new ArrayList<>(List.of(
++         TellusStructureAdaptationRules.UndergroundKind.STRONGHOLD,TellusStructureAdaptationRules.UndergroundKind.NORMAL_MINESHAFT,
++         TellusStructureAdaptationRules.UndergroundKind.ANCIENT_CITY));
++      if(structures.entrySet().stream().anyMatch(e->e.getKey().location().getPath().equals("trial_chambers")))
++         kinds.add(TellusStructureAdaptationRules.UndergroundKind.TRIAL_CHAMBERS);
++      for(var face:CubeNetLayout.Face.values()) for(var kind:kinds) {
++         var gen=generator(false,20000.0);var pos=pos(gen,face);var chunk=SphereFaceNativeBiomeKernelBridgeTest.chunk(pos);
++         String id=switch(kind){case STRONGHOLD->"stronghold";case NORMAL_MINESHAFT->"mineshaft";
++            case TRIAL_CHAMBERS->"trial_chambers";default->"ancient_city";};
++         var type=structure(id);var old=start(type,pos,78,96);var box=old.getBoundingBox();
++         var point=new SphereWorldModel.GeoPoint(gen.latitudeFromBlock(box.getCenter().getX(),box.getCenter().getZ()),
++            gen.longitudeFromBlock(box.getCenter().getX(),box.getCenter().getZ()),0.0);
++         int earthX=(int)Math.floor(EarthProjection.longitudeToBlockX(point.longitude(),1000.0));
++         int earthZ=(int)Math.floor(EarthProjection.latToBlockZ(point.latitude(),1000.0));
++         var expected=TellusStructureAdaptationRules.underground(kind,true,false,
++            new TellusStructureAdaptationRules.Bounds(box.minX(),box.minY(),box.minZ(),box.maxX(),box.maxY(),box.maxZ()),
++            earthX,earthZ,773L,-64,319,(x,z)->new TellusStructureAdaptationRules.CenterColumn(84,false),(x,z)->84);
++         int[] before=old.getPieces().stream().mapToInt(p->p.getBoundingBox().minY()).toArray();
++         chunk.setStartForStructure(type,old);adapt.invoke(gen,access,chunk);var actual=chunk.getStartForStructure(type);
++         assertEquals(expected.outcome()!=TellusStructureAdaptationRules.Outcome.INVALIDATE,actual.isValid());
++         if(actual.isValid()) {
++            assertEquals(2,actual.getReferences());assertEquals(2,actual.getPieces().size());
++            for(int i=0;i<before.length;i++) assertEquals(before[i]+expected.offsetY(),actual.getPieces().get(i).getBoundingBox().minY(),face+" "+kind);
++         }
++      }
++   }
++   @Test void realGeneratorKeepsAlreadyBuriedStrongholdsAndNonShellMesaIdentity() throws Exception {
++      var gen=generator(false,100000.0);var pos=pos(gen,CubeNetLayout.Face.POS_Y);
++      for(String id:List.of("stronghold","mineshaft_mesa")) {
++         var chunk=SphereFaceNativeBiomeKernelBridgeTest.chunk(pos);var type=structure(id);var old=start(type,pos,0,16);
++         chunk.setStartForStructure(type,old);adapt.invoke(gen,access,chunk);assertSame(old,chunk.getStartForStructure(type),id);
++      }
++   }
++   @Test void realGeneratorAdaptsDeepOceanMonumentAndRejectsShallowOrDryFootprints() throws Exception {
++      for(var face:CubeNetLayout.Face.values()) for(int scenario=0;scenario<3;scenario++) {
++         var gen=generator(scenario!=2,scenario==0?-50000.0:-5000.0);var pos=pos(gen,face);
++         var chunk=SphereFaceNativeBiomeKernelBridgeTest.chunk(pos);var type=structure("monument");var old=start(type,pos,20,42);
++         chunk.setStartForStructure(type,old);adapt.invoke(gen,access,chunk);var actual=chunk.getStartForStructure(type);
++         if(scenario==0) {
++            assertTrue(actual.isValid());assertEquals(62,actual.getBoundingBox().maxY());
++            assertEquals(2,actual.getReferences());assertEquals(2,actual.getPieces().size());
++            assertEquals(40,actual.getPieces().get(0).getBoundingBox().minY());
++            assertEquals(41,actual.getPieces().get(1).getBoundingBox().minY());
++         } else assertSame(StructureStart.INVALID_START,actual,"scenario="+scenario+" "+face);
++      }
++   }
++   @Test void unavailableColumnsKeepNativeStartsAndAllPiecesUnchanged() throws Exception {
++      var gen=generator(false,Double.NaN);var pos=pos(gen,CubeNetLayout.Face.POS_Y);
++      for(String id:List.of("stronghold","mineshaft","ancient_city","monument")) {
++         var chunk=SphereFaceNativeBiomeKernelBridgeTest.chunk(pos);var type=structure(id);var old=start(type,pos,20,42);
++         int[] before=old.getPieces().stream().mapToInt(p->p.getBoundingBox().minY()).toArray();
++         chunk.setStartForStructure(type,old);adapt.invoke(gen,access,chunk);
++         assertSame(old,chunk.getStartForStructure(type));
++         assertArrayEquals(before,old.getPieces().stream().mapToInt(p->p.getBoundingBox().minY()).toArray());
++      }
++   }
++   @Test void monumentUsesEffectiveNondefaultSeaAndOnlyMovesAfterCompleteWaterPreflight() throws Exception {
++      for(int sea:List.of(37,88)) {
++         var gen=generator(true,-50000,sea);var pos=pos(gen,CubeNetLayout.Face.NEG_Z);
++         var chunk=SphereFaceNativeBiomeKernelBridgeTest.chunk(pos);var type=structure("monument");var old=start(type,pos,20,42);
++         chunk.setStartForStructure(type,old);adapt.invoke(gen,access,chunk);var actual=chunk.getStartForStructure(type);
++         assertTrue(actual.isValid());assertEquals(sea-2,actual.getBoundingBox().maxY());
++         assertEquals(sea-24,actual.getPieces().get(0).getBoundingBox().minY());
++         assertEquals(sea-23,actual.getPieces().get(1).getBoundingBox().minY());
++      }
++   }
++   private static final class TestPiece extends StructurePiece {
++      TestPiece(BoundingBox box){super(StructurePieceType.STRONGHOLD_STAIRS_DOWN,0,box);}
++      @Override protected void addAdditionalSaveData(StructurePieceSerializationContext context,CompoundTag tag) { }
++      @Override public void postProcess(WorldGenLevel level,StructureManager structures,net.minecraft.world.level.chunk.ChunkGenerator generator,
++         RandomSource random,BoundingBox box,ChunkPos chunkPos,BlockPos position) { }
++   }
++}
+--- /dev/null
++++ b/src/test/java/com/yucareux/tellus/worldgen/TellusStructureAdaptationRulesTest.java
+@@ -0,0 +1,490 @@
++package com.yucareux.tellus.worldgen;
++
++import static org.junit.jupiter.api.Assertions.assertEquals;
++import static org.junit.jupiter.api.Assertions.assertTrue;
++
++import com.yucareux.tellus.worldgen.TellusStructureAdaptationRules.Bounds;
++import com.yucareux.tellus.worldgen.TellusStructureAdaptationRules.CenterColumn;
++import com.yucareux.tellus.worldgen.TellusStructureAdaptationRules.Decision;
++import com.yucareux.tellus.worldgen.TellusStructureAdaptationRules.Outcome;
++import com.yucareux.tellus.worldgen.TellusStructureAdaptationRules.UndergroundKind;
++import java.util.ArrayList;
++import java.util.List;
++import java.util.Random;
++import java.util.function.IntBinaryOperator;
++import org.junit.jupiter.api.Test;
++
++class TellusStructureAdaptationRulesTest {
++   private static final Bounds SMALL = new Bounds(-9, 0, -9, 0, 9, 0);
++   private static final Bounds MONUMENT = new Bounds(0, 20, 0, 56, 42, 56);
++
++   @Test
++   void boundsMatchNativeUpperMiddleForEvenSpansAndNegativeCoordinates() {
++      assertEquals(-4, SMALL.centerX());
++      assertEquals(-4, SMALL.centerZ());
++      assertEquals(5, SMALL.centerY());
++      assertEquals(10, SMALL.ySpan());
++      Bounds odd = new Bounds(-8, -8, -8, 0, 0, 0);
++      assertEquals(-4, odd.centerX());
++      assertEquals(-4, odd.centerY());
++      assertEquals(-4, odd.centerZ());
++   }
++
++   @Test
++   void absentOrInvalidStartsNeverSampleOrInvalidateAgain() {
++      for (UndergroundKind kind : UndergroundKind.values()) {
++         assertEquals(new Decision(Outcome.KEEP, 0), TellusStructureAdaptationRules.underground(
++            kind, false, true, null, 0, 0, 0L, -64, 319,
++            (x, z) -> { throw new AssertionError("center sampled"); },
++            (x, z) -> { throw new AssertionError("surface sampled"); }
++         ));
++      }
++      assertEquals(new Decision(Outcome.KEEP, 0), TellusStructureAdaptationRules.monument(
++         false, true, null, 63, -64, 319, (x, z) -> { throw new AssertionError("water sampled"); }
++      ));
++   }
++
++   @Test
++   void cubeMesaWithoutTerrainShellKeepsStartWithoutAnySampling() {
++      assertEquals(new Decision(Outcome.KEEP, 0), TellusStructureAdaptationRules.underground(
++         UndergroundKind.MESA_MINESHAFT, true, false, null, 7, 11, 17L, -64, 319,
++         (x, z) -> { throw new AssertionError("center sampled"); },
++         (x, z) -> { throw new AssertionError("surface sampled"); }
++      ));
++   }
++
++   @Test
++   void normalMineshaftUsesSurfaceCenterThenFullFootprintIncludingFarEdges() {
++      List<String> calls = new ArrayList<>();
++      TellusStructureAdaptationRules.underground(
++         UndergroundKind.NORMAL_MINESHAFT, true, false, SMALL, 0, 0, 0L, -64, 319,
++         (x, z) -> { throw new AssertionError("mineshaft sampled water column"); },
++         (x, z) -> { calls.add(x + "," + z); return 100; }
++      );
++      assertEquals(List.of("-4,-4", "-9,-9", "-1,-9", "0,-9", "-9,-1", "-1,-1", "0,-1",
++         "-9,0", "-1,0", "0,0"), calls);
++   }
++
++   @Test
++   void strongholdAtTwentyBlockDepthKeepsOnlyCenterSampling() {
++      int[] centerCalls = {0};
++      Decision decision = TellusStructureAdaptationRules.underground(
++         UndergroundKind.STRONGHOLD, true, false, SMALL, 0, 0, 0L, -64, 319,
++         (x, z) -> { centerCalls[0]++; return new CenterColumn(25, false); },
++         (x, z) -> { throw new AssertionError("unneeded footprint"); }
++      );
++      assertEquals(new Decision(Outcome.KEEP, 0), decision);
++      assertEquals(1, centerCalls[0]);
++      assertUndergroundParity(UndergroundKind.STRONGHOLD, false, SMALL, 0, 0, 0L, -64, 319, 24, false, (x, z) -> 24);
++      assertUndergroundParity(UndergroundKind.STRONGHOLD, false, SMALL, 0, 0, 0L, -64, 319, 25, true, (x, z) -> 25);
++      assertUndergroundParity(UndergroundKind.STRONGHOLD, true, SMALL, 0, 0, 0L, -64, 319, 25, false, (x, z) -> 25);
++   }
++
++   @Test
++   void citiesAndTrialsSampleCenterThenEnvelopeEvenWhenAlreadyBuriedOrNoRoom() {
++      for (UndergroundKind kind : List.of(UndergroundKind.ANCIENT_CITY, UndergroundKind.TRIAL_CHAMBERS)) {
++         List<String> calls = new ArrayList<>();
++         Bounds box = new Bounds(0, 10, 0, 9, 20, 9);
++         Decision decision = TellusStructureAdaptationRules.underground(
++            kind, true, false, box, 123, 456, 0L, 10, 20,
++            (x, z) -> { calls.add("C" + x + "," + z); return new CenterColumn(90, true); },
++            (x, z) -> { calls.add("S" + x + "," + z); return 28; }
++         );
++         assertEquals(new Decision(Outcome.KEEP, 0), decision, kind.name());
++         assertEquals(List.of("C5,5", "S0,0", "S8,0", "S9,0", "S0,8", "S8,8", "S9,8",
++            "S0,9", "S8,9", "S9,9"), calls);
++         assertEquals(Outcome.INVALIDATE, TellusStructureAdaptationRules.underground(
++            kind, true, false, box, 123, 456, 0L, 10, 20,
++            (x, z) -> new CenterColumn(90, false), (x, z) -> 27
++         ).outcome());
++      }
++   }
++
++   @Test
++   void everyRetargetedKindRejectsUnfittableProtectedVerticalBounds() {
++      for (UndergroundKind kind : UndergroundKind.values()) {
++         Decision result = TellusStructureAdaptationRules.underground(
++            kind, true, true, new Bounds(0, -60, 0, 9, 80, 9), 13, 27, 99L, -64, 80,
++            (x, z) -> new CenterColumn(20, true), (x, z) -> 20
++         );
++         assertEquals(new Decision(Outcome.INVALIDATE, 0), result, kind.name());
++      }
++   }
++
++   @Test
++   void normalAndMesaUseDifferentDepthRangesAndCoverButTheSameSeedSalt() {
++      Bounds box = new Bounds(0, 0, 0, 8, 0, 8);
++      for (UndergroundKind kind : List.of(UndergroundKind.NORMAL_MINESHAFT, UndergroundKind.MESA_MINESHAFT)) {
++         int depth = oldDepth(kind, 1234567, -9876543, 123L);
++         int base = kind == UndergroundKind.NORMAL_MINESHAFT ? 30 : 8;
++         int range = kind == UndergroundKind.NORMAL_MINESHAFT ? 21 : 25;
++         assertTrue(depth >= base && depth < base + range);
++         Decision result = TellusStructureAdaptationRules.underground(
++            kind, true, true, box, 1234567, -9876543, 123L, -1000, 2000,
++            (x, z) -> { throw new AssertionError("column sampled"); }, (x, z) -> 1000
++         );
++         assertEquals(1000 - depth, result.offsetY());
++      }
++      Decision normal = TellusStructureAdaptationRules.underground(
++         UndergroundKind.NORMAL_MINESHAFT, true, true, box, 0, 0, 0L, 0, 12,
++         null, (x, z) -> 100
++      );
++      Decision mesa = TellusStructureAdaptationRules.underground(
++         UndergroundKind.MESA_MINESHAFT, true, true, box, 0, 0, 0L, 0, 12,
++         null, (x, z) -> 100
++      );
++      assertEquals(Outcome.INVALIDATE, normal.outcome());
++      assertEquals(new Decision(Outcome.MOVE, 8), mesa);
++   }
++
++   @Test
++   void zeroOffsetIsKeepRatherThanRebuildingUnmovedPieces() {
++      Bounds box = new Bounds(0, 0, 0, 8, 0, 8);
++      for (UndergroundKind kind : UndergroundKind.values()) {
++         int surface = oldDepth(kind, 13, -19, 71L);
++         assertEquals(new Decision(Outcome.KEEP, 0), TellusStructureAdaptationRules.underground(
++            kind, true, true, box, 13, -19, 71L, -1000, 2000,
++            (x, z) -> new CenterColumn(surface, false), (x, z) -> surface
++         ));
++      }
++   }
++
++   @Test
++   void fixedOldUndergroundOracleMatchesConditionsFitClampsAndSamplingTraces() {
++      Bounds[] boxes = {SMALL, new Bounds(-18, -80, 13, 5, -20, 30), new Bounds(1, -60, 1, 17, 140, 9)};
++      for (UndergroundKind kind : UndergroundKind.values()) {
++         for (boolean shell : new boolean[]{false, true}) {
++            for (boolean ocean : new boolean[]{false, true}) {
++               for (Bounds box : boxes) {
++                  for (int surface : new int[]{-80, -10, 50, 240}) {
++                     for (long seed : new long[]{0L, 71L, Long.MIN_VALUE}) {
++                        assertUndergroundParity(kind, shell, box, -29999999, 17000001, seed, -64, 319,
++                           surface, ocean, (x, z) -> surface - Math.floorMod(x * 3 + z, 13));
++                     }
++                  }
++               }
++            }
++         }
++      }
++   }
++
++   @Test
++   void depthMatchesIndependentJavaRandomAcrossSeedsCoordinatesOverflowAndProjection() {
++      Bounds box = new Bounds(-9, 0, -9, 0, 0, 0);
++      int[] coordinates = {0, 1, -1, 686, 29999999, Integer.MIN_VALUE, Integer.MAX_VALUE};
++      for (UndergroundKind kind : UndergroundKind.values()) {
++         for (int earthX : coordinates) {
++            for (int earthZ : coordinates) {
++               for (long seed : new long[]{0L, -1L, 1234567891011L, Long.MIN_VALUE, Long.MAX_VALUE}) {
++                  Decision result = TellusStructureAdaptationRules.underground(
++                     kind, true, true, box, earthX, earthZ, seed, -1000, 2000,
++                     (x, z) -> new CenterColumn(1000, false), (x, z) -> 1000
++                  );
++                  assertEquals(1000 - oldDepth(kind, earthX, earthZ, seed), result.offsetY(),
++                     kind + " " + earthX + "," + earthZ + " seed=" + seed);
++                  assertEquals(result, TellusStructureAdaptationRules.underground(
++                     kind, true, true, box, earthX, earthZ, seed, -1000, 2000,
++                     (x, z) -> new CenterColumn(1000, false), (x, z) -> 1000
++                  ));
++               }
++            }
++         }
++      }
++   }
++
++   @Test
++   void undergroundBoundsIncludeFiveBlockFloorAndExactTopCoverAtFitBoundary() {
++      Bounds box = new Bounds(0, 0, 0, 8, 10, 8);
++      // min bottom -59 and maximum top -49 leave exactly one offset (-59).
++      assertEquals(new Decision(Outcome.MOVE, -59), TellusStructureAdaptationRules.underground(
++         UndergroundKind.STRONGHOLD, true, true, box, 0, 0, 0L, -64, 319,
++         (x, z) -> new CenterColumn(100, true), (x, z) -> -41
++      ));
++      assertEquals(Outcome.INVALIDATE, TellusStructureAdaptationRules.underground(
++         UndergroundKind.STRONGHOLD, true, true, box, 0, 0, 0L, -64, 319,
++         (x, z) -> new CenterColumn(100, true), (x, z) -> -42
++      ).outcome());
++      // World ceiling is covered too, even when the sampled surface is higher.
++      assertEquals(new Decision(Outcome.MOVE, 32), TellusStructureAdaptationRules.underground(
++         UndergroundKind.STRONGHOLD, true, true, box, 0, 0, 0L, -64, 50,
++         (x, z) -> new CenterColumn(1000, true), (x, z) -> 1000
++      ));
++   }
++
++   @Test
++   void waterDisabledSkipsViabilityButStillOffsetsAndChecksVerticalBounds() {
++      Decision result = TellusStructureAdaptationRules.monument(
++         true, false, MONUMENT, 63, -64, 319,
++         (x, z) -> { throw new AssertionError("water disabled"); }
++      );
++      assertEquals(new Decision(Outcome.MOVE, 19), result);
++      assertEquals(new Decision(Outcome.INVALIDATE, 0), TellusStructureAdaptationRules.monument(
++         true, false, new Bounds(0, -64, 0, 56, 65, 56), 63, -64, 319, null
++      ));
++   }
++
++   @Test
++   void monumentOceanAndDeepRatiosAreInclusiveAtExactBoundary() {
++      assertEquals(Outcome.MOVE, assertMonumentParity(true, MONUMENT, 63, -64, 319, ratioDepths(15, 15)).outcome());
++      assertEquals(Outcome.INVALIDATE, assertMonumentParity(true, MONUMENT, 63, -64, 319, ratioDepths(16, 14)).outcome());
++      assertEquals(Outcome.INVALIDATE, assertMonumentParity(true, MONUMENT, 63, -64, 319, ratioDepths(15, 16)).outcome());
++   }
++
++   @Test
++   void monumentCoreDepthUsesBothNineteenMinimumAndStructureHeightMinusFour() {
++      assertEquals(Outcome.MOVE, assertMonumentParity(true, MONUMENT, 63, -64, 319, (x, z) -> 19).outcome());
++      assertEquals(Outcome.INVALIDATE, assertMonumentParity(true, MONUMENT, 63, -64, 319, (x, z) -> 18).outcome());
++      Bounds tall = new Bounds(0, 20, 0, 56, 49, 56);
++      assertEquals(Outcome.MOVE, assertMonumentParity(true, tall, 63, -64, 319, (x, z) -> 26).outcome());
++      assertEquals(Outcome.INVALIDATE, assertMonumentParity(true, tall, 63, -64, 319, (x, z) -> 25).outcome());
++      // The deep-ocean threshold is 12, not 19: only the core needs 19.
++      assertEquals(Outcome.MOVE, assertMonumentParity(true, MONUMENT, 63, -64, 319,
++         (x, z) -> inCore(MONUMENT, x, z) ? 19 : 12).outcome());
++      assertEquals(Outcome.INVALIDATE, assertMonumentParity(true, MONUMENT, 63, -64, 319,
++         (x, z) -> inCore(MONUMENT, x, z) ? 19 : 11).outcome());
++   }
++
++   @Test
++   void monumentStopsAtFirstBadCoreSampleAndRequiresAtLeastOneCoreSample() {
++      List<String> calls = new ArrayList<>();
++      Decision result = TellusStructureAdaptationRules.monument(true, true, MONUMENT, 63, -64, 319,
++         (x, z) -> { calls.add(x + "," + z); return x == 8 && z == 8 ? 0 : 40; });
++      assertEquals(Outcome.INVALIDATE, result.outcome());
++      assertEquals(23, calls.size());
++      assertEquals("8,8", calls.get(calls.size() - 1));
++      assertEquals(Outcome.INVALIDATE, assertMonumentParity(true,
++         new Bounds(0, 20, 0, 15, 42, 15), 63, -64, 319, (x, z) -> 40).outcome());
++   }
++
++   @Test
++   void monumentIncludesMarginAndNonStrideFarEdgesInSourceOrder() {
++      Bounds irregular = new Bounds(-3, 20, 5, 54, 42, 62);
++      List<String> calls = new ArrayList<>();
++      Decision result = assertMonumentParity(true, irregular, 63, -64, 319,
++         (x, z) -> { calls.add(x + "," + z); return 40; });
++      assertEquals(Outcome.MOVE, result.outcome());
++      // The callback above is invoked once by each independent implementation.
++      assertEquals(242, calls.size());
++      assertEquals("-11,-3", calls.get(0));
++      assertEquals("62,70", calls.get(120));
++   }
++
++   @Test
++   void monumentOffsetsFollowSeaLevelWorldFloorCeilingAndZeroOffsetRules() {
++      assertEquals(new Decision(Outcome.MOVE, 19), assertMonumentParity(false, MONUMENT, 63, -64, 319, null));
++      assertEquals(new Decision(Outcome.MOVE, 38), assertMonumentParity(false, MONUMENT, 82, -64, 319, null));
++      assertEquals(new Decision(Outcome.MOVE, 8), assertMonumentParity(false, MONUMENT, 63, -64, 50, null));
++      assertEquals(new Decision(Outcome.KEEP, 0), assertMonumentParity(false,
++         new Bounds(0, 39, 0, 56, 61, 56), 63, -64, 319, null));
++      assertEquals(Outcome.INVALIDATE, assertMonumentParity(false,
++         new Bounds(0, -64, 0, 56, 65, 56), 63, -64, 319, null).outcome());
++      assertEquals(Outcome.INVALIDATE, assertMonumentParity(false,
++         new Bounds(0, -64, 0, 56, 80, 56), 63, -64, 64, null).outcome());
++      assertEquals(Outcome.INVALIDATE, assertMonumentParity(true, MONUMENT, 63, -64, 319, (x, z) -> 0).outcome());
++   }
++
++   @Test
++   void fixedOldMonumentOracleMatchesVariedDepthFieldsAndVerticalIntervals() {
++      for (Bounds box : new Bounds[]{MONUMENT, new Bounds(-19, -60, 3, 40, -31, 60), new Bounds(0, -64, 0, 56, 80, 56)}) {
++         for (boolean water : new boolean[]{false, true}) {
++            for (int sea : new int[]{-40, 63, 170}) {
++               for (int ceiling : new int[]{50, 319}) {
++                  for (int field = 0; field < 6; field++) {
++                     int salt = field;
++                     assertMonumentParity(water, box, sea, -64, ceiling,
++                        (x, z) -> salt == 0 ? 40 : Math.floorMod(x * 19 + z * 7 + salt * 11, 50));
++                  }
++               }
++            }
++         }
++      }
++   }
++
++   private static void assertUndergroundParity(
++      UndergroundKind kind, boolean shell, Bounds box, int earthX, int earthZ, long seed,
++      int minY, int maxY, int centerSurface, boolean ocean, IntBinaryOperator surface
++   ) {
++      List<String> oldCalls = new ArrayList<>();
++      List<String> calls = new ArrayList<>();
++      OldDecision expected = oldUnderground(kind, shell, box, earthX, earthZ, seed, minY, maxY,
++         centerSurface, ocean, surface, oldCalls);
++      Decision actual = TellusStructureAdaptationRules.underground(
++         kind, true, shell, box, earthX, earthZ, seed, minY, maxY,
++         (x, z) -> { calls.add("C" + x + "," + z); return new CenterColumn(centerSurface, ocean); },
++         (x, z) -> { calls.add("S" + x + "," + z); return surface.applyAsInt(x, z); }
++      );
++      String context = kind + " shell=" + shell + " ocean=" + ocean + " surface=" + centerSurface + " box=" + box;
++      assertEquals(expected.outcome(), actual.outcome().name(), context);
++      assertEquals(expected.offset(), actual.offsetY(), context);
++      assertEquals(oldCalls, calls, context);
++   }
++
++   private static Decision assertMonumentParity(
++      boolean water, Bounds box, int sea, int minY, int maxY, IntBinaryOperator depths
++   ) {
++      List<String> oldCalls = new ArrayList<>();
++      List<String> calls = new ArrayList<>();
++      OldDecision expected = oldMonument(water, box, sea, minY, maxY,
++         (x, z) -> { oldCalls.add(x + "," + z); return depths.applyAsInt(x, z); });
++      Decision actual = TellusStructureAdaptationRules.monument(true, water, box, sea, minY, maxY,
++         (x, z) -> { calls.add(x + "," + z); return depths.applyAsInt(x, z); });
++      assertEquals(expected.outcome(), actual.outcome().name());
++      assertEquals(expected.offset(), actual.offsetY());
++      assertEquals(oldCalls, calls);
++      return actual;
++   }
++
++   /** 100 samples: the 36 core cells are always deep, other cells set the ratios. */
++   private static IntBinaryOperator ratioDepths(int dry, int shallow) {
++      List<String> outer = new ArrayList<>();
++      for (int z = -8; z <= 64; z += 8) {
++         for (int x = -8; x <= 64; x += 8) {
++            if (!inCore(MONUMENT, x, z)) {
++               outer.add(x + "," + z);
++            }
++         }
++      }
++      return (x, z) -> {
++         int index = outer.indexOf(x + "," + z);
++         return index < 0 ? 40 : index < dry ? 0 : index < dry + shallow ? 1 : 40;
++      };
++   }
++
++   private static boolean inCore(Bounds box, int x, int z) {
++      return x >= box.minX() + 8 && x <= box.maxX() - 8 && z >= box.minZ() + 8 && z <= box.maxZ() - 8;
++   }
++
++   /*
++    * Frozen old-Earth oracle. It never invokes a production rule, center/span
++    * method, bounds helper, hash helper or random helper. Random(seed).nextInt
++    * independently checks the production allocation-free LCG implementation.
++    */
++   private record OldDecision(String outcome, int offset) {
++   }
++
++   private static OldDecision oldUnderground(
++      UndergroundKind kind, boolean shell, Bounds b, int earthX, int earthZ, long seed,
++      int minY, int maxY, int columnSurface, boolean ocean, IntBinaryOperator surface, List<String> calls
++   ) {
++      if (kind == UndergroundKind.MESA_MINESHAFT && !shell) {
++         return new OldDecision("KEEP", 0);
++      }
++      int centerX = b.minX() + (b.maxX() - b.minX() + 1) / 2;
++      int centerY = b.minY() + (b.maxY() - b.minY() + 1) / 2;
++      int centerZ = b.minZ() + (b.maxZ() - b.minZ() + 1) / 2;
++      int height;
++      if (kind == UndergroundKind.NORMAL_MINESHAFT || kind == UndergroundKind.MESA_MINESHAFT) {
++         calls.add("S" + centerX + "," + centerZ);
++         height = surface.applyAsInt(centerX, centerZ);
++      } else {
++         calls.add("C" + centerX + "," + centerZ);
++         height = columnSurface;
++         if (kind == UndergroundKind.STRONGHOLD && !shell && !ocean && centerY <= height - 20) {
++            return new OldDecision("KEEP", 0);
++         }
++      }
++      int lowest = Integer.MAX_VALUE;
++      for (int z = b.minZ(); ; z = Math.min(z + 8, b.maxZ())) {
++         for (int x = b.minX(); ; x = Math.min(x + 8, b.maxX())) {
++            calls.add("S" + x + "," + z);
++            lowest = Math.min(lowest, surface.applyAsInt(x, z));
++            if (x == b.maxX()) break;
++         }
++         if (z == b.maxZ()) break;
++      }
++      if (kind == UndergroundKind.ANCIENT_CITY || kind == UndergroundKind.TRIAL_CHAMBERS) {
++         int requiredTopY = lowest - 8;
++         if (!(shell || b.maxY() > requiredTopY)) {
++            return new OldDecision("KEEP", 0);
++         }
++      }
++      int topCover = kind == UndergroundKind.NORMAL_MINESHAFT ? 14 : kind == UndergroundKind.MESA_MINESHAFT ? 4 : 8;
++      int minimumBottom = Math.max(minY + 4, minY + 1 + 4);
++      int maximumTop = Math.min(maxY - topCover, lowest - topCover);
++      int minimumOffset = minimumBottom - b.minY();
++      int maximumOffset = maximumTop - b.maxY();
++      if (minimumOffset > maximumOffset) {
++         return new OldDecision("INVALIDATE", 0);
++      }
++      int requested = height - oldDepth(kind, earthX, earthZ, seed) - centerY;
++      int offset = requested < minimumOffset ? minimumOffset : Math.min(requested, maximumOffset);
++      return new OldDecision(offset == 0 ? "KEEP" : "MOVE", offset);
++   }
++
++   private static int oldDepth(UndergroundKind kind, int x, int z, long worldSeed) {
++      int y = switch (kind) {
++         case STRONGHOLD -> 19;
++         case NORMAL_MINESHAFT, MESA_MINESHAFT -> 14;
++         case ANCIENT_CITY -> 23;
++         case TRIAL_CHAMBERS -> 17;
++      };
++      long salt = switch (kind) {
++         case STRONGHOLD -> 8927292519556160640L;
++         case NORMAL_MINESHAFT, MESA_MINESHAFT -> 2115183054018638465L;
++         case ANCIENT_CITY -> 7099176517079344131L;
++         case TRIAL_CHAMBERS -> 4235900233171027605L;
++      };
++      int base = switch (kind) {
++         case STRONGHOLD -> 42;
++         case NORMAL_MINESHAFT -> 30;
++         case MESA_MINESHAFT -> 8;
++         case ANCIENT_CITY -> 92;
++         case TRIAL_CHAMBERS -> 72;
++      };
++      int range = switch (kind) {
++         case STRONGHOLD -> 17;
++         case NORMAL_MINESHAFT -> 21;
++         case MESA_MINESHAFT -> 25;
++         case ANCIENT_CITY -> 29;
++         case TRIAL_CHAMBERS -> 25;
++      };
++      long coordinateSeed = x * 3129871 ^ z * 116129781L ^ y;
++      coordinateSeed = coordinateSeed * coordinateSeed * 42317861L + coordinateSeed * 11L;
++      return base + new Random((coordinateSeed >> 16) ^ worldSeed ^ salt).nextInt(range);
++   }
++
++   private static OldDecision oldMonument(boolean water, Bounds b, int sea, int minY, int maxY, IntBinaryOperator depths) {
++      if (water) {
++         int minX = b.minX() - 8;
++         int maxX = b.maxX() + 8;
++         int minZ = b.minZ() - 8;
++         int maxZ = b.maxZ() + 8;
++         int coreMinX = b.minX() + 8;
++         int coreMaxX = b.maxX() - 8;
++         int coreMinZ = b.minZ() + 8;
++         int coreMaxZ = b.maxZ() - 8;
++         int requiredCoreDepth = Math.max(12 + 7, b.maxY() - b.minY() + 1 - 4);
++         int totalSamples = 0;
++         int oceanSamples = 0;
++         int deepOceanSamples = 0;
++         int coreSamples = 0;
++         for (int z = minZ; ; z = Math.min(z + 8, maxZ)) {
++            for (int x = minX; ; x = Math.min(x + 8, maxX)) {
++               int waterDepth = depths.applyAsInt(x, z);
++               boolean oceanColumn = waterDepth > 0;
++               totalSamples++;
++               if (oceanColumn) oceanSamples++;
++               if (waterDepth >= 12) deepOceanSamples++;
++               if (x >= coreMinX && x <= coreMaxX && z >= coreMinZ && z <= coreMaxZ) {
++                  coreSamples++;
++                  if (!oceanColumn || waterDepth < requiredCoreDepth) return new OldDecision("INVALIDATE", 0);
++               }
++               if (x == maxX) break;
++            }
++            if (z == maxZ) break;
++         }
++         if (!(coreSamples > 0 && (double)oceanSamples / totalSamples >= 0.85
++            && (double)deepOceanSamples / totalSamples >= 0.7)) {
++            return new OldDecision("INVALIDATE", 0);
++         }
++      }
++      int targetTopY = sea - 2;
++      int desiredMinY = targetTopY - (b.maxY() - b.minY() + 1) + 1;
++      int minimumOffset = minY + 1 - b.minY();
++      int maximumOffset = maxY - b.maxY();
++      int requested = desiredMinY - b.minY();
++      int offset = requested < minimumOffset ? minimumOffset : Math.min(requested, maximumOffset);
++      if (b.maxY() + offset > targetTopY) return new OldDecision("INVALIDATE", 0);
++      return new OldDecision(offset == 0 ? "KEEP" : "MOVE", offset);
++   }
++}

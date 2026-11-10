@@ -249,6 +249,13 @@ public final class TellusPersistenceProbeCommand {
                 ChunkAccess generated = ChunkBenchmarkVersionCompat.requestFullChunk(level.getChunkSource(), x, z);
                 if (generated == null) throw new IllegalStateException("native generation returned no FULL chunk");
                 result.addProperty("generationNanos", System.nanoTime() - started);
+                if (Boolean.getBoolean("tellus.persistence.probe.structureMixins")) {
+                    result.add("monumentNativeMixin", TellusNativeStructureMixinProbe.verify(level));
+                    result.addProperty("worldGenerateStructures", source.getServer().getWorldData().worldGenOptions().generateStructures());
+                    result.addProperty("naturalStartCountInGeneratedChunk", generated.getAllStarts().values().stream()
+                        .filter(start -> start != null && start.isValid()).count());
+                    result.addProperty("naturalStructureAcceptance", false);
+                }
                 if (level.getChunkSource().getGenerator() instanceof com.yucareux.tellus.worldgen.runtime.TellusNativeProductionOwner owner) {
                     var pipeline = owner.nativeProductionPipeline();
                     result.addProperty("nativeProductionMode", pipeline.mode().name());
