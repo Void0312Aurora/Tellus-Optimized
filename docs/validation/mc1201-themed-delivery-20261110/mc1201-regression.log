@@ -1,0 +1,22 @@
+
+> Configure project :mc1201
+Fabric Loom: 1.14.10
+
+> Task :mc1201:compileJava
+注: D:\workshop\Tellus-Optimized\src\main\java\com\yucareux\tellus\worldgen\write\FileBackedAtomicStorageBackend.java使用了未经检查或不安全的操作。
+注: 有关详细信息, 请使用 -Xlint:unchecked 重新编译。
+
+> Task :mc1201:processResources
+> Task :mc1201:classes
+> Task :mc1201:compileClientJava
+> Task :mc1201:processClientResources
+> Task :mc1201:clientClasses
+> Task :mc1201:compileTestJava
+> Task :mc1201:processTestResources
+> Task :mc1201:testClasses
+> Task :mc1201:test
+
+[Incubating] Problems report is available at: file:///D:/workshop/Tellus-Optimized/build/reports/problems/problems-report.html
+
+BUILD SUCCESSFUL in 3m 44s
+7 actionable tasks: 7 executed

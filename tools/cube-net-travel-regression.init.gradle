@@ -1,0 +1,29 @@
+import groovy.json.JsonSlurper
+import org.gradle.api.tasks.testing.Test
+
+// Replay the retained travel cohort without Windows cmd.exe's long-argument limit.
+// The archived commands/init scripts remain immutable historical evidence; this
+// entry resolves their selected-tests.json against this checkout instead of TEMP.
+allprojects {
+    afterEvaluate {
+        if (project.name in ['mc1201', 'mc1211']) {
+            def selection = rootProject.file(
+                "docs/validation/cube-net-travel-parity-20261110/final/${project.name}/selected-tests.json")
+            if (!selection.isFile()) {
+                throw new GradleException("Retained travel test selection missing: ${selection}")
+            }
+            def names = new JsonSlurper().parse(selection)
+            if (!(names instanceof List) || names.isEmpty()
+                    || names.any { !(it instanceof String) || !(it ==~ /[A-Za-z0-9_.$*]+/) }) {
+                throw new GradleException("Invalid retained travel test selection: ${selection}")
+            }
+            tasks.withType(Test).configureEach {
+                if (name == 'test') {
+                    filter {
+                        names.each { includeTestsMatching(it) }
+                    }
+                }
+            }
+        }
+    }
+}

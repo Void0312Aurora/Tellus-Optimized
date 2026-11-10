@@ -58,5 +58,6 @@ tools/geography/__pycache__/
 
 hs_err_*.log
 replay_*.log
+/javac.*.args
 *.hprof
 *.jfr

@@ -1,0 +1,887 @@
+{
+  "tests": 656,
+  "failures": 0,
+  "errors": 0,
+  "skipped": 0,
+  "classes": 108,
+  "module": "mc1201",
+  "forcedTaskReplay": true,
+  "command": [
+    "gradlew.bat",
+    "-PtellusTargets=mc1201",
+    "--init-script",
+    "tools/cube-net-travel-regression.init.gradle",
+    ":mc1201:test",
+    "--rerun-tasks",
+    "--offline",
+    "--no-parallel",
+    "--max-workers=1",
+    "--console=plain"
+  ],
+  "suites": [
+    {
+      "name": "com.yucareux.tellus.world.data.elevation.TellusCanonicalDemSelectionTest",
+      "tests": "3",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "18.466"
+    },
+    {
+      "name": "com.yucareux.tellus.world.data.geology.SphericalGeologySourceTest",
+      "tests": "8",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "1.415"
+    },
+    {
+      "name": "com.yucareux.tellus.world.data.osm.GeodeticOsmQueryTest",
+      "tests": "5",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.887"
+    },
+    {
+      "name": "com.yucareux.tellus.world.data.osm.OsmGeoQueryBudgetTest",
+      "tests": "8",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.062"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.caves.CubeNetUndergroundStageAdapterTest",
+      "tests": "14",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.017"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.caves.TellusCarverProductionTest",
+      "tests": "2",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.485"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.caves.TellusEarthUndergroundProductionTest",
+      "tests": "2",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.789"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.caves.TellusVanillaNoiseCaveSamplerTest",
+      "tests": "3",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.001"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.caves.UndergroundStagePlannerTest",
+      "tests": "10",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.042"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.CubeNetBadlandsFeaturePipelineTest",
+      "tests": "5",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "3.706"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.CubeNetComposedChunkBatchTest",
+      "tests": "3",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "5.572"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.CubeNetFeatureRasterizerTest",
+      "tests": "4",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.333"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.CubeNetInlandFlowPipelineTest",
+      "tests": "5",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.649"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.CubeNetLandEnvironmentTest",
+      "tests": "8",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.734"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.CubeNetNativeBaseProviderPipelineTest",
+      "tests": "7",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "10.188"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.CubeNetNativeBiomeKernelBridgeTest",
+      "tests": "5",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.208"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.CubeNetNativeStructureAdapterTest",
+      "tests": "5",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.206"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.CubeNetNativeUndergroundStageTest",
+      "tests": "7",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "1.568"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.CubeNetOwnedUndergroundStageTest",
+      "tests": "6",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "1.236"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.CubeNetStructureCollisionTest",
+      "tests": "7",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.104"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.CubeNetStructurePlacementTest",
+      "tests": "3",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.006"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.CubeNetSurfaceKernelMigrationTest",
+      "tests": "2",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.083"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.CubeNetSurfacePolicyTest",
+      "tests": "4",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.017"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.CubeNetTravelTerrainSettingsTest",
+      "tests": "8",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.447"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.CubeUndergroundKernelNativeParityTest",
+      "tests": "1",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.545"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.decision.CubeNetSurfaceDecisionAdapterTest",
+      "tests": "4",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.004"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.decision.EarthSurfacePaletteTest",
+      "tests": "7",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.013"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.decision.TellusBiomeDecisionAdapterTest",
+      "tests": "4",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.007"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.decision.TellusBiomeVolumePlannerTest",
+      "tests": "10",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.064"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.decision.TellusColumnDecisionContractTest",
+      "tests": "4",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.015"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.decision.TellusColumnDecisionEarthOptInTest",
+      "tests": "2",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.02"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.decision.TellusColumnPipelineContractTest",
+      "tests": "3",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.009"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.decision.TellusCubeBadlandsDecisionKernelTest",
+      "tests": "7",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.059"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.decision.TellusCubeInlandFlowDecisionKernelTest",
+      "tests": "5",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.026"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.decision.TellusDecorationDecisionKernelTest",
+      "tests": "2",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.012"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.decision.TellusEarthBiomeClassifierAdapterTest",
+      "tests": "4",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.017"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.decision.TellusEarthBiomeDecisionKernelTest",
+      "tests": "3",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.009"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.decision.TellusEarthColumnDecisionKernelTest",
+      "tests": "3",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.012"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.decision.TellusEarthNativeColumnSnapshotReaderTest",
+      "tests": "15",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.051"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.decision.TellusEarthResolvedColumnKernelTest",
+      "tests": "17",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.048"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.decision.TellusEarthSnowDecisionKernelTest",
+      "tests": "9",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.024"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.decision.TellusEarthSurfaceColumnRulesTest",
+      "tests": "14",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.023"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.decision.TellusEarthSurfaceDecisionKernelTest",
+      "tests": "7",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.014"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.decision.TellusSphericalBiomeResolverTest",
+      "tests": "6",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.021"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.decision.TellusSphericalDecisionKernelTest",
+      "tests": "5",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.005"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.EarthBaseColumnKernelParityTest",
+      "tests": "2",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.604"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.EarthCubeBiomeParityProbeTest",
+      "tests": "1",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "1.349"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.EarthNativeCaptureInterleavingTest",
+      "tests": "5",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.106"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.EarthNativeCaptureKernelBridgeTest",
+      "tests": "3",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.113"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.EarthNativeCaptureSurfaceMatrixTest",
+      "tests": "3",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.607"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.EarthNativeColumnCaptureTest",
+      "tests": "12",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.178"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.EarthNativeFillCaptureIntegrationTest",
+      "tests": "4",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "5.108"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.EarthSnowKernelNativeParityTest",
+      "tests": "4",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.366"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.EarthSurfaceColumnKernelBridgeTest",
+      "tests": "5",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.427"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.EarthSurfaceColumnPlanParityTest",
+      "tests": "1",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "1.158"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.EarthSurfaceKernelNativeParityTest",
+      "tests": "3",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.232"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.feature.FeaturePlacementSinkGuardTest",
+      "tests": "1",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.001"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.feature.TellusFeaturePlannerContractTest",
+      "tests": "4",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.013"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.feature.TellusFeaturePlannerSequenceTest",
+      "tests": "6",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.027"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.feature.TellusMinecraft1201FeaturePlacementSinkTest",
+      "tests": "13",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.112"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.feature.TellusNativeRealtimeSnowPlacementTest",
+      "tests": "1",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.012"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.GeneratorConsistencyProbeTest",
+      "tests": "1",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "1.588"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.GeneratorParityProbeTest",
+      "tests": "1",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.081"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.LodBiomeSnowTest",
+      "tests": "22",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "20.792"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.persistence.TellusCanonicalNbtTest",
+      "tests": "6",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.064"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.persistence.TellusNativeChunkPersistenceTest",
+      "tests": "23",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "1.315"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.runtime.TellusGeneratorRuntimeDescriptorTest",
+      "tests": "3",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.126"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.runtime.TellusGeneratorRuntimeLifecycleBridgeTest",
+      "tests": "3",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.11"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.runtime.TellusGeneratorRuntimeLifecycleManagerTest",
+      "tests": "14",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.17"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.runtime.TellusGeneratorRuntimeRegistryTest",
+      "tests": "3",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.084"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.runtime.TellusGeneratorSettingsViewAdapterTest",
+      "tests": "6",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.793"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.runtime.TellusMinecraft1201RuntimeDescriptorOrderTest",
+      "tests": "1",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.007"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.runtime.TellusNativeBootstrapModeTest",
+      "tests": "1",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.015"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.runtime.TellusRuntimeRolloutGateTest",
+      "tests": "3",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.003"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.sample.TellusClimateSampleContractTest",
+      "tests": "4",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.01"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.sample.TellusNativeSphericalColumnSnapshotTest",
+      "tests": "7",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.01"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.sample.TellusSampleContractTest",
+      "tests": "20",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.063"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.sample.TellusSphericalSampleProviderTest",
+      "tests": "6",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.012"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.SphereFaceNativeBiomeKernelBridgeTest",
+      "tests": "6",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.296"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.SphereFaceNativeProviderPipelineTest",
+      "tests": "4",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.365"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.TellusEarthBiomeVolumeIntegrationTest",
+      "tests": "2",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "5.558"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.TellusMinecraft1201MaterializerParityTest",
+      "tests": "1",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.157"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.TellusMinecraft1201SphericalKernelParityTest",
+      "tests": "2",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "1.215"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.TellusNativeBiomeVolumeIntegrationTest",
+      "tests": "4",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "1.969"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.TellusNativeBiomeVolumeWriterTest",
+      "tests": "12",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.353"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.TellusNativeChunkBatchTest",
+      "tests": "14",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.385"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.TellusParityManifestExportTest",
+      "tests": "2",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "15.204"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.TellusStructureAdaptationRulesTest",
+      "tests": "19",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.061"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.TellusStructurePolicyTest",
+      "tests": "2",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.005"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.TellusSurfaceVariantRollTest",
+      "tests": "1",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.001"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.TellusUnifiedNativeProductionTest",
+      "tests": "3",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "10.031"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.UndergroundStructureExclusionTest",
+      "tests": "9",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.006"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.UndergroundStructureProtectionTest",
+      "tests": "5",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.005"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.VanillaStructurePlacementTest",
+      "tests": "8",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.008"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.write.CanonicalColumnPositionTest",
+      "tests": "3",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.006"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.write.FileBackedAtomicStorageBackendTest",
+      "tests": "16",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.588"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.write.StorageTransactionCoordinatorTest",
+      "tests": "2",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.011"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.write.TellusColumnMaterializerExpansionTest",
+      "tests": "7",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.006"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.write.TellusColumnWriteContractTest",
+      "tests": "12",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.02"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.write.TellusCompositeColumnWriterTest",
+      "tests": "17",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.026"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.write.TellusFlowCompositeColumnWriterTest",
+      "tests": "12",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.027"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.write.TellusMinecraft1201CanonicalPipelineClassifierTest",
+      "tests": "1",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.005"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.write.TellusMinecraft1201CanonicalPipelineTest",
+      "tests": "3",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.103"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.write.TellusMinecraft1201ColumnExpansionTest",
+      "tests": "6",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.087"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.write.TellusMinecraft1201CompositePipelineTest",
+      "tests": "6",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.109"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.write.TellusMinecraft1201WriteAdapterTest",
+      "tests": "3",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.084"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.write.TellusNativeSemanticMaterialsTest",
+      "tests": "9",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.007"
+    },
+    {
+      "name": "com.yucareux.tellus.worldgen.write.TellusTargetWriteGuardTest",
+      "tests": "7",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.013"
+    }
+  ]
+}

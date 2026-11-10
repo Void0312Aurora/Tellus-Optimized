@@ -1,0 +1,240 @@
+{
+  "scope": "Fabric 1.20.1 travel-affecting terrain/environment generation; M11 visual zero-hold remains open; existing paired release code/evidence retained without new client work",
+  "originalHead": "1c35ccbb2441fd146ceb28ee35700f684dec8ed3",
+  "inheritedCheckpoint": "543eb1ede435b748e962d136de9db9768170aadf",
+  "inheritedOrderedThematicCommits": [
+    {
+      "commit": "151fded7d751a7c692e0ae371a4cd26bdace2520",
+      "subject": "Recover Tellus unified sources and original parity probes from session records"
+    },
+    {
+      "commit": "30526fde5b6278309b986a0e7660c50acf505fd1",
+      "subject": "Implement positioned semantic columns with preflight and block-state rollback"
+    },
+    {
+      "commit": "ac287fe9fece67d0935c7d4044fded56efe6fadb",
+      "subject": "Integrate complete spherical snapshots and production radial/geological rules"
+    },
+    {
+      "commit": "49a8f88c194f2a0b58c8c8a7a87bab446cc2944a",
+      "subject": "Add Earth surface decision boundary and transactional feature sinks"
+    },
+    {
+      "commit": "dd1204ceabc3915b09582a49765bf386cfd18b4e",
+      "subject": "Route Earth native palette branches through shared decision kernel"
+    },
+    {
+      "commit": "317113b2dad877f819ba4edacb548e9923ffffc0",
+      "subject": "Apply terrain and features through one prepared block-state transaction"
+    },
+    {
+      "commit": "47c9d928f744b80a08d45325ff717aba4adc0c29",
+      "subject": "Share native Earth Cube surface decisions and restore exact palette flags"
+    },
+    {
+      "commit": "78bda59df6901967177e5abeb11d1dca392f6a2e",
+      "subject": "Use resolved native Earth base columns in shared rules and semantic kernel"
+    },
+    {
+      "commit": "42bceef6a3ff76b65e875b56bdecdd3808c16a67",
+      "subject": "Share native Earth surface plans and preserve exact semantic overlays"
+    },
+    {
+      "commit": "34c0be5479360f4ef60d7a421dc4f04d6176222b",
+      "subject": "Tellus Round46: opt-in exact native column capture and semantic replay"
+    },
+    {
+      "commit": "921e667f4c727350911484d08a331f4752e16862",
+      "subject": "Tellus Round47: complete native fill capture and semantic replay integration"
+    },
+    {
+      "commit": "b7259c5c044784550afb2fc6fcbba7ab3bf5bb63",
+      "subject": "Tellus Round48: native capture surface matrix and deterministic terminal interleavings"
+    },
+    {
+      "commit": "9e9e1cd67fc6558e32a0c4f1aca4fff92559b8a9",
+      "subject": "Tellus Round49: explicit native Cube-Net column-top biome kernel bridge"
+    },
+    {
+      "commit": "e358bdd08dd3f60b24b75be067e8a2cf0dc37478",
+      "subject": "Tellus Round50: explicit native Sphere-Face fixed-biome kernel bridge"
+    },
+    {
+      "commit": "a68c5bdb770befe253700a172985c96ff2c2cfdf",
+      "subject": "Tellus Round51: owned native Sphere exact provider and real pipeline replay"
+    },
+    {
+      "commit": "9b352b7193dd925a56d082cace6e11158089bc45",
+      "subject": "Tellus Round52: owned native Cube canonical base provider/kernel"
+    },
+    {
+      "commit": "c8509ee138b99c169387e53cd90dcba0b3dac53f",
+      "subject": "Tellus Round53: shared native Cube badlands and transactional overlay producer"
+    },
+    {
+      "commit": "6b7898f1a5b05ee4245ecfc68182caaad3e396f2",
+      "subject": "Tellus Round54: exact Cube flow and block/marker failure recovery"
+    },
+    {
+      "commit": "46336d725b5a7356bae5a754f3988ddddf6daeff",
+      "subject": "Tellus Round55: participating chunk leases and complete batch failure recovery"
+    },
+    {
+      "commit": "e6eaac03826e52bef45d2844239bafa3c45481fa",
+      "subject": "Tellus Round56: explicit vertical biome volumes and native palette recovery"
+    },
+    {
+      "commit": "b9aeb7ac2d696c27785816c9ab4c4686303c8a73",
+      "subject": "Tellus Round57: later-stage source matrix and underground plan gate"
+    },
+    {
+      "commit": "36a54cd82f897dd109879277d8c23453ab0f95f8",
+      "subject": "Tellus Round58: detached Cube underground planning and native replay"
+    },
+    {
+      "commit": "d6eafeacd25b412074380788fa66a68ebac556c3",
+      "subject": "Tellus Round59: owned underground capture, exact snow rule reuse and recovery hardening"
+    },
+    {
+      "commit": "dcfbcd7d3f4f79e0fd4f9f85543c64eda71f7aa4",
+      "subject": "Tellus Round60: opt-in native chunk queue/recovery and actual mc1201 world restart"
+    },
+    {
+      "commit": "c5211106299ab7b7fb9955cfefcaf3bf99c21328",
+      "subject": "Tellus Round61: mc1211 DFU MapCodec compatibility and native upgrade persistence"
+    },
+    {
+      "commit": "02cc4978f2e4405ec0b02424fdb7811f3027f466",
+      "subject": "Tellus Round61: preserve Fabric behavior outside Tellus DFU fallback"
+    },
+    {
+      "commit": "d1200eee8298fb447bccbde2407496f63dad7bc6",
+      "subject": "Tellus Round62: deterministic transaction interleaving gate"
+    },
+    {
+      "commit": "118f8c5d8bdfb6d36f0b8c3c5d0ad118dd896a52",
+      "subject": "Tellus Round63: native multi-chunk staged transaction seam"
+    },
+    {
+      "commit": "cfe512c81ee935e9bdb21f5f44a0a0e5ea921551",
+      "subject": "Tellus Round64: durable native batch journal"
+    },
+    {
+      "commit": "d4b45d9f984490f92e83be17d77ab943f3b21880",
+      "subject": "Tellus Round65: native world-root lease"
+    },
+    {
+      "commit": "6f81e14f7daa1a2fb2b1a53761ffce90e96ae3fa",
+      "subject": "Tellus Round66: replay full parity comparator"
+    },
+    {
+      "commit": "b54a319cd6474a7edb6fe8693853788855e8d0a2",
+      "subject": "Tellus Round67: nonempty native lifecycle payload matrix"
+    },
+    {
+      "commit": "21046fb05679aa6cf135d59f43f976b797026ac6",
+      "subject": "Tellus: verify live nonempty lifecycle across native save/restart"
+    },
+    {
+      "commit": "80dd37ba39677adb5a4229a781ca3b4e5adabc8f",
+      "subject": "Tellus: connect Earth underground and shared realtime snow production decisions; stop Cube sea-offset save drift"
+    },
+    {
+      "commit": "c3d5945b3b1f51bc1d2fa70820ff4017247ac73f",
+      "subject": "Tellus: connect native configured-carver and Cube underground kernels; drive production decoration order without eager source reads"
+    },
+    {
+      "commit": "2764e622b0a1a13ed6d49dea1410a2e1f3e635a8",
+      "subject": "Tellus: accept actual dual-version old/new native FULL generation and save parity on copied GIS world"
+    },
+    {
+      "commit": "c0d5776d0b33796085fb3d1d9b7c6f0bdc1878c4",
+      "subject": "Tellus: recover native queued multi-chunk journals before level preparation; persist quarantine and coordinate engine saves; accept real dual-version hard-stop and two restarts"
+    },
+    {
+      "commit": "c32c36b37f8e23955a410de1a6126874eccdb129",
+      "subject": "Tellus: connect Earth/Cube/Sphere native stages to one target-owned pipeline and real spherical provider/kernel/shared chunk writer; accept dual-version native generation parity"
+    },
+    {
+      "commit": "4f2b81ac444c1ba6e008299b9346dec576266271",
+      "subject": "Tellus: accept actual non-default Cube old sea encoding through native saves and two stored-LevelStem reloads on mc1201/mc1211"
+    },
+    {
+      "commit": "543eb1ede435b748e962d136de9db9768170aadf",
+      "subject": "Tellus: accept reversible native runtime default with actual three-family lifecycle, no-flag generation/restart and explicit legacy rollback on mc1201/mc1211"
+    }
+  ],
+  "newThematicCommitsBeforeDelivery": [
+    {
+      "theme": "structures",
+      "commit": "14d5ffe19d5701200db173bf90026ab960736421",
+      "tree": "69661527203d4fa807a4da8a5f5b89a6c79c3bf3",
+      "subject": "fix(worldgen): align cube structure placement and bound geographic queries"
+    },
+    {
+      "theme": "geology",
+      "commit": "572dfbca4705c72dd2e58504f8aedb2775857b58",
+      "tree": "de330adf6e935a868464f053072f373d63ede804",
+      "subject": "fix(geology): follow native Macrostrat defaults for spherical terrain"
+    },
+    {
+      "theme": "travel",
+      "commit": "41e9baa474430b99f1458b926a7831154967588a",
+      "tree": "348a3225d184bd1f44b9be341ad984b5720c0e8d",
+      "subject": "fix(worldgen): complete cube travel biome and terrain option parity"
+    },
+    {
+      "theme": "evidence-bytes",
+      "commit": "5d8a4c98f5367607e7efd8335609f10e75926c66",
+      "tree": "7489e279dd658021dd8751f233275040cff61372",
+      "subject": "fix(validation): preserve archived evidence bytes across Git checkouts"
+    }
+  ],
+  "deliveryCommitIdentity": "This record is part of the next delivery commit; inspect git log for that commit, avoiding a self-referential hash.",
+  "publicationTarget": {
+    "remote": "origin",
+    "repository": "https://github.com/Void0312Aurora/Tellus-Optimized.git",
+    "branch": "feat/cube-net-parity",
+    "mode": "ordinary non-force push; main is not changed; final remote verification is performed after commit"
+  },
+  "freshPortableRegression": {
+    "tests": 656,
+    "classes": 108,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "forcedTasks": true,
+    "module": "mc1201",
+    "initialCachedConfigurationCheck": "passed; not counted as a fresh execution"
+  },
+  "evidenceIntegrity": {
+    "retainedTravelFileCount": 48,
+    "allRetainedTravelSHA256VerifiedAgainstGitBlobs": true,
+    "allArchivedValidationBlobsChecked": 654,
+    "validationDirectoryGitTextConversion": false,
+    "restoredHistoricalCheckpointFiles": [
+      {
+        "path": "docs/validation/round61-mc1211-dfu-persistence/live/mc1211/afdc1a32-3b9f-45f4-81a2-6c49ae0084ca-capture.json",
+        "sha256": "15dd53c6fd9eb26c58c3c271f7de2886a34b2631b342fd0bc075b11bb1b9e667",
+        "bytes": 1886
+      },
+      {
+        "path": "docs/validation/round61-mc1211-dfu-persistence/live/mc1211/afdc1a32-3b9f-45f4-81a2-6c49ae0084ca-expected.snbt",
+        "sha256": "e1a5f6210ff64aa6254db5857db38638a8ce2dcffe9b4430351dc11bdecae140",
+        "bytes": 52951
+      },
+      {
+        "path": "docs/validation/round61-mc1211-dfu-persistence/live/mc1211/afdc1a32-3b9f-45f4-81a2-6c49ae0084ca-verify.json",
+        "sha256": "19a587fdad4436e17578b93d7a8ad944a5eb2ba18dc6f8dc0e5b74cfd3ce5321",
+        "bytes": 1228
+      }
+    ],
+    "provenanceNote": "Historical source/build/world hashes retain their original meaning; recorded historical HEAD/index values are not current branch identity after delivery."
+  },
+  "excludedTransientFile": {
+    "path": "javac.20261109_220706.args",
+    "action": "preserved locally and ignored by /javac.*.args"
+  },
+  "sensitiveDataAudit": "Pattern scans over candidate plain files and nested ZIP/gzip found no matching credentials; absolute host paths and test metadata intentionally retained, not a universal absence proof.",
+  "externalInputs": "Native GIS acceptance relies on explicitly supplied historical world/cache and provenance; those external inputs and local JAR/build outputs are not added."
+}

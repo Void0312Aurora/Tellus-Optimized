@@ -1,0 +1,22 @@
+{
+  "delivery.json": {
+    "sha256": "2a32a17c0b4cdbcc876e0b6ae0a0abdb63f2b18171c829935eb6336ea412a627",
+    "bytes": 11041
+  },
+  "mc1201-regression-xml.zip": {
+    "sha256": "0a12fde881b64a9cba46389030dc08e07b6677c70f821b1bff03d8463033160e",
+    "bytes": 88070
+  },
+  "mc1201-regression.json": {
+    "sha256": "c38c94ac5de30f205464927aae49f4276b1c05de42f93e08e0de9adbbc72a255",
+    "bytes": 23473
+  },
+  "mc1201-regression.log": {
+    "sha256": "78e6e0858abec32b78520f82012868888ec4350663afbb0c8696753b9304ec33",
+    "bytes": 789
+  },
+  "README.md": {
+    "sha256": "cad44a4edfffb249b7389ab9b8feca8b821190a277feacb703f06ab3581fef51",
+    "bytes": 5688
+  }
+}
