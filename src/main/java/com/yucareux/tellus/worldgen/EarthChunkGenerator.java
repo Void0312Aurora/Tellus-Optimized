@@ -12419,7 +12419,6 @@ private static byte climateGroupForBiome(Holder<Biome> biome) {
          int minY = MinecraftVersionCompat.minY(chunk);
          int maxY = minY + chunk.getHeight();
          MutableBlockPos cursor = new MutableBlockPos();
-         BlockState snowLayer = SNOW_LAYER_STATE;
 
          for (int localX = 0; localX < 16; localX++) {
             int worldX = chunkMinX + localX;
@@ -12431,19 +12430,7 @@ private static byte climateGroupForBiome(Holder<Biome> biome) {
                   if (surface >= minY && surface + 1 < maxY) {
                      if (this.shouldPlaceSnowAt(worldX, worldZ)) {
                         cursor.set(worldX, surface, worldZ);
-                        BlockState surfaceState = level.getBlockState(cursor);
-                        if (surfaceState.getFluidState().isEmpty()) {
-                           BlockPos above = cursor.above();
-                           if (level.getBlockState(above).isAir() && snowLayer.canSurvive(level, above)) {
-                              level.setBlock(above, snowLayer, updateFlags);
-                              if (surfaceState.hasProperty(BlockStateProperties.SNOWY) && !(Boolean)surfaceState.getValue(BlockStateProperties.SNOWY)) {
-                                 BlockState snowySurface = Objects.requireNonNull(
-                                    (BlockState)surfaceState.setValue(BlockStateProperties.SNOWY, Boolean.TRUE), "snowySurface"
-                                 );
-                                 level.setBlock(cursor, snowySurface, updateFlags);
-                              }
-                           }
-                        }
+                         com.yucareux.tellus.worldgen.feature.TellusNativeRealtimeSnowPlacement.place(level, cursor, updateFlags);
                      }
                   }
                }

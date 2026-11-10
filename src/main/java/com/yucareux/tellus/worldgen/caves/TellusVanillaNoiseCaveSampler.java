@@ -2,8 +2,10 @@ package com.yucareux.tellus.worldgen.caves;
 
 import com.google.common.base.Preconditions;
 import com.yucareux.tellus.worldgen.GeologicalStonePlacementPolicy;
-import com.yucareux.tellus.worldgen.UndergroundFeatureClassifier;
 import com.yucareux.tellus.worldgen.UndergroundStructureExclusion;
+import com.yucareux.tellus.worldgen.decision.TellusEarthUndergroundDecisionKernel;
+import com.yucareux.tellus.worldgen.decision.TellusEarthUndergroundDecisionKernel.Decision;
+import com.yucareux.tellus.worldgen.decision.TellusEarthUndergroundDecisionKernel.Sample;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.IntBinaryOperator;
@@ -63,8 +65,21 @@ public final class TellusVanillaNoiseCaveSampler {
       if (applyGeologicalStonePatches) {
          Objects.requireNonNull(surfaceHeightSampler, "surfaceHeightSampler");
       }
-      RandomState randomState = this.randomStateFor(registryAccess, worldSeed);
-      VanillaField field = this.fieldSampler.sample(registryAccess, randomState, chunk.getPos());
+       RandomState randomState = this.randomStateFor(registryAccess, worldSeed);
+       VanillaField field = this.fieldSampler.sample(registryAccess, randomState, chunk.getPos());
+       applyField(field, chunk, chunkMinY, tellusSeaLevel, applyCaves, cavesReachSurface,
+          applyOreVeins, applyGeologicalStonePatches, surfaceYByColumn, surfaceHeightSampler,
+          floodGuardYByColumn, generationFloorYByColumn, structureExclusions, blockWriter);
+    }
+
+    // The production call above and whole-chunk regression use the same resolved
+    // native field. Sampling, iteration order, depth mapping and writer effects stay native.
+    static void applyField(VanillaField field, ChunkAccess chunk, int chunkMinY, int tellusSeaLevel,
+       boolean applyCaves, boolean cavesReachSurface, boolean applyOreVeins,
+       boolean applyGeologicalStonePatches, int[] surfaceYByColumn,
+       IntBinaryOperator surfaceHeightSampler, int[] floodGuardYByColumn,
+       int[] generationFloorYByColumn, List<UndergroundStructureExclusion.Box> structureExclusions,
+       CaveBlockWriter blockWriter) {
       BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
       ChunkPos chunkPos = chunk.getPos();
       int chunkMinX = chunkPos.getMinBlockX();
@@ -109,28 +124,18 @@ public final class TellusVanillaNoiseCaveSampler {
                   actualY, actualSurfaceY, actualBottomY, virtualSurfaceY, field.minY()
                );
                BlockState vanillaState = field.state(localX, virtualY, localZ);
-               boolean caveAllowed = applyCaves
-                  && !carvingBlocked
-                  && (floodGuardYByColumn == null || actualY < floodGuardYByColumn[columnIndex]);
-               BlockState replacement = caveAllowed ? caveReplacement(vanillaState, actualY, tellusSeaLevel) : null;
-               boolean noiseFeature = false;
-               if (replacement == null && (applyOreVeins || applyGeologicalStonePatches)) {
-                  replacement = oreVeinReplacement(vanillaState, applyOreVeins, applyGeologicalStonePatches);
-                  boolean geologicalStone = replacement != null
-                     && UndergroundFeatureClassifier.isGeologicalStone(replacement.getBlock());
-                  if (geologicalStone
-                     && !GeologicalStonePlacementPolicy.isNoiseStoneBuried(actualY, minimumNearbySurfaceY)) {
-                     replacement = null;
-                  }
-                  noiseFeature = replacement != null;
-               }
+                Decision decision = TellusEarthUndergroundDecisionKernel.resolve(classify(vanillaState),
+                   actualY, tellusSeaLevel, applyCaves, carvingBlocked,
+                   floodGuardYByColumn != null && actualY >= floodGuardYByColumn[columnIndex],
+                   applyOreVeins, applyGeologicalStonePatches, minimumNearbySurfaceY);
+                BlockState replacement = materialize(decision, vanillaState);
                if (replacement == null) {
                   continue;
                }
 
                cursor.set(worldX, actualY, worldZ);
                BlockState current = chunk.getBlockState(cursor);
-               boolean replaceable = noiseFeature
+                boolean replaceable = decision.noiseFeature()
                   ? current.is(BlockTags.BASE_STONE_OVERWORLD)
                   : VanillaNoiseFieldSampler.isCarvable(current);
                if (!replaceable) {
@@ -160,17 +165,24 @@ public final class TellusVanillaNoiseCaveSampler {
       }
    }
 
-   private static BlockState caveReplacement(BlockState vanillaState, int actualY, int tellusSeaLevel) {
-      if (vanillaState.isAir()) {
-         return CAVE_AIR;
-      }
-      if (vanillaState.is(Blocks.LAVA)) {
-         return LAVA;
-      }
-      if (!vanillaState.getFluidState().isEmpty()) {
-         return actualY <= tellusSeaLevel ? WATER : CAVE_AIR;
-      }
-      return null;
+    static Sample classify(BlockState state) {
+       if (state.isAir()) return Sample.AIR;
+       if (state.is(Blocks.LAVA)) return Sample.LAVA;
+       if (!state.getFluidState().isEmpty()) return Sample.FLUID;
+       if (state.is(Blocks.COPPER_ORE) || state.is(Blocks.RAW_COPPER_BLOCK)
+          || state.is(Blocks.DEEPSLATE_IRON_ORE) || state.is(Blocks.RAW_IRON_BLOCK)) return Sample.ORE_VEIN;
+       if (state.is(Blocks.GRANITE) || state.is(Blocks.TUFF)) return Sample.GEOLOGICAL_STONE;
+       return Sample.SOLID;
+    }
+
+    static BlockState materialize(Decision decision, BlockState sampled) {
+       return switch (decision) {
+          case NONE -> null;
+          case CAVE_AIR -> CAVE_AIR;
+          case WATER -> WATER;
+          case LAVA -> LAVA;
+          case SAMPLED_FEATURE -> sampled;
+       };
    }
 
    static BlockState oreVeinReplacement(

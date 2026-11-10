@@ -1,0 +1,22 @@
+{
+  "kind": "production entrypoint integration and Codec encoder correction",
+  "parent": "21046fb05679aa6cf135d59f43f976b797026ac6",
+  "sourceSHA256": {
+    "src/main/java/com/yucareux/tellus/worldgen/EarthChunkGenerator.java": "0402dca2f22c1383d12f6c7202a09c3abad45dd3085a17f1df74eabd755c1d20",
+    "src/main/java/com/yucareux/tellus/worldgen/caves/TellusVanillaNoiseCaveSampler.java": "f325465766e4ce45f26b7f6596330f1add215e2c4a8288207ebb20549f28f7f6",
+    "src/main/java/com/yucareux/tellus/worldgen/decision/TellusEarthUndergroundDecisionKernel.java": "54e74bb2cd9d6f6cd3deae7c043954518ad73969009dbe3b97434b07d6a66c3d",
+    "src/main/java/com/yucareux/tellus/worldgen/decision/TellusRealtimeSnowDecisionKernel.java": "2b14f0cb7001afbf3f90ed24663175957812349fe936255f14ec8febd8fee672",
+    "src/main/java/com/yucareux/tellus/worldgen/feature/TellusNativeRealtimeSnowPlacement.java": "ac1a1aec5c156a59bd2a3a8f06f2319f18eb6bc4d7d65c0e8a74088e9c2175ed",
+    "mc1201/src/main/java/com/yucareux/tellus/worldgen/CubeNetChunkGenerator.java": "9eb7e49198049e5b2f2d95fceae0e0bda303741d24935cb5832bedf2fa3b2c6f",
+    "shared/mc1211/src/main/java/com/yucareux/tellus/worldgen/CubeNetChunkGenerator.java": "bf24608c22c0ec9dbcd94626764fd0479ad474ccb6abcbc9dfe60bc469d634e5",
+    "src/test/java/com/yucareux/tellus/worldgen/CubeNetNativeBaseProviderPipelineTest.java": "fcf56e26a863f9f06d2efb4dfdb196bdee4bce720a88189db32b19e8d1f32c9c",
+    "src/test/java/com/yucareux/tellus/worldgen/caves/TellusEarthUndergroundProductionTest.java": "98dab9e59020f7debb0960b988525191a07d0c7546364031992ac07d6914a519",
+    "src/test/java/com/yucareux/tellus/worldgen/feature/TellusNativeRealtimeSnowPlacementTest.java": "e79b859ee64cac36874d21b7d5545b5ee63ef6559346ac6f78e9868f660a4b2b"
+  },
+  "versions": {
+    "mc1201": 540,
+    "mc1211": 531
+  },
+  "scope": "selected regression cohort; native ProtoChunk differential; no new live GIS/world restart acceptance",
+  "codecCompatibility": "schema and decoding unchanged; new encoding stores raw constructor input; old encoded runtime interpretation preserved and repeated saves stable"
+}

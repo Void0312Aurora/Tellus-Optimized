@@ -281,7 +281,7 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
          .forGetter(generator -> generator.singularityConfig().transitionWidthMeters()),
       BIOME_SOURCE_CODEC.fieldOf("biome_source").forGetter(ChunkGenerator::getBiomeSource),
       Codec.DOUBLE.fieldOf("world_scale").forGetter(CubeNetChunkGenerator::worldScale),
-      Codec.INT.fieldOf("sea_level").forGetter(CubeNetChunkGenerator::getSeaLevel),
+       Codec.INT.fieldOf("sea_level").forGetter(generator -> generator.configuredSeaLevel),
       Codec.intRange(-2032, 2016).fieldOf("min_y").forGetter(CubeNetChunkGenerator::getMinY),
       Codec.intRange(16, 4064).fieldOf("height").forGetter(CubeNetChunkGenerator::getGenDepth),
       Codec.intRange(0, 35).optionalFieldOf("experimental_apron_chunks", CubeNetViewCoverage.DEFAULT_APRON_CHUNKS)
@@ -317,7 +317,10 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
 
    }));
 
-   private final int seaLevel;
+    // Persist the constructor input, not the effective level with heightOffset
+    // already applied. The legacy decoder and on-disk field schema stay unchanged.
+    private final int configuredSeaLevel;
+    private final int seaLevel;
    private final int minY;
    private final int height;
    private final SphereWorldModel model;
@@ -523,7 +526,8 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
       Preconditions.checkArgument(minY % 16 == 0 && height % 16 == 0 && height >= 16
          && minY >= -2032 && (long)minY + height <= 2032,
          "vertical range must be section-aligned within [-2032, 2032)");
-      this.seaLevel = seaLevel + this.cubeNetHeightOffset - EarthGeneratorSettings.DEFAULT.heightOffset();
+       this.configuredSeaLevel = seaLevel;
+       this.seaLevel = seaLevel + this.cubeNetHeightOffset - EarthGeneratorSettings.DEFAULT.heightOffset();
       this.minY = minY;
       this.height = height;
       this.model = SphereWorldModel.forWorldScale(scale);
@@ -3448,18 +3452,8 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
             if (!TellusRealtimeState.shouldApplySnow(earthX, earthZ)
                || !SnowSlopePolicy.shouldCover(earthX, earthZ, slope)) continue;
             int surfaceY = this.materializer.height(surface.elevationMeters());
-            BlockPos ground = new BlockPos(worldX, surfaceY, worldZ);
-            BlockState surfaceState = level.getBlockState(ground);
-            if (!surfaceState.getFluidState().isEmpty()) continue;
-            BlockPos above = ground.above();
-            BlockState snow = Blocks.SNOW.defaultBlockState();
-            if (level.getBlockState(above).isAir() && snow.canSurvive(level, above)) {
-               level.setBlock(above, snow, 2);
-               if (surfaceState.hasProperty(BlockStateProperties.SNOWY)
-                  && !(Boolean)surfaceState.getValue(BlockStateProperties.SNOWY)) {
-                  level.setBlock(ground, surfaceState.setValue(BlockStateProperties.SNOWY, Boolean.TRUE), 2);
-               }
-            }
+             BlockPos ground = new BlockPos(worldX, surfaceY, worldZ);
+             com.yucareux.tellus.worldgen.feature.TellusNativeRealtimeSnowPlacement.place(level, ground, 2);
          }
       }
    }

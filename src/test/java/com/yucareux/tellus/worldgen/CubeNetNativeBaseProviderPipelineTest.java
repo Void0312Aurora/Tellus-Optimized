@@ -271,7 +271,7 @@ class CubeNetNativeBaseProviderPipelineTest {
    @SuppressWarnings("unchecked") static Codec<CubeNetChunkGenerator> codec() throws Exception{
       Object value=CubeNetChunkGenerator.class.getField("CODEC").get(null);return value instanceof MapCodec<?> map?(Codec<CubeNetChunkGenerator>)map.codec():(Codec<CubeNetChunkGenerator>)value;
    }
-   @Test void wholeGeneratorCodecAndNativeClassifierRemainUnchangedByExplicitFactories() throws Exception {
+    @Test void wholeGeneratorCodecRemainsFactoryInvariantAndNonDefaultOffsetRoundtrips() throws Exception {
       try(var ignored=ManagedTerrainNetworkPolicy.cacheOnly()){
          AtomicInteger reads=new AtomicInteger();var gen=generator(source(settings(true),new AtomicInteger()),(point,resolution)->{reads.incrementAndGet();return new SphereChunkSampler.SurfaceData(10,30);},false,0);
          var codec=codec();var ops=SphereFaceNativeBiomeKernelBridgeTest.ops();var original=codec.encodeStart(ops,gen).result().orElseThrow();
@@ -279,10 +279,39 @@ class CubeNetNativeBaseProviderPipelineTest {
          var restored=codec.parse(ops,original).result().orElseThrow();assertInstanceOf(CubeNetBiomeSource.class,restored.getBiomeSource());
          assertEquals(gen.worldScale(),restored.worldScale());assertEquals(gen.getMinY(),restored.getMinY());assertEquals(gen.getGenDepth(),restored.getGenDepth());
          assertEquals(gen.heightOffset(),restored.heightOffset());
-         assertEquals(gen.getSeaLevel()+12,restored.getSeaLevel(),"Characterize the existing non-default-offset Codec drift without changing it");
-         System.out.println("CUBE_NATIVE_CODEC_EXISTING_OFFSET encodedSea="+gen.getSeaLevel()+" decodedSea="+restored.getSeaLevel()+" drift=12");
-         // Existing native Codec getter stores effectiveSea while its constructor applies the offset again.
-         // This test records factory invariance, not a newly promised non-default-heightOffset save roundtrip.
-      }
-   }
+          assertEquals(gen.getSeaLevel(),restored.getSeaLevel());
+          assertEquals(64,original.getAsJsonObject().get("sea_level").getAsInt());
+          System.out.println("CUBE_NATIVE_CODEC_OFFSET effectiveSea="+gen.getSeaLevel()+" decodedSea="+restored.getSeaLevel()+" drift=0");
+       }
+    }
+
+    @Test void legacyEncodedSeaKeepsItsDecodeMeaningAndStopsAccumulatingAcrossSaves() throws Exception {
+       try(var ignored=ManagedTerrainNetworkPolicy.cacheOnly()) {
+          var codec=codec();var ops=SphereFaceNativeBiomeKernelBridgeTest.ops();
+          for(int delta:new int[]{-12,0,12}) {
+             var settingsJson=CubeNetBiomeSource.Settings.CODEC.encodeStart(JsonOps.INSTANCE,settings(false)).result().orElseThrow().getAsJsonObject();
+             settingsJson.addProperty("height_offset",EarthGeneratorSettings.DEFAULT.heightOffset()+delta);
+             var configured=CubeNetBiomeSource.Settings.CODEC.parse(JsonOps.INSTANCE,settingsJson).result().orElseThrow();
+             var gen=generator(source(configured,new AtomicInteger()),(point,resolution)->new SphereChunkSampler.SurfaceData(10,30),false,0);
+             assertEquals(64+delta,gen.getSeaLevel(),"new-world construction must not change");
+             var encoded=codec.encodeStart(ops,gen).result().orElseThrow().getAsJsonObject();
+             assertEquals(64,encoded.get("sea_level").getAsInt());
+             var fresh=codec.parse(ops,encoded).result().orElseThrow();
+             assertEquals(gen.getSeaLevel(),fresh.getSeaLevel());
+
+             // Old releases stored effective sea here. Do not reinterpret or
+             // migrate that old value: decode it exactly as the old constructor did.
+             var legacy=encoded.deepCopy();legacy.addProperty("sea_level",64+delta);
+             var loaded=codec.parse(ops,legacy).result().orElseThrow();
+             int legacyRuntimeSea=64+delta+delta;
+             assertEquals(legacyRuntimeSea,loaded.getSeaLevel());
+             for(int save=0;save<4;save++) {
+                var next=codec.encodeStart(ops,loaded).result().orElseThrow().getAsJsonObject();
+                assertEquals(legacy,next,"same schema and every old stored field must survive");
+                loaded=codec.parse(ops,next).result().orElseThrow();
+                assertEquals(legacyRuntimeSea,loaded.getSeaLevel(),"no repeated offset drift");
+             }
+          }
+       }
+    }
 }
