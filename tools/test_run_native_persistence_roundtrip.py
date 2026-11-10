@@ -95,6 +95,24 @@ class RunnerContracts(unittest.TestCase):
                 with self.subTest(key=key), self.assertRaises(ValueError):
                     runner.check_report(path, "generate", args, "probe")
 
+    def test_batch_recovery_requires_two_original_payloads_startup_replay_and_resumed_engine_saves(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "report.json"
+            args = types.SimpleNamespace(chunk_x=1, chunk_z=-2)
+            report = dict(status="PASS", phase="recover_batch", probeId="probe", syntheticSampler=False,
+                          chunkX=1, chunkZ=-2, diskReadBeforeDemandLoad=True,
+                          nativeTargetsUnloaded=True, batchCompleteOriginalNBTEqual=True, engineSavingResumed=True,
+                          batchOriginalDigests=["a" * 64, "b" * 64],
+                          startupRecoveryDiagnostics=["recovered native batch journal fixture.prepared"])
+            path.write_text(json.dumps(report), encoding="utf-8")
+            self.assertEqual(runner.check_report(path, "recover_batch", args, "probe"), report)
+            for key, wrong in (("nativeTargetsUnloaded", False), ("batchCompleteOriginalNBTEqual", False),
+                               ("engineSavingResumed", False), ("batchOriginalDigests", ["a" * 64]),
+                               ("startupRecoveryDiagnostics", [])):
+                path.write_text(json.dumps({**report, key: wrong}), encoding="utf-8")
+                with self.subTest(key=key), self.assertRaises(ValueError):
+                    runner.check_report(path, "recover_batch", args, "probe")
+
     @unittest.skipUnless(os.name == "nt", "Windows Job Object contract")
     def test_windows_owned_job_closing_terminates_the_assigned_process(self):
         job = runner.OwnedWindowsJob()

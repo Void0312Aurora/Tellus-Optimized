@@ -32,7 +32,7 @@ final class TellusNativeBatchJournal {
     private static final Base64.Encoder ENCODER = Base64.getUrlEncoder().withoutPadding();
     private static final Base64.Decoder DECODER = Base64.getUrlDecoder();
 
-    enum State { PREPARED, COMMITTED }
+    enum State { PREPARED, QUARANTINED, COMMITTED }
     record Entry(ChunkPos position, CompoundTag previous, CompoundTag proposed) {
         Entry {
             position = Objects.requireNonNull(position, "position");
@@ -61,6 +61,10 @@ final class TellusNativeBatchJournal {
         write(record.path(), State.COMMITTED, record.binding(), record.entries());
     }
 
+    static void markQuarantined(Record record) throws IOException {
+        write(record.path(), State.QUARANTINED, record.binding(), record.entries());
+    }
+
     static void delete(Record record) throws IOException {
         Files.deleteIfExists(record.path());
     }
@@ -72,6 +76,8 @@ final class TellusNativeBatchJournal {
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(directory, "*" + SUFFIX)) {
             for (Path path : stream) {
                 Record record = read(path);
+                if (binding.worldRoot().equals(record.binding().worldRoot())
+                    && !binding.dimension().equals(record.binding().dimension())) continue;
                 if (!sameBinding(binding, record.binding()))
                     throw new IOException("native batch journal binding differs: " + path.getFileName());
                 result.add(record);
@@ -143,9 +149,12 @@ final class TellusNativeBatchJournal {
         String bodyText = body.toString();
         body.append("sha256=").append(sha256(bodyText.getBytes(StandardCharsets.UTF_8))).append('\n');
         byte[] bytes = body.toString().getBytes(StandardCharsets.UTF_8);
+        if (bytes.length > MAX_BYTES) throw new IOException("native batch journal exceeds byte budget");
         Path temporary = directory.resolve(path.getFileName() + ".tmp." + UUID.randomUUID());
         try (FileChannel channel = FileChannel.open(temporary, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE)) {
-            channel.write(ByteBuffer.wrap(bytes)); channel.force(true);
+            ByteBuffer buffer = ByteBuffer.wrap(bytes);
+            while (buffer.hasRemaining()) channel.write(buffer);
+            channel.force(true);
         }
         try {
             Files.move(temporary, path, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);

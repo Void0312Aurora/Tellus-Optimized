@@ -1,0 +1,158 @@
+{
+  "scope": "native unloaded two-FULL-chunk hard-process-termination recovery and engine save admission; not power-loss durability, active loaded-chunk batch replacement, external uncooperative region writers or unified default runtime rollout",
+  "targetChunks": [
+    [
+      616246,
+      -351597
+    ],
+    [
+      616247,
+      -351597
+    ]
+  ],
+  "parent": "2764e622b0a1a13ed6d49dea1410a2e1f3e635a8",
+  "versions": {
+    "mc1201": {
+      "status": "PASS",
+      "preparedJournal": {
+        "path": "D:\\Temp\\tellus-native-crash-mc1201-20261110-a\\world\\tellus\\persistence-journal\\789e281a-f72b-43ca-aeb8-5fbc47ddaafd.prepared",
+        "sha256": "8e5dfea162895c41044b4a87f7c8400a5b32e134f5b723c96d00a993ece9f431",
+        "state": "PREPARED",
+        "count": 2,
+        "bytes": 284688
+      },
+      "quarantinedJournal": {
+        "path": "D:\\Temp\\tellus-native-crash-mc1201-20261110-a\\world\\tellus\\persistence-journal\\789e281a-f72b-43ca-aeb8-5fbc47ddaafd.prepared",
+        "sha256": "73c24850cdd9dec89713c20de3d6f165763daab12ee2331c9de4f92aeb1af8c9",
+        "state": "QUARANTINED",
+        "count": 2,
+        "bytes": 284691
+      },
+      "crashedServerPid": 36440,
+      "completeNativeDiskNBTEqualsOriginalAcrossTwoRestarts": true,
+      "failedRecoveryNeverReachedNormalReadiness": true,
+      "sourceWorldAndCacheUnchanged": true,
+      "sourceCodeUnchangedDuringRun": true,
+      "originalNativeDigests": [
+        "e7ee5c2584aa08f95baa9acf056d179d616c9c9bb4dd4647088bd6127e435b22",
+        "cd826c6f1783622c84291d0f2b5c2f1c4c8901843a58f78588388be22a11bbd1"
+      ],
+      "regressionTests": 549
+    },
+    "mc1211": {
+      "status": "PASS",
+      "preparedJournal": {
+        "path": "D:\\Temp\\tellus-native-crash-mc1211-20261110-a\\world\\tellus\\persistence-journal\\2bfe99c2-90bb-48fd-b7d0-34d9881b4405.prepared",
+        "sha256": "efa514a737f11e1dc3bc9a22127bb91c1f20bff2fc746e28696ba4efb73371e8",
+        "state": "PREPARED",
+        "count": 2,
+        "bytes": 284688
+      },
+      "quarantinedJournal": {
+        "path": "D:\\Temp\\tellus-native-crash-mc1211-20261110-a\\world\\tellus\\persistence-journal\\2bfe99c2-90bb-48fd-b7d0-34d9881b4405.prepared",
+        "sha256": "1b2c9ed560307714412c1cc33fe567e33ed0ba81db852a8d22f4459ead2e2c1f",
+        "state": "QUARANTINED",
+        "count": 2,
+        "bytes": 284691
+      },
+      "crashedServerPid": 41220,
+      "completeNativeDiskNBTEqualsOriginalAcrossTwoRestarts": true,
+      "failedRecoveryNeverReachedNormalReadiness": true,
+      "sourceWorldAndCacheUnchanged": true,
+      "sourceCodeUnchangedDuringRun": true,
+      "originalNativeDigests": [
+        "e7ee5c2584aa08f95baa9acf056d179d616c9c9bb4dd4647088bd6127e435b22",
+        "cd826c6f1783622c84291d0f2b5c2f1c4c8901843a58f78588388be22a11bbd1"
+      ],
+      "regressionTests": 540
+    }
+  },
+  "files": {
+    "README.md": "ae2d79b6f208b812eb77ed6b31268d9065ef304e1bc5390283faac5d0b902ecc",
+    "mc1201/crash-recovery.json": "37fd98bdcb8d8e2a4c9bafb59fd23959ceb409f0300ec9c35b05edc2414524f3",
+    "mc1201/crash_batch.server.log.gz": "a335e1dd640cc11a52365061fa9404d8423aa4f8e088853619a35f21523231da",
+    "mc1201/ee7beba6-9d06-477f-8a3a-353c9bcac8f6-batch-original-0.snbt": "a177d1e2119987f9c8c056885a3734784f3054a1014bc098e94ec7e8cf7e7baf",
+    "mc1201/ee7beba6-9d06-477f-8a3a-353c9bcac8f6-batch-original-1.snbt": "16f417c0373cd7ac0a9d93c1e6d47256d33d33de7d00cd648c92ba0a6fa0e912",
+    "mc1201/ee7beba6-9d06-477f-8a3a-353c9bcac8f6-crash_batch.json": "64fb77178b4db09bd17bc47990b2e0ff8876353a95e424c4a6fbabffce43271d",
+    "mc1201/ee7beba6-9d06-477f-8a3a-353c9bcac8f6-recover_batch.json": "c10f83e429369f428d2da649da097f52365487ad0ad8be7a9bfc82761929770c",
+    "mc1201/ee7beba6-9d06-477f-8a3a-353c9bcac8f6-verify_batch.json": "c32be4f1bf6becc0414effea83b3608c44bf220e6cabe66cb54af6973ac93501",
+    "mc1201/failed_recovery.server.log.gz": "77d187e3ca88d3b933c623174cad8e43f6fab8f6fab6f317aea0de6d6044c260",
+    "mc1201/initial-controller-exit-check-failure.json": "8dc15bdc0619cd2218829906673f3d04cc9faebdf902c33a0885bdd1157930e4",
+    "mc1201/recover_batch.server.log.gz": "03187e64afcee8e7ac41a804dce8114cc4fc96fe5a4233ffb7e09b54138c6157",
+    "mc1201/regression.json": "2ed2f4711ff3a681649b7e332c0884609c2dfc470dff9def8b203952c99da74e",
+    "mc1201/roundtrip.json": "1964746340c3276dbef3fa7db51792e15721da544a48eefbc6814de974f870fa",
+    "mc1201/source-cache-manifest.json": "b8ca7b5c77c89138270aa2d61c82d848fbea37244ede7b338d3f7989f612b4b6",
+    "mc1201/source-world-manifest.json": "1351a6326ccbf560369e041e5befcffac196a864cd9334bc80a6772815e63e9a",
+    "mc1201/verify_batch.server.log.gz": "742cc7b37a57033690b9215b8a05419280d94192f8cc66c84dfe6b4da2e71001",
+    "mc1211/0931d875-4330-4637-bd7c-e441d84fdfb1-batch-original-0.snbt": "a177d1e2119987f9c8c056885a3734784f3054a1014bc098e94ec7e8cf7e7baf",
+    "mc1211/0931d875-4330-4637-bd7c-e441d84fdfb1-batch-original-1.snbt": "16f417c0373cd7ac0a9d93c1e6d47256d33d33de7d00cd648c92ba0a6fa0e912",
+    "mc1211/0931d875-4330-4637-bd7c-e441d84fdfb1-crash_batch.json": "edde5e977fa148881748378668a86c9b4317aa285cc2d673d74f53e92043b470",
+    "mc1211/0931d875-4330-4637-bd7c-e441d84fdfb1-recover_batch.json": "72a22ab2b8cbe3a47fd0dc89ca9a18edc5c66bdbb99a6d5ac62c7e37131e7040",
+    "mc1211/0931d875-4330-4637-bd7c-e441d84fdfb1-verify_batch.json": "f2a02ff66035ff801435633f09c00881bda76a58aae60ce93d4caa4e0d3aed81",
+    "mc1211/crash-recovery.json": "25f0c383d397ff6185a2b82505b19c52666fd8843328eacc2b597871bbecd5b0",
+    "mc1211/crash_batch.server.log.gz": "f0e426e3d0e37893587932e7506da3ffaa8c66a0e843f008526df15f68ec9b64",
+    "mc1211/failed_recovery.server.log.gz": "22e7437dbd7c43937e67ce869e4c43a9c0662d5c56a87ea005a416d16f54dea5",
+    "mc1211/recover_batch.server.log.gz": "88a53b41913986b559cc3ca6a4cd537e70944290d8e768bc8ca80688b9635be0",
+    "mc1211/regression.json": "96cb9da9d9514bc70f84adb3ed87e9c6359fc79b0086027a35d7485d21994f48",
+    "mc1211/roundtrip.json": "5c82f9664783f57b84d2b6c203b60ba5d9289a1b0c8117127bd78da25d5cdc06",
+    "mc1211/source-cache-manifest.json": "b8ca7b5c77c89138270aa2d61c82d848fbea37244ede7b338d3f7989f612b4b6",
+    "mc1211/source-world-manifest.json": "1351a6326ccbf560369e041e5befcffac196a864cd9334bc80a6772815e63e9a",
+    "mc1211/verify_batch.server.log.gz": "8375a12867142522091b65af3a93d92748a92e5e1fd4c10a87ef88dade4bff4c"
+  },
+  "sourceSHA256": {
+    "src/main/java/com/yucareux/tellus/worldgen/persistence/TellusNativeBatchJournal.java": "682553419a745d03654b5018e8d10a50229de15c85afcb80f970e9e0aff6e6e3",
+    "src/main/java/com/yucareux/tellus/worldgen/persistence/TellusNativeChunkPersistence.java": "5cc4ddd4ad06db3578cd53a064951dc7c0fbd320388422f4e7ceb53dc8f313a7",
+    "src/main/java/com/yucareux/tellus/worldgen/persistence/TellusNativeChunkMapAccess.java": "d8d05807502f2d67ce390928e77596fa209f6ed9758d3d61613e879822c7b382",
+    "src/main/java/com/yucareux/tellus/worldgen/persistence/TellusNativeSaveFence.java": "83b7ae67fba3a3258bbc8216e29626e525deb9339540052042f7f3036d2e1c1a",
+    "src/main/java/com/yucareux/tellus/mixin/TellusNativeChunkSaveMixin.java": "5916bf1686af0e106c1233a359f511e9a05c6878a07df9f99147651c97b066b3",
+    "src/main/java/com/yucareux/tellus/mixin/TellusNativeRecoveryStartupMixin.java": "afe9bbcf99abd9523d356ca43cde40208a782cecfb3639a499ac7260af3bc5d9",
+    "src/main/java/com/yucareux/tellus/worldgen/TellusPersistenceProbeCommand.java": "39e77edd77a0e05837bc15bf5c40c40028a7909cc948a34f9b601c6c13bd5e69",
+    "mc1201/src/main/resources/tellus.mixins.json": "fd6f5d7ebf67cdd959e0112c692e7838279291c497057e97f130871839d59974",
+    "shared/mc1211/src/main/resources/tellus.mixins.json": "6284d65ff2494a6d5aea80a14fbbb4f8d050d0a89c60b1b13afb8e2ea6324d29",
+    "src/test/java/com/yucareux/tellus/worldgen/persistence/TellusNativeChunkPersistenceTest.java": "0305a804abcb55cc2e1818a44d244dd07d8e1e0615cb8598af7198357a8af2fd",
+    "tools/run_native_persistence_roundtrip.py": "85f66c2ed5cc0d55461ef47db570939010bf8438b2c7940ceffa447f15e10dfd",
+    "tools/test_run_native_persistence_roundtrip.py": "a612882cf1e8d504e5954c089c3a10da8b2d7a646ea7a50d048b9406189f1708",
+    "tools/run_native_crash_recovery.py": "37c09f2e31b5c9be70a2de8ba06b10f36fcd297e09d7104c1aa3fba87627657f"
+  },
+  "parity": {
+    "biome": {
+      "cases": 7,
+      "mismatches": [
+        {
+          "case": "bare/BWh",
+          "cube": "minecraft:stony_peaks",
+          "earth": "minecraft:desert"
+        }
+      ]
+    },
+    "checks": {
+      "biomeCaseSet": true,
+      "biomeCount": true,
+      "biomeMismatches": true,
+      "columnCount": true,
+      "columnMismatches": true
+    },
+    "columns": {
+      "mismatches": [],
+      "rightRows": 13824,
+      "rows": 13824
+    },
+    "expected": {
+      "biomeCases": 7,
+      "biomeMismatches": 1,
+      "columnMismatches": 0,
+      "columns": 13824,
+      "knownBiomeCase": "bare/BWh",
+      "originalBiomeCases": [
+        "bare/BWh",
+        "cropland/Dfb",
+        "forest/Cfb",
+        "grassland/Cfa",
+        "mangrove/Af",
+        "snow/ET",
+        "wetland/Cfa"
+      ]
+    },
+    "status": "PASS"
+  }
+}

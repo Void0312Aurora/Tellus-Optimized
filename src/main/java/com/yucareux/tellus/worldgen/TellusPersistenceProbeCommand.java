@@ -56,7 +56,8 @@ public final class TellusPersistenceProbeCommand {
         platform.registerCommands(dispatcher -> dispatcher.register(Commands.literal("tellus")
             .then(Commands.literal("persistence")
                 .requires(source -> Boolean.getBoolean("tellus.persistence.probe") && source.hasPermission(4))
-                .then(phase("capture")).then(phase("verify")).then(phase("generate")))));
+                .then(phase("capture")).then(phase("verify")).then(phase("generate"))
+                .then(phase("crash_batch")).then(phase("recover_batch")).then(phase("verify_batch")))));
     }
 
     private static com.mojang.brigadier.builder.LiteralArgumentBuilder<CommandSourceStack> phase(String phase) {
@@ -93,6 +94,85 @@ public final class TellusPersistenceProbeCommand {
             result.add("binding", bindingJson(persistence.binding()));
             result.addProperty("syntheticSampler", false);
             result.addProperty("sourceBoundary", "pre-existing native FULL world chunk; GIS provenance recorded by isolated runner");
+            if (phase.endsWith("_batch")) {
+                if (!Boolean.getBoolean("tellus.persistence.probe.crash"))
+                    throw new IllegalStateException("explicit copied-world crash probe property required");
+                var positions = java.util.List.of(pos, new ChunkPos(Math.addExact(x, 1), z));
+                var originals = new java.util.ArrayList<CompoundTag>();
+                var candidates = new java.util.ArrayList<CompoundTag>();
+                var digests = new com.google.gson.JsonArray();
+                for (int ordinal = 0; ordinal < positions.size(); ordinal++) {
+                    var p = positions.get(ordinal);
+                    if (((com.yucareux.tellus.worldgen.persistence.TellusNativeChunkMapAccess)level.getChunkSource().chunkMap)
+                        .tellus$hasNativeHolder(p.toLong())) throw new IllegalStateException("crash probe targets must stay unloaded");
+                    CompoundTag nativeDisk = persistence.readExistingNBT(p).orElseThrow(() -> new IllegalStateException("existing native crash baseline required"));
+                    Path original = directory.resolve(id + "-batch-original-" + ordinal + ".snbt");
+                    if (phase.equals("crash_batch")) {
+                        if (Files.exists(original)) throw new IllegalStateException("batch original already exists");
+                        forceProbeFile(original, nativeDisk.toString());
+                        CompoundTag candidate = nativeDisk.copy();
+                        boolean changed = false;
+                        for (var sectionTag : candidate.getList("sections", 10)) {
+                            var section = (CompoundTag)sectionTag;
+                            for (var paletteTag : section.getCompound("block_states").getList("palette", 10)) {
+                                var palette = (CompoundTag)paletteTag;
+                                if (palette.getString("Name").equals("minecraft:stone")) {
+                                    palette.putString("Name", "minecraft:gold_block"); changed = true; break;
+                                }
+                            }
+                            if (changed) break;
+                        }
+                        if (!changed) throw new IllegalStateException("real stone palette required for crash mutation");
+                        candidates.add(candidate); originals.add(nativeDisk);
+                    } else {
+                        if (Files.size(original) > MAX_SNBT_BYTES) throw new IllegalStateException("batch original exceeds probe budget");
+                        var expected = TagParser.parseTag(Files.readString(original, StandardCharsets.UTF_8));
+                        if (!TellusNativeChunkPersistence.sameNBT(expected, nativeDisk, Set.of()))
+                            throw new IllegalStateException("recovered complete native disk NBT differs at " + p);
+                        originals.add(expected);
+                    }
+                    digests.add(TellusNativeChunkPersistence.digest(originals.get(ordinal)));
+                }
+                result.addProperty("diskReadBeforeDemandLoad", true);
+                result.add("batchOriginalDigests", digests);
+                result.addProperty("nativeTargetsUnloaded", true);
+                if (phase.equals("crash_batch")) {
+                    var entries = java.util.List.of(new TellusNativeChunkPersistence.BatchEntry(positions.get(0), candidates.get(0)),
+                        new TellusNativeChunkPersistence.BatchEntry(positions.get(1), candidates.get(1)));
+                    Path crashOutput = output;
+                    persistence.commitBatch(entries, (ordinal, p, point) -> {
+                        if (ordinal == 0 && point == TellusNativeChunkPersistence.Point.AFTER_READBACK) {
+                            if (!level.noSave || !com.yucareux.tellus.worldgen.persistence.TellusNativeSaveFence.deferEngineSave(level))
+                                throw new IllegalStateException("native save fence was not active");
+                            level.getChunkSource().chunkMap.flushWorker();
+                            var first = level.getChunkSource().chunkMap.read(positions.get(0)).join().orElseThrow();
+                            var second = level.getChunkSource().chunkMap.read(positions.get(1)).join().orElseThrow();
+                            if (!TellusNativeChunkPersistence.sameNBT(candidates.get(0), first, Set.of())
+                                || !TellusNativeChunkPersistence.sameNBT(originals.get(1), second, Set.of()))
+                                throw new IllegalStateException("native batch crash boundary did not contain one changed and one original chunk");
+                            result.addProperty("firstNativeChunkWritten", true);
+                            result.addProperty("secondNativeChunkUntouched", true);
+                            result.addProperty("nativeSaveFenceActive", true);
+                            result.addProperty("crashedServerPid", ProcessHandle.current().pid());
+                            result.addProperty("status", "CRASH_BOUNDARY");
+                            try { forceProbeFile(crashOutput, JSON.toJson(result) + "\n"); }
+                            catch (java.io.IOException failure) { throw new IllegalStateException(failure); }
+                            LOGGER.info("TELLUS_NATIVE_BATCH_CRASH_BOUNDARY result={}", crashOutput);
+                            Runtime.getRuntime().halt(86);
+                        }
+                    });
+                    throw new IllegalStateException("native crash boundary was not reached");
+                }
+                var startup = com.yucareux.tellus.worldgen.persistence.TellusNativeSaveFence.startupDiagnostics(level);
+                result.add("startupRecoveryDiagnostics", JSON.toJsonTree(startup));
+                if (phase.equals("recover_batch") && startup.stream().noneMatch(s -> s.startsWith("recovered native batch journal")))
+                    throw new IllegalStateException("batch recovery did not execute before prepareLevels");
+                result.addProperty("batchCompleteOriginalNBTEqual", true);
+                result.addProperty("engineSavingResumed", !level.noSave
+                    && !com.yucareux.tellus.worldgen.persistence.TellusNativeSaveFence.deferEngineSave(level));
+                if (!result.get("engineSavingResumed").getAsBoolean()) throw new IllegalStateException("native saving remained fenced after recovery");
+                return complete(source, phase, result, output);
+            }
             if (phase.equals("generate")) {
                 if (persistence.readExistingNBT(pos).isPresent())
                     throw new IllegalStateException("generation probe requires an absent disk chunk; existing terrain is not generation evidence");
@@ -296,9 +376,19 @@ public final class TellusPersistenceProbeCommand {
         LOGGER.info("{} result={}", marker, output);
         source.sendSuccess(() -> Component.literal(marker), false);
         // No extra tick between the same-tick snapshot and the native shutdown save.
-        if (Boolean.getBoolean("tellus.persistence.probe.populateLifecycle") || phase.equals("generate"))
+        if (Boolean.getBoolean("tellus.persistence.probe.populateLifecycle") || phase.equals("generate") || phase.endsWith("_batch"))
             source.getServer().halt(false);
         return 1;
+    }
+
+    private static void forceProbeFile(Path file, String text) throws java.io.IOException {
+        byte[] bytes = text.getBytes(StandardCharsets.UTF_8);
+        try (var channel = java.nio.channels.FileChannel.open(file, java.nio.file.StandardOpenOption.CREATE_NEW,
+            java.nio.file.StandardOpenOption.WRITE)) {
+            var buffer = java.nio.ByteBuffer.wrap(bytes);
+            while (buffer.hasRemaining()) channel.write(buffer);
+            channel.force(true);
+        }
     }
 
     private static JsonObject bindingJson(TellusNativeChunkPersistence.Binding binding) {

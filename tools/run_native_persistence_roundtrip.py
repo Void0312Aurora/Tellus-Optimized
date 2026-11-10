@@ -279,6 +279,14 @@ def check_report(path: Path, phase: str, args, probe_id: str) -> dict:
             raise ValueError("native generated full block/biome/NBT digests missing")
         if report.get("generatedNativeStatus") not in ("full", "minecraft:full"):
             raise ValueError("native generated status is not FULL")
+    if phase in ("recover_batch", "verify_batch"):
+        if not all(report.get(field) is True for field in ("nativeTargetsUnloaded", "batchCompleteOriginalNBTEqual", "engineSavingResumed")):
+            raise ValueError("native batch recovery/save coordination evidence missing")
+        if len(report.get("batchOriginalDigests", [])) != 2:
+            raise ValueError("two original complete native payload digests required")
+        if phase == "recover_batch" and not any(str(s).startswith("recovered native batch journal")
+            for s in report.get("startupRecoveryDiagnostics", [])):
+            raise ValueError("native startup recovery did not precede normal level preparation")
     if getattr(args, "populate_lifecycle", False):
         counts_key = "expectedLifecycleCounts" if phase == "capture" else "restartedDiskLifecycleCounts"
         counts = report.get(counts_key, {})

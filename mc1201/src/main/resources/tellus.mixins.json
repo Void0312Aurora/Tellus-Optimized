@@ -17,6 +17,8 @@
 		"HeightRangePlacementMixin",
 		"LevelHighYPackedCoordinateMixin",
 		"MinecraftServerInitialSpawnMixin",
+		"TellusNativeChunkSaveMixin",
+		"TellusNativeRecoveryStartupMixin",
 		"OceanMonumentBuildingMixin",
 		"OceanMonumentStructureMixin",
 		"SphericalEntityMoveMixin",

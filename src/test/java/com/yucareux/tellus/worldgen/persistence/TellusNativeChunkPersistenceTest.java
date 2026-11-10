@@ -227,6 +227,61 @@ class TellusNativeChunkPersistenceTest {
             assertTrue(result.diagnostics().get(0).contains("lease unavailable"));
         }
     }
+    @Test void pendingJournalBlocksNormalReadAndBothPublicationEntrypointsUntilRecovery() throws Exception {
+        var store = store(fullTag("partial")); var api = api(store);
+        var journal = TellusNativeBatchJournal.prepare(store.binding,
+            List.of(new TellusNativeBatchJournal.Entry(pos, fullTag("original"), fullTag("partial"))));
+        assertThrows(IllegalStateException.class, () -> api.readExistingNBT(pos));
+        assertEquals(TellusNativeChunkPersistence.Status.QUARANTINED,
+            api.commit(pos, fullTag("later"), TellusNativeChunkPersistence.FaultInjector.NONE).status());
+        assertEquals(TellusNativeChunkPersistence.BatchStatus.QUARANTINED,
+            api.commitBatch(List.of(new TellusNativeChunkPersistence.BatchEntry(pos, fullTag("later"))), TellusNativeChunkPersistence.BatchFaultInjector.NONE).status());
+        assertTrue(store.events.isEmpty());
+        assertFalse(api.recoverPendingBatches().isEmpty());
+        assertEquals("original", store.disk.getString("sentinel")); assertFalse(Files.exists(journal));
+        assertEquals(TellusNativeChunkPersistence.Status.COMMITTED,
+            api.commit(pos, fullTag("later"), TellusNativeChunkPersistence.FaultInjector.NONE).status());
+    }
+    @Test void incompleteSingleRecoveryLeavesDurableQuarantineAndCanBeRecoveredExplicitly() throws Exception {
+        var store = store(fullTag("original")); var api = api(store);
+        store.failSecondSubmission = new AssertionError("restore unavailable");
+        assertThrows(IllegalStateException.class, () -> api.commit(pos, fullTag("partial"), point -> {
+            if (point == TellusNativeChunkPersistence.Point.AFTER_SUBMIT) throw new IllegalStateException("fault");
+        }));
+        var records = TellusNativeBatchJournal.pending(store.binding); assertEquals(1, records.size());
+        assertEquals(TellusNativeBatchJournal.State.QUARANTINED, records.get(0).state());
+        assertEquals("original", records.get(0).entries().get(0).previous().getString("sentinel"));
+        var repaired = store(fullTag("partial")); var successor = api(repaired);
+        assertFalse(successor.recoverPendingBatches().isEmpty());
+        assertEquals("original", repaired.disk.getString("sentinel"));
+        assertFalse(successor.quarantined(pos)); assertTrue(TellusNativeBatchJournal.pending(repaired.binding).isEmpty());
+    }
+    @Test void batchErrorRestoresEarlierStagesAndRetainsOriginalErrorIdentity() throws Exception {
+        var second = new ChunkPos(-2,7);
+        var store = new BatchStore(store(fullTag("unused")).binding, Map.of(pos,fullTag("old-a"),second,fullTagAt(second,"old-b")));
+        var fatal = new AssertionError("later native stage");
+        assertSame(fatal, assertThrows(AssertionError.class, () -> api(store).commitBatch(List.of(
+            new TellusNativeChunkPersistence.BatchEntry(pos,fullTag("new-a")),
+            new TellusNativeChunkPersistence.BatchEntry(second,fullTagAt(second,"new-b"))), (ordinal,p,point) -> {
+                if(ordinal==1 && point==TellusNativeChunkPersistence.Point.AFTER_READBACK) throw fatal;
+            })));
+        assertEquals("old-a",store.disk.get(pos).getString("sentinel"));
+        assertEquals("old-b",store.disk.get(second).getString("sentinel"));
+        assertTrue(TellusNativeBatchJournal.pending(store.binding).isEmpty());
+    }
+    @Test void recoveryValidatesAllNativePayloadsBeforeAnySubmissionAndKeepsOtherDimensions() throws Exception {
+        var store = store(fullTag("original"));
+        var broken = fullTag("bad"); broken.remove("structures");
+        var path = TellusNativeBatchJournal.prepare(store.binding,
+            List.of(new TellusNativeBatchJournal.Entry(pos,broken,fullTag("candidate"))));
+        assertThrows(IllegalStateException.class, () -> api(store).recoverPendingBatches());
+        assertTrue(store.events.isEmpty()); assertEquals(TellusNativeBatchJournal.State.QUARANTINED,TellusNativeBatchJournal.read(path).state());
+        var b=store.binding;
+        var other = new TellusNativeChunkPersistence.Binding(root,"other:dimension",b.seed(),b.generatorType(),b.generatorProfile(),b.minY(),b.height(),b.seaLevel());
+        var otherStore=new FakeStore(other,fullTag("other"));
+        assertTrue(api(otherStore).recoverPendingBatches().isEmpty());
+        assertTrue(Files.exists(path));assertTrue(otherStore.events.isEmpty());
+    }
     @Test void nonEmptyEntityTickFluidAndPostProcessingPayloadsRoundTripAsNativeTags() {
         var old = fullTag("old"); var candidate = fullTag("nonempty");
         var entity = new CompoundTag(); entity.putString("id", "minecraft:chest"); entity.putInt("x", pos.x * 16 + 3); entity.putInt("y", 64); entity.putInt("z", pos.z * 16 + 4);

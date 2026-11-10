@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "phase": "verify_batch",
+  "probeId": "0931d875-4330-4637-bd7c-e441d84fdfb1",
+  "chunkX": 616246,
+  "chunkZ": -351597,
+  "binding": {
+    "worldRoot": "D:\\Temp\\tellus-native-crash-mc1211-20261110-a\\world",
+    "dimension": "tellus:earth_cube_net",
+    "seed": 2025402140,
+    "generatorType": "com.yucareux.tellus.worldgen.CubeNetChunkGenerator",
+    "generatorProfile": "0b0aa6a9a3a0af144f0c9e81ee932e9d4b0245b6f392bf1e586689099f5aa3fc",
+    "minY": -2032,
+    "height": 4064,
+    "seaLevel": 64
+  },
+  "syntheticSampler": false,
+  "sourceBoundary": "pre-existing native FULL world chunk; GIS provenance recorded by isolated runner",
+  "diskReadBeforeDemandLoad": true,
+  "batchOriginalDigests": [
+    "e7ee5c2584aa08f95baa9acf056d179d616c9c9bb4dd4647088bd6127e435b22",
+    "cd826c6f1783622c84291d0f2b5c2f1c4c8901843a58f78588388be22a11bbd1"
+  ],
+  "nativeTargetsUnloaded": true,
+  "startupRecoveryDiagnostics": [],
+  "batchCompleteOriginalNBTEqual": true,
+  "engineSavingResumed": true,
+  "status": "PASS"
+}

@@ -84,6 +84,9 @@ public final class TellusNativeChunkPersistence {
     }
 
     /** Narrow injection boundary used by contract tests, not evidence of a live world. */
+    @FunctionalInterface interface SaveFence extends AutoCloseable {
+        @Override void close();
+    }
     interface Store {
         Binding currentBinding();
         boolean mainThread();
@@ -91,6 +94,9 @@ public final class TellusNativeChunkPersistence {
         Optional<CompoundTag> read(ChunkPos pos);
         void submit(ChunkPos pos, CompoundTag tag);
         void flush();
+        default SaveFence quiesce(List<ChunkPos> positions, boolean requireUnloaded) { return () -> { }; }
+        default void quarantine() { }
+        default void recovered() { }
         default CompoundTag snapshot(ChunkAccess chunk) { throw new UnsupportedOperationException("no native target"); }
     }
 
@@ -100,6 +106,7 @@ public final class TellusNativeChunkPersistence {
     private static final ConcurrentHashMap<Key, String> QUARANTINE = new ConcurrentHashMap<>();
     private final Binding binding;
     private final Store store;
+    private List<String> startupRecoveryDiagnostics = List.of();
 
     private TellusNativeChunkPersistence(Binding binding, Store store) {
         this.binding = Objects.requireNonNull(binding); this.store = Objects.requireNonNull(store);
@@ -115,12 +122,17 @@ public final class TellusNativeChunkPersistence {
 
     /** The admitted root must equal the actual world root, not merely be its parent. */
     public static TellusNativeChunkPersistence open(boolean enabled, ServerLevel level, Path admittedWorldRoot) {
+        return open(enabled, level, admittedWorldRoot, FaultInjector.NONE);
+    }
+
+    public static TellusNativeChunkPersistence open(boolean enabled, ServerLevel level, Path admittedWorldRoot,
+                                                   FaultInjector recoveryFaults) {
         if (!enabled) throw new IllegalStateException("native persistence opt-in is disabled");
         Objects.requireNonNull(level, "level");
         if (!level.getServer().isSameThread()) throw new IllegalStateException("native persistence requires server main thread");
         var nativeStore = new LevelStore(level, realPath(admittedWorldRoot));
         TellusNativeChunkPersistence persistence = new TellusNativeChunkPersistence(nativeStore.currentBinding(), nativeStore);
-        persistence.recoverPendingBatches();
+        persistence.startupRecoveryDiagnostics = persistence.recoverPendingBatches(recoveryFaults);
         return persistence;
     }
 
@@ -129,6 +141,7 @@ public final class TellusNativeChunkPersistence {
     }
 
     public Binding binding() { return binding; }
+    public List<String> startupRecoveryDiagnostics() { return startupRecoveryDiagnostics; }
     public boolean quarantined(ChunkPos pos) { return QUARANTINE.containsKey(key(pos)); }
     public static String digest(CompoundTag tag) { return TellusCanonicalNbt.digest(tag); }
     public static String digest(CompoundTag tag, Set<String> excludedRootKeys) { return TellusCanonicalNbt.digest(tag, excludedRootKeys); }
@@ -140,6 +153,7 @@ public final class TellusNativeChunkPersistence {
     public Optional<CompoundTag> readExistingNBT(ChunkPos pos) {
         admit(pos);
         if (ACTIVE.containsKey(key(pos))) throw new IllegalStateException("native persistence operation is already active");
+        requireNoPendingJournal();
         store.flush();
         Optional<CompoundTag> value = Objects.requireNonNull(store.read(pos), "native read result");
         current();
@@ -151,6 +165,7 @@ public final class TellusNativeChunkPersistence {
         Objects.requireNonNull(chunk, "chunk");
         admit(chunk.getPos());
         if (ACTIVE.containsKey(key(chunk.getPos()))) throw new IllegalStateException("native persistence operation is already active");
+        requireNoPendingJournal();
         if (chunk.getMinBuildHeight() != binding.minY() || chunk.getHeight() != binding.height())
             throw new IllegalArgumentException("chunk build bounds differ from bound level");
         CompoundTag result = checkedCopy(store.snapshot(chunk), chunk.getPos());
@@ -165,6 +180,18 @@ public final class TellusNativeChunkPersistence {
      * BEFORE/AFTER faults are contract seams, not a process-crash transaction.
      */
     public CommitResult commit(ChunkPos pos, CompoundTag proposed, FaultInjector faults) {
+        try { admit(pos); }
+        catch (RuntimeException failure) { return rejected(pos, failure); }
+        try (var ignored = TellusNativeWorldLease.acquire(binding);
+             var saves = store.quiesce(List.of(pos), false)) {
+            if (pendingJournal()) return result(Status.QUARANTINED, null, null, "native journal recovery is required before any new publication");
+            return commitQueue(pos, proposed, faults, true);
+        } catch (IOException failure) {
+            return result(Status.REJECTED, null, null, "native world lease unavailable: " + failure.getClass().getName());
+        }
+    }
+
+    private CommitResult commitQueue(ChunkPos pos, CompoundTag proposed, FaultInjector faults, boolean ownJournal) {
         Objects.requireNonNull(faults, "faults");
         try { admit(pos); }
         catch (RuntimeException failure) { return rejected(pos, failure); }
@@ -188,6 +215,16 @@ public final class TellusNativeChunkPersistence {
             } catch (RuntimeException failure) {
                 return result(Status.REJECTED, null, null, "native persistence preflight: " + failure.getClass().getName());
             }
+            TellusNativeBatchJournal.Record journal = null;
+            if (ownJournal) {
+                try {
+                    var entries = List.of(new TellusNativeBatchJournal.Entry(pos, previous, candidate));
+                    journal = new TellusNativeBatchJournal.Record(TellusNativeBatchJournal.prepare(binding, entries),
+                        TellusNativeBatchJournal.State.PREPARED, binding, entries);
+                } catch (IOException failure) {
+                    return result(Status.REJECTED, previous, previous, "native journal prepare failed: " + failure.getClass().getName());
+                }
+            }
             try {
                 faults.at(Point.BEFORE_SUBMIT);
                 current();
@@ -201,7 +238,7 @@ public final class TellusNativeChunkPersistence {
                 if (!sameNBT(candidate, readback, Set.of())) throw new IllegalStateException("native full NBT readback differs");
                 faults.at(Point.AFTER_READBACK);
                 current();
-                return result(Status.COMMITTED, previous, readback, "native full NBT queue readback verified; loaded/crash lifecycle is external");
+                return finishSingleJournal(journal, result(Status.COMMITTED, previous, readback, "native full NBT queue readback verified"));
             } catch (RuntimeException | Error failure) {
                 Throwable recoveryFailure = null;
                 try {
@@ -216,13 +253,17 @@ public final class TellusNativeChunkPersistence {
                 } catch (RuntimeException | Error incomplete) { recoveryFailure = incomplete; }
                 if (recoveryFailure != null) {
                     QUARANTINE.put(key, recoveryFailure.getClass().getName());
+                    store.quarantine();
+                    if (journal != null) try { TellusNativeBatchJournal.markQuarantined(journal); }
+                    catch (IOException markFailure) { recoveryFailure.addSuppressed(markFailure); }
                     var incomplete = new IllegalStateException("native persistence rollback incomplete; chunk quarantined", failure);
                     if (recoveryFailure != failure) incomplete.addSuppressed(recoveryFailure);
                     throw incomplete;
                 }
+                var outcome = finishSingleJournal(journal, result(Status.ROLLED_BACK, previous, previous,
+                    "native complete previous NBT restored: " + failure.getClass().getName()));
                 if (failure instanceof Error fatal) throw fatal;
-                return result(Status.ROLLED_BACK, previous, previous,
-                    "native complete previous NBT restored: " + failure.getClass().getName());
+                return outcome;
             }
         } finally { ACTIVE.remove(key); }
     }
@@ -235,7 +276,11 @@ public final class TellusNativeChunkPersistence {
      * recovery so cooperating processes cannot interleave native batches.
      */
     public BatchCommitResult commitBatch(List<BatchEntry> requested, BatchFaultInjector faults) {
-        try (TellusNativeWorldLease ignored = TellusNativeWorldLease.acquire(binding)) {
+        current();
+        Objects.requireNonNull(requested, "requested");
+        try (TellusNativeWorldLease ignored = TellusNativeWorldLease.acquire(binding);
+             var saves = store.quiesce(requested.stream().map(BatchEntry::position).toList(), true)) {
+            if (pendingJournal()) return batch(BatchStatus.QUARANTINED, List.of(), "native journal recovery required before another batch");
             return commitBatchLocked(requested, faults);
         } catch (IOException failure) {
             return batch(BatchStatus.REJECTED, List.of(), "native world lease unavailable: " + failure.getClass().getName());
@@ -257,7 +302,12 @@ public final class TellusNativeChunkPersistence {
                 Optional<CompoundTag> existing = readExistingNBT(entry.position());
                 if (existing.isEmpty())
                     return batch(BatchStatus.REJECTED, List.of(), "existing native FULL baseline is required for every batch chunk");
-                journalEntries.add(new TellusNativeBatchJournal.Entry(entry.position(), existing.orElseThrow(), entry.proposed()));
+                CompoundTag previous = existing.orElseThrow();
+                CompoundTag proposed = checkedCopy(entry.proposed(), entry.position());
+                if (previous.getInt("DataVersion") != proposed.getInt("DataVersion")
+                    || !previous.getString("Status").equals(proposed.getString("Status")))
+                    return batch(BatchStatus.REJECTED, List.of(), "batch candidate version/status differs from native baseline");
+                journalEntries.add(new TellusNativeBatchJournal.Entry(entry.position(), previous, proposed));
             } catch (RuntimeException failure) {
                 return batch(quarantined(entry.position()) ? BatchStatus.QUARANTINED : BatchStatus.REJECTED,
                     List.of(), "batch preflight failed: " + failure.getClass().getName());
@@ -277,10 +327,13 @@ public final class TellusNativeChunkPersistence {
             int stage = ordinal;
             CommitResult result;
             try {
-                result = commit(entry.position(), entry.proposed(), point -> faults.at(stage, entry.position(), point));
-            } catch (RuntimeException failure) {
-                return finishBatchRollback(journal, rollbackBatch(committed, BatchStatus.QUARANTINED,
+                result = commitQueue(entry.position(), entry.proposed(), point -> faults.at(stage, entry.position(), point), false);
+            } catch (RuntimeException | Error failure) {
+                var failureStatus = quarantined(entry.position()) ? BatchStatus.QUARANTINED : BatchStatus.ROLLED_BACK;
+                var outcome = finishBatchRollback(journal, rollbackBatch(committed, failureStatus,
                     "batch stage threw: " + failure.getClass().getName()));
+                if (failure instanceof Error fatal) throw fatal;
+                return outcome;
             }
             committed.add(result);
             if (result.status() != Status.COMMITTED) {
@@ -294,6 +347,7 @@ public final class TellusNativeChunkPersistence {
             TellusNativeBatchJournal.markCommitted(journal);
             TellusNativeBatchJournal.delete(journal);
         } catch (IOException failure) {
+            store.quarantine();
             return new BatchCommitResult(BatchStatus.QUARANTINED, committed,
                 List.of("all native stages committed but durable journal finalization failed: " + failure.getClass().getName()));
         }
@@ -302,52 +356,89 @@ public final class TellusNativeChunkPersistence {
 
     /** Recovers prepared batches before normal probe/lifecycle work touches the world. */
     public List<String> recoverPendingBatches() {
+        return recoverPendingBatches(FaultInjector.NONE);
+    }
+
+    public List<String> recoverPendingBatches(FaultInjector faults) {
+        Objects.requireNonNull(faults, "faults");
         try (TellusNativeWorldLease ignored = TellusNativeWorldLease.acquire(binding)) {
-            return recoverPendingBatchesLocked();
+            return recoverPendingBatchesLocked(faults);
         } catch (IOException failure) {
             throw new IllegalStateException("native world lease unavailable during journal recovery", failure);
         }
     }
 
-    private List<String> recoverPendingBatchesLocked() {
+    private List<String> recoverPendingBatchesLocked(FaultInjector faults) {
         current();
         if (!store.mainThread()) throw new IllegalStateException("native journal recovery requires server main thread");
+        List<TellusNativeBatchJournal.Record> journals = List.of();
         try {
+            journals = TellusNativeBatchJournal.pending(binding);
+            var positions = new ArrayList<ChunkPos>();
+            var seen = new HashSet<ChunkPos>();
+            for (var journal : journals) for (var entry : journal.entries()) {
+                // Validate every complete native record before touching the queue.
+                admitRecovery(entry.position());
+                checkedCopy(entry.previous(), entry.position());
+                checkedCopy(entry.proposed(), entry.position());
+                if (!seen.add(entry.position())) throw new IllegalStateException("overlapping pending native journals require explicit recovery");
+                positions.add(entry.position());
+            }
+            try (var saves = store.quiesce(positions, true)) {
             List<String> diagnostics = new ArrayList<>();
-            for (TellusNativeBatchJournal.Record journal : TellusNativeBatchJournal.pending(binding)) {
+            for (TellusNativeBatchJournal.Record journal : journals) {
                 if (journal.state() == TellusNativeBatchJournal.State.COMMITTED) {
                     TellusNativeBatchJournal.delete(journal);
                     diagnostics.add("removed finalized native batch journal " + journal.path().getFileName());
                     continue;
                 }
+                faults.at(Point.BEFORE_SUBMIT);
                 for (TellusNativeBatchJournal.Entry entry : journal.entries()) {
-                    admit(entry.position());
+                    admitRecovery(entry.position());
                     store.submit(entry.position(), entry.previous());
                 }
+                faults.at(Point.AFTER_SUBMIT);
                 store.flush();
                 for (TellusNativeBatchJournal.Entry entry : journal.entries()) {
                     CompoundTag restored = store.read(entry.position()).orElseThrow(() ->
                         new IllegalStateException("native journal recovery record is absent"));
+                    current();
                     if (!sameNBT(entry.previous(), restored, Set.of())) {
                         QUARANTINE.put(key(entry.position()), "journal recovery readback differs");
                         throw new IllegalStateException("native journal recovery readback differs");
                     }
                 }
+                faults.at(Point.AFTER_READBACK);
                 TellusNativeBatchJournal.delete(journal);
+                for (var entry : journal.entries()) QUARANTINE.remove(key(entry.position()));
                 diagnostics.add("recovered native batch journal " + journal.path().getFileName());
             }
+            store.recovered();
             return List.copyOf(diagnostics);
-        } catch (IOException failure) {
+            }
+        } catch (IOException | RuntimeException | Error failure) {
+            store.quarantine();
+            for (var journal : journals) if (journal.state() != TellusNativeBatchJournal.State.COMMITTED) {
+                try { TellusNativeBatchJournal.markQuarantined(journal); }
+                catch (IOException markFailure) { failure.addSuppressed(markFailure); }
+            }
+            if (failure instanceof Error fatal) throw fatal;
             throw new IllegalStateException("native batch journal recovery failed", failure);
         }
     }
 
     private BatchCommitResult finishBatchRollback(TellusNativeBatchJournal.Record journal, BatchCommitResult outcome) {
-        if (outcome.status() != BatchStatus.ROLLED_BACK) return outcome;
+        if (outcome.status() != BatchStatus.ROLLED_BACK) {
+            store.quarantine();
+            try { TellusNativeBatchJournal.markQuarantined(journal); }
+            catch (IOException ignored) { /* PREPARED remains a durable admission barrier. */ }
+            return outcome;
+        }
         try {
             TellusNativeBatchJournal.delete(journal);
             return outcome;
         } catch (IOException failure) {
+            store.quarantine();
             return new BatchCommitResult(BatchStatus.QUARANTINED, outcome.entries(),
                 List.of("batch rolled back but journal cleanup failed: " + failure.getClass().getName()));
         }
@@ -361,10 +452,10 @@ public final class TellusNativeChunkPersistence {
             if (prior.previous().isEmpty()) { complete = false; continue; }
             ChunkPos position = new ChunkPos(prior.previous().orElseThrow().getInt("xPos"), prior.previous().orElseThrow().getInt("zPos"));
             try {
-                CommitResult restored = commit(position, prior.previous().orElseThrow(), FaultInjector.NONE);
+                CommitResult restored = commitQueue(position, prior.previous().orElseThrow(), FaultInjector.NONE, false);
                 results.add(restored);
                 if (restored.status() != Status.COMMITTED) complete = false;
-            } catch (RuntimeException failure) {
+            } catch (RuntimeException | Error failure) {
                 complete = false;
             }
         }
@@ -393,15 +484,38 @@ public final class TellusNativeChunkPersistence {
         if (!binding.equals(store.currentBinding())) throw new IllegalStateException("world/dimension/seed/generator binding is stale");
     }
     private void admit(ChunkPos pos) {
+        admitRecovery(pos);
+        if (QUARANTINE.containsKey(key(pos))) throw new IllegalStateException("native chunk is quarantined after incomplete recovery");
+    }
+    private void admitRecovery(ChunkPos pos) {
         Objects.requireNonNull(pos, "pos"); current();
         Math.multiplyExact(pos.x, 16); Math.multiplyExact(pos.z, 16);
         Math.addExact(Math.multiplyExact(pos.x, 16), 15); Math.addExact(Math.multiplyExact(pos.z, 16), 15);
-        if (QUARANTINE.containsKey(key(pos))) throw new IllegalStateException("native chunk is quarantined after incomplete recovery");
         if (!store.canonical(pos)) throw new IllegalArgumentException("derived apron/noncanonical chunk is not a persistence owner");
     }
     private Key key(ChunkPos pos) {
         Objects.requireNonNull(pos, "pos");
         return new Key(binding.worldRoot(), binding.dimension(), pos.x, pos.z);
+    }
+
+    private boolean pendingJournal() {
+        try { return !TellusNativeBatchJournal.pending(binding).isEmpty(); }
+        catch (IOException | RuntimeException failure) { store.quarantine(); return true; }
+    }
+    private void requireNoPendingJournal() {
+        if (pendingJournal()) throw new IllegalStateException("native journal recovery required before observing normal chunk state");
+    }
+    private CommitResult finishSingleJournal(TellusNativeBatchJournal.Record journal, CommitResult outcome) {
+        if (journal == null) return outcome;
+        try {
+            if (outcome.status() == Status.COMMITTED) TellusNativeBatchJournal.markCommitted(journal);
+            TellusNativeBatchJournal.delete(journal);
+            return outcome;
+        } catch (IOException failure) {
+            store.quarantine();
+            return new CommitResult(Status.QUARANTINED, outcome.previous(), outcome.persisted(),
+                List.of("native journal finalization requires recovery: " + failure.getClass().getName()));
+        }
     }
     private CompoundTag checkedCopy(CompoundTag tag, ChunkPos pos) {
         Objects.requireNonNull(tag, "native tag");
@@ -505,6 +619,17 @@ public final class TellusNativeChunkPersistence {
                 digest(profile), level.getMinBuildHeight(), level.getHeight(), generator.getSeaLevel());
         }
         @Override public boolean mainThread() { return level.getServer().isSameThread(); }
+        @Override public SaveFence quiesce(List<ChunkPos> positions, boolean requireUnloaded) {
+            if (requireUnloaded) {
+                if (!(level.getChunkSource().chunkMap instanceof TellusNativeChunkMapAccess access))
+                    throw new IllegalStateException("native holder admission mixin is missing");
+                for (var pos : positions) if (access.tellus$hasNativeHolder(pos.toLong()))
+                    throw new IllegalStateException("native disk transaction/recovery requires unloaded target: " + pos);
+            }
+            return TellusNativeSaveFence.acquire(level);
+        }
+        @Override public void quarantine() { TellusNativeSaveFence.failed(level); }
+        @Override public void recovered() { TellusNativeSaveFence.recovered(level); }
         @Override public boolean canonical(ChunkPos pos) {
             return !(generator instanceof CubeNetChunkGenerator cube)
                 || cube.apronProjection(pos).isEmpty() && cube.address(pos).isPresent();
