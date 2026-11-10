@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "phase": "sea_codec",
+  "probeId": "a9a38d65-9267-42cb-9ca7-f6fa8ab5770d",
+  "chunkX": 616246,
+  "chunkZ": -351597,
+  "binding": {
+    "worldRoot": "D:\\Temp\\tellus-native-sea-offset-mc1201-20261110-b\\world",
+    "dimension": "tellus:earth_cube_net",
+    "seed": 2025402140,
+    "generatorType": "com.yucareux.tellus.worldgen.CubeNetChunkGenerator",
+    "generatorProfile": "f323ab299dc728ff58ee4e7e42a9af5c3feb3b1dc7ba0f1c81de21ee0aeed794",
+    "minY": -2032,
+    "height": 4064,
+    "seaLevel": 88
+  },
+  "syntheticSampler": false,
+  "sourceBoundary": "pre-existing native FULL world chunk; GIS provenance recorded by isolated runner",
+  "diskReadBeforeDemandLoad": true,
+  "nativeHeightOffset": 76,
+  "nativeSeaLevel": 88,
+  "settingsCarryingBiomeSource": true,
+  "blockDigest": "8383f65f4582f1921ec96302c6b6729092489bf92f790af184717f67c4206ffb",
+  "biomeDigest": "a8ea2860d86e1bde0d01bdd6f5f501769ab06b507da5260e537e348608f1b095",
+  "nativeNBTDigest": "3a4cca882017da956dc95a145a3c1fd527208260508631dcde8821a20fc75efc",
+  "nativeSavedPayloadEqual": true,
+  "status": "PASS"
+}

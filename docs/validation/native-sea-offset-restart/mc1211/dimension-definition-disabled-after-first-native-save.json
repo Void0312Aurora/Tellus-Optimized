@@ -1,0 +1,27 @@
+{
+  "type": "tellus:earth_surface",
+  "generator": {
+    "type": "tellus:cube_net",
+    "geometry_version": 3,
+    "mapping": "rancic-ccam30-double-v1",
+    "excluded_radius_meters": 300000.0,
+    "transition_width_meters": 50000.0,
+    "biome_source": {
+      "world_scale": 1.0,
+      "apron_chunks": 2,
+      "fallback": {
+        "biome": "minecraft:plains"
+      },
+      "settings": {
+        "height_offset": 76
+      },
+      "excluded_radius_meters": 300000.0,
+      "transition_width_meters": 50000.0
+    },
+    "world_scale": 1.0,
+    "sea_level": 76,
+    "min_y": -2032,
+    "height": 4064,
+    "experimental_apron_chunks": 2
+  }
+}

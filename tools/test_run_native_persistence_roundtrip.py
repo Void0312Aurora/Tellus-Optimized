@@ -95,6 +95,22 @@ class RunnerContracts(unittest.TestCase):
                 with self.subTest(key=key), self.assertRaises(ValueError):
                     runner.check_report(path, "generate", args, "probe")
 
+    def test_sea_codec_requires_real_settings_source_nondefault_offset_native_save_and_complete_payload(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "report.json"
+            args = types.SimpleNamespace(chunk_x=1, chunk_z=-2)
+            report = dict(status="PASS", phase="sea_codec", probeId="probe", syntheticSampler=False,
+                          chunkX=1, chunkZ=-2, diskReadBeforeDemandLoad=True, nativeHeightOffset=76,
+                          nativeSeaLevel=88, settingsCarryingBiomeSource=True, nativeSavedPayloadEqual=True,
+                          blockDigest="a"*64, biomeDigest="b"*64, nativeNBTDigest="c"*64)
+            path.write_text(json.dumps(report), encoding="utf-8")
+            self.assertEqual(runner.check_report(path, "sea_codec", args, "probe"), report)
+            for field, value in [("nativeHeightOffset",64),("nativeHeightOffset",True),("nativeSeaLevel",None),
+                                 ("settingsCarryingBiomeSource",False),("nativeSavedPayloadEqual",False),("nativeNBTDigest","")]:
+                path.write_text(json.dumps({**report,field:value}), encoding="utf-8")
+                with self.subTest(field=field), self.assertRaises(ValueError):
+                    runner.check_report(path, "sea_codec", args, "probe")
+
     def test_batch_recovery_requires_two_original_payloads_startup_replay_and_resumed_engine_saves(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "report.json"

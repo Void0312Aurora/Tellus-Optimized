@@ -279,6 +279,13 @@ def check_report(path: Path, phase: str, args, probe_id: str) -> dict:
             raise ValueError("native generated full block/biome/NBT digests missing")
         if report.get("generatedNativeStatus") not in ("full", "minecraft:full"):
             raise ValueError("native generated status is not FULL")
+    if phase == "sea_codec":
+        if report.get("settingsCarryingBiomeSource") is not True or report.get("nativeSavedPayloadEqual") is not True:
+            raise ValueError("native settings-carrying offset/save evidence missing")
+        if type(report.get("nativeHeightOffset")) is not int or report["nativeHeightOffset"] == 64 or type(report.get("nativeSeaLevel")) is not int:
+            raise ValueError("actual non-default native offset/sea values required")
+        if not all(re.fullmatch(r"[0-9a-f]{64}", str(report.get(field, ""))) for field in ("blockDigest", "biomeDigest", "nativeNBTDigest")):
+            raise ValueError("complete native offset reload digests required")
     if phase in ("recover_batch", "verify_batch"):
         if not all(report.get(field) is True for field in ("nativeTargetsUnloaded", "batchCompleteOriginalNBTEqual", "engineSavingResumed")):
             raise ValueError("native batch recovery/save coordination evidence missing")

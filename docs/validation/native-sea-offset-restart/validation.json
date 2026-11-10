@@ -1,0 +1,168 @@
+{
+  "parent": "c32c36b37f8e23955a410de1a6126874eccdb129",
+  "scope": "genuine non-default Cube settings/old encoded sea semantics through native saves and two stored-LevelStem reloads; default lifecycle remains gated",
+  "defaultPipelineMode": "LEGACY",
+  "sourceSHA256": {
+    "src/main/java/com/yucareux/tellus/worldgen/TellusPersistenceProbeCommand.java": "d79afef0223033d4d6aa10d0764cbe93f34667454acd73680dbfa59803944d97",
+    "tools/run_native_persistence_roundtrip.py": "0aca7f48022e9454ab4960e231ebf2cdcdcaa6544abc63ac3acbaa33826a9339",
+    "tools/test_run_native_persistence_roundtrip.py": "05d55995c2fbbd5217450843d4e0a06480f590ed992585a3c36215885c12ea99",
+    "tools/run_native_sea_offset_restart.py": "48d72449885bea47fd49863825130b349528d7972af4b00f791fcf9193dd9937",
+    "tools/test_run_native_sea_offset_restart.py": "4891409400c1d425c4021873f45771213e213cfdd0c0054088679a43fb4ad129"
+  },
+  "versions": {
+    "mc1201": {
+      "status": "PASS",
+      "serverLaunches": 3,
+      "ownedLaunchPids": [
+        5388,
+        36712,
+        40536
+      ],
+      "heightOffsets": [
+        76,
+        76,
+        76
+      ],
+      "effectiveSeaLevels": [
+        88,
+        88,
+        88
+      ],
+      "savedSeaFields": [
+        76,
+        76,
+        76
+      ],
+      "noDatapackDimensionOverrideForStoredReloads": true,
+      "completeNativePayloadsAndProfileEqual": true,
+      "independentAnvilPayloadsEqual": true,
+      "nativeNBTDigest": "3a4cca882017da956dc95a145a3c1fd527208260508631dcde8821a20fc75efc",
+      "independentDiskNBTDigest": "8e8ae6d68469e1796cf0e8c8f300124fffaccae5d524c20ba3510eb8c90cdc0d",
+      "nativeFieldTypes": {
+        "sea_level": 3,
+        "height_offset": 3
+      },
+      "regressionTests": 553
+    },
+    "mc1211": {
+      "status": "PASS",
+      "serverLaunches": 3,
+      "ownedLaunchPids": [
+        6200,
+        20976,
+        14060
+      ],
+      "heightOffsets": [
+        76,
+        76,
+        76
+      ],
+      "effectiveSeaLevels": [
+        88,
+        88,
+        88
+      ],
+      "savedSeaFields": [
+        76,
+        76,
+        76
+      ],
+      "noDatapackDimensionOverrideForStoredReloads": true,
+      "completeNativePayloadsAndProfileEqual": true,
+      "independentAnvilPayloadsEqual": true,
+      "nativeNBTDigest": "8872abd9901a97747b8ed4e9b099cd8098b409ce3c13acd10d7b7bf3cdf73fb6",
+      "independentDiskNBTDigest": "49c0226e530d925a6fb46537ba5ac59224cef6ca523a64f49b045a928f8b159e",
+      "nativeFieldTypes": {
+        "sea_level": 3,
+        "height_offset": 3
+      },
+      "regressionTests": 544
+    }
+  },
+  "files": {
+    "controller-tests.log": "9e344a4acb2215358d4e421c6c15a490805586740329945bdf640daf0cbcb57c",
+    "README.md": "9dfe45035756ed7b97a04cc6a3d50fa03523b5c605352d8f0c21bc79966c7a87",
+    "mc1201/dimension-definition-disabled-after-first-native-save.json": "a11b270ba16420bfcbc75d55bec13b9474b32acacb2a0fbe7808f0e3936802e9",
+    "mc1201/native-final-level.dat": "47052781d8bf1d9356503c4e57fc62706f6343b675d234fe22f879e6cbd77db4",
+    "mc1201/native-final-level.dat_old": "d76b8393688832ef765f02066b2e2064c090a517444b500882c2d53114efef9c",
+    "mc1201/regression.json": "ef0ce0ded9d25749a79d7da41f9fda380957625658bc7b23e49d3466af645d8a",
+    "mc1201/roundtrip.json": "e5e117c39bbc1a3738b9cbc4846a1ec2983e5ffe560269a6c825765a87cb5cca",
+    "mc1201/sea-offset-restart.json": "1713f9eea26efbf3f74dc8bc0b579959a74aa06b44aaf18fe2080c066a8fb4e2",
+    "mc1201/source-cache-manifest.json": "64fb1686111b49065bec8d7ce9af0d4c4e262eddee0a2d2662495f1c752ca149",
+    "mc1201/source-world-manifest.json": "1351a6326ccbf560369e041e5befcffac196a864cd9334bc80a6772815e63e9a",
+    "mc1201/test-results.xml.zip": "8f365b5c7a4e2d0d5a621263c5126d20de67dda94654c4310fb6b9b555348bf1",
+    "mc1211/dimension-definition-disabled-after-first-native-save.json": "a11b270ba16420bfcbc75d55bec13b9474b32acacb2a0fbe7808f0e3936802e9",
+    "mc1211/native-final-level.dat": "5fe3d80d6f19c273839de5513f67661f455d369f1adcdcf793c566063a69cc03",
+    "mc1211/native-final-level.dat_old": "473858779ef769400ade1a1aa91bc271335a7fb079c90587efaa1a5f63c66f48",
+    "mc1211/regression.json": "c36a44c4e86cbfb243802876b3017b60f65f4e8f285fa0e8627f9ecde8e746a3",
+    "mc1211/roundtrip.json": "b9e27df68117157c9e15fd045c1595e3f5d464bed96fca9245cae89266387b3d",
+    "mc1211/sea-offset-restart.json": "0a197fb7de814fb0a81674771a7060bf7b30ae82eef6ad173d7a8651285d639a",
+    "mc1211/source-cache-manifest.json": "64fb1686111b49065bec8d7ce9af0d4c4e262eddee0a2d2662495f1c752ca149",
+    "mc1211/source-world-manifest.json": "1351a6326ccbf560369e041e5befcffac196a864cd9334bc80a6772815e63e9a",
+    "mc1211/test-results.xml.zip": "b3df9e1ad8eb0550128a73e6340a5f2b05206cfa7b91844be873ba3f6be56d74",
+    "retained-initial-authority-admission-failure/abb158c9-21b6-4ac8-8501-188bceacd396-sea_codec.json": "b157e024eb38d29b139e265353bdbd77c45f14e6137eb89c7b0c0a11ca396b77",
+    "retained-initial-authority-admission-failure/sea-offset-restart.json": "d6be7525ec1fa2f528a3420085286bb146903615bf4aca74f266e47b6d787ebc",
+    "retained-initial-authority-admission-failure/sea_codec.server.log.gz": "37f2e3ebb59171f8e3e7fff371b0b7e00c8d2b38609a803ddc334d458bd5c4d8",
+    "mc1201/process-0/a9a38d65-9267-42cb-9ca7-f6fa8ab5770d-sea-codec.snbt": "b10a09bfe229f0dc35eccee21bd728571bbb4c987477931c057099101de5f255",
+    "mc1201/process-0/a9a38d65-9267-42cb-9ca7-f6fa8ab5770d-sea_codec.json": "c3c2ce0603b33e74d826850c12244d753f03dc960255b8b6c15b22763c802159",
+    "mc1201/process-0/sea_codec.server.log.gz": "77a03b06d8c711675c6323f466e509f96ad27a7a9d6027c38bbed167fe4b8a9e",
+    "mc1201/process-1/1d702ba1-debc-43ea-94b5-dc2306125e8a-sea-codec.snbt": "7d8e83baa2aca9fd30af1638b246051cc6d99c862a4b31e55b626745103a6844",
+    "mc1201/process-1/1d702ba1-debc-43ea-94b5-dc2306125e8a-sea_codec.json": "f7bee78ca1da3e4a0f5200b1bfb680f072ee78cf88f62dac5ea1e21232c84155",
+    "mc1201/process-1/sea_codec.server.log.gz": "db1dd800c3a9a7e765e1a54ff88c7e34df3d9b55a71f60df5c14a7ea89aa8803",
+    "mc1201/process-2/0c99f015-b02f-4b77-98b7-8183d99d87d4-sea-codec.snbt": "5347d7fab241a953404037c4d4e725ed94e3a226fe80cadcf8dbbba9e25ca3e0",
+    "mc1201/process-2/0c99f015-b02f-4b77-98b7-8183d99d87d4-sea_codec.json": "0c128fc862f440a7e861c95934eeacebb183997077c04e2f951e4fbb09a811a9",
+    "mc1201/process-2/sea_codec.server.log.gz": "611814f6565a1cfc82f49ea745f1ac0c7ec84dc065085c5e75d6b58755e920ab",
+    "mc1211/process-0/b040e679-780c-49b6-9ba6-f974cdeb1d62-sea-codec.snbt": "aec4e66473478690958900a909e0c9ed1305660972152d38d93381f6116e14b4",
+    "mc1211/process-0/b040e679-780c-49b6-9ba6-f974cdeb1d62-sea_codec.json": "14abf1996b61c2399d9a84c33ce2416422d9af4c49d790288ea0cd00f8b061ec",
+    "mc1211/process-0/sea_codec.server.log.gz": "3ef9997e466911202a652130ff9260f93ed26ee2b4e58e4e80fceca563248702",
+    "mc1211/process-1/fe1b3a39-4b1e-44bd-bd63-1986c3829d13-sea-codec.snbt": "ccaa6d6c39f269d6557027ab26d979558e30893f664d1abdb26fc64f1d58c239",
+    "mc1211/process-1/fe1b3a39-4b1e-44bd-bd63-1986c3829d13-sea_codec.json": "f1f7ea807b89d8f15961c3a7c19a56bb58bfa3547892d41063c9696a78e8fdcb",
+    "mc1211/process-1/sea_codec.server.log.gz": "6039f89e4374f602ce20451f477abf30cc90323566243268f8c5654ea44947e6",
+    "mc1211/process-2/5c4a2234-46af-4781-93b5-cda0cdf6192b-sea-codec.snbt": "9d964fe4913579909cca7bae1d2291fbadc38f2b015afd225476a8a8fb8b3135",
+    "mc1211/process-2/5c4a2234-46af-4781-93b5-cda0cdf6192b-sea_codec.json": "5ac1a7a25b5c0235783b1de3e96157c3847ceba4a521db188d5797cb0d33270a",
+    "mc1211/process-2/sea_codec.server.log.gz": "a7274b4ff02915d6c0596919ac13ad2a8be73d86e0196eba0a8e5e37864f5ecc"
+  },
+  "initialAdmissionFailure": "Only editing level.dat is insufficient while a copied datapack defines that dimension; real runtime remained FixedBiomeSource/sea64 and failed strict source admission. Retry configures the actual copied authority, then removes the dimension definition after first native save to force stored-codec reloads.",
+  "pythonControllerTests": 13,
+  "parity": {
+    "biome": {
+      "cases": 7,
+      "mismatches": [
+        {
+          "case": "bare/BWh",
+          "cube": "minecraft:stony_peaks",
+          "earth": "minecraft:desert"
+        }
+      ]
+    },
+    "checks": {
+      "biomeCaseSet": true,
+      "biomeCount": true,
+      "biomeMismatches": true,
+      "columnCount": true,
+      "columnMismatches": true
+    },
+    "columns": {
+      "mismatches": [],
+      "rightRows": 13824,
+      "rows": 13824
+    },
+    "expected": {
+      "biomeCases": 7,
+      "biomeMismatches": 1,
+      "columnMismatches": 0,
+      "columns": 13824,
+      "knownBiomeCase": "bare/BWh",
+      "originalBiomeCases": [
+        "bare/BWh",
+        "cropland/Dfb",
+        "forest/Cfb",
+        "grassland/Cfa",
+        "mangrove/Af",
+        "snow/ET",
+        "wetland/Cfa"
+      ]
+    },
+    "status": "PASS"
+  }
+}

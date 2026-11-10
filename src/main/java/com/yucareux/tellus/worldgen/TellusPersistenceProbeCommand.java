@@ -56,7 +56,7 @@ public final class TellusPersistenceProbeCommand {
         platform.registerCommands(dispatcher -> dispatcher.register(Commands.literal("tellus")
             .then(Commands.literal("persistence")
                 .requires(source -> Boolean.getBoolean("tellus.persistence.probe") && source.hasPermission(4))
-                .then(phase("capture")).then(phase("verify")).then(phase("generate"))
+                .then(phase("capture")).then(phase("verify")).then(phase("generate")).then(phase("sea_codec"))
                 .then(phase("crash_batch")).then(phase("recover_batch")).then(phase("verify_batch")))));
     }
 
@@ -94,6 +94,34 @@ public final class TellusPersistenceProbeCommand {
             result.add("binding", bindingJson(persistence.binding()));
             result.addProperty("syntheticSampler", false);
             result.addProperty("sourceBoundary", "pre-existing native FULL world chunk; GIS provenance recorded by isolated runner");
+            if (phase.equals("sea_codec")) {
+                if (!(level.getChunkSource().getGenerator() instanceof CubeNetChunkGenerator generator)
+                    || !(generator.getBiomeSource() instanceof CubeNetBiomeSource))
+                    throw new IllegalStateException("real offset restart requires the native settings-carrying Cube biome source");
+                int offset = Integer.parseInt(System.getProperty("tellus.persistence.probe.expectedHeightOffset"));
+                int sea = Integer.parseInt(System.getProperty("tellus.persistence.probe.expectedSeaLevel"));
+                if (generator.heightOffset() != offset || generator.getSeaLevel() != sea)
+                    throw new IllegalStateException("decoded native height offset/sea level drifted across restart");
+                persistence.readExistingNBT(pos).orElseThrow(() -> new IllegalStateException("offset probe requires existing real native FULL terrain"));
+                result.addProperty("diskReadBeforeDemandLoad", true);
+                result.addProperty("nativeHeightOffset", generator.heightOffset());
+                result.addProperty("nativeSeaLevel", generator.getSeaLevel());
+                result.addProperty("settingsCarryingBiomeSource", true);
+                ChunkAccess loaded = ChunkBenchmarkVersionCompat.requestFullChunk(level.getChunkSource(), x, z);
+                if (loaded == null) throw new IllegalStateException("native offset reload returned no FULL chunk");
+                CompoundTag materialized = persistence.snapshot(loaded);
+                result.addProperty("blockDigest", blockDigest(loaded));
+                result.addProperty("biomeDigest", biomeDigest(loaded));
+                result.addProperty("nativeNBTDigest", TellusNativeChunkPersistence.digest(materialized, SAVE_CLOCKS));
+                loaded.setUnsaved(true);
+                source.getServer().saveEverything(false, true, true);
+                CompoundTag saved = persistence.readExistingNBT(pos).orElseThrow();
+                if (!TellusNativeChunkPersistence.sameNBT(materialized, saved, SAVE_CLOCKS))
+                    throw new IllegalStateException("offset native materialization differs through engine save");
+                result.addProperty("nativeSavedPayloadEqual", true);
+                Files.writeString(directory.resolve(id + "-sea-codec.snbt"), saved.toString(), StandardCharsets.UTF_8);
+                return complete(source, phase, result, output);
+            }
             if (phase.endsWith("_batch")) {
                 if (!Boolean.getBoolean("tellus.persistence.probe.crash"))
                     throw new IllegalStateException("explicit copied-world crash probe property required");
@@ -400,7 +428,7 @@ public final class TellusPersistenceProbeCommand {
         LOGGER.info("{} result={}", marker, output);
         source.sendSuccess(() -> Component.literal(marker), false);
         // No extra tick between the same-tick snapshot and the native shutdown save.
-        if (Boolean.getBoolean("tellus.persistence.probe.populateLifecycle") || phase.equals("generate") || phase.endsWith("_batch"))
+        if (Boolean.getBoolean("tellus.persistence.probe.populateLifecycle") || phase.equals("generate") || phase.equals("sea_codec") || phase.endsWith("_batch"))
             source.getServer().halt(false);
         return 1;
     }
