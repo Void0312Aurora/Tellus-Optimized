@@ -3,7 +3,7 @@
   "status": "PASS",
   "module": "mc1211",
   "targetVersion": "1.21.1",
-  "probeId": "afdc1a32-3b9f-45f4-81a2-6c49ae0084ca",
+  "probeId": "4b82192a-2144-4621-90b8-eb4e805cb47e",
   "sourceOrigin": "historical Swiss real-Mapterhorn/land-cover Tellus save; provenance manually corroborated",
   "sourceMode": "existing-real-gis-world-and-copied-cache",
   "syntheticSampler": false,
@@ -20,7 +20,7 @@
       "bytes": 1763
     }
   ],
-  "runDir": "D:\\Temp\\tellus-phase61-roundtrip-mc1211-20261110-e",
+  "runDir": "D:\\Temp\\tellus-phase61-roundtrip-mc1211-h",
   "template": {
     "world": "D:\\workshop\\Game\\mc-pilot-deployment\\run\\tellus-boundary-20261025\\world-terrain-20261026",
     "levelSha256": "896bab856a28b19a0e4ed5c3e80247793a6807712ae9445e5a4ef7f801ba9eed",
@@ -67,21 +67,21 @@
   "phases": [
     {
       "phase": "capture",
-      "pid": 28140,
+      "pid": 3896,
       "exitCode": 0,
       "passMarker": "TELLUS_PERSISTENCE_CAPTURE_PASS",
-      "report": "D:\\Temp\\tellus-phase61-roundtrip-mc1211-20261110-e\\tellus\\persistence\\afdc1a32-3b9f-45f4-81a2-6c49ae0084ca-capture.json",
-      "reportSha256": "15dd53c6fd9eb26c58c3c271f7de2886a34b2631b342fd0bc075b11bb1b9e667",
-      "log": "D:\\Temp\\tellus-phase61-roundtrip-mc1211-20261110-e\\evidence\\capture.server.log",
-      "logSha256": "abf936f1f98df5e7cb0ed036c6c66bd21e5b751ee80a7d8be2c70672436f7c9c",
+      "report": "D:\\Temp\\tellus-phase61-roundtrip-mc1211-h\\tellus\\persistence\\4b82192a-2144-4621-90b8-eb4e805cb47e-capture.json",
+      "reportSha256": "4c8f4b539f4785389015b5a1acf1cf161f6d0a984eb9a64b5c2a33762ddcdcd8",
+      "log": "D:\\Temp\\tellus-phase61-roundtrip-mc1211-h\\evidence\\capture.server.log",
+      "logSha256": "b7a3d01dc0d5ef992bfe454ece7bf38c05df4ed9fe8224b601add221d2395d1a",
       "native": {
         "schemaVersion": 1,
         "phase": "capture",
-        "probeId": "afdc1a32-3b9f-45f4-81a2-6c49ae0084ca",
+        "probeId": "4b82192a-2144-4621-90b8-eb4e805cb47e",
         "chunkX": 616246,
         "chunkZ": -351597,
         "binding": {
-          "worldRoot": "D:\\Temp\\tellus-phase61-roundtrip-mc1211-20261110-e\\world",
+          "worldRoot": "D:\\Temp\\tellus-phase61-roundtrip-mc1211-h\\world",
           "dimension": "tellus:earth_cube_net",
           "seed": 2025402140,
           "generatorType": "com.yucareux.tellus.worldgen.CubeNetChunkGenerator",
@@ -118,21 +118,21 @@
     },
     {
       "phase": "verify",
-      "pid": 29320,
+      "pid": 30128,
       "exitCode": 0,
       "passMarker": "TELLUS_PERSISTENCE_VERIFY_PASS",
-      "report": "D:\\Temp\\tellus-phase61-roundtrip-mc1211-20261110-e\\tellus\\persistence\\afdc1a32-3b9f-45f4-81a2-6c49ae0084ca-verify.json",
-      "reportSha256": "19a587fdad4436e17578b93d7a8ad944a5eb2ba18dc6f8dc0e5b74cfd3ce5321",
-      "log": "D:\\Temp\\tellus-phase61-roundtrip-mc1211-20261110-e\\evidence\\verify.server.log",
-      "logSha256": "ec358ae61ed7078c423ea014d5dde96fc3d8db8837524b56c91972f89bcbdd90",
+      "report": "D:\\Temp\\tellus-phase61-roundtrip-mc1211-h\\tellus\\persistence\\4b82192a-2144-4621-90b8-eb4e805cb47e-verify.json",
+      "reportSha256": "516d260b1401f65ba07bc4ceb55852cd4ddd203aad57c2a6ead9f8733cb34403",
+      "log": "D:\\Temp\\tellus-phase61-roundtrip-mc1211-h\\evidence\\verify.server.log",
+      "logSha256": "5b663c1047e9f02229837695b24c2bf3ddd49b460ffef20b621d9129c363b003",
       "native": {
         "schemaVersion": 1,
         "phase": "verify",
-        "probeId": "afdc1a32-3b9f-45f4-81a2-6c49ae0084ca",
+        "probeId": "4b82192a-2144-4621-90b8-eb4e805cb47e",
         "chunkX": 616246,
         "chunkZ": -351597,
         "binding": {
-          "worldRoot": "D:\\Temp\\tellus-phase61-roundtrip-mc1211-20261110-e\\world",
+          "worldRoot": "D:\\Temp\\tellus-phase61-roundtrip-mc1211-h\\world",
           "dimension": "tellus:earth_cube_net",
           "seed": 2025402140,
           "generatorType": "com.yucareux.tellus.worldgen.CubeNetChunkGenerator",
@@ -160,7 +160,7 @@
   "command": [
     "D:\\workshop\\Tellus-Optimized\\gradlew.bat",
     "-PtellusTargets=mc1211",
-    "-PtellusRunDir=D:\\Temp\\tellus-phase61-roundtrip-mc1211-20261110-e",
+    "-PtellusRunDir=D:\\Temp\\tellus-phase61-roundtrip-mc1211-h",
     "-PtellusBenchmarkHeap=6g",
     ":mc1211:runServer",
     "--args=--nogui",
@@ -172,12 +172,12 @@
   ],
   "jvmProperties": [
     "tellus.persistence.probe=true",
-    "tellus.persistence.probe.id=afdc1a32-3b9f-45f4-81a2-6c49ae0084ca",
+    "tellus.persistence.probe.id=4b82192a-2144-4621-90b8-eb4e805cb47e",
     "tellus.persistence.probe.allowUpgrade=true",
-    "tellus.persistence.probeRoot=D:\\Temp\\tellus-phase61-roundtrip-mc1211-20261110-e\\world",
+    "tellus.persistence.probeRoot=D:\\Temp\\tellus-phase61-roundtrip-mc1211-h\\world",
     "tellus.sphere.syntheticSampler=false",
-    "tellus.gameDir=D:\\Temp\\tellus-phase61-roundtrip-mc1211-20261110-e",
-    "tellus.configDir=D:\\Temp\\tellus-phase61-roundtrip-mc1211-20261110-e\\config",
+    "tellus.gameDir=D:\\Temp\\tellus-phase61-roundtrip-mc1211-h",
+    "tellus.configDir=D:\\Temp\\tellus-phase61-roundtrip-mc1211-h\\config",
     "tellus.chunkgen.threads.max=1"
   ],
   "sourceWorldAndCacheUnchanged": true

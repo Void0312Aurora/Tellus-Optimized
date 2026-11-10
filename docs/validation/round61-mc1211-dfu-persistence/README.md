@@ -20,17 +20,19 @@ changed that method's result to `DataResult<? extends MapCodec<?>>`; the old
 fallback therefore failed with `Codec$20 cannot be cast to MapCodec` while
 upgrading `level.dat`, before server readiness.
 
-The mc1211-only Tellus mixin now redirects DFU's private dispatch call before
-that incompatible callback. It retains the ordinary DFU `MapCodec.assumeMapUnsafe`
-path for known choices and returns an opaque `MapCodec.assumeMapUnsafe`
-wrapper around `Codec.PASSTHROUGH` only when all of these guards hold:
+The mc1211-only Tellus mixin now wraps DFU's private dispatch call and first
+executes Fabric's original operation. It retains the ordinary DFU
+`MapCodec.assumeMapUnsafe` path for known choices and returns an opaque
+`MapCodec.assumeMapUnsafe` wrapper around `Codec.PASSTHROUGH` only when all of
+these guards hold:
 
 1. tagged-choice name is exactly `type`;
 2. the schema contains both `minecraft:noise` and `minecraft:flat`;
 3. the requested unknown key is exactly a currently registered Tellus generator:
    `tellus:earth` or `tellus:cube_net`.
 
-Other schemas, keys, and already registered choices retain their existing path.
+Other schemas, keys, and already registered choices return Fabric's original
+result unchanged.
 No generator Codec, NBT field, DataVersion, save encoding, or default lifecycle
 registration was changed. `tellus:sphere_face` is intentionally not in this
 allow-list because mc1211 does not currently register that generator Codec.

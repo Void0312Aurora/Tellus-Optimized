@@ -18,14 +18,14 @@ the DataResult success value was cast to `MapCodec`, producing the recorded
 
 ## Implementation boundary
 
-`TellusTaggedChoiceTypeMixin` redirects only the private DFU dispatch call. For
-known choices it reconstructs the original `MapCodec.assumeMapUnsafe(type.codec())`
-result; for an unknown choice it applies `TellusDfu1211Compat`'s exact
-`type`/`minecraft:noise`/`minecraft:flat`/registered-Tellus-ID guard and returns
-`MapCodec.assumeMapUnsafe(Codec.PASSTHROUGH)`. The ordinary unknown-key error
-remains unchanged outside that guard. Config priority `1100` places the redirect
-before Fabric's default-priority injection, while redirecting the dispatch
-avoids executing the incompatible callback for the Tellus case.
+`TellusTaggedChoiceTypeMixin` wraps only the private DFU dispatch call with
+MixinExtras `WrapOperation`. It first calls Fabric's original operation, then
+applies `TellusDfu1211Compat`'s exact
+`type`/`minecraft:noise`/`minecraft:flat`/registered-Tellus-ID guard. Only a
+guarded Tellus result is replaced with `MapCodec.assumeMapUnsafe(Codec.PASSTHROUGH)`;
+every other key and schema returns the original Fabric result byte-for-byte,
+including Fabric's fail-soft behavior. Config priority `1100` keeps the wrapper
+ahead of Fabric's default-priority mixin without bypassing its operation.
 
 The current mc1211 entrypoint registers `tellus:earth` and `tellus:cube_net`.
 `tellus:sphere_face` remains excluded because no mc1211 chunk-generator Codec is

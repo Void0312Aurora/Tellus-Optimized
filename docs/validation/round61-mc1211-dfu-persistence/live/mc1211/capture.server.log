@@ -1,4 +1,4 @@
-Picked up JAVA_TOOL_OPTIONS: "-Dtellus.persistence.probe=true" "-Dtellus.persistence.probe.id=afdc1a32-3b9f-45f4-81a2-6c49ae0084ca" "-Dtellus.persistence.probe.allowUpgrade=true" "-Dtellus.persistence.probeRoot=D:\Temp\tellus-phase61-roundtrip-mc1211-20261110-e\world" "-Dtellus.sphere.syntheticSampler=false" "-Dtellus.gameDir=D:\Temp\tellus-phase61-roundtrip-mc1211-20261110-e" "-Dtellus.configDir=D:\Temp\tellus-phase61-roundtrip-mc1211-20261110-e\config" "-Dtellus.chunkgen.threads.max=1"
+Picked up JAVA_TOOL_OPTIONS: "-Dtellus.persistence.probe=true" "-Dtellus.persistence.probe.id=4b82192a-2144-4621-90b8-eb4e805cb47e" "-Dtellus.persistence.probe.allowUpgrade=true" "-Dtellus.persistence.probeRoot=D:\Temp\tellus-phase61-roundtrip-mc1211-h\world" "-Dtellus.sphere.syntheticSampler=false" "-Dtellus.gameDir=D:\Temp\tellus-phase61-roundtrip-mc1211-h" "-Dtellus.configDir=D:\Temp\tellus-phase61-roundtrip-mc1211-h\config" "-Dtellus.chunkgen.threads.max=1"
 To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.4.0/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
 Daemon will be stopped at the end of the build 
 
@@ -14,9 +14,9 @@ Fabric Loom: 1.14.10
 > Task :mc1211:configureLaunch UP-TO-DATE
 
 > Task :mc1211:runServer
-Picked up JAVA_TOOL_OPTIONS: "-Dtellus.persistence.probe=true" "-Dtellus.persistence.probe.id=afdc1a32-3b9f-45f4-81a2-6c49ae0084ca" "-Dtellus.persistence.probe.allowUpgrade=true" "-Dtellus.persistence.probeRoot=D:\Temp\tellus-phase61-roundtrip-mc1211-20261110-e\world" "-Dtellus.sphere.syntheticSampler=false" "-Dtellus.gameDir=D:\Temp\tellus-phase61-roundtrip-mc1211-20261110-e" "-Dtellus.configDir=D:\Temp\tellus-phase61-roundtrip-mc1211-20261110-e\config" "-Dtellus.chunkgen.threads.max=1"
-[08:42:01] [main/INFO] (FabricLoader/GameProvider) Loading Minecraft 1.21.1 with Fabric Loader 0.15.11
-[08:42:03] [main/INFO] (FabricLoader) Loading 43 mods:
+Picked up JAVA_TOOL_OPTIONS: "-Dtellus.persistence.probe=true" "-Dtellus.persistence.probe.id=4b82192a-2144-4621-90b8-eb4e805cb47e" "-Dtellus.persistence.probe.allowUpgrade=true" "-Dtellus.persistence.probeRoot=D:\Temp\tellus-phase61-roundtrip-mc1211-h\world" "-Dtellus.sphere.syntheticSampler=false" "-Dtellus.gameDir=D:\Temp\tellus-phase61-roundtrip-mc1211-h" "-Dtellus.configDir=D:\Temp\tellus-phase61-roundtrip-mc1211-h\config" "-Dtellus.chunkgen.threads.max=1"
+[09:13:01] [main/INFO] (FabricLoader/GameProvider) Loading Minecraft 1.21.1 with Fabric Loader 0.15.11
+[09:13:03] [main/INFO] (FabricLoader) Loading 43 mods:
 	- fabric-api 0.115.4+1.21.1
 	- fabric-api-base 0.4.42+6573ed8c19
 	- fabric-api-lookup-api-v1 1.6.70+b559734419
@@ -60,69 +60,85 @@ Picked up JAVA_TOOL_OPTIONS: "-Dtellus.persistence.probe=true" "-Dtellus.persist
 	- minecraft 1.21.1
 	- mixinextras 0.3.5
 	- tellus 0.8.5
-[08:42:04] [main/INFO] (FabricLoader/Mixin) SpongePowered MIXIN Subsystem Version=0.8.5 Source=file:/C:/Users/30483/.gradle/caches/modules-2/files-2.1/net.fabricmc/sponge-mixin/0.13.3+mixin.0.8.5/9527e6b0d2449408958fd1302594dc65ec5ade9c/sponge-mixin-0.13.3+mixin.0.8.5.jar Service=Knot/Fabric Env=SERVER
-[08:42:04] [main/INFO] (FabricLoader/Mixin) Loaded Fabric development mappings for mixin remapper!
-[08:42:05] [main/INFO] (FabricLoader/Mixin) Compatibility level set to JAVA_17
-[08:42:05] [main/INFO] (FabricLoader/Mixin) Compatibility level set to JAVA_21
-[08:42:07] [main/WARN] (FabricLoader/Mixin) Error loading class: com/seibel/distanthorizons/core/level/AbstractDhLevel (java.lang.ClassNotFoundException: com/seibel/distanthorizons/core/level/AbstractDhLevel)
-[08:42:08] [main/INFO] (FabricLoader/MixinExtras|Service) Initializing MixinExtras via com.llamalad7.mixinextras.service.MixinExtrasServiceImpl(version=0.3.5).
-[08:42:51] [main/INFO] (tellus) Loaded Mapterhorn 0.0.11 source-resolution catalog (134 sources).
-[08:42:52] [main/INFO] (tellus) Tellus worldgen initialized with the dense global packed-coordinate profile
-[08:42:54] [main/INFO] (Minecraft) Environment: Environment[sessionHost=https://sessionserver.mojang.com, servicesHost=https://api.minecraftservices.com, name=PROD]
-[08:42:57] [main/INFO] (Minecraft) Found new data pack fabric-convention-tags-v2, loading it automatically
-[08:42:57] [main/INFO] (Minecraft) Found new data pack fabric-gametest-api-v1, loading it automatically
-[08:42:57] [main/INFO] (Minecraft) Found new data pack tellus, loading it automatically
-[08:42:58] [main/INFO] (tellus) EarthChunkGenerator init: scale=30.0, minAltitude=-64, maxAltitude=-2147483648, heightOffset=64, limits=[minY=-64, height=528, logicalHeight=528], seaLevel=64
-[08:43:03] [main/INFO] (Minecraft) Loaded 1290 recipes
-[08:43:03] [main/INFO] (Minecraft) Loaded 1399 advancements
-[08:43:04] [main/INFO] (BiomeModificationImpl) Applied 0 biome modifications to 0 of 64 new biomes in 8.567 ms
-[08:43:05] [Server thread/INFO] (Minecraft) Starting minecraft server version 1.21.1
-[08:43:05] [Server thread/INFO] (Minecraft) Loading properties
-[08:43:05] [Server thread/INFO] (Minecraft) Default game type: SURVIVAL
-[08:43:05] [Server thread/INFO] (Minecraft) Generating keypair
-[08:43:05] [Server thread/INFO] (Minecraft) Starting Minecraft server on 127.0.0.1:25667
-[08:43:06] [Server thread/INFO] (Minecraft) Using default channel type
-[08:43:07] [Server thread/WARN] (Minecraft) **** SERVER IS RUNNING IN OFFLINE/INSECURE MODE!
-[08:43:07] [Server thread/WARN] (Minecraft) The server will make no attempt to authenticate usernames. Beware.
-[08:43:07] [Server thread/WARN] (Minecraft) While this makes the game possible to play without internet access, it also opens up the ability for hackers to connect with any username they choose.
-[08:43:07] [Server thread/WARN] (Minecraft) To change this, set "online-mode" to "true" in the server.properties file.
-[08:43:07] [Server thread/INFO] (Minecraft) Preparing level "world"
-[08:43:10] [Server thread/INFO] (Minecraft) Preparing start region for dimension minecraft:overworld
-[08:43:11] [Worker-Main-6/INFO] (Minecraft) Preparing spawn area: 0%
-[08:43:11] [Worker-Main-6/INFO] (Minecraft) Preparing spawn area: 0%
-[08:43:11] [Worker-Main-6/INFO] (Minecraft) Preparing spawn area: 0%
-[08:43:11] [Worker-Main-6/INFO] (Minecraft) Preparing spawn area: 0%
-[08:43:12] [Server thread/INFO] (Minecraft) Time elapsed: 1919 ms
-[08:43:12] [Server thread/INFO] (Minecraft) Done (4.520s)! For help, type "help"
-[08:43:12] [Server thread/INFO] (tellus) Overworld dimension type: minY=-64,height=384,logicalHeight=384
-[08:43:12] [Server thread/INFO] (tellus) Overworld generator: type=NoiseBasedChunkGenerator, minY=-64, height=384
-[08:43:12] [Server thread/INFO] (tellus) Overworld level stem: dimensionType=minY=-64,height=384,logicalHeight=384, generatorType=NoiseBasedChunkGenerator
-[08:43:12] [Server thread/INFO] (tellus) Enabled single-Level cube-net seam routing for tellus:earth_cube_net
-[08:43:13] [Server thread/INFO] (Minecraft) Saving chunks for level 'ServerLevel[world-terrain-20261026]'/minecraft:overworld
-[08:43:14] [Server thread/INFO] (Minecraft) Saving chunks for level 'ServerLevel[world-terrain-20261026]'/minecraft:the_end
-[08:43:14] [Server thread/INFO] (Minecraft) Saving chunks for level 'ServerLevel[world-terrain-20261026]'/minecraft:the_nether
-[08:43:14] [Server thread/INFO] (Minecraft) Saving chunks for level 'ServerLevel[world-terrain-20261026]'/tellus:earth_cube_net
-[08:43:14] [Server thread/INFO] (Minecraft) ThreadedAnvilChunkStorage (world): All chunks are saved
-[08:43:14] [Server thread/INFO] (Minecraft) ThreadedAnvilChunkStorage (DIM1): All chunks are saved
-[08:43:14] [Server thread/INFO] (Minecraft) ThreadedAnvilChunkStorage (DIM-1): All chunks are saved
-[08:43:14] [Server thread/INFO] (Minecraft) ThreadedAnvilChunkStorage (earth_cube_net): All chunks are saved
-[08:43:14] [Server thread/INFO] (Minecraft) ThreadedAnvilChunkStorage: All dimensions are saved
-[08:43:15] [Server thread/INFO] (tellus-persistence-probe) TELLUS_PERSISTENCE_CAPTURE_PASS result=D:\Temp\tellus-phase61-roundtrip-mc1211-20261110-e\tellus\persistence\afdc1a32-3b9f-45f4-81a2-6c49ae0084ca-capture.json
-[08:43:15] [Server thread/INFO] (Minecraft) TELLUS_PERSISTENCE_CAPTURE_PASS
-[08:43:15] [Server thread/WARN] (Minecraft) Can't keep up! Is the server overloaded? Running 3341ms or 66 ticks behind
-[08:43:15] [Server thread/INFO] (Minecraft) Stopping the server
-[08:43:15] [Server thread/INFO] (Minecraft) Stopping server
-[08:43:15] [Server thread/INFO] (Minecraft) Saving players
-[08:43:15] [Server thread/INFO] (Minecraft) Saving worlds
-[08:43:15] [Server thread/INFO] (Minecraft) Saving chunks for level 'ServerLevel[world-terrain-20261026]'/minecraft:overworld
-[08:43:15] [Server thread/INFO] (Minecraft) Saving chunks for level 'ServerLevel[world-terrain-20261026]'/minecraft:the_end
-[08:43:15] [Server thread/INFO] (Minecraft) Saving chunks for level 'ServerLevel[world-terrain-20261026]'/minecraft:the_nether
-[08:43:15] [Server thread/INFO] (Minecraft) Saving chunks for level 'ServerLevel[world-terrain-20261026]'/tellus:earth_cube_net
-[08:43:15] [Server thread/INFO] (Minecraft) ThreadedAnvilChunkStorage (world): All chunks are saved
-[08:43:15] [Server thread/INFO] (Minecraft) ThreadedAnvilChunkStorage (DIM1): All chunks are saved
-[08:43:15] [Server thread/INFO] (Minecraft) ThreadedAnvilChunkStorage (DIM-1): All chunks are saved
-[08:43:15] [Server thread/INFO] (Minecraft) ThreadedAnvilChunkStorage (earth_cube_net): All chunks are saved
-[08:43:15] [Server thread/INFO] (Minecraft) ThreadedAnvilChunkStorage: All dimensions are saved
+[09:13:04] [main/INFO] (FabricLoader/Mixin) SpongePowered MIXIN Subsystem Version=0.8.5 Source=file:/C:/Users/30483/.gradle/caches/modules-2/files-2.1/net.fabricmc/sponge-mixin/0.13.3+mixin.0.8.5/9527e6b0d2449408958fd1302594dc65ec5ade9c/sponge-mixin-0.13.3+mixin.0.8.5.jar Service=Knot/Fabric Env=SERVER
+[09:13:05] [main/INFO] (FabricLoader/Mixin) Loaded Fabric development mappings for mixin remapper!
+[09:13:05] [main/INFO] (FabricLoader/Mixin) Compatibility level set to JAVA_17
+[09:13:05] [main/INFO] (FabricLoader/Mixin) Compatibility level set to JAVA_21
+[09:13:07] [main/WARN] (FabricLoader/Mixin) Error loading class: com/seibel/distanthorizons/core/level/AbstractDhLevel (java.lang.ClassNotFoundException: com/seibel/distanthorizons/core/level/AbstractDhLevel)
+[09:13:08] [main/INFO] (FabricLoader/MixinExtras|Service) Initializing MixinExtras via com.llamalad7.mixinextras.service.MixinExtrasServiceImpl(version=0.3.5).
+[09:13:53] [main/INFO] (tellus) Loaded Mapterhorn 0.0.11 source-resolution catalog (134 sources).
+[09:13:54] [main/INFO] (tellus) Tellus worldgen initialized with the dense global packed-coordinate profile
+[09:13:56] [main/INFO] (Minecraft) Environment: Environment[sessionHost=https://sessionserver.mojang.com, servicesHost=https://api.minecraftservices.com, name=PROD]
+[09:13:57] [main/WARN] (TaggedChoiceType_DimDataFix) Not recognizing key tellus:cube_net. Using pass-through codec. TaggedChoiceType[type, minecraft:flat -> ((Tag["settings", ((Tag["biome", NamedType["biome", NamespacedString]] | EmptyPart), ((Tag["layers", List[((Tag["block", NamedType["block_name", NamespacedString]] | EmptyPart), EmptyPartPassthrough)]] | EmptyPart), EmptyPartPassthrough))] | EmptyPart), EmptyPartPassthrough), 
+minecraft:noise -> ((Tag["biome_source", TaggedChoiceType[type, minecraft:checkerboard -> (Tag["biomes", List[NamedType["biome", NamespacedString]]], EmptyPartPassthrough), 
+minecraft:the_end -> EmptyPartPassthrough, 
+minecraft:fixed -> (Tag["biome", NamedType["biome", NamespacedString]], EmptyPartPassthrough), 
+minecraft:multi_noise -> ((Tag["preset", NamedType["multi_noise_biome_source_parameter_list", NamespacedString]], EmptyPartPassthrough) | List[(Tag["biome", NamedType["biome", NamespacedString]], EmptyPartPassthrough)])]
+] | EmptyPart), ((Tag["settings", (String | ((Tag["default_block", NamedType["block_name", NamespacedString]] | EmptyPart), ((Tag["default_fluid", NamedType["block_name", NamespacedString]] | EmptyPart), EmptyPartPassthrough)))] | EmptyPart), EmptyPartPassthrough)), 
+minecraft:debug -> EmptyPartPassthrough]
 
-BUILD SUCCESSFUL in 1m 48s
+[09:13:58] [main/WARN] (TaggedChoiceType_DimDataFix) Not recognizing key tellus:cube_net. Using pass-through codec. TaggedChoiceType[type, minecraft:flat -> ((Tag["settings", ((Tag["biome", NamedType["biome", NamespacedString]] | EmptyPart), ((Tag["layers", List[((Tag["block", NamedType["block_name", NamespacedString]] | EmptyPart), EmptyPartPassthrough)]] | EmptyPart), EmptyPartPassthrough))] | EmptyPart), EmptyPartPassthrough), 
+minecraft:noise -> ((Tag["biome_source", TaggedChoiceType[type, minecraft:checkerboard -> (Tag["biomes", List[NamedType["biome", NamespacedString]]], EmptyPartPassthrough), 
+minecraft:the_end -> EmptyPartPassthrough, 
+minecraft:fixed -> (Tag["biome", NamedType["biome", NamespacedString]], EmptyPartPassthrough), 
+minecraft:multi_noise -> ((Tag["preset", NamedType["multi_noise_biome_source_parameter_list", NamespacedString]], EmptyPartPassthrough) | List[(Tag["biome", NamedType["biome", NamespacedString]], EmptyPartPassthrough)])]
+] | EmptyPart), ((Tag["settings", (String | ((Tag["default_block", NamedType["block_name", NamespacedString]] | EmptyPart), ((Tag["default_fluid", NamedType["block_name", NamespacedString]] | EmptyPart), EmptyPartPassthrough)))] | EmptyPart), EmptyPartPassthrough)), 
+minecraft:debug -> EmptyPartPassthrough]
+
+[09:13:58] [main/INFO] (Minecraft) Found new data pack fabric-convention-tags-v2, loading it automatically
+[09:13:58] [main/INFO] (Minecraft) Found new data pack fabric-gametest-api-v1, loading it automatically
+[09:13:58] [main/INFO] (Minecraft) Found new data pack tellus, loading it automatically
+[09:14:00] [main/INFO] (tellus) EarthChunkGenerator init: scale=30.0, minAltitude=-64, maxAltitude=-2147483648, heightOffset=64, limits=[minY=-64, height=528, logicalHeight=528], seaLevel=64
+[09:14:04] [main/INFO] (Minecraft) Loaded 1290 recipes
+[09:14:05] [main/INFO] (Minecraft) Loaded 1399 advancements
+[09:14:06] [main/INFO] (BiomeModificationImpl) Applied 0 biome modifications to 0 of 64 new biomes in 8.171 ms
+[09:14:06] [Server thread/INFO] (Minecraft) Starting minecraft server version 1.21.1
+[09:14:06] [Server thread/INFO] (Minecraft) Loading properties
+[09:14:06] [Server thread/INFO] (Minecraft) Default game type: SURVIVAL
+[09:14:06] [Server thread/INFO] (Minecraft) Generating keypair
+[09:14:06] [Server thread/INFO] (Minecraft) Starting Minecraft server on 127.0.0.1:25670
+[09:14:08] [Server thread/INFO] (Minecraft) Using default channel type
+[09:14:09] [Server thread/WARN] (Minecraft) **** SERVER IS RUNNING IN OFFLINE/INSECURE MODE!
+[09:14:09] [Server thread/WARN] (Minecraft) The server will make no attempt to authenticate usernames. Beware.
+[09:14:09] [Server thread/WARN] (Minecraft) While this makes the game possible to play without internet access, it also opens up the ability for hackers to connect with any username they choose.
+[09:14:09] [Server thread/WARN] (Minecraft) To change this, set "online-mode" to "true" in the server.properties file.
+[09:14:09] [Server thread/INFO] (Minecraft) Preparing level "world"
+[09:14:12] [Server thread/INFO] (Minecraft) Preparing start region for dimension minecraft:overworld
+[09:14:13] [Worker-Main-15/INFO] (Minecraft) Preparing spawn area: 0%
+[09:14:13] [Worker-Main-15/INFO] (Minecraft) Preparing spawn area: 0%
+[09:14:13] [Worker-Main-15/INFO] (Minecraft) Preparing spawn area: 0%
+[09:14:13] [Worker-Main-15/INFO] (Minecraft) Preparing spawn area: 0%
+[09:14:14] [Server thread/INFO] (Minecraft) Time elapsed: 1927 ms
+[09:14:14] [Server thread/INFO] (Minecraft) Done (4.737s)! For help, type "help"
+[09:14:14] [Server thread/INFO] (tellus) Overworld dimension type: minY=-64,height=384,logicalHeight=384
+[09:14:14] [Server thread/INFO] (tellus) Overworld generator: type=NoiseBasedChunkGenerator, minY=-64, height=384
+[09:14:14] [Server thread/INFO] (tellus) Overworld level stem: dimensionType=minY=-64,height=384,logicalHeight=384, generatorType=NoiseBasedChunkGenerator
+[09:14:14] [Server thread/INFO] (tellus) Enabled single-Level cube-net seam routing for tellus:earth_cube_net
+[09:14:14] [Server thread/INFO] (Minecraft) Saving chunks for level 'ServerLevel[world-terrain-20261026]'/minecraft:overworld
+[09:14:16] [Server thread/INFO] (Minecraft) Saving chunks for level 'ServerLevel[world-terrain-20261026]'/tellus:earth_cube_net
+[09:14:16] [Server thread/INFO] (Minecraft) Saving chunks for level 'ServerLevel[world-terrain-20261026]'/minecraft:the_nether
+[09:14:16] [Server thread/INFO] (Minecraft) Saving chunks for level 'ServerLevel[world-terrain-20261026]'/minecraft:the_end
+[09:14:16] [Server thread/INFO] (Minecraft) ThreadedAnvilChunkStorage (world): All chunks are saved
+[09:14:16] [Server thread/INFO] (Minecraft) ThreadedAnvilChunkStorage (earth_cube_net): All chunks are saved
+[09:14:16] [Server thread/INFO] (Minecraft) ThreadedAnvilChunkStorage (DIM-1): All chunks are saved
+[09:14:16] [Server thread/INFO] (Minecraft) ThreadedAnvilChunkStorage (DIM1): All chunks are saved
+[09:14:16] [Server thread/INFO] (Minecraft) ThreadedAnvilChunkStorage: All dimensions are saved
+[09:14:17] [Server thread/INFO] (tellus-persistence-probe) TELLUS_PERSISTENCE_CAPTURE_PASS result=D:\Temp\tellus-phase61-roundtrip-mc1211-h\tellus\persistence\4b82192a-2144-4621-90b8-eb4e805cb47e-capture.json
+[09:14:17] [Server thread/INFO] (Minecraft) TELLUS_PERSISTENCE_CAPTURE_PASS
+[09:14:17] [Server thread/WARN] (Minecraft) Can't keep up! Is the server overloaded? Running 3303ms or 66 ticks behind
+[09:14:17] [Server thread/INFO] (Minecraft) Stopping the server
+[09:14:17] [Server thread/INFO] (Minecraft) Stopping server
+[09:14:17] [Server thread/INFO] (Minecraft) Saving players
+[09:14:17] [Server thread/INFO] (Minecraft) Saving worlds
+[09:14:17] [Server thread/INFO] (Minecraft) Saving chunks for level 'ServerLevel[world-terrain-20261026]'/minecraft:overworld
+[09:14:17] [Server thread/INFO] (Minecraft) Saving chunks for level 'ServerLevel[world-terrain-20261026]'/tellus:earth_cube_net
+[09:14:17] [Server thread/INFO] (Minecraft) Saving chunks for level 'ServerLevel[world-terrain-20261026]'/minecraft:the_nether
+[09:14:17] [Server thread/INFO] (Minecraft) Saving chunks for level 'ServerLevel[world-terrain-20261026]'/minecraft:the_end
+[09:14:17] [Server thread/INFO] (Minecraft) ThreadedAnvilChunkStorage (world): All chunks are saved
+[09:14:17] [Server thread/INFO] (Minecraft) ThreadedAnvilChunkStorage (earth_cube_net): All chunks are saved
+[09:14:17] [Server thread/INFO] (Minecraft) ThreadedAnvilChunkStorage (DIM-1): All chunks are saved
+[09:14:17] [Server thread/INFO] (Minecraft) ThreadedAnvilChunkStorage (DIM1): All chunks are saved
+[09:14:17] [Server thread/INFO] (Minecraft) ThreadedAnvilChunkStorage: All dimensions are saved
+
+BUILD SUCCESSFUL in 1m 50s
 6 actionable tasks: 1 executed, 5 up-to-date
