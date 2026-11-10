@@ -17,6 +17,7 @@ import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.CyclicBarrier;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -164,6 +165,33 @@ class FileBackedAtomicStorageBackendTest {
          executor.shutdownNow();
       }
       assertEquals(StorageBackendStatus.COMMITTED, firstBackend.reload(transaction.key(), "concurrent").status());
+   }
+
+   @Test
+   void sameKeyDifferentOperationsHaveDeterministicInterleavingOutcome() throws Exception {
+      var firstBackend = backend();
+      var secondBackend = backend();
+      CyclicBarrier start = new CyclicBarrier(3);
+      ExecutorService executor = Executors.newFixedThreadPool(2);
+      try {
+         Future<StorageBackendStatus> first = executor.submit(() -> {
+            start.await();
+            return firstBackend.commit(transaction("interleave-a", List.of("stone"))).status();
+         });
+         Future<StorageBackendStatus> second = executor.submit(() -> {
+            start.await();
+            return secondBackend.commit(transaction("interleave-b", List.of("dirt"))).status();
+         });
+         start.await();
+         Set<StorageBackendStatus> statuses = Set.of(first.get(), second.get());
+         assertEquals(Set.of(StorageBackendStatus.COMMITTED, StorageBackendStatus.IDEMPOTENCY_CONFLICT), statuses);
+      } finally {
+         executor.shutdownNow();
+      }
+      StorageBackendStatus winner = firstBackend.reload(key("stored"), "interleave-a").status();
+      StorageBackendStatus loser = secondBackend.reload(key("stored"), "interleave-b").status();
+      assertTrue(Set.of(winner, loser).contains(StorageBackendStatus.COMMITTED));
+      assertTrue(Set.of(winner, loser).contains(StorageBackendStatus.IDEMPOTENCY_CONFLICT));
    }
 
    @Test
