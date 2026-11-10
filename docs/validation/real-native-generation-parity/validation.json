@@ -1,0 +1,119 @@
+{
+  "scope": "one absent real-GIS Cube-Net FULL chunk per version; old/new native complete generation and save, not complete unified transaction/default lifecycle",
+  "target": [
+    616262,
+    -351597
+  ],
+  "baselineRef": "80dd37ba39677adb5a4229a781ca3b4e5adabc8f",
+  "candidateCodeCheckpoint": "c3d5945b3b1f51bc1d2fa70820ff4017247ac73f",
+  "versions": {
+    "mc1201": {
+      "status": "PASS",
+      "allBlocksEqual": true,
+      "allBiomesEqual": true,
+      "fullNativeNBTEqualExcludingTwoSaveClocks": true,
+      "targetAbsentBeforeGeneration": true,
+      "sourceWorldAndCacheUnchanged": true,
+      "sourceCodeUnchangedDuringRun": true,
+      "native": {
+        "schemaVersion": 1,
+        "phase": "generate",
+        "probeId": "07dee83e-ce3e-43af-a4db-323ab3a871a9",
+        "chunkX": 616262,
+        "chunkZ": -351597,
+        "binding": {
+          "worldRoot": "D:\\Temp\\tellus-generation-parity-mc1201-20261110-a\\candidate\\world",
+          "dimension": "tellus:earth_cube_net",
+          "seed": 2025402140,
+          "generatorType": "com.yucareux.tellus.worldgen.CubeNetChunkGenerator",
+          "generatorProfile": "0b0aa6a9a3a0af144f0c9e81ee932e9d4b0245b6f392bf1e586689099f5aa3fc",
+          "minY": -2032,
+          "height": 4064,
+          "seaLevel": 64
+        },
+        "syntheticSampler": false,
+        "sourceBoundary": "new native FULL generation on the copied real world/cache; no synthetic sampler",
+        "diskReadBeforeDemandLoad": true,
+        "targetAbsentBeforeGeneration": true,
+        "generationNanos": 15929965300,
+        "generatedBlockDigest": "7d4c588070e1e81df669eaa09231efdb6c211f9cf6b563ba7cd1cfda6b1f4681",
+        "generatedBiomeDigest": "a8ea2860d86e1bde0d01bdd6f5f501769ab06b507da5260e537e348608f1b095",
+        "generatedNativeNBTDigest": "e2fc7c8cff40813df0dd512687ed20901e2019770b88f7191ef54f04aade7485",
+        "generatedLifecycleCounts": {
+          "block_entities": 0,
+          "block_ticks": 0,
+          "fluid_ticks": 0,
+          "postProcessingOffsets": 0
+        },
+        "generatedNativeStatus": "minecraft:full",
+        "generatedDataVersion": 3465,
+        "generatedDiskMatchesMaterialized": true,
+        "status": "PASS"
+      }
+    },
+    "mc1211": {
+      "status": "PASS",
+      "allBlocksEqual": true,
+      "allBiomesEqual": true,
+      "fullNativeNBTEqualExcludingTwoSaveClocks": true,
+      "targetAbsentBeforeGeneration": true,
+      "sourceWorldAndCacheUnchanged": true,
+      "sourceCodeUnchangedDuringRun": true,
+      "native": {
+        "schemaVersion": 1,
+        "phase": "generate",
+        "probeId": "538dc4c5-4d13-41ba-bb3b-cf0e6766eba8",
+        "chunkX": 616262,
+        "chunkZ": -351597,
+        "binding": {
+          "worldRoot": "D:\\Temp\\tellus-generation-parity-mc1211-20261110-a\\candidate\\world",
+          "dimension": "tellus:earth_cube_net",
+          "seed": 2025402140,
+          "generatorType": "com.yucareux.tellus.worldgen.CubeNetChunkGenerator",
+          "generatorProfile": "0b0aa6a9a3a0af144f0c9e81ee932e9d4b0245b6f392bf1e586689099f5aa3fc",
+          "minY": -2032,
+          "height": 4064,
+          "seaLevel": 64
+        },
+        "syntheticSampler": false,
+        "sourceBoundary": "new native FULL generation on the copied real world/cache; no synthetic sampler",
+        "diskReadBeforeDemandLoad": true,
+        "targetAbsentBeforeGeneration": true,
+        "generationNanos": 15972099500,
+        "generatedBlockDigest": "d9db01c32d21828990b966fa5e5ebbe43496586a032b10175fff58b954c465cb",
+        "generatedBiomeDigest": "a8ea2860d86e1bde0d01bdd6f5f501769ab06b507da5260e537e348608f1b095",
+        "generatedNativeNBTDigest": "a3d663c1ac22821593d2f31be10748de229695bc886ec292389e77c25a95a578",
+        "generatedLifecycleCounts": {
+          "block_entities": 0,
+          "block_ticks": 0,
+          "fluid_ticks": 0,
+          "postProcessingOffsets": 0
+        },
+        "generatedNativeStatus": "minecraft:full",
+        "generatedDataVersion": 3955,
+        "generatedDiskMatchesMaterialized": true,
+        "status": "PASS"
+      }
+    }
+  },
+  "files": {
+    "mc1201/generation-parity.json": "30ec7cd4aa539f6bdcc47612bf160cac0f74e49991421748f6121746877aa426",
+    "mc1201/source-cache-manifest.json": "b8ca7b5c77c89138270aa2d61c82d848fbea37244ede7b338d3f7989f612b4b6",
+    "mc1201/source-world-manifest.json": "1351a6326ccbf560369e041e5befcffac196a864cd9334bc80a6772815e63e9a",
+    "mc1211/generation-parity.json": "5454693f4dc112a3145adfb19fdd49c1d741cd433d8fce513a69b9ef0b535ffb",
+    "mc1211/source-cache-manifest.json": "b8ca7b5c77c89138270aa2d61c82d848fbea37244ede7b338d3f7989f612b4b6",
+    "mc1211/source-world-manifest.json": "1351a6326ccbf560369e041e5befcffac196a864cd9334bc80a6772815e63e9a",
+    "mc1201/baseline/07dee83e-ce3e-43af-a4db-323ab3a871a9-generate.json": "98875639b4f733efe7b97e65a8d366f54e6e52582dda0b4ab93a25700120a448",
+    "mc1201/baseline/07dee83e-ce3e-43af-a4db-323ab3a871a9-generated.snbt": "fb4cdd083f85f28efeba0c0782ebf33e80678332537698ab131be870db089acb",
+    "mc1201/baseline/generate.server.log.gz": "e6b1753a37b950a6416ef2a35ae4f8468735591a06a042d2daafea493c28e898",
+    "mc1201/candidate/07dee83e-ce3e-43af-a4db-323ab3a871a9-generate.json": "d18f96e1cbe1749acaf80f1a23e5487a68362a6775365e039a0e19a403051e68",
+    "mc1201/candidate/07dee83e-ce3e-43af-a4db-323ab3a871a9-generated.snbt": "fb4cdd083f85f28efeba0c0782ebf33e80678332537698ab131be870db089acb",
+    "mc1201/candidate/generate.server.log.gz": "5af5a218faf69b63fd78195f6add7992f43a87260456b351286f8d251366c470",
+    "mc1211/baseline/538dc4c5-4d13-41ba-bb3b-cf0e6766eba8-generate.json": "f3c0acd43c5a5cb633e44d1ce33a34a01bd6e90faf6a6fed98455c8fa329802c",
+    "mc1211/baseline/538dc4c5-4d13-41ba-bb3b-cf0e6766eba8-generated.snbt": "f8867f99a700ebd942b6456b8e33b9beff03eccb8fe2b1431a15ab9250d4f5a6",
+    "mc1211/baseline/generate.server.log.gz": "fe0c18d490a9a60c66d6b2c0597f2a832fe85c94157c80957778ddf37376a188",
+    "mc1211/candidate/538dc4c5-4d13-41ba-bb3b-cf0e6766eba8-generate.json": "bf880361d93b85948d44d0710e2e3cd88b00e91fa1bce5d988e3334e2316d246",
+    "mc1211/candidate/538dc4c5-4d13-41ba-bb3b-cf0e6766eba8-generated.snbt": "f8867f99a700ebd942b6456b8e33b9beff03eccb8fe2b1431a15ab9250d4f5a6",
+    "mc1211/candidate/generate.server.log.gz": "b011aa68ffda3d030c6b36223963ba363f69e95c8ebdadd8e3e29169e710ade1"
+  }
+}
