@@ -69,7 +69,13 @@ public final class TellusNativeChunkBatch {
    }
 
    public Result write(boolean enabled, ChunkAccess target, List<Request> requests,
-                       Function<Request, TellusColumnPlan> planner) {
+                        Function<Request, TellusColumnPlan> planner) {
+      return writeOwned(enabled, target, requests, planner, null);
+   }
+
+   /** Borrow the enclosing native stage's exact owner-thread lease; never close a borrowed token. */
+   public Result writeOwned(boolean enabled, ChunkAccess target, List<Request> requests,
+                            Function<Request, TellusColumnPlan> planner, TellusTargetWriteGuard.Lease owned) {
       if (!enabled) return stopped(WriteStatus.NO_WRITE_INVALID, "native chunk batch is disabled");
       if (requests == null || requests.isEmpty() || requests.size() > 256) {
          return stopped(WriteStatus.NO_WRITE_INVALID, "native chunk batch requires1..256 requests");
@@ -80,9 +86,20 @@ public final class TellusNativeChunkBatch {
       if (!(target instanceof ProtoChunk proto) || planner == null) {
          return stopped(WriteStatus.NO_WRITE_INVALID, "chunk batch requires ProtoChunk and planner");
       }
+      if (owned != null) {
+         owned.requireOwned(target);
+         return writeExclusive(proto, entries, planner, owned);
+      }
       var acquired = TellusTargetWriteGuard.tryAcquire(target);
       if (acquired.isEmpty()) return stopped(WriteStatus.NO_WRITE_QUEUED, "native target already has a participating writer");
       try (var lease = acquired.orElseThrow()) {
+         return writeExclusive(proto, entries, planner, lease);
+      }
+   }
+
+   private Result writeExclusive(ProtoChunk target, List<Request> entries,
+                                  Function<Request, TellusColumnPlan> planner, TellusTargetWriteGuard.Lease lease) {
+         ProtoChunk proto = target;
          lease.requireOwned(target);
          final int minY;
          final int maxY;
@@ -203,8 +220,7 @@ public final class TellusNativeChunkBatch {
             if (failedCause instanceof Error error) throw error;
             return stopped(failedStatus,"entire chunk batch restored after " + failedDiagnostic);
          }
-         return new Result(WriteStatus.WRITTEN,results,List.of("participating chunk lease held through all plans, writes and marker effects"));
-      }
+          return new Result(WriteStatus.WRITTEN,results,List.of("participating chunk lease held through all plans, writes and marker effects"));
    }
 
    private static void restore(ChunkAccess target, TellusNativePostProcessing markers, BlockState[] original,

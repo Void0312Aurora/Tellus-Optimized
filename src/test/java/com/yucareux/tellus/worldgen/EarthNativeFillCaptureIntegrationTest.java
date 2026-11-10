@@ -259,6 +259,25 @@ class EarthNativeFillCaptureIntegrationTest {
       }
    }
 
+   @Test void unifiedEarthActualBiomeAndTerrainEntryPointsKeepCompleteNativeFillAndReleaseTheStageOwner() throws Exception {
+      String property = com.yucareux.tellus.worldgen.runtime.TellusNativeProductionPipeline.MODE_PROPERTY;
+      String previous = System.getProperty(property);
+      try {
+         System.setProperty(property,"legacy"); var old=fixture();
+         System.setProperty(property,"unified"); var actual=fixture();
+         old.generator().createBiomes(random,Blender.empty(),new EmptyStructures(),old.chunk()).join();
+         actual.generator().createBiomes(random,Blender.empty(),new EmptyStructures(),actual.chunk()).join();
+         fill(old,old.chunk(),random,new EmptyStructures()); fill(actual,actual.chunk(),random,new EmptyStructures());
+         int cells=0;var p=new BlockPos.MutableBlockPos();
+         for(int y=old.generation().minY();y<old.generation().maxYExclusive();y++)for(int z=0;z<16;z++)for(int x=0;x<16;x++){
+            p.set(x,y,z);assertEquals(old.chunk().getBlockState(p),actual.chunk().getBlockState(p));cells++;
+         }
+         assertEquals(List.of("BIOMES","TERRAIN"),actual.generator().nativeProductionPipeline().observation(actual.chunk().getPos()).stages());
+         try(var lease=TellusTargetWriteGuard.tryAcquire(actual.chunk()).orElseThrow()){lease.requireOwned(actual.chunk());}
+         System.out.println("UNIFIED_EARTH_NATIVE blockStates="+cells+" mismatches=0 biomeTerrainStages=2");
+      } finally { if(previous==null)System.clearProperty(property);else System.setProperty(property,previous); }
+   }
+
    @Test void earlyNativeFailureFailsCaptureWithSameCauseAndReleasesItsSlot() throws Exception {
       var f = fixture();
       try (var lease = f.generator().captureNativeColumn(f.chunk(), f.generation(), f.coordinate())) {

@@ -116,7 +116,11 @@ import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemp
  * chunks both read canonical face columns. Movement ownership is handled by
  * CubeNetRuntime.
  */
-public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeNetLodSurface, WaterSourceConversionGuard, TellusGeodeticPosition {
+public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeNetLodSurface, WaterSourceConversionGuard, TellusGeodeticPosition,
+   com.yucareux.tellus.worldgen.runtime.TellusNativeProductionOwner {
+   private final com.yucareux.tellus.worldgen.runtime.TellusNativeProductionPipeline production =
+      new com.yucareux.tellus.worldgen.runtime.TellusNativeProductionPipeline("cube-net");
+   @Override public com.yucareux.tellus.worldgen.runtime.TellusNativeProductionPipeline nativeProductionPipeline() { return production; }
    /** Explicit opt-in bridge; default generation never invokes this entrypoint. */
    private final com.yucareux.tellus.worldgen.caves.CubeNetNativeUndergroundStage nativeUndergroundStage = new com.yucareux.tellus.worldgen.caves.CubeNetNativeUndergroundStage();
 
@@ -1108,8 +1112,10 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
    public CompletableFuture<ChunkAccess> createBiomes(
       Executor executor, RandomState random, Blender blender, StructureManager structures, ChunkAccess chunk
    ) {
-      chunk.fillBiomesFromNoise(this.biomeSource, Climate.empty());
-      return CompletableFuture.completedFuture(chunk);
+      return CompletableFuture.completedFuture(production.run(
+         com.yucareux.tellus.worldgen.runtime.TellusNativeProductionPipeline.Stage.BIOMES, chunk, "cube native biome volume", lease -> {
+            chunk.fillBiomesFromNoise(this.biomeSource, Climate.empty()); return chunk;
+         }));
    }
 
    @Override
@@ -1130,7 +1136,8 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
       }
       Optional<CubeNetApronResolver.ChunkProjection> projection = this.apronProjection(chunk.getPos());
       return projection
-         .map(candidate -> CompletableFuture.supplyAsync(() -> {
+         .map(candidate -> CompletableFuture.supplyAsync(() -> production.run(
+            com.yucareux.tellus.worldgen.runtime.TellusNativeProductionPipeline.Stage.TERRAIN, chunk, "derived apron native view", lease -> {
             SphereWorldModel.SphereChunkAddress targetAddress = new SphereWorldModel.SphereChunkAddress(
                candidate.targetFace().index(), candidate.targetChunkX(), candidate.targetChunkZ());
             var canonical = this.faces[targetAddress.face()].terrainGrid(targetAddress);
@@ -1144,7 +1151,7 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
                this.inlandWaterResolver == null ? null : this.cubeNetSurfaceDecisionResolver(chunk));
             this.applyCubeNetInlandFlow(chunk);
             return chunk;
-         }, executor))
+         }), executor))
          .orElseGet(() -> CompletableFuture.completedFuture(chunk));
    }
 
@@ -1157,6 +1164,8 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
    }
 
    private void fillFromCanonical(ChunkAccess chunk, SphereWorldModel.SphereChunkAddress address) {
+      production.run(com.yucareux.tellus.worldgen.runtime.TellusNativeProductionPipeline.Stage.TERRAIN, chunk,
+         "cube native-grid provider -> spherical kernel -> shared chunk writer; native flow/badlands", lease -> {
          var canonical = this.faces[address.face()].terrainGrid(address);
          List<SphereChunkSampler.Column> columns = new ArrayList<>(256);
          var face = CubeNetLayout.Face.of(address.face());
@@ -1169,11 +1178,19 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
                Math.floorMod((int)Math.floor(local[1]), 16)));
          }
          columns = this.applyCubeNetLandmarkGround(columns);
-         this.materializer.fill(chunk, new SphereChunkSampler.TerrainGrid(address,
-            this.inlandWaterResolver == null ? columns : this.applyCubeNetShorelineBankRamp(chunk, columns)),
-            this.inlandWaterResolver == null ? null : this.cubeNetSurfaceDecisionResolver(chunk));
+         var adjusted = new SphereChunkSampler.TerrainGrid(address,
+            this.inlandWaterResolver == null ? columns : this.applyCubeNetShorelineBankRamp(chunk, columns));
+         var resolver = this.inlandWaterResolver == null ? null : this.cubeNetSurfaceDecisionResolver(chunk);
+         if (production.enabled()) TellusNativeSphericalTerrainStage.fill(chunk, this.model, this.adapter.layout(), adjusted,
+            new com.yucareux.tellus.worldgen.decision.TellusGenerationContext(this.worldSeed, this.worldScale(), this.seaLevel, this.minY, this.maxY()),
+            new com.yucareux.tellus.worldgen.decision.TellusSphericalDecisionKernel.Settings(this.cubeNetEnableWater,
+               this.cubeNetTerrestrialHeightScale, this.cubeNetOceanicHeightScale), resolver == null ? null : resolver::resolve,
+            new com.yucareux.tellus.worldgen.write.TellusMinecraft1201SemanticMapper(), lease);
+         else this.materializer.fill(chunk, adjusted, resolver);
          this.applyCubeNetInlandFlow(chunk);
          this.applyCubeNetBadlandsBands(chunk);
+         return null;
+      });
    }
 
    /**
@@ -1494,6 +1511,13 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
    @Override public void applyCarvers(WorldGenRegion level, long seed, RandomState random, BiomeManager biomes,
       StructureManager structures, ChunkAccess chunk, GenerationStep.Carving step) {
       if (step != GenerationStep.Carving.AIR) return;
+      production.run(com.yucareux.tellus.worldgen.runtime.TellusNativeProductionPipeline.Stage.CARVERS, chunk,
+         "cube native spherical cave/ore/geology kernel and apron projection", lease -> {
+            this.applyNativeCarvers(level, seed, random, biomes, structures, chunk); return null;
+         });
+   }
+   private void applyNativeCarvers(WorldGenRegion level, long seed, RandomState random, BiomeManager biomes,
+      StructureManager structures, ChunkAccess chunk) {
       if (!this.cubeNetCaves && !this.cubeNetOreVeins && !this.cubeNetGeologicalStonePatches) return;
       SphereWorldModel.SphereChunkAddress address = this.address(chunk.getPos())
          .filter(this.singularityPolicy::admitsTerrainMaterialization).orElse(null);
@@ -1701,6 +1725,12 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
       }
    }
    @Override public void applyBiomeDecoration(WorldGenLevel level, ChunkAccess chunk, StructureManager structures) {
+      production.run(com.yucareux.tellus.worldgen.runtime.TellusNativeProductionPipeline.Stage.DECORATION, chunk,
+         "cube ordered owner decoration/shared snow sink/apron mirror", lease -> {
+            this.applyNativeBiomeDecoration(level, chunk, structures); return null;
+         });
+   }
+   private void applyNativeBiomeDecoration(WorldGenLevel level, ChunkAccess chunk, StructureManager structures) {
       // Only canonical chunks own decoration. Aprons receive the complete
       // decorated owner view below, which keeps vanilla features, Tellus
       // features and structures on one spherical owner.

@@ -44,7 +44,10 @@ import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemp
  * First engine entry point for one canonical spherical face, with radial column
  * storage. An explicit planet id connects six matching face dimensions.
  */
-public final class SphereFaceChunkGenerator extends ChunkGenerator {
+public final class SphereFaceChunkGenerator extends ChunkGenerator implements com.yucareux.tellus.worldgen.runtime.TellusNativeProductionOwner {
+   private final com.yucareux.tellus.worldgen.runtime.TellusNativeProductionPipeline production =
+      new com.yucareux.tellus.worldgen.runtime.TellusNativeProductionPipeline("sphere-face");
+   @Override public com.yucareux.tellus.worldgen.runtime.TellusNativeProductionPipeline nativeProductionPipeline() { return production; }
    public static final Codec<SphereFaceChunkGenerator> CODEC = RecordCodecBuilder.create(instance -> instance.group(
       Codec.intRange(2, 2).fieldOf("geometry_version").forGetter(generator -> 2),
       Codec.STRING.fieldOf("mapping").forGetter(generator -> generator.model().mappingId()),
@@ -258,8 +261,10 @@ public final class SphereFaceChunkGenerator extends ChunkGenerator {
    public CompletableFuture<ChunkAccess> createBiomes(
       Executor executor, RandomState random, Blender blender, StructureManager structures, ChunkAccess chunk
    ) {
-      chunk.fillBiomesFromNoise(this.biomeSource, Climate.empty());
-      return CompletableFuture.completedFuture(chunk);
+      return CompletableFuture.completedFuture(production.run(
+         com.yucareux.tellus.worldgen.runtime.TellusNativeProductionPipeline.Stage.BIOMES, chunk, "sphere fixed native biome volume", lease -> {
+            chunk.fillBiomesFromNoise(this.biomeSource, Climate.empty()); return chunk;
+         }));
    }
 
    @Override
@@ -272,11 +277,17 @@ public final class SphereFaceChunkGenerator extends ChunkGenerator {
 
    CompletableFuture<ChunkAccess> fillFromNoiseAt(Executor executor, ChunkAccess chunk,
       SphereWorldModel.SphereChunkAddress address) {
-      return CompletableFuture.supplyAsync(() -> {
+      return CompletableFuture.supplyAsync(() -> production.run(
+         com.yucareux.tellus.worldgen.runtime.TellusNativeProductionPipeline.Stage.TERRAIN, chunk,
+         "sphere native-grid provider -> spherical kernel -> shared chunk writer", lease -> {
          var grid = this.terrainGrid(address);
-         this.materializer.fill(chunk, grid);
+         if (production.enabled()) TellusNativeSphericalTerrainStage.fill(chunk, this.model, null, grid,
+            new com.yucareux.tellus.worldgen.decision.TellusGenerationContext(this.materializer.worldSeed(), this.worldScale(), this.seaLevel,
+               this.minY, this.minY + this.height), com.yucareux.tellus.worldgen.decision.TellusSphericalDecisionKernel.Settings.DEFAULT,
+            null, new com.yucareux.tellus.worldgen.write.TellusMinecraft1201SemanticMapper(), lease);
+         else this.materializer.fill(chunk, grid);
          return chunk;
-      }, executor);
+      }), executor);
    }
 
    private SphereTerrainMaterializer.ColumnPlan column(int x, int z, LevelHeightAccessor accessor) {
@@ -371,8 +382,14 @@ public final class SphereFaceChunkGenerator extends ChunkGenerator {
    @Override public int getMinY() { return this.minY; }
    @Override public void buildSurface(WorldGenRegion level, StructureManager structures, RandomState random, ChunkAccess chunk) { }
    @Override public void applyCarvers(WorldGenRegion level, long seed, RandomState random, BiomeManager biomes,
-      StructureManager structures, ChunkAccess chunk, GenerationStep.Carving step) { }
-   @Override public void applyBiomeDecoration(WorldGenLevel level, ChunkAccess chunk, StructureManager structures) { }
+      StructureManager structures, ChunkAccess chunk, GenerationStep.Carving step) {
+      if (step == GenerationStep.Carving.AIR) production.run(com.yucareux.tellus.worldgen.runtime.TellusNativeProductionPipeline.Stage.CARVERS,
+         chunk, "sphere empty native carvers", lease -> null);
+   }
+   @Override public void applyBiomeDecoration(WorldGenLevel level, ChunkAccess chunk, StructureManager structures) {
+      production.run(com.yucareux.tellus.worldgen.runtime.TellusNativeProductionPipeline.Stage.DECORATION,
+         chunk, "sphere empty native decoration", lease -> null);
+   }
    @Override public void spawnOriginalMobs(WorldGenRegion level) { }
    @Override public void createStructures(RegistryAccess registry, ChunkGeneratorStructureState state,
       StructureManager structures, ChunkAccess chunk, StructureTemplateManager templates) { }

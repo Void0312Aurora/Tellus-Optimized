@@ -168,7 +168,11 @@ import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemp
 import net.minecraft.world.level.material.Fluids;
 import net.minecraft.world.phys.Vec3;
 
-public final class EarthChunkGenerator extends TellusChunkGeneratorBridge implements WaterSourceConversionGuard, TellusGeodeticPosition {
+public final class EarthChunkGenerator extends TellusChunkGeneratorBridge implements WaterSourceConversionGuard, TellusGeodeticPosition,
+   com.yucareux.tellus.worldgen.runtime.TellusNativeProductionOwner {
+   private final com.yucareux.tellus.worldgen.runtime.TellusNativeProductionPipeline production =
+      new com.yucareux.tellus.worldgen.runtime.TellusNativeProductionPipeline("earth");
+   @Override public com.yucareux.tellus.worldgen.runtime.TellusNativeProductionPipeline nativeProductionPipeline() { return production; }
    private static final TellusElevationSource ELEVATION_SOURCE = TellusWorldgenSources.elevation();
    private static final TellusCanopyHeightSource CANOPY_HEIGHT_SOURCE = TellusWorldgenSources.canopyHeight();
    private static final TellusResolveSource RESOLVE_SOURCE = TellusResolveSource.shared();
@@ -832,7 +836,9 @@ public final class EarthChunkGenerator extends TellusChunkGeneratorBridge implem
    @Override
    public CompletableFuture<ChunkAccess> createBiomes(RandomState random, Blender blender, StructureManager structures, ChunkAccess chunk) {
       this.disableFastSpawnMode();
-      return MinecraftVersionCompat.supplyBackground("init_biomes", () -> this.fillBiomesWithColumnCache(random, chunk));
+      return MinecraftVersionCompat.supplyBackground("init_biomes", () -> production.run(
+         com.yucareux.tellus.worldgen.runtime.TellusNativeProductionPipeline.Stage.BIOMES, chunk, "earth native biome volume",
+         lease -> this.fillBiomesWithColumnCache(random, chunk)));
    }
 
    private ChunkAccess fillBiomesWithColumnCache(RandomState random, ChunkAccess chunk) {
@@ -858,8 +864,16 @@ public final class EarthChunkGenerator extends TellusChunkGeneratorBridge implem
        RandomState random,
       BiomeManager biomeManager,
        StructureManager structures,
-      ChunkAccess chunk
-   ) {
+       ChunkAccess chunk
+    ) {
+      production.run(com.yucareux.tellus.worldgen.runtime.TellusNativeProductionPipeline.Stage.CARVERS, chunk,
+         "earth carver/underground kernels", lease -> {
+            this.applyNativeCarvers(level, seed, random, biomeManager, structures, chunk); return null;
+         });
+   }
+
+   private void applyNativeCarvers(WorldGenRegion level, long seed, RandomState random, BiomeManager biomeManager,
+      StructureManager structures, ChunkAccess chunk) {
       List<UndergroundStructureExclusion.Box> structureExclusions =
          this.collectUndergroundStructureExclusions(structures, chunk.getPos());
       long chunkKey = MinecraftVersionCompat.packChunkPos(
@@ -968,6 +982,13 @@ public final class EarthChunkGenerator extends TellusChunkGeneratorBridge implem
    }
 
    public void applyBiomeDecoration( WorldGenLevel level,  ChunkAccess chunk,  StructureManager structures) {
+      production.run(com.yucareux.tellus.worldgen.runtime.TellusNativeProductionPipeline.Stage.DECORATION, chunk,
+         "earth ordered native decoration and shared snow sink", lease -> {
+            this.applyNativeBiomeDecoration(level, chunk, structures); return null;
+         });
+   }
+
+   private void applyNativeBiomeDecoration(WorldGenLevel level, ChunkAccess chunk, StructureManager structures) {
       EarthChunkGenerator.FullChunkTrace timingTrace = EarthChunkGenerator.FullChunkPerf.beginTrace("decoration", chunk.getPos());
       long chunkKey = MinecraftVersionCompat.packChunkPos(
          MinecraftVersionCompat.chunkX(chunk.getPos()), MinecraftVersionCompat.chunkZ(chunk.getPos())
@@ -1146,8 +1167,13 @@ public final class EarthChunkGenerator extends TellusChunkGeneratorBridge implem
 
 
    public CompletableFuture<ChunkAccess> fillFromNoise(
-       Blender blender,  RandomState random,  StructureManager structures,  ChunkAccess chunk
-   ) {
+        Blender blender,  RandomState random,  StructureManager structures,  ChunkAccess chunk
+    ) {
+      return production.run(com.yucareux.tellus.worldgen.runtime.TellusNativeProductionPipeline.Stage.TERRAIN, chunk,
+         "earth resolved column kernels and native section writer", lease -> this.fillFromNoiseNative(blender, random, structures, chunk));
+   }
+
+   private CompletableFuture<ChunkAccess> fillFromNoiseNative(Blender blender, RandomState random, StructureManager structures, ChunkAccess chunk) {
       EarthChunkGenerator.FullChunkTrace timingTrace = EarthChunkGenerator.FullChunkPerf.beginTrace("fill", chunk.getPos());
       TellusEarthNativeColumnCapture.Lease captureLease = this.nativeColumnCapture.get();
       TellusEarthNativeColumnCapture.Builder capture = null;

@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "phase": "generate",
+  "probeId": "8b0b0c6a-8584-438a-aef4-74c479dc0d31",
+  "chunkX": 616262,
+  "chunkZ": -351597,
+  "binding": {
+    "worldRoot": "D:\\Temp\\tellus-unified-generation-mc1201-20261110-a\\candidate\\world",
+    "dimension": "tellus:earth_cube_net",
+    "seed": 2025402140,
+    "generatorType": "com.yucareux.tellus.worldgen.CubeNetChunkGenerator",
+    "generatorProfile": "0b0aa6a9a3a0af144f0c9e81ee932e9d4b0245b6f392bf1e586689099f5aa3fc",
+    "minY": -2032,
+    "height": 4064,
+    "seaLevel": 64
+  },
+  "syntheticSampler": false,
+  "sourceBoundary": "new native FULL generation on the copied real world/cache; no synthetic sampler",
+  "diskReadBeforeDemandLoad": true,
+  "targetAbsentBeforeGeneration": true,
+  "generationNanos": 34615437300,
+  "nativeProductionMode": "UNIFIED",
+  "nativeProductionObservation": {
+    "family": "cube-net",
+    "chunkX": 616262,
+    "chunkZ": -351597,
+    "stages": [
+      "BIOMES",
+      "TERRAIN",
+      "CARVERS",
+      "DECORATION"
+    ],
+    "backends": [
+      "cube native biome volume",
+      "cube native-grid provider -\u003e spherical kernel -\u003e shared chunk writer; native flow/badlands",
+      "cube native spherical cave/ore/geology kernel and apron projection",
+      "cube ordered owner decoration/shared snow sink/apron mirror"
+    ],
+    "failures": []
+  },
+  "generatedBlockDigest": "7d4c588070e1e81df669eaa09231efdb6c211f9cf6b563ba7cd1cfda6b1f4681",
+  "generatedBiomeDigest": "a8ea2860d86e1bde0d01bdd6f5f501769ab06b507da5260e537e348608f1b095",
+  "generatedNativeNBTDigest": "e2fc7c8cff40813df0dd512687ed20901e2019770b88f7191ef54f04aade7485",
+  "generatedLifecycleCounts": {
+    "block_entities": 0,
+    "block_ticks": 0,
+    "fluid_ticks": 0,
+    "postProcessingOffsets": 0
+  },
+  "generatedNativeStatus": "minecraft:full",
+  "generatedDataVersion": 3465,
+  "generatedDiskMatchesMaterialized": true,
+  "status": "PASS"
+}

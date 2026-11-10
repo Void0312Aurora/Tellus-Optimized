@@ -179,10 +179,34 @@ public final class TellusPersistenceProbeCommand {
                 result.addProperty("diskReadBeforeDemandLoad", true);
                 result.addProperty("targetAbsentBeforeGeneration", true);
                 result.addProperty("sourceBoundary", "new native FULL generation on the copied real world/cache; no synthetic sampler");
+                if (Boolean.getBoolean("tellus.persistence.probe.awaitDetails")) {
+                    if (!(level.getChunkSource().getGenerator() instanceof CubeNetChunkGenerator generator))
+                        throw new IllegalStateException("settled real detail probe requires Cube-Net");
+                    generator.sampleFeatures(pos, 96.0, com.yucareux.tellus.world.data.osm.OsmQueryMode.BLOCKING).orElseThrow();
+                    var details = generator.sampleFeatures(pos, 96.0, com.yucareux.tellus.world.data.osm.OsmQueryMode.NON_BLOCKING).orElseThrow();
+                    if (details.buildings().hadCacheMiss() || details.roads().hadCacheMiss() || details.roadAreas().hadCacheMiss()
+                        || details.water().coverageStatus() != com.yucareux.tellus.world.data.osm.TellusOsmWaterSource.CoverageStatus.COMPLETE)
+                        throw new IllegalStateException("real detail sources are not settled before A/B demand generation");
+                    JsonObject inputs = new JsonObject();
+                    inputs.add("buildingIds", JSON.toJsonTree(details.buildings().features().stream().map(f -> String.valueOf(f.buildingId())).sorted().toList()));
+                    inputs.add("roadIds", JSON.toJsonTree(details.roads().features().stream().map(f -> f.wayId()).sorted().toList()));
+                    inputs.add("waterIds", JSON.toJsonTree(details.water().features().stream().map(f -> f.featureId()).sorted().toList()));
+                    inputs.addProperty("roadAreaCount", details.roadAreas().features().size());
+                    result.add("settledNativeDetailInputs", inputs);
+                }
                 long started = System.nanoTime();
                 ChunkAccess generated = ChunkBenchmarkVersionCompat.requestFullChunk(level.getChunkSource(), x, z);
                 if (generated == null) throw new IllegalStateException("native generation returned no FULL chunk");
                 result.addProperty("generationNanos", System.nanoTime() - started);
+                if (level.getChunkSource().getGenerator() instanceof com.yucareux.tellus.worldgen.runtime.TellusNativeProductionOwner owner) {
+                    var pipeline = owner.nativeProductionPipeline();
+                    result.addProperty("nativeProductionMode", pipeline.mode().name());
+                    var observation = pipeline.observation(pos);
+                    result.add("nativeProductionObservation", JSON.toJsonTree(observation));
+                    if (pipeline.enabled() && (!observation.stages().equals(java.util.List.of("BIOMES", "TERRAIN", "CARVERS", "DECORATION"))
+                        || !observation.failures().isEmpty()))
+                        throw new IllegalStateException("real native generation did not complete all four unified production stages");
+                }
                 CompoundTag expected = persistence.snapshot(generated);
                 result.addProperty("generatedBlockDigest", blockDigest(generated));
                 result.addProperty("generatedBiomeDigest", biomeDigest(generated));

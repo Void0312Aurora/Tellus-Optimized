@@ -27,6 +27,8 @@ def main(argv=None) -> int:
     parser.add_argument('--baseline-ref', required=True)
     parser.add_argument('--target-x', type=int, required=True)
     parser.add_argument('--target-z', type=int, required=True)
+    parser.add_argument('--candidate-pipeline', choices=('legacy', 'unified'), default='legacy')
+    parser.add_argument('--settle-native-details', action='store_true')
     extra, remaining = parser.parse_known_args(argv)
     args = native.parse_args(remaining)
     if not args.execute or args.populate_lifecycle:
@@ -79,6 +81,10 @@ def main(argv=None) -> int:
             options = ['tellus.persistence.probe=true', f'tellus.persistence.probe.id={probe_id}',
                        f'tellus.persistence.probeRoot={run / "world"}', 'tellus.sphere.syntheticSampler=false',
                        f'tellus.gameDir={run}', f'tellus.configDir={run / "config"}', 'tellus.chunkgen.threads.max=1']
+            if label == 'candidate':
+                options.append(f'tellus.worldgen.pipeline={extra.candidate_pipeline}')
+            if extra.settle_native_details:
+                options.append('tellus.persistence.probe.awaitDetails=true')
             env['JAVA_TOOL_OPTIONS'] = ' '.join(filter(None, [env.get('JAVA_TOOL_OPTIONS', ''),
                 *(f'"-D{option}"' for option in options)]))
             command = [str(project / ('gradlew.bat' if os.name == 'nt' else 'gradlew')),
@@ -88,10 +94,20 @@ def main(argv=None) -> int:
             phase = native.run_phase(lane_args, run, run / 'evidence', command, env, 'generate', probe_id)
             report['lanes'].append({'label': label, 'project': str(project), 'command': command,
                                     'jvmProperties': options, **phase})
+            if label == 'candidate' and extra.candidate_pipeline == 'unified':
+                observation = phase['native'].get('nativeProductionObservation', {})
+                if phase['native'].get('nativeProductionMode') != 'UNIFIED' or observation.get('stages') != ['BIOMES', 'TERRAIN', 'CARVERS', 'DECORATION'] or observation.get('failures'):
+                    raise ValueError('candidate did not run the complete actual unified native production chain')
+                if not any('shared chunk writer' in backend for backend in observation.get('backends', [])):
+                    raise ValueError('candidate did not use the existing provider/kernel/shared writer backend')
             native.write_json(pair / 'generation-parity.json', report)
         old, new = [lane['native'] for lane in report['lanes']]
         fields = ('generatedBlockDigest', 'generatedBiomeDigest', 'generatedNativeNBTDigest', 'generatedLifecycleCounts',
                   'generatedNativeStatus', 'generatedDataVersion')
+        if extra.settle_native_details:
+            if not old.get('settledNativeDetailInputs') or not new.get('settledNativeDetailInputs'):
+                raise ValueError('both real native detail inputs must be settled explicitly')
+            fields += ('settledNativeDetailInputs',)
         report['differences'] = {field: {'baseline': old.get(field), 'candidate': new.get(field)}
                                  for field in fields if old.get(field) != new.get(field)}
         if report['differences']:
