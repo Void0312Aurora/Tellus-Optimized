@@ -13,5 +13,6 @@ public abstract class TellusNativeRecoveryStartupMixin {
     @Inject(method = "prepareLevels", at = @At("HEAD"))
     private void tellus$recoverBeforeChunkLoading(ChunkProgressListener progress, CallbackInfo ci) {
         TellusNativeSaveFence.recoverBeforeLevels((MinecraftServer)(Object)this);
+        com.yucareux.tellus.worldgen.runtime.TellusNativeRuntimeHost.prepareBeforeLevels((MinecraftServer)(Object)this);
     }
 }

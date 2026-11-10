@@ -17,8 +17,9 @@ import java.util.Set;
  */
 public final class TellusDfu1211Compat {
    private static final Set<String> REGISTERED_GENERATOR_IDS = Set.of(
-      "tellus:earth",
-      "tellus:cube_net"
+       "tellus:earth",
+       "tellus:sphere_face",
+       "tellus:cube_net"
    );
 
    private TellusDfu1211Compat() { }

@@ -173,6 +173,9 @@ public final class EarthChunkGenerator extends TellusChunkGeneratorBridge implem
    private final com.yucareux.tellus.worldgen.runtime.TellusNativeProductionPipeline production =
       new com.yucareux.tellus.worldgen.runtime.TellusNativeProductionPipeline("earth");
    @Override public com.yucareux.tellus.worldgen.runtime.TellusNativeProductionPipeline nativeProductionPipeline() { return production; }
+   @Override public com.yucareux.tellus.worldgen.runtime.TellusGeneratorRuntime createNativeRuntimeAdapter() {
+      return com.yucareux.tellus.worldgen.runtime.TellusEarthRuntimeFactories.create(this).orElseThrow();
+   }
    private static final TellusElevationSource ELEVATION_SOURCE = TellusWorldgenSources.elevation();
    private static final TellusCanopyHeightSource CANOPY_HEIGHT_SOURCE = TellusWorldgenSources.canopyHeight();
    private static final TellusResolveSource RESOLVE_SOURCE = TellusResolveSource.shared();

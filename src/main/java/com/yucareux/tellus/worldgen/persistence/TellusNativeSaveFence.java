@@ -48,7 +48,10 @@ public final class TellusNativeSaveFence {
     /** Runs before prepareLevels starts spawn loading or ordinary server ticks/saves. */
     public static void recoverBeforeLevels(MinecraftServer server) {
         var root = server.getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT).toAbsolutePath().normalize();
-        if (!java.nio.file.Files.isDirectory(root.resolve("tellus/persistence-journal"))) return;
+        if (!java.nio.file.Files.isDirectory(root.resolve("tellus/persistence-journal"))) {
+            LOGGER.info("TELLUS_NATIVE_STARTUP_RECOVERY_READY no pending journal directory; native storage untouched");
+            return;
+        }
         for (ServerLevel level : server.getAllLevels()) {
             try {
                 TellusNativeChunkPersistence.FaultInjector faults = TellusNativeChunkPersistence.FaultInjector.NONE;

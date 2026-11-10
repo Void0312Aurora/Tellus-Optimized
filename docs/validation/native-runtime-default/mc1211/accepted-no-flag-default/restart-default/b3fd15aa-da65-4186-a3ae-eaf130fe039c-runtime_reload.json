@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "phase": "runtime_reload",
+  "probeId": "b3fd15aa-da65-4186-a3ae-eaf130fe039c",
+  "chunkX": 616262,
+  "chunkZ": -351597,
+  "binding": {
+    "worldRoot": "D:\\Temp\\tellus-native-runtime-default-mc1211-20261110-a\\candidate\\world",
+    "dimension": "tellus:earth_cube_net",
+    "seed": 2025402140,
+    "generatorType": "com.yucareux.tellus.worldgen.CubeNetChunkGenerator",
+    "generatorProfile": "0b0aa6a9a3a0af144f0c9e81ee932e9d4b0245b6f392bf1e586689099f5aa3fc",
+    "minY": -2032,
+    "height": 4064,
+    "seaLevel": 64
+  },
+  "syntheticSampler": false,
+  "runtimeLifecycle": {
+    "bootstrapInstalled": true,
+    "configuredMode": "UNIFIED",
+    "registrations": 3,
+    "attached": 3,
+    "tickCallbacks": 1,
+    "chunkUnloadCallbacks": 1,
+    "targetAttached": true,
+    "targetAdapter": "CubeNetGeneratorRuntimeAdapter",
+    "adapters": [
+      {
+        "adapter": "CubeNetGeneratorRuntimeAdapter",
+        "attached": true,
+        "nativeDeferredTickCallbacks": 0,
+        "nativeUnloadCallbacks": 0
+      },
+      {
+        "adapter": "SphereFaceGeneratorRuntimeAdapter",
+        "attached": true,
+        "nativeDeferredTickCallbacks": 0,
+        "nativeUnloadCallbacks": 0
+      },
+      {
+        "adapter": "EarthGeneratorRuntimeAdapter",
+        "attached": true,
+        "nativeDeferredTickCallbacks": 1,
+        "nativeUnloadCallbacks": 1
+      }
+    ]
+  },
+  "explicitOwnedEarthUnloadDispatchWithoutDemandLoad": true,
+  "sourceBoundary": "pre-existing native FULL world chunk; GIS provenance recorded by isolated runner",
+  "diskReadBeforeDemandLoad": true,
+  "blockDigest": "d9db01c32d21828990b966fa5e5ebbe43496586a032b10175fff58b954c465cb",
+  "biomeDigest": "a8ea2860d86e1bde0d01bdd6f5f501769ab06b507da5260e537e348608f1b095",
+  "nativeNBTDigest": "a3d663c1ac22821593d2f31be10748de229695bc886ec292389e77c25a95a578",
+  "nativeSavedPayloadEqual": true,
+  "status": "PASS"
+}

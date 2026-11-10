@@ -29,7 +29,7 @@ class TellusDfu1211CompatTest {
       Map<String, Object> types = generatorChoiceSchema();
       assertTrue(TellusDfu1211Compat.shouldUseOpaqueFallback("type", types, "tellus:cube_net"));
       assertTrue(TellusDfu1211Compat.shouldUseOpaqueFallback("type", types, "tellus:earth"));
-      assertFalse(TellusDfu1211Compat.shouldUseOpaqueFallback("type", types, "tellus:sphere_face"));
+       assertTrue(TellusDfu1211Compat.shouldUseOpaqueFallback("type", types, "tellus:sphere_face"));
       assertFalse(TellusDfu1211Compat.shouldUseOpaqueFallback("other", types, "tellus:cube_net"));
       assertFalse(TellusDfu1211Compat.shouldUseOpaqueFallback("type", types, "minecraft:noise"));
    }

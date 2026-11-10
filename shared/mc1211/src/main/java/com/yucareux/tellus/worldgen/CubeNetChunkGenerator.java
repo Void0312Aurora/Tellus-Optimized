@@ -122,6 +122,9 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
    private final com.yucareux.tellus.worldgen.runtime.TellusNativeProductionPipeline production =
       new com.yucareux.tellus.worldgen.runtime.TellusNativeProductionPipeline("cube-net");
    @Override public com.yucareux.tellus.worldgen.runtime.TellusNativeProductionPipeline nativeProductionPipeline() { return production; }
+   @Override public com.yucareux.tellus.worldgen.runtime.TellusGeneratorRuntime createNativeRuntimeAdapter() {
+      return com.yucareux.tellus.worldgen.runtime.TellusMinecraft1211RuntimeFactories.create(this).orElseThrow();
+   }
    /** Explicit opt-in bridge; default generation never invokes this entrypoint. */
    private final com.yucareux.tellus.worldgen.caves.CubeNetNativeUndergroundStage nativeUndergroundStage = new com.yucareux.tellus.worldgen.caves.CubeNetNativeUndergroundStage();
 

@@ -11,6 +11,8 @@ public final class EarthGeneratorRuntimeAdapter implements TellusGeneratorRuntim
    private final EarthChunkGenerator generator;
    private final EarthGeneratorSettingsViewAdapter settings;
    private boolean attached;
+   private net.minecraft.server.level.ServerLevel nativeLevel;
+   private long nativeTickCallbacks, nativeUnloadCallbacks;
 
    public EarthGeneratorRuntimeAdapter(EarthChunkGenerator generator) {
       this.generator = java.util.Objects.requireNonNull(generator, "generator");
@@ -45,11 +47,34 @@ public final class EarthGeneratorRuntimeAdapter implements TellusGeneratorRuntim
 
    @Override
    public void detach() {
-      this.attached = false;
+       this.attached = false;
+       this.nativeLevel = null;
    }
 
    @Override
    public boolean attached() {
       return this.attached;
    }
+
+   @Override public void bindNativeLevel(net.minecraft.server.level.ServerLevel level) {
+      java.util.Objects.requireNonNull(level, "level");
+      if (level.getChunkSource().getGenerator() != generator || nativeLevel != null && nativeLevel != level)
+         throw new IllegalArgumentException("native Earth runtime level ownership differs");
+      nativeLevel = level;
+   }
+   @Override public boolean managesDeferredChunkDetails() { return attached && nativeLevel != null; }
+   @Override public void tick() {
+      if (managesDeferredChunkDetails()) {
+         generator.processDeferredChunkDetailTick(nativeLevel);
+         nativeTickCallbacks++;
+      }
+   }
+   @Override public boolean onNativeChunkUnload(net.minecraft.world.level.ChunkPos position) {
+      if (!managesDeferredChunkDetails()) return false;
+      generator.discardPreparedChunkState(position);
+      nativeUnloadCallbacks++;
+      return true;
+   }
+   public long nativeTickCallbacks() { return nativeTickCallbacks; }
+   public long nativeUnloadCallbacks() { return nativeUnloadCallbacks; }
 }

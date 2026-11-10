@@ -1,0 +1,25 @@
+{
+  "type": "tellus:earth",
+  "generator": {
+    "type": "tellus:earth",
+    "biome_source": {
+      "type": "tellus:earth",
+      "settings": {
+        "world_scale": 30.0,
+        "terrestrial_height_scale": 1.0,
+        "oceanic_height_scale": 1.0,
+        "height_offset": 64,
+        "spawn_latitude": 27.9881,
+        "spawn_longitude": 86.925
+      }
+    },
+    "settings": {
+      "world_scale": 30.0,
+      "terrestrial_height_scale": 1.0,
+      "oceanic_height_scale": 1.0,
+      "height_offset": 64,
+      "spawn_latitude": 27.9881,
+      "spawn_longitude": 86.925
+    }
+  }
+}

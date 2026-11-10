@@ -95,6 +95,20 @@ class RunnerContracts(unittest.TestCase):
                 with self.subTest(key=key), self.assertRaises(ValueError):
                     runner.check_report(path, "generate", args, "probe")
 
+    def test_runtime_reload_requires_actual_complete_native_save_payload(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "report.json"
+            args = types.SimpleNamespace(chunk_x=1, chunk_z=-2)
+            report = dict(status="PASS", phase="runtime_reload", probeId="probe", syntheticSampler=False,
+                          chunkX=1, chunkZ=-2, diskReadBeforeDemandLoad=True, nativeSavedPayloadEqual=True,
+                          blockDigest="a"*64, biomeDigest="b"*64, nativeNBTDigest="c"*64)
+            path.write_text(json.dumps(report), encoding="utf-8")
+            self.assertEqual(runner.check_report(path, "runtime_reload", args, "probe"), report)
+            for field, value in [("nativeSavedPayloadEqual",False),("blockDigest",""),("biomeDigest","partial"),("nativeNBTDigest","a"*63)]:
+                path.write_text(json.dumps({**report,field:value}), encoding="utf-8")
+                with self.subTest(field=field), self.assertRaises(ValueError):
+                    runner.check_report(path, "runtime_reload", args, "probe")
+
     def test_sea_codec_requires_real_settings_source_nondefault_offset_native_save_and_complete_payload(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "report.json"

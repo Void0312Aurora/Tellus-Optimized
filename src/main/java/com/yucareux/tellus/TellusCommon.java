@@ -127,6 +127,7 @@ public class TellusCommon {
    }
 
    public static void initializeRuntime(TellusRuntimePlatform runtime) {
+       com.yucareux.tellus.worldgen.runtime.TellusNativeRuntimeHost.install(runtime);
       runtime.registerCommands(
             dispatcher -> dispatcher.register(
                ((Commands.literal("tellus")
@@ -281,7 +282,8 @@ public class TellusCommon {
          teleportProgressOverride = null;
          REALTIME_MANAGER.onServerStopping(server);
          VOXY_PREGEN_MANAGER.shutdown();
-         MANAGED_TERRAIN_DOWNLOAD_MANAGER.reset();
+          MANAGED_TERRAIN_DOWNLOAD_MANAGER.reset();
+          com.yucareux.tellus.worldgen.runtime.TellusNativeRuntimeHost.stop(server);
       });
       if (Boolean.getBoolean("tellus.persistence.probe")) {
          com.yucareux.tellus.worldgen.TellusPersistenceProbeCommand.register(runtime);
@@ -298,18 +300,21 @@ public class TellusCommon {
             }
          }
       });
-      runtime.onServerTick(server -> {
-         for (ServerLevel level : server.getAllLevels()) {
+       runtime.onServerTick(server -> {
+          com.yucareux.tellus.worldgen.runtime.TellusNativeRuntimeHost.tick(server);
+          for (ServerLevel level : server.getAllLevels()) {
             ChunkGenerator generator = level.getChunkSource().getGenerator();
-            if (generator instanceof EarthChunkGenerator earthGenerator) {
-               earthGenerator.processDeferredChunkDetailTick(level);
+             if (generator instanceof EarthChunkGenerator earthGenerator
+                 && !com.yucareux.tellus.worldgen.runtime.TellusNativeRuntimeHost.ownsDeferredTick(level)) {
+                earthGenerator.processDeferredChunkDetailTick(level);
             }
          }
       });
       runtime.onChunkUnload((level, chunkPos) -> {
          ChunkGenerator generator = level.getChunkSource().getGenerator();
-         if (generator instanceof EarthChunkGenerator earthGenerator) {
-            earthGenerator.discardPreparedChunkState(chunkPos);
+          if (generator instanceof EarthChunkGenerator earthGenerator
+              && !com.yucareux.tellus.worldgen.runtime.TellusNativeRuntimeHost.chunkUnloaded(level, chunkPos)) {
+             earthGenerator.discardPreparedChunkState(chunkPos);
          }
       });
       runtime.onPlayerJoin(REALTIME_MANAGER::onPlayerJoin);

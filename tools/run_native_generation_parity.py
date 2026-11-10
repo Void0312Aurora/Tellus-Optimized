@@ -27,7 +27,9 @@ def main(argv=None) -> int:
     parser.add_argument('--baseline-ref', required=True)
     parser.add_argument('--target-x', type=int, required=True)
     parser.add_argument('--target-z', type=int, required=True)
-    parser.add_argument('--candidate-pipeline', choices=('legacy', 'unified'), default='legacy')
+    parser.add_argument('--candidate-pipeline', choices=('legacy', 'unified', 'default'), default='legacy')
+    parser.add_argument('--require-runtime', action='store_true')
+    parser.add_argument('--runtime-family-levels', action='store_true')
     parser.add_argument('--settle-native-details', action='store_true')
     extra, remaining = parser.parse_known_args(argv)
     args = native.parse_args(remaining)
@@ -71,9 +73,23 @@ def main(argv=None) -> int:
             lane_args.project_root = project
             lane_args.chunk_x, lane_args.chunk_z = extra.target_x, extra.target_z
             lane_args.port = args.port + ordinal
+            lane_args.require_native_runtime = label == 'candidate' and extra.require_runtime and extra.candidate_pipeline != 'legacy'
             properties = run / 'server.properties'
             properties.write_text(properties.read_text(encoding='utf-8').replace(
                 f'server-port={args.port}', f'server-port={lane_args.port}'), encoding='utf-8')
+            if label == 'candidate' and extra.runtime_family_levels:
+                if not extra.require_runtime or extra.candidate_pipeline == 'legacy':
+                    raise ValueError('explicit native runtime-family acceptance requires unified lifecycle')
+                pack = run / 'world/datapacks/native-runtime-families'
+                pack.mkdir()
+                native.write_json(pack / 'pack.mcmeta', {'pack': {'pack_format': 15 if args.module == 'mc1201' else 48, 'description': 'Native runtime family lifecycle fixture; no new generated terrain'}})
+                definitions = pack / 'data/tellus/dimension'; definitions.mkdir(parents=True)
+                preset = json.loads((project / 'src/main/resources/data/tellus/worldgen/world_preset/earth.json').read_text(encoding='utf-8'))
+                native.write_json(definitions / 'native_runtime_earth.json', preset['dimensions']['minecraft:overworld'])
+                native.write_json(definitions / 'native_runtime_sphere.json', {'type': 'tellus:earth_surface', 'generator': {
+                    'type': 'tellus:sphere_face', 'geometry_version': 2, 'mapping': 'rancic-ccam30-double-v1',
+                    'biome_source': {'biome': 'minecraft:plains'}, 'face': 0, 'world_scale': 1.0, 'sea_level': 64,
+                    'min_y': -2032, 'height': 4064}})
             env = os.environ.copy()
             for name in ('JAVA_TOOL_OPTIONS', '_JAVA_OPTIONS', 'JDK_JAVA_OPTIONS'):
                 if 'tellus.' in env.get(name, ''):
@@ -81,10 +97,12 @@ def main(argv=None) -> int:
             options = ['tellus.persistence.probe=true', f'tellus.persistence.probe.id={probe_id}',
                        f'tellus.persistence.probeRoot={run / "world"}', 'tellus.sphere.syntheticSampler=false',
                        f'tellus.gameDir={run}', f'tellus.configDir={run / "config"}', 'tellus.chunkgen.threads.max=1']
-            if label == 'candidate':
+            if label == 'candidate' and extra.candidate_pipeline != 'default':
                 options.append(f'tellus.worldgen.pipeline={extra.candidate_pipeline}')
             if extra.settle_native_details:
                 options.append('tellus.persistence.probe.awaitDetails=true')
+            if label == 'candidate' and extra.runtime_family_levels:
+                options.append('tellus.persistence.probe.runtimeFamilies=true')
             env['JAVA_TOOL_OPTIONS'] = ' '.join(filter(None, [env.get('JAVA_TOOL_OPTIONS', ''),
                 *(f'"-D{option}"' for option in options)]))
             command = [str(project / ('gradlew.bat' if os.name == 'nt' else 'gradlew')),
@@ -94,12 +112,25 @@ def main(argv=None) -> int:
             phase = native.run_phase(lane_args, run, run / 'evidence', command, env, 'generate', probe_id)
             report['lanes'].append({'label': label, 'project': str(project), 'command': command,
                                     'jvmProperties': options, **phase})
-            if label == 'candidate' and extra.candidate_pipeline == 'unified':
+            if label == 'candidate' and extra.candidate_pipeline in ('unified', 'default'):
                 observation = phase['native'].get('nativeProductionObservation', {})
                 if phase['native'].get('nativeProductionMode') != 'UNIFIED' or observation.get('stages') != ['BIOMES', 'TERRAIN', 'CARVERS', 'DECORATION'] or observation.get('failures'):
                     raise ValueError('candidate did not run the complete actual unified native production chain')
                 if not any('shared chunk writer' in backend for backend in observation.get('backends', [])):
                     raise ValueError('candidate did not use the existing provider/kernel/shared writer backend')
+                if extra.require_runtime:
+                    runtime = phase['native'].get('runtimeLifecycle', {})
+                    if runtime.get('bootstrapInstalled') is not True or runtime.get('configuredMode') != 'UNIFIED' or runtime.get('targetAttached') is not True or runtime.get('targetAdapter') != 'CubeNetGeneratorRuntimeAdapter':
+                        raise ValueError('actual target native lifecycle adapter was not attached')
+                    if runtime.get('tickCallbacks', 0) < 1 or runtime.get('attached', 0) != runtime.get('registrations') or runtime.get('registrations', 0) < 1:
+                        raise ValueError('native registry tick/unique attachment evidence missing')
+                    if extra.runtime_family_levels:
+                        adapters = runtime.get('adapters', [])
+                        if {a.get('adapter') for a in adapters} != {'EarthGeneratorRuntimeAdapter', 'CubeNetGeneratorRuntimeAdapter', 'SphereFaceGeneratorRuntimeAdapter'} or runtime['registrations'] != 3:
+                            raise ValueError('three actual typed native family adapters required')
+                        earth = next(a for a in adapters if a['adapter'] == 'EarthGeneratorRuntimeAdapter')
+                        if earth.get('nativeDeferredTickCallbacks') != runtime['tickCallbacks'] or earth.get('nativeUnloadCallbacks') != 1 or phase['native'].get('explicitOwnedEarthUnloadDispatchWithoutDemandLoad') is not True:
+                            raise ValueError('actual Earth single tick/unload dispatch evidence differs')
             native.write_json(pair / 'generation-parity.json', report)
         old, new = [lane['native'] for lane in report['lanes']]
         fields = ('generatedBlockDigest', 'generatedBiomeDigest', 'generatedNativeNBTDigest', 'generatedLifecycleCounts',

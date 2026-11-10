@@ -49,6 +49,9 @@ public final class SphereFaceChunkGenerator extends ChunkGenerator implements co
    private final com.yucareux.tellus.worldgen.runtime.TellusNativeProductionPipeline production =
       new com.yucareux.tellus.worldgen.runtime.TellusNativeProductionPipeline("sphere-face");
    @Override public com.yucareux.tellus.worldgen.runtime.TellusNativeProductionPipeline nativeProductionPipeline() { return production; }
+   @Override public com.yucareux.tellus.worldgen.runtime.TellusGeneratorRuntime createNativeRuntimeAdapter() {
+      return com.yucareux.tellus.worldgen.runtime.TellusMinecraft1211RuntimeFactories.create(this).orElseThrow();
+   }
    public static final MapCodec<SphereFaceChunkGenerator> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
       Codec.intRange(2, 2).fieldOf("geometry_version").forGetter(generator -> 2),
       Codec.STRING.fieldOf("mapping").forGetter(generator -> generator.model().mappingId()),

@@ -20,7 +20,14 @@ public interface TellusGeneratorRuntime extends TellusGeneratorRuntimeView {
    AttachResult attach(ChunkGenerator generator);
 
    /** Explicit bridge tick hook; adapters may override, but no caller is installed automatically. */
-   default void tick() { }
+    default void tick() { }
+
+    /** Bind an existing native level; never create a generator, chunk queue or manager here. */
+    default void bindNativeLevel(net.minecraft.server.level.ServerLevel level) { }
+
+    default boolean managesDeferredChunkDetails() { return false; }
+
+    default boolean onNativeChunkUnload(net.minecraft.world.level.ChunkPos position) { return false; }
 
    /** Idempotent phase-1 detach; later phases release manager state here. */
    void detach();

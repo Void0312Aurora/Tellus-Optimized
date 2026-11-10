@@ -56,7 +56,7 @@ public final class TellusPersistenceProbeCommand {
         platform.registerCommands(dispatcher -> dispatcher.register(Commands.literal("tellus")
             .then(Commands.literal("persistence")
                 .requires(source -> Boolean.getBoolean("tellus.persistence.probe") && source.hasPermission(4))
-                .then(phase("capture")).then(phase("verify")).then(phase("generate")).then(phase("sea_codec"))
+                 .then(phase("capture")).then(phase("verify")).then(phase("generate")).then(phase("sea_codec")).then(phase("runtime_reload"))
                 .then(phase("crash_batch")).then(phase("recover_batch")).then(phase("verify_batch")))));
     }
 
@@ -93,20 +93,43 @@ public final class TellusPersistenceProbeCommand {
             result.addProperty("chunkX", x); result.addProperty("chunkZ", z);
             result.add("binding", bindingJson(persistence.binding()));
             result.addProperty("syntheticSampler", false);
+            result.add("runtimeLifecycle", JSON.toJsonTree(com.yucareux.tellus.worldgen.runtime.TellusNativeRuntimeHost.observation(level)));
+            if (Boolean.getBoolean("tellus.persistence.probe.runtimeFamilies")) {
+                ServerLevel earth = null, sphere = null;
+                for (ServerLevel candidate : source.getServer().getAllLevels()) {
+                    if (candidate.dimension().location().toString().equals("tellus:native_runtime_earth")) earth = candidate;
+                    if (candidate.dimension().location().toString().equals("tellus:native_runtime_sphere")) sphere = candidate;
+                }
+                if (earth == null || sphere == null || !(earth.getChunkSource().getGenerator() instanceof EarthChunkGenerator)
+                    || !(sphere.getChunkSource().getGenerator() instanceof SphereFaceChunkGenerator))
+                    throw new IllegalStateException("real native runtime family levels missing");
+                var host = com.yucareux.tellus.worldgen.runtime.TellusNativeRuntimeHost.observation(earth);
+                if (!host.targetAttached() || !host.targetAdapter().equals("EarthGeneratorRuntimeAdapter")
+                    || host.adapters().stream().noneMatch(a -> a.adapter().equals("EarthGeneratorRuntimeAdapter") && a.nativeDeferredTickCallbacks() == host.tickCallbacks() && a.nativeDeferredTickCallbacks() > 0))
+                    throw new IllegalStateException("native Earth deferred detail callback did not run exactly once per platform tick");
+                if (!com.yucareux.tellus.worldgen.runtime.TellusNativeRuntimeHost.observation(sphere).targetAttached())
+                    throw new IllegalStateException("native Sphere lifecycle did not attach");
+                if (!com.yucareux.tellus.worldgen.runtime.TellusNativeRuntimeHost.chunkUnloaded(earth, pos))
+                    throw new IllegalStateException("native Earth owned unload dispatch was not handled");
+                result.addProperty("explicitOwnedEarthUnloadDispatchWithoutDemandLoad", true);
+                result.add("runtimeLifecycle", JSON.toJsonTree(com.yucareux.tellus.worldgen.runtime.TellusNativeRuntimeHost.observation(level)));
+            }
             result.addProperty("sourceBoundary", "pre-existing native FULL world chunk; GIS provenance recorded by isolated runner");
-            if (phase.equals("sea_codec")) {
-                if (!(level.getChunkSource().getGenerator() instanceof CubeNetChunkGenerator generator)
-                    || !(generator.getBiomeSource() instanceof CubeNetBiomeSource))
-                    throw new IllegalStateException("real offset restart requires the native settings-carrying Cube biome source");
-                int offset = Integer.parseInt(System.getProperty("tellus.persistence.probe.expectedHeightOffset"));
-                int sea = Integer.parseInt(System.getProperty("tellus.persistence.probe.expectedSeaLevel"));
-                if (generator.heightOffset() != offset || generator.getSeaLevel() != sea)
-                    throw new IllegalStateException("decoded native height offset/sea level drifted across restart");
+            if (phase.equals("sea_codec") || phase.equals("runtime_reload")) {
+                if (phase.equals("sea_codec")) {
+                    if (!(level.getChunkSource().getGenerator() instanceof CubeNetChunkGenerator generator)
+                        || !(generator.getBiomeSource() instanceof CubeNetBiomeSource))
+                        throw new IllegalStateException("real offset restart requires the native settings-carrying Cube biome source");
+                    int offset = Integer.parseInt(System.getProperty("tellus.persistence.probe.expectedHeightOffset"));
+                    int sea = Integer.parseInt(System.getProperty("tellus.persistence.probe.expectedSeaLevel"));
+                    if (generator.heightOffset() != offset || generator.getSeaLevel() != sea)
+                        throw new IllegalStateException("decoded native height offset/sea level drifted across restart");
+                    result.addProperty("nativeHeightOffset", generator.heightOffset());
+                    result.addProperty("nativeSeaLevel", generator.getSeaLevel());
+                    result.addProperty("settingsCarryingBiomeSource", true);
+                }
                 persistence.readExistingNBT(pos).orElseThrow(() -> new IllegalStateException("offset probe requires existing real native FULL terrain"));
                 result.addProperty("diskReadBeforeDemandLoad", true);
-                result.addProperty("nativeHeightOffset", generator.heightOffset());
-                result.addProperty("nativeSeaLevel", generator.getSeaLevel());
-                result.addProperty("settingsCarryingBiomeSource", true);
                 ChunkAccess loaded = ChunkBenchmarkVersionCompat.requestFullChunk(level.getChunkSource(), x, z);
                 if (loaded == null) throw new IllegalStateException("native offset reload returned no FULL chunk");
                 CompoundTag materialized = persistence.snapshot(loaded);
@@ -119,7 +142,7 @@ public final class TellusPersistenceProbeCommand {
                 if (!TellusNativeChunkPersistence.sameNBT(materialized, saved, SAVE_CLOCKS))
                     throw new IllegalStateException("offset native materialization differs through engine save");
                 result.addProperty("nativeSavedPayloadEqual", true);
-                Files.writeString(directory.resolve(id + "-sea-codec.snbt"), saved.toString(), StandardCharsets.UTF_8);
+                Files.writeString(directory.resolve(id + (phase.equals("sea_codec") ? "-sea-codec.snbt" : "-runtime-reload.snbt")), saved.toString(), StandardCharsets.UTF_8);
                 return complete(source, phase, result, output);
             }
             if (phase.endsWith("_batch")) {

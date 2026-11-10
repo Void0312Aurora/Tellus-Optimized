@@ -1,0 +1,318 @@
+{
+  "parent": "4f2b81ac444c1ba6e008299b9346dec576266271",
+  "scope": "actual native loader default on mc1201/mc1211; existing typed runtime adapters, native callbacks and storage retained; no source schema or algorithm replacement",
+  "defaultPipelineMode": "UNIFIED",
+  "rollbackJVMProperty": "tellus.worldgen.pipeline=legacy",
+  "sourceSHA256": {
+    "src/main/java/com/yucareux/tellus/TellusCommon.java": "4a884197fbfe683122d70bc46336d38148b9cc30658dbf9349bfbbb9566bda64",
+    "src/main/java/com/yucareux/tellus/mixin/TellusNativeRecoveryStartupMixin.java": "aa0eb1232f8de02d6f3e575004072369ab806012786624a6e8d14ea06fdc331e",
+    "src/main/java/com/yucareux/tellus/worldgen/persistence/TellusNativeSaveFence.java": "fd277b15eb254905f0586a321b3f66f1785c8165ca31d2fb4c11be0a80951799",
+    "src/main/java/com/yucareux/tellus/worldgen/EarthChunkGenerator.java": "a527d0684cb0d6ae4554b5ef09b6e5dd0aba1a341e8b0e8be679cd8764752177",
+    "src/main/java/com/yucareux/tellus/worldgen/TellusPersistenceProbeCommand.java": "69ab047ea42e85b12e6db0b3d4626b9918ab2dd5743e1d238a7369030bb162f6",
+    "src/main/java/com/yucareux/tellus/worldgen/runtime/TellusNativeRuntimeHost.java": "5eefd69ee5908cb10b86f082bbb26c1fe710250c66060f34db20e9634f15fbbb",
+    "src/main/java/com/yucareux/tellus/worldgen/runtime/TellusNativeProductionPipeline.java": "8b4b94b32e0ad1bce9adfe604d47a2b8b7033f122a6117a2a05f5acb96aaf232",
+    "src/main/java/com/yucareux/tellus/worldgen/runtime/TellusNativeProductionOwner.java": "e7c690327794c5a512d98366bb00e78692650426dbefe76552008e42b92c5eb8",
+    "src/main/java/com/yucareux/tellus/worldgen/runtime/TellusGeneratorRuntime.java": "d2136d06cf048945770ccc7bbfc7aa52c90af3b915c948a925c8f0cbb1f665d1",
+    "src/main/java/com/yucareux/tellus/worldgen/runtime/EarthGeneratorRuntimeAdapter.java": "42ca4a7c0240e70029c7de915359b7f3b8e63e922633328e081397843e9879fb",
+    "mc1201/src/main/java/com/yucareux/tellus/worldgen/CubeNetChunkGenerator.java": "b57318c926120a7d1ea1f7bb172ea0f9fb60cd3a82acec048397ed25f1eb5a0b",
+    "mc1201/src/main/java/com/yucareux/tellus/worldgen/SphereFaceChunkGenerator.java": "70fd0310a991a35add6c61d65ec069cd86640e0835f7c7303452285dfcbeb889",
+    "shared/mc1211/src/main/java/com/yucareux/tellus/worldgen/CubeNetChunkGenerator.java": "9bec38b885f47975289dbc1ea09ffb86bc8e1ec6947dc643bee29d75028369de",
+    "shared/mc1211/src/main/java/com/yucareux/tellus/worldgen/SphereFaceChunkGenerator.java": "0646aac13027b7e0237436f2541d95f7f72410876c13a3a8678c016c1860b143",
+    "mc1211/src/main/java/com/yucareux/tellus/Tellus.java": "adba1410b5c35c54a8a1feeffc9179a12ce497c1446498fc216810270c9d8e26",
+    "shared/mc1211/src/main/java/com/yucareux/tellus/compat/TellusDfu1211Compat.java": "04d4f4ba4e70e87b3c2eca3ee7b58801852e64fa5475aad7ddcbf4b7ba57625c",
+    "shared/mc1211/src/test/java/com/yucareux/tellus/compat/TellusDfu1211CompatTest.java": "cccf9e13f1e1a1a7a7ef3a5ab384cd5b9e6aa0cd725917f5248918d86bf6acb3",
+    "src/test/java/com/yucareux/tellus/worldgen/runtime/TellusNativeBootstrapModeTest.java": "ea7e6bf090fbf42549484ff54af1a06476a1ba74f6bc7a8819bd5f549336298a",
+    "tools/run_native_generation_parity.py": "77fc5bc07b378cc6605ee5de0131a8c08023f319d1fcb9a48b2ceae5ea60fe1e",
+    "tools/run_native_persistence_roundtrip.py": "5f6b1f0e8c22a5d40eadccd1dc2702685da308725142ebdc4d3d687a370fec0c",
+    "tools/test_run_native_persistence_roundtrip.py": "834e91c1dc0afe7166812a426dee5f4fa9c0c558c8ec807aff55170fe3e19df1",
+    "tools/run_native_runtime_restart_rollback.py": "eed99cba15cb1c16233845f1147ca146ba2789db2db406c75ca50ee66068e206"
+  },
+  "versions": {
+    "mc1201": {
+      "accepted-explicit-candidate": {
+        "status": "PASS",
+        "blockDigest": "0d20c7149574253fb93d17bd62927ddfe2246cbb7fcbf749d6688410730696eb",
+        "nativeNBTDigest": "34343012d0c50c24cf819d1a2537e7f4cedf54beac6df6110607d080dd1548b2",
+        "runtime": {
+          "bootstrapInstalled": true,
+          "configuredMode": "UNIFIED",
+          "registrations": 3,
+          "attached": 3,
+          "tickCallbacks": 1,
+          "chunkUnloadCallbacks": 1,
+          "targetAttached": true,
+          "targetAdapter": "CubeNetGeneratorRuntimeAdapter",
+          "adapters": [
+            {
+              "adapter": "CubeNetGeneratorRuntimeAdapter",
+              "attached": true,
+              "nativeDeferredTickCallbacks": 0,
+              "nativeUnloadCallbacks": 0
+            },
+            {
+              "adapter": "SphereFaceGeneratorRuntimeAdapter",
+              "attached": true,
+              "nativeDeferredTickCallbacks": 0,
+              "nativeUnloadCallbacks": 0
+            },
+            {
+              "adapter": "EarthGeneratorRuntimeAdapter",
+              "attached": true,
+              "nativeDeferredTickCallbacks": 1,
+              "nativeUnloadCallbacks": 1
+            }
+          ]
+        },
+        "originalNativeInputsEqual": true,
+        "allFourActualStages": true
+      },
+      "accepted-no-flag-default": {
+        "status": "PASS",
+        "blockDigest": "0d20c7149574253fb93d17bd62927ddfe2246cbb7fcbf749d6688410730696eb",
+        "nativeNBTDigest": "34343012d0c50c24cf819d1a2537e7f4cedf54beac6df6110607d080dd1548b2",
+        "runtime": {
+          "bootstrapInstalled": true,
+          "configuredMode": "UNIFIED",
+          "registrations": 3,
+          "attached": 3,
+          "tickCallbacks": 1,
+          "chunkUnloadCallbacks": 1,
+          "targetAttached": true,
+          "targetAdapter": "CubeNetGeneratorRuntimeAdapter",
+          "adapters": [
+            {
+              "adapter": "SphereFaceGeneratorRuntimeAdapter",
+              "attached": true,
+              "nativeDeferredTickCallbacks": 0,
+              "nativeUnloadCallbacks": 0
+            },
+            {
+              "adapter": "CubeNetGeneratorRuntimeAdapter",
+              "attached": true,
+              "nativeDeferredTickCallbacks": 0,
+              "nativeUnloadCallbacks": 0
+            },
+            {
+              "adapter": "EarthGeneratorRuntimeAdapter",
+              "attached": true,
+              "nativeDeferredTickCallbacks": 1,
+              "nativeUnloadCallbacks": 1
+            }
+          ]
+        },
+        "originalNativeInputsEqual": true,
+        "allFourActualStages": true
+      },
+      "actualSameWorldDefaultReloadAndLegacyRollback": "PASS",
+      "retainedSerialRegression": {
+        "tests": 554,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      }
+    },
+    "mc1211": {
+      "accepted-explicit-candidate": {
+        "status": "PASS",
+        "blockDigest": "d9db01c32d21828990b966fa5e5ebbe43496586a032b10175fff58b954c465cb",
+        "nativeNBTDigest": "a3d663c1ac22821593d2f31be10748de229695bc886ec292389e77c25a95a578",
+        "runtime": {
+          "bootstrapInstalled": true,
+          "configuredMode": "UNIFIED",
+          "registrations": 3,
+          "attached": 3,
+          "tickCallbacks": 1,
+          "chunkUnloadCallbacks": 1,
+          "targetAttached": true,
+          "targetAdapter": "CubeNetGeneratorRuntimeAdapter",
+          "adapters": [
+            {
+              "adapter": "SphereFaceGeneratorRuntimeAdapter",
+              "attached": true,
+              "nativeDeferredTickCallbacks": 0,
+              "nativeUnloadCallbacks": 0
+            },
+            {
+              "adapter": "EarthGeneratorRuntimeAdapter",
+              "attached": true,
+              "nativeDeferredTickCallbacks": 1,
+              "nativeUnloadCallbacks": 1
+            },
+            {
+              "adapter": "CubeNetGeneratorRuntimeAdapter",
+              "attached": true,
+              "nativeDeferredTickCallbacks": 0,
+              "nativeUnloadCallbacks": 0
+            }
+          ]
+        },
+        "originalNativeInputsEqual": true,
+        "allFourActualStages": true
+      },
+      "accepted-no-flag-default": {
+        "status": "PASS",
+        "blockDigest": "d9db01c32d21828990b966fa5e5ebbe43496586a032b10175fff58b954c465cb",
+        "nativeNBTDigest": "a3d663c1ac22821593d2f31be10748de229695bc886ec292389e77c25a95a578",
+        "runtime": {
+          "bootstrapInstalled": true,
+          "configuredMode": "UNIFIED",
+          "registrations": 3,
+          "attached": 3,
+          "tickCallbacks": 1,
+          "chunkUnloadCallbacks": 1,
+          "targetAttached": true,
+          "targetAdapter": "CubeNetGeneratorRuntimeAdapter",
+          "adapters": [
+            {
+              "adapter": "SphereFaceGeneratorRuntimeAdapter",
+              "attached": true,
+              "nativeDeferredTickCallbacks": 0,
+              "nativeUnloadCallbacks": 0
+            },
+            {
+              "adapter": "EarthGeneratorRuntimeAdapter",
+              "attached": true,
+              "nativeDeferredTickCallbacks": 1,
+              "nativeUnloadCallbacks": 1
+            },
+            {
+              "adapter": "CubeNetGeneratorRuntimeAdapter",
+              "attached": true,
+              "nativeDeferredTickCallbacks": 0,
+              "nativeUnloadCallbacks": 0
+            }
+          ]
+        },
+        "originalNativeInputsEqual": true,
+        "allFourActualStages": true
+      },
+      "actualSameWorldDefaultReloadAndLegacyRollback": "PASS",
+      "retainedSerialRegression": {
+        "tests": 545,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      }
+    }
+  },
+  "files": {
+    "controller-tests.log": "9c8f6d96e6bc34ce229ee38c35b090cfda806dda943a80fabcae3c0fcca2d23d",
+    "README.md": "76ef4051b6b7c3a8f91a75cd4794c3290d572111251ba2dfe0c20bb55f702ec4",
+    "mc1201/regression.json": "b65972bf540e341627beec205070080094cbba57d5e45ffcec6b0a702ec932e9",
+    "mc1201/test-results.xml.zip": "6892c8a41db98b3e4582b71b658174e630dbe7b0308d823bc3d9eb7320941382",
+    "mc1211/regression.json": "86dbe484f4d4a58d1e9773499c33f281e92fcb9adfe1cde88a6692cdcaa61a84",
+    "mc1211/test-results.xml.zip": "90887e073c6e2c1388265d3f1f7dbb4a8690b8dbce22c6bc3c6133cdbdafd19e",
+    "mc1201/accepted-explicit-candidate/generation-parity.json": "4662ef51f0671451f738afaa06ab251a3fb57aac7562293433bdbbfb6e7da501",
+    "mc1201/accepted-explicit-candidate/source-cache-manifest.json": "64fb1686111b49065bec8d7ce9af0d4c4e262eddee0a2d2662495f1c752ca149",
+    "mc1201/accepted-explicit-candidate/source-world-manifest.json": "1351a6326ccbf560369e041e5befcffac196a864cd9334bc80a6772815e63e9a",
+    "mc1201/accepted-no-flag-default/generation-parity.json": "ba80c850b451369c508c2a9eea62e7becec2f728c73437824731fdd05827f1ae",
+    "mc1201/accepted-no-flag-default/runtime-restart-rollback.json": "50a1d19ecf4dc5fd2488210d890637522def8deb6e3a2f9fbd1da44e66b8f81d",
+    "mc1201/accepted-no-flag-default/source-cache-manifest.json": "64fb1686111b49065bec8d7ce9af0d4c4e262eddee0a2d2662495f1c752ca149",
+    "mc1201/accepted-no-flag-default/source-world-manifest.json": "1351a6326ccbf560369e041e5befcffac196a864cd9334bc80a6772815e63e9a",
+    "mc1201/accepted-explicit-candidate/baseline/d0502310-19f5-4aec-9863-9670da903f2e-generate.json": "5d53a4e6aaf2482fd1d0f9ccb5de0cfa2f555657d8a033c518262eb2c34cfecd",
+    "mc1201/accepted-explicit-candidate/baseline/d0502310-19f5-4aec-9863-9670da903f2e-generated.snbt": "9cf0e435b2e2e982bb7c1d2605e8cfe4bea06893342b9bacc5c5c6f36a02ebbb",
+    "mc1201/accepted-explicit-candidate/baseline/generate.server.log.gz": "1090911270bc48bad933a9f29b0f2ff6c9a2d7ce3630015ef65f054a9912d6d1",
+    "mc1201/accepted-explicit-candidate/candidate/d0502310-19f5-4aec-9863-9670da903f2e-generate.json": "9a457fa4f6efe4fcd8d6d2a5f6c5aac11deb22d6038af51f9ff6b5df01ec5e7f",
+    "mc1201/accepted-explicit-candidate/candidate/d0502310-19f5-4aec-9863-9670da903f2e-generated.snbt": "064009926b32540cc2af5aed8d56f6e6a8c4e3c8b7a693182af1875a2d62bf99",
+    "mc1201/accepted-explicit-candidate/candidate/generate.server.log.gz": "f51738d65efa99921d3534408ff61837a048de69f18724f470e01efa4c16641e",
+    "mc1201/accepted-no-flag-default/baseline/c49da0b6-be40-4838-91f6-0aa31cbd3ccc-generate.json": "46823048666ca17a8225a6396ea7dbb4109f64f58af1ed48d7a54081c0c4fbfc",
+    "mc1201/accepted-no-flag-default/baseline/c49da0b6-be40-4838-91f6-0aa31cbd3ccc-generated.snbt": "9cf0e435b2e2e982bb7c1d2605e8cfe4bea06893342b9bacc5c5c6f36a02ebbb",
+    "mc1201/accepted-no-flag-default/baseline/generate.server.log.gz": "983369a4eca36e91e86cfb332ee1d235c2624d006f9569d6feba8752ad549622",
+    "mc1201/accepted-no-flag-default/candidate/c49da0b6-be40-4838-91f6-0aa31cbd3ccc-generate.json": "10173a11740f6e54a2e4fb37f5d434abba917d1c7d8c697a9ee40b4932e83fa1",
+    "mc1201/accepted-no-flag-default/candidate/c49da0b6-be40-4838-91f6-0aa31cbd3ccc-generated.snbt": "064009926b32540cc2af5aed8d56f6e6a8c4e3c8b7a693182af1875a2d62bf99",
+    "mc1201/accepted-no-flag-default/candidate/generate.server.log.gz": "1806ad48f7b9c952ef66619491922e55e4ba128843959439c7a1e2e465da3719",
+    "mc1201/accepted-no-flag-default/native-family-definitions/pack.mcmeta": "131eddfe2b693e02f27a6abe7fb216e677b88b82b4553258586ac633c4e093b0",
+    "mc1201/accepted-no-flag-default/restart-default/6f55647a-5e04-418e-b764-99bf1e90a031-runtime-reload.snbt": "f94e57d34090f19bb6e882c9b5363deba633a5302cbed37407a1566945ac634f",
+    "mc1201/accepted-no-flag-default/restart-default/6f55647a-5e04-418e-b764-99bf1e90a031-runtime_reload.json": "645635ff67761d3f242ab5779afbd6f1a7628f417e3021af0462ac4a182b4e3a",
+    "mc1201/accepted-no-flag-default/restart-default/runtime_reload.server.log.gz": "de763e3d7995dce54ce1eba65824f03df20307cd72abc3dea37ab54d4b9adf2c",
+    "mc1201/accepted-no-flag-default/restart-legacy/83658050-3e43-40e7-bdd3-43338c074057-runtime-reload.snbt": "694226ed64a2f0e43bcd3cd5aa058fb2b8ceccf8b1791237e0ace5f03a2bd03b",
+    "mc1201/accepted-no-flag-default/restart-legacy/83658050-3e43-40e7-bdd3-43338c074057-runtime_reload.json": "439b1234d763a274119cbbde660c78da6fa4a975aabeaf9e4a3a5283a28cc234",
+    "mc1201/accepted-no-flag-default/restart-legacy/runtime_reload.server.log.gz": "5c3d778abaa377b72e22864670ff75852dfe8dfae396542ad1fab8c9ec4c6e6f",
+    "mc1201/accepted-no-flag-default/native-family-definitions/data/tellus/dimension/native_runtime_earth.json": "de44ebe0ae2da1e8efb4a657b382e410df85088caaecf84382274eeee0ff8c3e",
+    "mc1201/accepted-no-flag-default/native-family-definitions/data/tellus/dimension/native_runtime_sphere.json": "dbf4e63fbc8fec6f0040618c5b9a0708ffcd0c2be6227cc460a3161fb9a895c1",
+    "mc1211/accepted-explicit-candidate/generation-parity.json": "735f840c95de550e2cccfdb9dd2a017379c9e83f4dfa5f37a8d7c343baa87e0d",
+    "mc1211/accepted-explicit-candidate/source-cache-manifest.json": "64fb1686111b49065bec8d7ce9af0d4c4e262eddee0a2d2662495f1c752ca149",
+    "mc1211/accepted-explicit-candidate/source-world-manifest.json": "1351a6326ccbf560369e041e5befcffac196a864cd9334bc80a6772815e63e9a",
+    "mc1211/accepted-no-flag-default/generation-parity.json": "a36566cca1663403f3a4a52afc882c754c35630242cb2ce40472384a480d451c",
+    "mc1211/accepted-no-flag-default/runtime-restart-rollback.json": "2517fde8b8bf1d0649620e6208dbfc984936f45497b00e802a7bee2c2a0ef662",
+    "mc1211/accepted-no-flag-default/source-cache-manifest.json": "64fb1686111b49065bec8d7ce9af0d4c4e262eddee0a2d2662495f1c752ca149",
+    "mc1211/accepted-no-flag-default/source-world-manifest.json": "1351a6326ccbf560369e041e5befcffac196a864cd9334bc80a6772815e63e9a",
+    "mc1211/accepted-explicit-candidate/baseline/cb8ce5cd-5586-42bc-a493-807689bc2fe1-generate.json": "6397e9afd38aafaa343f0adb25786219707d2d302052e4a6c964e9b4a57d9a7f",
+    "mc1211/accepted-explicit-candidate/baseline/cb8ce5cd-5586-42bc-a493-807689bc2fe1-generated.snbt": "f8867f99a700ebd942b6456b8e33b9beff03eccb8fe2b1431a15ab9250d4f5a6",
+    "mc1211/accepted-explicit-candidate/baseline/generate.server.log.gz": "8232e761ff4c138dad6da90430b6336a77c13101ae09d5c05f22849eb341e64e",
+    "mc1211/accepted-explicit-candidate/candidate/cb8ce5cd-5586-42bc-a493-807689bc2fe1-generate.json": "557f1a1ced53976db4e6db5849770b0f9b735b342079034418f973efd6a37175",
+    "mc1211/accepted-explicit-candidate/candidate/cb8ce5cd-5586-42bc-a493-807689bc2fe1-generated.snbt": "a5ea01e45da84408f6202062e01743c56d137610d0383593e4c672485e197ac3",
+    "mc1211/accepted-explicit-candidate/candidate/generate.server.log.gz": "618630cd8ddfcdd2947019ada20d34f09b9bfd8b0cf9d10cc8b07050869cecdc",
+    "mc1211/accepted-no-flag-default/baseline/d60088f4-c9e1-4647-95da-1a1169f6639c-generate.json": "6f3fda65ae7b371a5d69d38d9751d6c4f6d6652d586c53145e4a0772fd7abd3e",
+    "mc1211/accepted-no-flag-default/baseline/d60088f4-c9e1-4647-95da-1a1169f6639c-generated.snbt": "f8867f99a700ebd942b6456b8e33b9beff03eccb8fe2b1431a15ab9250d4f5a6",
+    "mc1211/accepted-no-flag-default/baseline/generate.server.log.gz": "e72e7fd83119870b1a306b4b4bbc31cb0015c49c4790833c5186f75838b939db",
+    "mc1211/accepted-no-flag-default/candidate/d60088f4-c9e1-4647-95da-1a1169f6639c-generate.json": "0c4859b57f44a16bdff55872307ae30056e262311098cb4a06429ebf8244a715",
+    "mc1211/accepted-no-flag-default/candidate/d60088f4-c9e1-4647-95da-1a1169f6639c-generated.snbt": "a5ea01e45da84408f6202062e01743c56d137610d0383593e4c672485e197ac3",
+    "mc1211/accepted-no-flag-default/candidate/generate.server.log.gz": "640320abb466489bd717dff0a3392ba1b6d9f87ad206752fcc831d7dce4795ae",
+    "mc1211/accepted-no-flag-default/native-family-definitions/pack.mcmeta": "7aa4233c1b3bfc4c8ef2dea4105d6eaedeb0488bd4d7649329b5322be6030651",
+    "mc1211/accepted-no-flag-default/restart-default/b3fd15aa-da65-4186-a3ae-eaf130fe039c-runtime-reload.snbt": "06d711b954fcea99f8643d0d40b4c113f933cfcd96358fa9cf4a9549551ac2a8",
+    "mc1211/accepted-no-flag-default/restart-default/b3fd15aa-da65-4186-a3ae-eaf130fe039c-runtime_reload.json": "16b8ca62fd7f6542b767a886c5db0ffeafbbc8a8903450687ef2216bec8628c7",
+    "mc1211/accepted-no-flag-default/restart-default/runtime_reload.server.log.gz": "99bd8f887d35a221ca494ccf7c508e364a09217b6a5380b3ea0baf03613208d8",
+    "mc1211/accepted-no-flag-default/restart-legacy/810af134-7a5b-4e2b-b3bd-203480202efb-runtime-reload.snbt": "3a2d502f49a74458ef197c2fbeedfcaa23b0ef1510eaebbb1340e6cd7288bcde",
+    "mc1211/accepted-no-flag-default/restart-legacy/810af134-7a5b-4e2b-b3bd-203480202efb-runtime_reload.json": "bf7a8681abe2495c9fa6a9636381f40cbe475e076d5cc26d581bc96b635f25e6",
+    "mc1211/accepted-no-flag-default/restart-legacy/runtime_reload.server.log.gz": "5c8e00a06f67a9d25e0bd014c529c81f00706751ee631d05ae61a449de6c0c8a",
+    "mc1211/accepted-no-flag-default/native-family-definitions/data/tellus/dimension/native_runtime_earth.json": "de44ebe0ae2da1e8efb4a657b382e410df85088caaecf84382274eeee0ff8c3e",
+    "mc1211/accepted-no-flag-default/native-family-definitions/data/tellus/dimension/native_runtime_sphere.json": "dbf4e63fbc8fec6f0040618c5b9a0708ffcd0c2be6227cc460a3161fb9a895c1",
+    "retained-real-initial-failures/mc1201-a/candidate.generate.server.log.gz": "a20ddf3620a0f0c98fc7fb5149c263ec55472c64a4bfbccafb758d38436e0acc",
+    "retained-real-initial-failures/mc1201-a/generation-parity.json": "164e02c98a611decfa8dba14d9d4006626d37772e50e2c1a258613c51fcf4d45",
+    "retained-real-initial-failures/mc1211-b/candidate.generate.server.log.gz": "0d93f1b733ca6cb06033264d3ec147ac06ce300e1b1882f28ee0c1aa91df65b6",
+    "retained-real-initial-failures/mc1211-b/generation-parity.json": "0807d6a80145ccdffb6cc628861865d51a636aa26344edb6d102c3873889eeee"
+  },
+  "retainedInitialFailureReasons": {
+    "mc1201-a": "native generation/save/stop passed but strict recovery-order evidence absent for no-journal early return; added truthful no-journal-ready log only, no storage change",
+    "mc1211-b": "native datapack rejected existing Sphere generator because Fabric bootstrap omitted Codec registry entry; registered existing MapCodec and same narrow DFU fallback, then full rerun passed"
+  },
+  "pythonControllerTests": 14,
+  "parity": {
+    "biome": {
+      "cases": 7,
+      "mismatches": [
+        {
+          "case": "bare/BWh",
+          "cube": "minecraft:stony_peaks",
+          "earth": "minecraft:desert"
+        }
+      ]
+    },
+    "checks": {
+      "biomeCaseSet": true,
+      "biomeCount": true,
+      "biomeMismatches": true,
+      "columnCount": true,
+      "columnMismatches": true
+    },
+    "columns": {
+      "mismatches": [],
+      "rightRows": 13824,
+      "rows": 13824
+    },
+    "expected": {
+      "biomeCases": 7,
+      "biomeMismatches": 1,
+      "columnMismatches": 0,
+      "columns": 13824,
+      "knownBiomeCase": "bare/BWh",
+      "originalBiomeCases": [
+        "bare/BWh",
+        "cropland/Dfb",
+        "forest/Cfb",
+        "grassland/Cfa",
+        "mangrove/Af",
+        "snow/ET",
+        "wetland/Cfa"
+      ]
+    },
+    "status": "PASS"
+  },
+  "retainedAcceptedGates": {
+    "docs/validation/round68-live-lifecycle/validation.json": "11994d02b100ff7f3effe3ff84e3703d92262e91810d2b81e0c74185c4c7fc42",
+    "docs/validation/native-crash-recovery/validation.json": "849783aa966e95ccfb148ba29d7586cc5af4c87ca7263fbec317b5d487cec044",
+    "docs/validation/unified-native-production/validation.json": "16babb5940dac940fa2ecc52ed33e256c168f9c9c37c07e187c448f7059ae935",
+    "docs/validation/native-sea-offset-restart/validation.json": "10d06ba01d648e9c76a075982f4a28cab831c36b6a7d544c13b63b4694b0f363"
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "type": "tellus:earth_surface",
+  "generator": {
+    "type": "tellus:sphere_face",
+    "geometry_version": 2,
+    "mapping": "rancic-ccam30-double-v1",
+    "biome_source": {
+      "biome": "minecraft:plains"
+    },
+    "face": 0,
+    "world_scale": 1.0,
+    "sea_level": 64,
+    "min_y": -2032,
+    "height": 4064
+  }
+}

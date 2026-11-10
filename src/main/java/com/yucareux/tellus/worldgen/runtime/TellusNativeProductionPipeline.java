@@ -19,6 +19,7 @@ public final class TellusNativeProductionPipeline {
     public static final String MODE_PROPERTY = "tellus.worldgen.pipeline";
     public enum Stage { BIOMES, TERRAIN, CARVERS, DECORATION }
     public enum Mode { LEGACY, UNIFIED }
+    private static volatile boolean nativeBootstrapDefault;
     public record Observation(String family, int chunkX, int chunkZ, List<String> stages, List<String> backends,
                               List<String> failures) { }
     private final String family;
@@ -33,13 +34,15 @@ public final class TellusNativeProductionPipeline {
         this.family = Objects.requireNonNull(family, "family");
         this.mode = Objects.requireNonNull(mode, "mode");
     }
-    private static Mode configuredMode() {
-        return switch (System.getProperty(MODE_PROPERTY, "legacy")) {
+    public static Mode configuredMode() {
+        return switch (System.getProperty(MODE_PROPERTY, nativeBootstrapDefault ? "unified" : "legacy")) {
             case "legacy" -> Mode.LEGACY;
             case "unified" -> Mode.UNIFIED;
             default -> throw new IllegalArgumentException("unknown Tellus native production pipeline mode");
         };
     }
+    /** Only the supported, real loader bootstrap selects a release default; standalone callers stay explicit. */
+    static void nativeBootstrapDefault(boolean enabled) { nativeBootstrapDefault = enabled; }
     public boolean enabled() { return mode == Mode.UNIFIED; }
     public Mode mode() { return mode; }
 

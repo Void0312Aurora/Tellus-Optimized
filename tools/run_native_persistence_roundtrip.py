@@ -279,6 +279,10 @@ def check_report(path: Path, phase: str, args, probe_id: str) -> dict:
             raise ValueError("native generated full block/biome/NBT digests missing")
         if report.get("generatedNativeStatus") not in ("full", "minecraft:full"):
             raise ValueError("native generated status is not FULL")
+    if phase == "runtime_reload":
+        if report.get("nativeSavedPayloadEqual") is not True or not all(
+            re.fullmatch(r"[0-9a-f]{64}", str(report.get(field, ""))) for field in ("blockDigest", "biomeDigest", "nativeNBTDigest")):
+            raise ValueError("complete native reload/engine-save evidence required")
     if phase == "sea_codec":
         if report.get("settingsCarryingBiomeSource") is not True or report.get("nativeSavedPayloadEqual") is not True:
             raise ValueError("native settings-carrying offset/save evidence missing")
@@ -340,6 +344,9 @@ def run_phase(args, run: Path, evidence: Path, command: list[str], env: dict, ph
     reader.start()
     deadline = time.monotonic() + args.timeout
     sent = passed = False
+    ready = False
+    require_runtime = getattr(args, 'require_native_runtime', False)
+    runtime_ready = not require_runtime
     native = None
     try:
         while True:
@@ -354,7 +361,11 @@ def run_phase(args, run: Path, evidence: Path, command: list[str], env: dict, ph
             if line is None:
                 break
             print(line, end="", flush=True)
-            if not sent and 'Done (' in line and 'For help, type' in line:
+            if 'Done (' in line and 'For help, type' in line:
+                ready = True
+            if 'TELLUS_NATIVE_RUNTIME_TICK_READY' in line:
+                runtime_ready = True
+            if not sent and ready and runtime_ready:
                 console = f"execute in {args.dimension} run tellus persistence {phase} {args.chunk_x} {args.chunk_z}"
                 process.stdin.write(console + "\n"); process.stdin.flush()
                 sent = True
@@ -371,6 +382,15 @@ def run_phase(args, run: Path, evidence: Path, command: list[str], env: dict, ph
         reader.join(timeout=5)
         if not passed or exit_code != 0:
             raise ValueError(f"{phase} missing PASS or nonzero owned-process exit {exit_code}")
+        if require_runtime:
+            runtime_log = log_path.read_text(encoding='utf-8')
+            attach = runtime_log.find('TELLUS_NATIVE_RUNTIME_ATTACHED_BEFORE_LEVELS')
+            preparation = runtime_log.find('Preparing start region')
+            recovery = runtime_log.rfind('TELLUS_NATIVE_STARTUP_RECOVERY_READY', 0, attach)
+            if not 0 <= recovery < attach < preparation:
+                raise ValueError('actual native recovery/attach/initial loading order differs')
+            if not re.search(r'TELLUS_NATIVE_RUNTIME_STOP detached=[1-9][0-9]* remaining=0 ticks=[1-9][0-9]*', runtime_log):
+                raise ValueError('actual native stop did not detach and clear the attached runtime registry')
         return {"phase": phase, "pid": process.pid, "exitCode": exit_code, "passMarker": marker,
                 "report": str(report_path), "reportSha256": sha256(report_path),
                 "log": str(log_path), "logSha256": sha256(log_path), "native": native}
