@@ -271,6 +271,13 @@ def check_report(path: Path, phase: str, args, probe_id: str) -> dict:
     for key, value in expected.items():
         if report.get(key) != value:
             raise ValueError(f"native report {key} differs: {report.get(key)!r} != {value!r}")
+    if getattr(args, "populate_lifecycle", False):
+        counts_key = "expectedLifecycleCounts" if phase == "capture" else "restartedDiskLifecycleCounts"
+        counts = report.get(counts_key, {})
+        if any(counts.get(field, 0) < 1 for field in ("block_entities", "block_ticks", "fluid_ticks")) or counts.get("postProcessingOffsets", 0) < 2:
+            raise ValueError("live nonempty entity/tick/marker evidence missing")
+        if phase == "verify" and not (report.get("materializedNativeLifecycleEqual") and report.get("liveChestInventoryAndWaterVerified")):
+            raise ValueError("live materialization lifecycle verification missing")
     return report
 
 
@@ -375,6 +382,7 @@ def parse_args(argv=None):
     parser.add_argument("--source-origin", required=True, help="Exact real GIS dataset/test-save provenance, not a synthetic fixture")
     parser.add_argument("--provenance-file", type=Path, action="append", required=True)
     parser.add_argument("--allow-template-upgrade", action="store_true", help="Allow native DataFixer upgrade on the disposable copy only")
+    parser.add_argument("--populate-lifecycle", action="store_true", help="Populate live block-entity and tick payloads in the isolated copy")
     parser.add_argument("--heap", default="6g")
     parser.add_argument("--timeout", type=float, default=900)
     parser.add_argument("--stop-timeout", type=float, default=60)
@@ -452,7 +460,8 @@ def main(argv=None) -> int:
                 raise ValueError(f"ambient Tellus JVM options require explicit clean environment: {name}")
         properties = ["tellus.persistence.probe=true", f"tellus.persistence.probe.id={probe_id}",
                       f"tellus.persistence.probe.allowUpgrade={'true' if args.allow_template_upgrade else 'false'}",
-                      f"tellus.persistence.probeRoot={run / 'world'}", "tellus.sphere.syntheticSampler=false",
+                       f"tellus.persistence.probeRoot={run / 'world'}", "tellus.sphere.syntheticSampler=false",
+                       f"tellus.persistence.probe.populateLifecycle={'true' if args.populate_lifecycle else 'false'}",
                       f"tellus.gameDir={run}", f"tellus.configDir={run / 'config'}", "tellus.chunkgen.threads.max=1"]
         # Quote each -D argument for JVM paths containing spaces.
         env["JAVA_TOOL_OPTIONS"] = " ".join(filter(None, [env.get("JAVA_TOOL_OPTIONS", ""),
@@ -468,7 +477,8 @@ def main(argv=None) -> int:
         capture, verify = [p["native"] for p in summary["phases"]]
         if capture.get("binding") != verify.get("binding"):
             raise ValueError("capture/restart binding differs")
-        if not verify.get("restartedDiskMatchesExpected") or not verify.get("materializedFullNBTEqual"):
+        materialized_ok = verify.get("materializedNativeLifecycleEqual") if args.populate_lifecycle else verify.get("materializedFullNBTEqual")
+        if not verify.get("restartedDiskMatchesExpected") or not materialized_ok:
             raise ValueError("native restart/full materialization acceptance missing")
         summary["status"] = "PASS"
         return 0

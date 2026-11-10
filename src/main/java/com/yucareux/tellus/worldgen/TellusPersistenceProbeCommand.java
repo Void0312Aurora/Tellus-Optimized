@@ -22,13 +22,22 @@ import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.TagParser;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.entity.BlockEntityType;
+import net.minecraft.world.level.block.entity.ChestBlockEntity;
 import net.minecraft.world.level.chunk.ChunkAccess;
+import net.minecraft.world.level.chunk.LevelChunk;
+import net.minecraft.world.level.chunk.ProtoChunk;
+import net.minecraft.world.level.material.Fluids;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.level.storage.LevelResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -110,6 +119,14 @@ public final class TellusPersistenceProbeCommand {
                 } else result.addProperty("nativeCopiedWorldUpgradeSaved", false);
                 BlockPos changed = findStone(chunk);
                 BlockState original = chunk.getBlockState(changed);
+                if (Boolean.getBoolean("tellus.persistence.probe.populateLifecycle")) {
+                    populateLiveLifecycle(level, chunk, changed);
+                    // Fault recovery must restore a nonempty on-disk baseline, not
+                    // merely the old terrain-only tag. Use the engine's save path.
+                    source.getServer().saveEverything(false, true, true);
+                    requireLiveLifecycle(persistence.readExistingNBT(pos).orElseThrow(), changed);
+                    result.addProperty("liveLifecyclePayloadsPopulated", true);
+                } else result.addProperty("liveLifecyclePayloadsPopulated", false);
                 String originalCells = blockDigest(chunk);
                 String originalBiomes = biomeDigest(chunk);
                 result.addProperty("originalBlockDigest", originalCells);
@@ -144,6 +161,10 @@ public final class TellusPersistenceProbeCommand {
                 MinecraftVersionCompat.setBlockState(chunk, changed, Blocks.GOLD_BLOCK.defaultBlockState());
                 chunk.setUnsaved(true);
                 CompoundTag expected = persistence.snapshot(chunk);
+                if (Boolean.getBoolean("tellus.persistence.probe.populateLifecycle")) {
+                    requireLiveLifecycle(expected, changed);
+                    result.add("expectedLifecycleCounts", lifecycleCounts(expected));
+                }
                 var committed = persistence.commit(pos, expected, TellusNativeChunkPersistence.FaultInjector.NONE);
                 if (committed.status() != TellusNativeChunkPersistence.Status.COMMITTED)
                     throw new IllegalStateException("native disk publication failed: " + committed.diagnostics());
@@ -170,6 +191,13 @@ public final class TellusPersistenceProbeCommand {
                 if (!TellusNativeChunkPersistence.sameNBT(expected, diskBeforeLoad, SAVE_CLOCKS))
                     throw new IllegalStateException("native disk state changed across stop/restart (excluding two save clocks only)");
                 result.addProperty("restartedDiskMatchesExpected", true);
+                boolean liveLifecycle = capture.has("liveLifecyclePayloadsPopulated")
+                    && capture.get("liveLifecyclePayloadsPopulated").getAsBoolean();
+                BlockPos lifecycleAnchor = new BlockPos(capture.get("changedX").getAsInt(), capture.get("changedY").getAsInt(), capture.get("changedZ").getAsInt());
+                if (liveLifecycle) {
+                    requireLiveLifecycle(diskBeforeLoad, lifecycleAnchor);
+                    result.add("restartedDiskLifecycleCounts", lifecycleCounts(diskBeforeLoad));
+                }
                 ChunkAccess reloaded = ChunkBenchmarkVersionCompat.requestFullChunk(level.getChunkSource(), x, z);
                 if (reloaded == null) throw new IllegalStateException("materialized native reload unavailable");
                 String blocks = blockDigest(reloaded), biomes = biomeDigest(reloaded);
@@ -183,7 +211,27 @@ public final class TellusPersistenceProbeCommand {
                 result.addProperty("materializedNativeNBTDigest", TellusNativeChunkPersistence.digest(materialized, SAVE_CLOCKS));
                 boolean materializedEqual = TellusNativeChunkPersistence.sameNBT(expected, materialized, SAVE_CLOCKS);
                 result.addProperty("materializedFullNBTEqual", materializedEqual);
-                if (!materializedEqual) {
+                boolean nativeLifecycleEqual = false;
+                if (liveLifecycle) {
+                    // Native FULL promotion consumes PostProcessing offsets. Do
+                    // not hide this by excluding the field: check the exact
+                    // expected transition and compare every other root field.
+                    ((LevelChunk) reloaded).postProcessGeneration();
+                    materialized = persistence.snapshot(reloaded);
+                    CompoundTag afterPostProcessing = expected.copy();
+                    ListTag consumed = new ListTag();
+                    for (int i = 0; i < expected.getList("PostProcessing", 9).size(); i++) consumed.add(new ListTag());
+                    afterPostProcessing.put("PostProcessing", consumed);
+                    nativeLifecycleEqual = TellusNativeChunkPersistence.sameNBT(afterPostProcessing, materialized, SAVE_CLOCKS);
+                    result.addProperty("materializedNativeLifecycleEqual", nativeLifecycleEqual);
+                    result.add("materializedLifecycleCounts", lifecycleCounts(materialized));
+                    if (!reloaded.getBlockState(lifecycleAnchor.offset(2, 0, 1)).equals(Blocks.WATER.defaultBlockState())
+                        || !(reloaded.getBlockEntity(lifecycleAnchor.offset(1, 0, 1)) instanceof ChestBlockEntity chest)
+                        || !chest.getItem(0).is(Items.DIAMOND) || chest.getItem(0).getCount() != 3)
+                        throw new IllegalStateException("materialized live chest inventory or water cell differs");
+                    result.addProperty("liveChestInventoryAndWaterVerified", true);
+                }
+                if (!materializedEqual && !nativeLifecycleEqual) {
                     var differingKeys = new com.google.gson.JsonArray();
                     var keys = new java.util.TreeSet<String>(expected.getAllKeys());
                     keys.addAll(materialized.getAllKeys());
@@ -206,6 +254,9 @@ public final class TellusPersistenceProbeCommand {
             String marker = "TELLUS_PERSISTENCE_" + phase.toUpperCase(java.util.Locale.ROOT) + "_PASS";
             LOGGER.info("{} result={}", marker, output);
             source.sendSuccess(() -> Component.literal(marker), false);
+            // Keep scheduled delays identical between the same-tick snapshot
+            // and shutdown save; this is confined to the explicit copied-world probe.
+            if (Boolean.getBoolean("tellus.persistence.probe.populateLifecycle")) source.getServer().halt(false);
             return 1;
         } catch (Exception failure) {
             result.addProperty("status", "FAIL"); result.addProperty("error", failure.toString());
@@ -240,6 +291,47 @@ public final class TellusPersistenceProbeCommand {
             if (chunk.getBlockState(pos).equals(Blocks.STONE.defaultBlockState())) return pos;
         }
         throw new IllegalStateException("existing plain non-entity stone sentinel cell required");
+    }
+
+    private static void populateLiveLifecycle(ServerLevel level, ChunkAccess chunk, BlockPos anchor) {
+        BlockPos entityPos = anchor.offset(1, 0, 1);
+        BlockState chest = Blocks.CHEST.defaultBlockState();
+        MinecraftVersionCompat.setBlockState(chunk, entityPos, chest);
+        BlockEntity entity = BlockEntityType.CHEST.create(entityPos, chest);
+        if (entity == null) throw new IllegalStateException("native chest block entity factory returned null");
+        chunk.setBlockEntity(entity);
+        ((ChestBlockEntity) entity).setItem(0, new ItemStack(Items.DIAMOND, 3));
+        BlockPos waterPos = anchor.offset(2, 0, 1);
+        MinecraftVersionCompat.setBlockState(chunk, waterPos, Blocks.WATER.defaultBlockState());
+        level.scheduleTick(entityPos, Blocks.CHEST, 1_000_000);
+        level.scheduleTick(waterPos, Fluids.WATER, 1_000_000);
+        // FULL chunks do not support markPosForPostprocessing; this is the
+        // native packed-offset API used by their serialized pending markers.
+        short marker = ProtoChunk.packOffsetCoordinates(anchor);
+        chunk.addPackedPostProcess(marker, chunk.getSectionIndex(anchor.getY()));
+        chunk.addPackedPostProcess(marker, chunk.getSectionIndex(anchor.getY()));
+        chunk.setUnsaved(true);
+    }
+
+    private static JsonObject lifecycleCounts(CompoundTag tag) {
+        JsonObject value = new JsonObject();
+        for (String field : java.util.List.of("block_entities", "block_ticks", "fluid_ticks"))
+            value.addProperty(field, tag.getList(field, 10).size());
+        int markers = 0;
+        ListTag lists = tag.getList("PostProcessing", 9);
+        for (int i = 0; i < lists.size(); i++) markers += lists.getList(i).size();
+        value.addProperty("postProcessingOffsets", markers);
+        return value;
+    }
+
+    private static void requireLiveLifecycle(CompoundTag tag, BlockPos anchor) {
+        JsonObject counts = lifecycleCounts(tag);
+        for (String field : java.util.List.of("block_entities", "block_ticks", "fluid_ticks"))
+            if (counts.get(field).getAsInt() < 1) throw new IllegalStateException("live payload missing: " + field);
+        ListTag markers = tag.getList("PostProcessing", 9).getList(Math.floorDiv(anchor.getY(), 16) - tag.getInt("yPos"));
+        short packed = ProtoChunk.packOffsetCoordinates(anchor); int occurrences = 0;
+        for (int i = 0; i < markers.size(); i++) if (markers.getShort(i) == packed) occurrences++;
+        if (occurrences != 2) throw new IllegalStateException("duplicate native post-processing markers were lost");
     }
 
     private static String blockDigest(ChunkAccess chunk) throws Exception {

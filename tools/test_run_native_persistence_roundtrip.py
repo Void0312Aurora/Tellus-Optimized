@@ -57,6 +57,26 @@ class RunnerContracts(unittest.TestCase):
                 inspect.assert_not_called()
                 copy.assert_not_called()
 
+    def test_live_lifecycle_requires_all_nonempty_families_and_exact_native_transition(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "report.json"
+            args = types.SimpleNamespace(chunk_x=1, chunk_z=-2, populate_lifecycle=True)
+            counts = dict(block_entities=1, block_ticks=1, fluid_ticks=1, postProcessingOffsets=2)
+            report = dict(status="PASS", phase="verify", probeId="probe", syntheticSampler=False,
+                          chunkX=1, chunkZ=-2, diskReadBeforeDemandLoad=True,
+                          restartedDiskLifecycleCounts=counts, materializedNativeLifecycleEqual=True,
+                          liveChestInventoryAndWaterVerified=True)
+            path.write_text(json.dumps(report), encoding="utf-8")
+            self.assertEqual(runner.check_report(path, "verify", args, "probe"), report)
+            for field in counts:
+                path.write_text(json.dumps({**report, "restartedDiskLifecycleCounts": {**counts, field: 0}}), encoding="utf-8")
+                with self.subTest(field=field), self.assertRaises(ValueError):
+                    runner.check_report(path, "verify", args, "probe")
+            for field in ("materializedNativeLifecycleEqual", "liveChestInventoryAndWaterVerified"):
+                path.write_text(json.dumps({**report, field: False}), encoding="utf-8")
+                with self.subTest(field=field), self.assertRaises(ValueError):
+                    runner.check_report(path, "verify", args, "probe")
+
     @unittest.skipUnless(os.name == "nt", "Windows Job Object contract")
     def test_windows_owned_job_closing_terminates_the_assigned_process(self):
         job = runner.OwnedWindowsJob()

@@ -1,0 +1,206 @@
+{
+  "schemaVersion": 1,
+  "status": "PASS",
+  "module": "mc1211",
+  "targetVersion": "1.21.1",
+  "probeId": "e9e08c75-6bf3-402a-80da-a75f68cd2c8c",
+  "sourceOrigin": "historical Swiss real-Mapterhorn/land-cover Tellus save; provenance manually corroborated",
+  "sourceMode": "existing-real-gis-world-and-copied-cache",
+  "syntheticSampler": false,
+  "templateUpgradeOnCopy": true,
+  "provenance": [
+    {
+      "path": "D:\\workshop\\Game\\Tellus-Optimized-rfc\\docs\\cube-net-client-acceptance.md",
+      "sha256": "1947730b897eab83447229fc522ec4e480d42990811edf3135c904ea20f3bd74",
+      "bytes": 93028
+    },
+    {
+      "path": "D:\\workshop\\Game\\Tellus-Optimized-rfc\\docs\\validation\\terrain-stability-20261026\\summary.json",
+      "sha256": "cbb0d1b92013d4a154e71849def633e7901ca58731292efa7d6522aea509d3e8",
+      "bytes": 1763
+    }
+  ],
+  "runDir": "D:\\Temp\\tellus-live-lifecycle-mc1211-20261110-a",
+  "template": {
+    "world": "D:\\workshop\\Game\\mc-pilot-deployment\\run\\tellus-boundary-20261025\\world-terrain-20261026",
+    "levelSha256": "896bab856a28b19a0e4ed5c3e80247793a6807712ae9445e5a4ef7f801ba9eed",
+    "dataVersion": 3465,
+    "version": {
+      "Snapshot": 0,
+      "Series": "main",
+      "Id": 3465,
+      "Name": "1.20.1"
+    },
+    "spawn": [
+      0,
+      87,
+      0
+    ],
+    "seed": 2025402140,
+    "dimension": "tellus:earth_cube_net",
+    "generator": {
+      "mapping": "rancic-ccam30-double-v1",
+      "world_scale": 1.0,
+      "geometry_version": 3,
+      "sea_level": 64,
+      "biome_source": {
+        "biome": "minecraft:plains"
+      },
+      "type": "tellus:cube_net",
+      "min_y": -2032,
+      "height": 4064
+    },
+    "region": "D:\\workshop\\Game\\mc-pilot-deployment\\run\\tellus-boundary-20261025\\world-terrain-20261026\\dimensions\\tellus\\earth_cube_net\\region\\r.19257.-10988.mca",
+    "regionSha256": "ab575be30328ca6108c1df1081b93e25ad27ac7267d2467d8d7cb8e17cc2012a",
+    "chunkX": 616246,
+    "chunkZ": -351597,
+    "chunkDataVersion": 3465,
+    "status": "minecraft:full",
+    "sectionCount": 254,
+    "nativeChunkSha256": "12d55d10b57afb21fce6dd38dc158096744859a0810f96ec96820dfb0e3b2f8d",
+    "palette": [
+      "minecraft:air",
+      "minecraft:bedrock",
+      "minecraft:stone"
+    ]
+  },
+  "phases": [
+    {
+      "phase": "capture",
+      "pid": 10508,
+      "exitCode": 0,
+      "passMarker": "TELLUS_PERSISTENCE_CAPTURE_PASS",
+      "report": "D:\\Temp\\tellus-live-lifecycle-mc1211-20261110-a\\tellus\\persistence\\e9e08c75-6bf3-402a-80da-a75f68cd2c8c-capture.json",
+      "reportSha256": "94e93713684df1e9ddc51593ecfde9bced1b45a83eda590301b502a9e3b664ad",
+      "log": "D:\\Temp\\tellus-live-lifecycle-mc1211-20261110-a\\evidence\\capture.server.log",
+      "logSha256": "77858165872d39d934c664f4e6f0739d847de07e0a1fe5d738d60813d6c4e4ac",
+      "native": {
+        "schemaVersion": 1,
+        "phase": "capture",
+        "probeId": "e9e08c75-6bf3-402a-80da-a75f68cd2c8c",
+        "chunkX": 616246,
+        "chunkZ": -351597,
+        "binding": {
+          "worldRoot": "D:\\Temp\\tellus-live-lifecycle-mc1211-20261110-a\\world",
+          "dimension": "tellus:earth_cube_net",
+          "seed": 2025402140,
+          "generatorType": "com.yucareux.tellus.worldgen.CubeNetChunkGenerator",
+          "generatorProfile": "0b0aa6a9a3a0af144f0c9e81ee932e9d4b0245b6f392bf1e586689099f5aa3fc",
+          "minY": -2032,
+          "height": 4064,
+          "seaLevel": 64
+        },
+        "syntheticSampler": false,
+        "sourceBoundary": "pre-existing native FULL world chunk; GIS provenance recorded by isolated runner",
+        "diskReadBeforeDemandLoad": true,
+        "diskBeforeLoadDigest": "e7ee5c2584aa08f95baa9acf056d179d616c9c9bb4dd4647088bd6127e435b22",
+        "originalDiskDataVersion": 3465,
+        "nativeDataVersion": 3955,
+        "nativeCopiedWorldUpgradeSaved": true,
+        "liveLifecyclePayloadsPopulated": true,
+        "originalBlockDigest": "67d0a353d5953a5f2463400aab90b54d607bf2fa37c7abc1d9a161953bfb37e3",
+        "originalBiomeDigest": "a8ea2860d86e1bde0d01bdd6f5f501769ab06b507da5260e537e348608f1b095",
+        "changedX": 9859938,
+        "changedY": -2031,
+        "changedZ": -5625550,
+        "oldState": "Block{minecraft:stone}",
+        "newState": "Block{minecraft:gold_block}",
+        "loadedFullNBTRecoveredForEveryFault": true,
+        "nativeFaultRollbacks": 3,
+        "expectedLifecycleCounts": {
+          "block_entities": 1,
+          "block_ticks": 1,
+          "fluid_ticks": 1,
+          "postProcessingOffsets": 2
+        },
+        "expectedExactNBTDigest": "0c92e3f80395b4713a9285d72c3b50206a5c8f6ba5a030452c4e8d4023acbd92",
+        "expectedStableNBTDigest": "0cfdb4faa08b668b06167698982e4ece3c058e0a70957f4a4329ac6116e73db3",
+        "expectedBlockDigest": "18cc70bcefc4c15e8c65fe17acb37357d5b32419b2ab387920dc3e3772ab9df9",
+        "expectedBiomeDigest": "a8ea2860d86e1bde0d01bdd6f5f501769ab06b507da5260e537e348608f1b095",
+        "height": 4064,
+        "minY": -2032,
+        "transactionScope": "native queued complete-NBT publication+readback+prior-NBT recovery; one loaded opaque cell recovered separately",
+        "status": "PASS"
+      }
+    },
+    {
+      "phase": "verify",
+      "pid": 41500,
+      "exitCode": 0,
+      "passMarker": "TELLUS_PERSISTENCE_VERIFY_PASS",
+      "report": "D:\\Temp\\tellus-live-lifecycle-mc1211-20261110-a\\tellus\\persistence\\e9e08c75-6bf3-402a-80da-a75f68cd2c8c-verify.json",
+      "reportSha256": "601fa997a9ee310a33639ad3f16ce3618db1c4f04f0e8978a7b6edd85fa014f6",
+      "log": "D:\\Temp\\tellus-live-lifecycle-mc1211-20261110-a\\evidence\\verify.server.log",
+      "logSha256": "fc8001d3c492576e9540676cb7da77af413df6a55d32a09760617765c8feef2d",
+      "native": {
+        "schemaVersion": 1,
+        "phase": "verify",
+        "probeId": "e9e08c75-6bf3-402a-80da-a75f68cd2c8c",
+        "chunkX": 616246,
+        "chunkZ": -351597,
+        "binding": {
+          "worldRoot": "D:\\Temp\\tellus-live-lifecycle-mc1211-20261110-a\\world",
+          "dimension": "tellus:earth_cube_net",
+          "seed": 2025402140,
+          "generatorType": "com.yucareux.tellus.worldgen.CubeNetChunkGenerator",
+          "generatorProfile": "0b0aa6a9a3a0af144f0c9e81ee932e9d4b0245b6f392bf1e586689099f5aa3fc",
+          "minY": -2032,
+          "height": 4064,
+          "seaLevel": 64
+        },
+        "syntheticSampler": false,
+        "sourceBoundary": "pre-existing native FULL world chunk; GIS provenance recorded by isolated runner",
+        "diskReadBeforeDemandLoad": true,
+        "diskBeforeLoadDigest": "0c92e3f80395b4713a9285d72c3b50206a5c8f6ba5a030452c4e8d4023acbd92",
+        "restartedDiskMatchesExpected": true,
+        "restartedDiskLifecycleCounts": {
+          "block_entities": 1,
+          "block_ticks": 1,
+          "fluid_ticks": 1,
+          "postProcessingOffsets": 2
+        },
+        "materializedNativeNBTDigest": "0cfdb4faa08b668b06167698982e4ece3c058e0a70957f4a4329ac6116e73db3",
+        "materializedFullNBTEqual": true,
+        "materializedNativeLifecycleEqual": true,
+        "materializedLifecycleCounts": {
+          "block_entities": 1,
+          "block_ticks": 1,
+          "fluid_ticks": 1,
+          "postProcessingOffsets": 0
+        },
+        "liveChestInventoryAndWaterVerified": true,
+        "materializedBlockDigest": "18cc70bcefc4c15e8c65fe17acb37357d5b32419b2ab387920dc3e3772ab9df9",
+        "materializedBiomeDigest": "a8ea2860d86e1bde0d01bdd6f5f501769ab06b507da5260e537e348608f1b095",
+        "restartedMaterializedCellsMatch": true,
+        "status": "PASS"
+      }
+    }
+  ],
+  "sourceWorldFiles": 46,
+  "sourceCacheFiles": 10,
+  "command": [
+    "D:\\workshop\\Tellus-Optimized\\gradlew.bat",
+    "-PtellusTargets=mc1211",
+    "-PtellusRunDir=D:\\Temp\\tellus-live-lifecycle-mc1211-20261110-a",
+    "-PtellusBenchmarkHeap=6g",
+    ":mc1211:runServer",
+    "--args=--nogui",
+    "--offline",
+    "--no-daemon",
+    "--no-parallel",
+    "--max-workers=1",
+    "--console=plain"
+  ],
+  "jvmProperties": [
+    "tellus.persistence.probe=true",
+    "tellus.persistence.probe.id=e9e08c75-6bf3-402a-80da-a75f68cd2c8c",
+    "tellus.persistence.probe.allowUpgrade=true",
+    "tellus.persistence.probeRoot=D:\\Temp\\tellus-live-lifecycle-mc1211-20261110-a\\world",
+    "tellus.sphere.syntheticSampler=false",
+    "tellus.persistence.probe.populateLifecycle=true",
+    "tellus.gameDir=D:\\Temp\\tellus-live-lifecycle-mc1211-20261110-a",
+    "tellus.configDir=D:\\Temp\\tellus-live-lifecycle-mc1211-20261110-a\\config",
+    "tellus.chunkgen.threads.max=1"
+  ],
+  "sourceWorldAndCacheUnchanged": true
+}

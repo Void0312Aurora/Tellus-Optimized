@@ -1,0 +1,84 @@
+{
+  "schemaVersion": 1,
+  "scope": "real copied existing GIS FULL chunk; nonempty live lifecycle save/restart; not default rollout or crash-atomic batch",
+  "versions": {
+    "mc1201": {
+      "status": "PASS",
+      "probeId": "a2509edf-8391-487a-9efe-1b3db923e0fb",
+      "captureExitCode": 0,
+      "verifyExitCode": 0,
+      "sourceWorldAndCacheUnchanged": true,
+      "expectedCounts": {
+        "block_entities": 1,
+        "block_ticks": 1,
+        "fluid_ticks": 1,
+        "postProcessingOffsets": 2
+      },
+      "restartedDiskCounts": {
+        "block_entities": 1,
+        "block_ticks": 1,
+        "fluid_ticks": 1,
+        "postProcessingOffsets": 2
+      },
+      "postProcessCounts": {
+        "block_entities": 1,
+        "block_ticks": 1,
+        "fluid_ticks": 1,
+        "postProcessingOffsets": 0
+      },
+      "resumedAfterStartupTimeout": true,
+      "exactDiskAndPrePostProcessingMaterializationEqual": true,
+      "exactNativePostProcessingTransitionEqual": true,
+      "liveChestInventoryAndWaterVerified": true
+    },
+    "mc1211": {
+      "status": "PASS",
+      "probeId": "e9e08c75-6bf3-402a-80da-a75f68cd2c8c",
+      "captureExitCode": 0,
+      "verifyExitCode": 0,
+      "sourceWorldAndCacheUnchanged": true,
+      "expectedCounts": {
+        "block_entities": 1,
+        "block_ticks": 1,
+        "fluid_ticks": 1,
+        "postProcessingOffsets": 2
+      },
+      "restartedDiskCounts": {
+        "block_entities": 1,
+        "block_ticks": 1,
+        "fluid_ticks": 1,
+        "postProcessingOffsets": 2
+      },
+      "postProcessCounts": {
+        "block_entities": 1,
+        "block_ticks": 1,
+        "fluid_ticks": 1,
+        "postProcessingOffsets": 0
+      },
+      "resumedAfterStartupTimeout": false,
+      "exactDiskAndPrePostProcessingMaterializationEqual": true,
+      "exactNativePostProcessingTransitionEqual": true,
+      "liveChestInventoryAndWaterVerified": true
+    }
+  },
+  "files": {
+    "mc1201\\a2509edf-8391-487a-9efe-1b3db923e0fb-capture.json": "c5625ada599ab288ef3a69dc79be7b6bcbb451923706fee3ba3d94c44038f208",
+    "mc1201\\a2509edf-8391-487a-9efe-1b3db923e0fb-expected.snbt": "c624d75c7f5a28a4258e4af37cd92448a17de6efaaeeb93d6fa5c687642ea0c6",
+    "mc1201\\a2509edf-8391-487a-9efe-1b3db923e0fb-verify.json": "fda17cb55a16facb21a003fdbb190e7b71829dbc9a9cb774fe88ea940c1945d5",
+    "mc1201\\capture.server.log": "2f3318b84e4d1278840339366c2a1863a9e87489d7ed608da75ab8f54d0e7b6c",
+    "mc1201\\initial-verify-timeout.server.log.gz": "62f846ecc9daeb1e926445503088485515a3acf3cd5496da32fe93cc0cbadab6",
+    "mc1201\\roundtrip-resumed.json": "b49479e5b311a3df696df20ea7865316adb221dd8e804ff972f38ec53ffa6d72",
+    "mc1201\\roundtrip.json": "3c6c1336ea2f62ab5d3d1d90e273490a094e6340c66c5e50c57d6fb6cafe768e",
+    "mc1201\\source-cache-manifest.json": "b8ca7b5c77c89138270aa2d61c82d848fbea37244ede7b338d3f7989f612b4b6",
+    "mc1201\\source-world-manifest.json": "1351a6326ccbf560369e041e5befcffac196a864cd9334bc80a6772815e63e9a",
+    "mc1201\\verify.server.log": "7d1ca21994135ccfd40b01c3e4af64b1b873f2d8bc3c6c74ad40cba808303751",
+    "mc1211\\capture.server.log": "77858165872d39d934c664f4e6f0739d847de07e0a1fe5d738d60813d6c4e4ac",
+    "mc1211\\e9e08c75-6bf3-402a-80da-a75f68cd2c8c-capture.json": "94e93713684df1e9ddc51593ecfde9bced1b45a83eda590301b502a9e3b664ad",
+    "mc1211\\e9e08c75-6bf3-402a-80da-a75f68cd2c8c-expected.snbt": "b91e44280750651a17cd1a70dc1bfc8feb1ec9508b3ed72de680af9c2da4b06c",
+    "mc1211\\e9e08c75-6bf3-402a-80da-a75f68cd2c8c-verify.json": "601fa997a9ee310a33639ad3f16ce3618db1c4f04f0e8978a7b6edd85fa014f6",
+    "mc1211\\roundtrip.json": "4459291c5a4233ab023469cf35646211c66e7cc063e1e0cdd73f10382e3304b6",
+    "mc1211\\source-cache-manifest.json": "b8ca7b5c77c89138270aa2d61c82d848fbea37244ede7b338d3f7989f612b4b6",
+    "mc1211\\source-world-manifest.json": "1351a6326ccbf560369e041e5befcffac196a864cd9334bc80a6772815e63e9a",
+    "mc1211\\verify.server.log": "fc8001d3c492576e9540676cb7da77af413df6a55d32a09760617765c8feef2d"
+  }
+}

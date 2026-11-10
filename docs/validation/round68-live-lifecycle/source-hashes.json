@@ -1,0 +1,5 @@
+{
+  "src/main/java/com/yucareux/tellus/worldgen/TellusPersistenceProbeCommand.java": "d58d738be802664dcc1926904f8e7f35605a8cf1d38c86d7635ffd13f4954dab",
+  "tools/run_native_persistence_roundtrip.py": "80295ac901532a4c1207d4ba0e006410e0430272cc16e66c1e72eda09e708ac8",
+  "tools/test_run_native_persistence_roundtrip.py": "3afc0de63f91012b08f70e8ae8725079fc0819f72bf071d7287640bb8b7bbefe"
+}
