@@ -3,6 +3,7 @@ package com.yucareux.tellus.worldgen.persistence;
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.nio.file.Path;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -200,6 +201,20 @@ class TellusNativeChunkPersistenceTest {
         assertEquals(TellusNativeChunkPersistence.BatchStatus.COMMITTED, committed.status());
         assertEquals("final-a", store.disk.get(pos).getString("sentinel"));
         assertEquals("final-b", store.disk.get(second).getString("sentinel"));
+    }
+    @Test void preparedJournalRecoversPreviousNativeTagsBeforeNormalWork() throws Exception {
+        var position = new ChunkPos(-3, 7);
+        var store = new BatchStore(store(fullTag("unused")).binding, Map.of(position, fullTagAt(position, "old")));
+        var previous = fullTagAt(position, "old");
+        var proposed = fullTagAt(position, "new");
+        var journal = TellusNativeBatchJournal.prepare(store.binding,
+            List.of(new TellusNativeBatchJournal.Entry(position, previous, proposed)));
+        store.disk.put(position, proposed.copy());
+        assertTrue(Files.exists(journal));
+        var diagnostics = api(store).recoverPendingBatches();
+        assertFalse(diagnostics.isEmpty());
+        assertEquals("old", store.disk.get(position).getString("sentinel"));
+        assertFalse(Files.exists(journal));
     }
     @Test void nativeHeightBudgetAndAlignmentAreExplicit() {
         assertThrows(IllegalArgumentException.class, () -> new TellusNativeChunkPersistence.Binding(root, "dim", 1, "gen", "profile", -64, 8192, 63));
