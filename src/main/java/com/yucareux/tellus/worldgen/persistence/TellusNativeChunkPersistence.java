@@ -4,6 +4,9 @@ import com.yucareux.tellus.worldgen.CubeNetChunkGenerator;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashSet;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -30,10 +33,32 @@ public final class TellusNativeChunkPersistence {
     public static final String PROBE_ROOT_PROPERTY = "tellus.persistence.probeRoot";
     public static final int MAX_HEIGHT = 4096;
     public enum Status { COMMITTED, ROLLED_BACK, REJECTED, QUARANTINED }
+    public enum BatchStatus { COMMITTED, ROLLED_BACK, REJECTED, QUARANTINED }
     public enum Point { BEFORE_SUBMIT, AFTER_SUBMIT, AFTER_READBACK }
     @FunctionalInterface public interface FaultInjector {
         FaultInjector NONE = point -> { };
         void at(Point point);
+    }
+
+    @FunctionalInterface public interface BatchFaultInjector {
+        BatchFaultInjector NONE = (ordinal, pos, point) -> { };
+        void at(int ordinal, ChunkPos pos, Point point);
+    }
+
+    public record BatchEntry(ChunkPos position, CompoundTag proposed) {
+        public BatchEntry {
+            position = Objects.requireNonNull(position, "position");
+            proposed = Objects.requireNonNull(proposed, "proposed").copy();
+        }
+        @Override public CompoundTag proposed() { return proposed.copy(); }
+    }
+
+    public record BatchCommitResult(BatchStatus status, List<CommitResult> entries, List<String> diagnostics) {
+        public BatchCommitResult {
+            Objects.requireNonNull(status, "status");
+            entries = List.copyOf(Objects.requireNonNull(entries, "entries"));
+            diagnostics = List.copyOf(Objects.requireNonNull(diagnostics, "diagnostics"));
+        }
     }
 
     public record Binding(Path worldRoot, String dimension, long seed, String generatorType,
@@ -198,6 +223,77 @@ public final class TellusNativeChunkPersistence {
                     "native complete previous NBT restored: " + failure.getClass().getName());
             }
         } finally { ACTIVE.remove(key); }
+    }
+
+    /**
+     * Publishes a deterministic, quiescent multi-chunk batch and restores all
+     * earlier chunks when a later stage rejects or rolls back. This is an
+     * in-process staged transaction contract: it deliberately has no crash
+     * journal and callers must exclude competing world saves until the future
+     * durable journal gate is implemented.
+     */
+    public BatchCommitResult commitBatch(List<BatchEntry> requested, BatchFaultInjector faults) {
+        Objects.requireNonNull(requested, "requested");
+        Objects.requireNonNull(faults, "faults");
+        if (requested.isEmpty()) return batch(BatchStatus.REJECTED, List.of(), "batch must contain at least one chunk");
+        List<BatchEntry> entries = new ArrayList<>(requested);
+        entries.sort(Comparator.comparingInt((BatchEntry entry) -> entry.position().x)
+            .thenComparingInt(entry -> entry.position().z));
+        Set<ChunkPos> seen = new HashSet<>();
+        for (BatchEntry entry : entries) {
+            if (!seen.add(entry.position())) return batch(BatchStatus.REJECTED, List.of(), "batch contains duplicate chunk positions");
+            try {
+                if (readExistingNBT(entry.position()).isEmpty())
+                    return batch(BatchStatus.REJECTED, List.of(), "existing native FULL baseline is required for every batch chunk");
+            } catch (RuntimeException failure) {
+                return batch(quarantined(entry.position()) ? BatchStatus.QUARANTINED : BatchStatus.REJECTED,
+                    List.of(), "batch preflight failed: " + failure.getClass().getName());
+            }
+        }
+        List<CommitResult> committed = new ArrayList<>();
+        for (int ordinal = 0; ordinal < entries.size(); ordinal++) {
+            BatchEntry entry = entries.get(ordinal);
+            int stage = ordinal;
+            CommitResult result;
+            try {
+                result = commit(entry.position(), entry.proposed(), point -> faults.at(stage, entry.position(), point));
+            } catch (RuntimeException failure) {
+                return rollbackBatch(committed, BatchStatus.QUARANTINED,
+                    "batch stage threw: " + failure.getClass().getName());
+            }
+            committed.add(result);
+            if (result.status() != Status.COMMITTED) {
+                BatchStatus failureStatus = result.status() == Status.QUARANTINED
+                    ? BatchStatus.QUARANTINED : BatchStatus.ROLLED_BACK;
+                return rollbackBatch(committed.subList(0, Math.max(0, committed.size() - 1)), failureStatus,
+                    "batch stage " + stage + " returned " + result.status());
+            }
+        }
+        return new BatchCommitResult(BatchStatus.COMMITTED, committed, List.of("all native stages committed in canonical chunk order"));
+    }
+
+    private BatchCommitResult rollbackBatch(List<CommitResult> committed, BatchStatus failureStatus, String diagnostic) {
+        List<CommitResult> results = new ArrayList<>(committed);
+        boolean complete = true;
+        for (int i = committed.size() - 1; i >= 0; i--) {
+            CommitResult prior = committed.get(i);
+            if (prior.previous().isEmpty()) { complete = false; continue; }
+            ChunkPos position = new ChunkPos(prior.previous().orElseThrow().getInt("xPos"), prior.previous().orElseThrow().getInt("zPos"));
+            try {
+                CommitResult restored = commit(position, prior.previous().orElseThrow(), FaultInjector.NONE);
+                results.add(restored);
+                if (restored.status() != Status.COMMITTED) complete = false;
+            } catch (RuntimeException failure) {
+                complete = false;
+            }
+        }
+        if (!complete) failureStatus = BatchStatus.QUARANTINED;
+        return new BatchCommitResult(failureStatus == BatchStatus.QUARANTINED ? BatchStatus.QUARANTINED : BatchStatus.ROLLED_BACK,
+            results, List.of(diagnostic, complete ? "all previously committed chunks restored" : "batch recovery incomplete; inspect per-chunk quarantine"));
+    }
+
+    private static BatchCommitResult batch(BatchStatus status, List<CommitResult> entries, String diagnostic) {
+        return new BatchCommitResult(status, entries, List.of(diagnostic));
     }
 
     private CommitResult rejected(ChunkPos pos, RuntimeException failure) {

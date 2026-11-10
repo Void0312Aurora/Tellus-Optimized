@@ -4,7 +4,9 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import net.minecraft.nbt.CompoundTag;
@@ -177,6 +179,28 @@ class TellusNativeChunkPersistenceTest {
         assertEquals(TellusNativeChunkPersistence.Status.COMMITTED, result.status());
         assertEquals(TellusNativeChunkPersistence.Status.COMMITTED, api.commit(pos, fullTag("next"), TellusNativeChunkPersistence.FaultInjector.NONE).status());
     }
+    @Test void multiChunkBatchCommitsInCanonicalOrderAndRestoresEarlierStages() {
+        ChunkPos second = new ChunkPos(-2, 7);
+        var store = new BatchStore(store(fullTag("unused")).binding, Map.of(
+            pos, fullTagAt(pos, "old-a"), second, fullTagAt(second, "old-b")));
+        var api = api(store);
+        var failed = api.commitBatch(List.of(
+            new TellusNativeChunkPersistence.BatchEntry(second, fullTagAt(second, "new-b")),
+            new TellusNativeChunkPersistence.BatchEntry(pos, fullTagAt(pos, "new-a"))),
+            (ordinal, ignored, point) -> { if (ordinal == 1 && point == TellusNativeChunkPersistence.Point.BEFORE_SUBMIT)
+                throw new IllegalStateException("second stage"); });
+        assertEquals(TellusNativeChunkPersistence.BatchStatus.ROLLED_BACK, failed.status());
+        assertEquals("old-a", store.disk.get(pos).getString("sentinel"));
+        assertEquals("old-b", store.disk.get(second).getString("sentinel"));
+
+        var committed = api.commitBatch(List.of(
+            new TellusNativeChunkPersistence.BatchEntry(pos, fullTagAt(pos, "final-a")),
+            new TellusNativeChunkPersistence.BatchEntry(second, fullTagAt(second, "final-b"))),
+            TellusNativeChunkPersistence.BatchFaultInjector.NONE);
+        assertEquals(TellusNativeChunkPersistence.BatchStatus.COMMITTED, committed.status());
+        assertEquals("final-a", store.disk.get(pos).getString("sentinel"));
+        assertEquals("final-b", store.disk.get(second).getString("sentinel"));
+    }
     @Test void nativeHeightBudgetAndAlignmentAreExplicit() {
         assertThrows(IllegalArgumentException.class, () -> new TellusNativeChunkPersistence.Binding(root, "dim", 1, "gen", "profile", -64, 8192, 63));
         assertThrows(IllegalArgumentException.class, () -> new TellusNativeChunkPersistence.Binding(root, "dim", 1, "gen", "profile", -63, 384, 63));
@@ -186,11 +210,15 @@ class TellusNativeChunkPersistenceTest {
         assertThrows(RuntimeException.class, () -> api.readExistingNBT(pos)); assertTrue(store.events.isEmpty());
     }
     private TellusNativeChunkPersistence api(FakeStore store) { return TellusNativeChunkPersistence.forStore(store.binding, store); }
+    private TellusNativeChunkPersistence api(BatchStore store) { return TellusNativeChunkPersistence.forStore(store.binding, store); }
     private FakeStore store(CompoundTag disk) {
         return new FakeStore(new TellusNativeChunkPersistence.Binding(root, "minecraft:overworld", 19, "native.Generator", "profile", -64, 384, 63), disk);
     }
     private CompoundTag fullTag(String sentinel) {
-        var tag = new CompoundTag(); tag.putInt("DataVersion", 3465); tag.putInt("xPos", pos.x); tag.putInt("zPos", pos.z); tag.putInt("yPos", -4);
+        return fullTagAt(pos, sentinel);
+    }
+    private CompoundTag fullTagAt(ChunkPos position, String sentinel) {
+        var tag = new CompoundTag(); tag.putInt("DataVersion", 3465); tag.putInt("xPos", position.x); tag.putInt("zPos", position.z); tag.putInt("yPos", -4);
         tag.putString("Status", "minecraft:full"); tag.putLong("LastUpdate", 120); tag.putLong("InhabitedTime", 150);
         tag.putString("sentinel", sentinel); tag.putBoolean("isLightOn", true);
         var section = new CompoundTag(); section.putInt("Y", -4);
@@ -217,5 +245,18 @@ class TellusNativeChunkPersistenceTest {
             if (submissions == 1 && corruptFirstSubmission) pending.getCompound("structures").putString("unexpected", "corrupted metadata");
         }
         @Override public void flush() { events.add("flush"); if (pending != null) { disk = pending.copy(); pending = null; } }
+    }
+    private static final class BatchStore implements TellusNativeChunkPersistence.Store {
+        final TellusNativeChunkPersistence.Binding binding; final Map<ChunkPos, CompoundTag> disk = new HashMap<>();
+        boolean main = true;
+        BatchStore(TellusNativeChunkPersistence.Binding binding, Map<ChunkPos, CompoundTag> initial) {
+            this.binding = binding; initial.forEach((position, tag) -> disk.put(position, tag.copy()));
+        }
+        @Override public TellusNativeChunkPersistence.Binding currentBinding() { return binding; }
+        @Override public boolean mainThread() { return main; }
+        @Override public boolean canonical(ChunkPos position) { return true; }
+        @Override public Optional<CompoundTag> read(ChunkPos position) { return Optional.ofNullable(disk.get(position)).map(CompoundTag::copy); }
+        @Override public void submit(ChunkPos position, CompoundTag tag) { disk.put(position, tag.copy()); }
+        @Override public void flush() { }
     }
 }
