@@ -996,37 +996,51 @@ public final class EarthChunkGenerator extends TellusChunkGeneratorBridge implem
             EarthChunkGenerator.TerrainStreamingPerf.recordDetailDelayedByRefinement();
          }
          List<BoundingBox> campPieces = this.abandonedCampPieces(level.registryAccess(), structures, chunk.getPos());
-         phaseStartNs = beginFullChunkProfiling();
-         if (!delayTellusDecoration && !this.shouldDeferTrees()) {
-            this.placeTrees(level, chunk, campPieces);
-         }
-         endFullChunkProfiling(EarthChunkGenerator.FullChunkPhase.DECORATION_TREES, phaseStartNs);
-         if (!delayTellusDecoration && !this.shouldDeferBuildingDetails()) {
-            phaseStartNs = beginFullChunkProfiling();
-            this.placePreparedBuildings(level, chunk);
-            endFullChunkProfiling(EarthChunkGenerator.FullChunkPhase.DECORATION_BUILDINGS, phaseStartNs);
-         }
-
-         phaseStartNs = beginFullChunkProfiling();
-         if (!delayTellusDecoration) {
-            this.applyRealtimeSnowCover(level, chunk);
-         }
-         endFullChunkProfiling(EarthChunkGenerator.FullChunkPhase.DECORATION_REALTIME_SNOW, phaseStartNs);
-         if (!delayTellusDecoration && !this.shouldDeferRoadDetails()) {
-            phaseStartNs = beginFullChunkProfiling();
-            this.placePreparedRoadLights(level, chunk);
-            endFullChunkProfiling(EarthChunkGenerator.FullChunkPhase.DECORATION_ROAD_LIGHTS, phaseStartNs);
-         }
-
-         if (!delayTellusDecoration && this.hasDeferredApplyWork()) {
-            phaseStartNs = beginFullChunkProfiling();
-            this.applyReadyDeferredChunkDetail(level, chunk, campPieces);
-            endFullChunkProfiling(EarthChunkGenerator.FullChunkPhase.DECORATION_DEFERRED_APPLY, phaseStartNs);
-         }
-
-         // Last, so the landmark wins over trees, lamps and anything else placed in the same columns.
-         if (!delayTellusDecoration) {
-            this.placeLandmarks(level, chunk);
+         for (var stage : com.yucareux.tellus.worldgen.decision.TellusDecorationDecisionKernel.earthOrder()) {
+            switch (stage) {
+               case TREES -> {
+                  phaseStartNs = beginFullChunkProfiling();
+                  if (com.yucareux.tellus.worldgen.decision.TellusDecorationDecisionKernel.executeEarth(stage,
+                     delayTellusDecoration, !delayTellusDecoration && this.shouldDeferTrees())) this.placeTrees(level, chunk, campPieces);
+                  endFullChunkProfiling(EarthChunkGenerator.FullChunkPhase.DECORATION_TREES, phaseStartNs);
+               }
+               case BUILDINGS -> {
+                  if (com.yucareux.tellus.worldgen.decision.TellusDecorationDecisionKernel.executeEarth(stage,
+                     delayTellusDecoration, !delayTellusDecoration && this.shouldDeferBuildingDetails())) {
+                     phaseStartNs = beginFullChunkProfiling();
+                     this.placePreparedBuildings(level, chunk);
+                     endFullChunkProfiling(EarthChunkGenerator.FullChunkPhase.DECORATION_BUILDINGS, phaseStartNs);
+                  }
+               }
+               case REALTIME_SNOW -> {
+                  phaseStartNs = beginFullChunkProfiling();
+                  if (com.yucareux.tellus.worldgen.decision.TellusDecorationDecisionKernel.executeEarth(stage,
+                     delayTellusDecoration, false)) this.applyRealtimeSnowCover(level, chunk);
+                  endFullChunkProfiling(EarthChunkGenerator.FullChunkPhase.DECORATION_REALTIME_SNOW, phaseStartNs);
+               }
+               case ROAD_LIGHTS -> {
+                  if (com.yucareux.tellus.worldgen.decision.TellusDecorationDecisionKernel.executeEarth(stage,
+                     delayTellusDecoration, !delayTellusDecoration && this.shouldDeferRoadDetails())) {
+                     phaseStartNs = beginFullChunkProfiling();
+                     this.placePreparedRoadLights(level, chunk);
+                     endFullChunkProfiling(EarthChunkGenerator.FullChunkPhase.DECORATION_ROAD_LIGHTS, phaseStartNs);
+                  }
+               }
+               case DEFERRED_DETAILS -> {
+                  if (com.yucareux.tellus.worldgen.decision.TellusDecorationDecisionKernel.executeEarth(stage,
+                     delayTellusDecoration, !delayTellusDecoration && this.hasDeferredApplyWork())) {
+                     phaseStartNs = beginFullChunkProfiling();
+                     this.applyReadyDeferredChunkDetail(level, chunk, campPieces);
+                     endFullChunkProfiling(EarthChunkGenerator.FullChunkPhase.DECORATION_DEFERRED_APPLY, phaseStartNs);
+                  }
+               }
+               // Last, so the landmark still wins over trees, lamps and other detail.
+               case LANDMARKS -> {
+                  if (com.yucareux.tellus.worldgen.decision.TellusDecorationDecisionKernel.executeEarth(stage,
+                     delayTellusDecoration, false)) this.placeLandmarks(level, chunk);
+               }
+               default -> throw new IllegalStateException("unexpected Earth detail stage: " + stage);
+            }
          }
 
          endFullChunkProfiling(EarthChunkGenerator.FullChunkPhase.DECORATION_TOTAL, totalStartNs);

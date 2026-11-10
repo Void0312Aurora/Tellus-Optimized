@@ -77,6 +77,24 @@ class RunnerContracts(unittest.TestCase):
                 with self.subTest(field=field), self.assertRaises(ValueError):
                     runner.check_report(path, "verify", args, "probe")
 
+    def test_generate_requires_previously_absent_full_chunk_and_exact_native_save(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "report.json"
+            args = types.SimpleNamespace(chunk_x=1, chunk_z=-2)
+            report = dict(status="PASS", phase="generate", probeId="probe", syntheticSampler=False,
+                          chunkX=1, chunkZ=-2, diskReadBeforeDemandLoad=True,
+                          targetAbsentBeforeGeneration=True, generatedDiskMatchesMaterialized=True,
+                          generatedBlockDigest="a" * 64, generatedBiomeDigest="b" * 64,
+                          generatedNativeNBTDigest="c" * 64, generatedNativeStatus="minecraft:full")
+            path.write_text(json.dumps(report), encoding="utf-8")
+            self.assertEqual(runner.check_report(path, "generate", args, "probe"), report)
+            for key, wrong in (("targetAbsentBeforeGeneration", False), ("generatedDiskMatchesMaterialized", False),
+                               ("generatedBlockDigest", ""), ("generatedBiomeDigest", "partial"),
+                               ("generatedNativeNBTDigest", "f" * 63), ("generatedNativeStatus", "minecraft:noise")):
+                path.write_text(json.dumps({**report, key: wrong}), encoding="utf-8")
+                with self.subTest(key=key), self.assertRaises(ValueError):
+                    runner.check_report(path, "generate", args, "probe")
+
     @unittest.skipUnless(os.name == "nt", "Windows Job Object contract")
     def test_windows_owned_job_closing_terminates_the_assigned_process(self):
         job = runner.OwnedWindowsJob()

@@ -1717,14 +1717,18 @@ public final class CubeNetChunkGenerator extends ChunkGenerator implements CubeN
       // Only canonical chunks own decoration. Aprons receive the complete
       // decorated owner view below, which keeps vanilla features, Tellus
       // features and structures on one spherical owner.
-      if (this.address(chunk.getPos()).filter(this.singularityPolicy::admitsTerrainMaterialization).isPresent()) {
-         super.applyBiomeDecoration(level, chunk, structures);
-         this.spawnCubeNetAxolotls(level, chunk);
-         this.placeCubeNetTrees(level, chunk);
-         this.applyRealtimeSnowCover(level, chunk);
-      }
-      this.placeCubeNetFeatures(level, chunk);
-      this.mirrorCanonicalStructureView(level, chunk);
+       boolean canonical = this.address(chunk.getPos()).filter(this.singularityPolicy::admitsTerrainMaterialization).isPresent();
+       for (var stage : com.yucareux.tellus.worldgen.decision.TellusDecorationDecisionKernel.cube(canonical)) {
+          switch (stage) {
+             case VANILLA -> super.applyBiomeDecoration(level, chunk, structures);
+             case AXOLOTLS -> this.spawnCubeNetAxolotls(level, chunk);
+             case TREES -> this.placeCubeNetTrees(level, chunk);
+             case REALTIME_SNOW -> this.applyRealtimeSnowCover(level, chunk);
+             case CUBE_FEATURES -> this.placeCubeNetFeatures(level, chunk);
+             case MIRROR_CANONICAL_VIEW -> this.mirrorCanonicalStructureView(level, chunk);
+             default -> throw new IllegalStateException("unexpected Cube decoration stage: " + stage);
+          }
+       }
    }
    @Override public void spawnOriginalMobs(WorldGenRegion level) {
       ChunkPos center = level.getCenter();

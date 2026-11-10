@@ -1,6 +1,7 @@
 package com.yucareux.tellus.worldgen.caves;
 
 import com.yucareux.tellus.compat.MinecraftVersionCompat;
+import com.yucareux.tellus.worldgen.decision.TellusCarverDecisionKernel;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -42,12 +43,13 @@ final class TellusConfiguredCarvers {
    }
 
    private List<ConfiguredWorldCarver<?>> createForSurface(int surfaceY) {
-      int caveFloorY = Math.max(this.tellusMinY, surfaceY - this.undergroundDepth + 1);
-      int caveCeilingY = Math.max(caveFloorY, Math.min(this.tellusMaxY, surfaceY - 1));
-      int caveExtraCeilingY = Math.max(caveFloorY, caveCeilingY - 16);
-      int canyonFloorY = Math.max(caveFloorY, caveCeilingY - 96);
+      var bounds = TellusCarverDecisionKernel.bounds(this.tellusMinY, this.tellusMaxY, this.undergroundDepth, surfaceY);
+      int caveFloorY = bounds.floorY();
+      int caveCeilingY = bounds.ceilingY();
+      int caveExtraCeilingY = bounds.extraCeilingY();
+      int canyonFloorY = bounds.canyonFloorY();
       int canyonCeilingY = caveCeilingY;
-      int lavaLevelY = Math.min(caveCeilingY, caveFloorY + 8);
+      int lavaLevelY = bounds.lavaLevelY();
 
       TellusCaveCarver cave = new TellusCaveCarver(
          new CaveCarverConfiguration(

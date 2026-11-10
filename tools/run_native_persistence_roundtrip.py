@@ -271,6 +271,14 @@ def check_report(path: Path, phase: str, args, probe_id: str) -> dict:
     for key, value in expected.items():
         if report.get(key) != value:
             raise ValueError(f"native report {key} differs: {report.get(key)!r} != {value!r}")
+    if phase == "generate":
+        if not (report.get("targetAbsentBeforeGeneration") is True and report.get("generatedDiskMatchesMaterialized") is True):
+            raise ValueError("native new-generation/save evidence missing")
+        if not all(re.fullmatch(r"[0-9a-f]{64}", str(report.get(field, "")))
+                   for field in ("generatedBlockDigest", "generatedBiomeDigest", "generatedNativeNBTDigest")):
+            raise ValueError("native generated full block/biome/NBT digests missing")
+        if report.get("generatedNativeStatus") not in ("full", "minecraft:full"):
+            raise ValueError("native generated status is not FULL")
     if getattr(args, "populate_lifecycle", False):
         counts_key = "expectedLifecycleCounts" if phase == "capture" else "restartedDiskLifecycleCounts"
         counts = report.get(counts_key, {})

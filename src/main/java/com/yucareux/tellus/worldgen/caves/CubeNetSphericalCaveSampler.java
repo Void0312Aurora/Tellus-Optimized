@@ -4,6 +4,8 @@ import com.google.common.base.Preconditions;
 import com.yucareux.tellus.compat.MinecraftVersionCompat;
 import com.yucareux.tellus.worldgen.GeologicalStonePlacementPolicy;
 import com.yucareux.tellus.worldgen.UndergroundStructureExclusion;
+import com.yucareux.tellus.worldgen.decision.TellusCubeUndergroundDecisionKernel;
+import com.yucareux.tellus.worldgen.decision.TellusCubeUndergroundDecisionKernel.Material;
 import com.yucareux.tellus.worldgen.global.SphereWorldModel;
 import com.yucareux.tellus.worldgen.global.CubeNetLayout;
 import java.util.List;
@@ -95,33 +97,23 @@ public final class CubeNetSphericalCaveSampler {
                boolean caveAllowed = applyCaves
                   && !UndergroundStructureExclusion.blocksCarving(structureExclusions, worldX, actualY, worldZ)
                   && (floodGuardYByColumn == null || actualY < floodGuardYByColumn[index]);
-               BlockState replacement = null;
-               boolean noiseFeature = false;
-               if (caveAllowed) {
-                  replacement = switch (field.cavity(position, actualY - seaLevel, depth, actualY, chunkMinY)) {
-                     case AIR -> CAVE_AIR;
-                     case WATER -> WATER;
-                     case LAVA -> LAVA;
-                     case SOLID -> null;
-                  };
-               }
-               if (replacement == null && (applyOreVeins || applyGeologicalStonePatches)) {
-                  CubeNetSphericalCaveField.Feature feature = field.rockFeature(
-                     position, depth, applyOreVeins, applyGeologicalStonePatches);
-                  replacement = featureState(feature, applyOreVeins, applyGeologicalStonePatches);
-                  if (replacement != null && (feature == CubeNetSphericalCaveField.Feature.GRANITE
-                     || feature == CubeNetSphericalCaveField.Feature.TUFF)) {
-                     if (!GeologicalStonePlacementPolicy.isNoiseStoneBuried(actualY, minimumNearbySurfaceY)) {
-                        replacement = null;
-                     }
-                  }
-                  noiseFeature = replacement != null;
-               }
-               if (replacement == null) continue;
+                Material material = Material.NONE;
+                if (caveAllowed) {
+                   material = TellusCubeUndergroundDecisionKernel.cavity(
+                      field.cavity(position, actualY - seaLevel, depth, actualY, chunkMinY));
+                }
+                if (material == Material.NONE && (applyOreVeins || applyGeologicalStonePatches)) {
+                   CubeNetSphericalCaveField.Feature feature = field.rockFeature(
+                      position, depth, applyOreVeins, applyGeologicalStonePatches);
+                   material = TellusCubeUndergroundDecisionKernel.feature(feature,
+                      applyOreVeins, applyGeologicalStonePatches, actualY, minimumNearbySurfaceY);
+                }
+                BlockState replacement = materialize(material);
+                if (replacement == null) continue;
 
                cursor.set(worldX, actualY, worldZ);
                BlockState current = chunk.getBlockState(cursor);
-               boolean replaceable = noiseFeature
+                boolean replaceable = material.noiseFeature()
                   ? current.is(BlockTags.BASE_STONE_OVERWORLD)
                   : VanillaNoiseFieldSampler.isCarvable(current);
                if (!replaceable) continue;
@@ -131,15 +123,16 @@ public final class CubeNetSphericalCaveSampler {
       }
    }
 
-   private static BlockState featureState(
-      CubeNetSphericalCaveField.Feature feature, boolean applyOreVeins, boolean applyGeologicalStonePatches
-   ) {
-      return switch (feature) {
-         case COPPER_ORE -> applyOreVeins ? Blocks.COPPER_ORE.defaultBlockState() : null;
-         case DEEPSLATE_IRON_ORE -> applyOreVeins ? Blocks.DEEPSLATE_IRON_ORE.defaultBlockState() : null;
-         case GRANITE -> applyGeologicalStonePatches ? Blocks.GRANITE.defaultBlockState() : null;
-         case TUFF -> applyGeologicalStonePatches ? Blocks.TUFF.defaultBlockState() : null;
-         default -> null;
+    static BlockState materialize(Material material) {
+       return switch (material) {
+          case CAVE_AIR -> CAVE_AIR;
+          case WATER -> WATER;
+          case LAVA -> LAVA;
+          case COPPER_ORE -> Blocks.COPPER_ORE.defaultBlockState();
+          case DEEPSLATE_IRON_ORE -> Blocks.DEEPSLATE_IRON_ORE.defaultBlockState();
+          case GRANITE -> Blocks.GRANITE.defaultBlockState();
+          case TUFF -> Blocks.TUFF.defaultBlockState();
+          case NONE -> null;
       };
    }
 

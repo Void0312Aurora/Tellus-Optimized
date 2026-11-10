@@ -2,6 +2,7 @@ package com.yucareux.tellus.worldgen.caves;
 
 import com.yucareux.tellus.compat.MinecraftVersionCompat;
 import com.yucareux.tellus.worldgen.UndergroundStructureExclusion;
+import com.yucareux.tellus.worldgen.decision.TellusCarverDecisionKernel;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.IntBinaryOperator;
@@ -211,10 +212,9 @@ public final class TellusVanillaCarverRunner {
             int localX = x & 15;
             int localZ = z & 15;
             int index = chunkIndex(localX, localZ);
-            return !cavesReachSurface && surfaceYByColumn != null && y >= surfaceYByColumn[index] - 4
-               || floodGuardYByColumn != null && y >= floodGuardYByColumn[index]
-               || generationFloorYByColumn != null && y <= generationFloorYByColumn[index]
-               || UndergroundStructureExclusion.blocksCarving(
+             return TellusCarverDecisionKernel.blocksCarving(y, index, cavesReachSurface,
+                   surfaceYByColumn, floodGuardYByColumn, generationFloorYByColumn)
+                || UndergroundStructureExclusion.blocksCarving(
                   structureExclusions, chunkMinX + localX, y, chunkMinZ + localZ
                );
          });

@@ -56,7 +56,7 @@ public final class TellusPersistenceProbeCommand {
         platform.registerCommands(dispatcher -> dispatcher.register(Commands.literal("tellus")
             .then(Commands.literal("persistence")
                 .requires(source -> Boolean.getBoolean("tellus.persistence.probe") && source.hasPermission(4))
-                .then(phase("capture")).then(phase("verify")))));
+                .then(phase("capture")).then(phase("verify")).then(phase("generate")))));
     }
 
     private static com.mojang.brigadier.builder.LiteralArgumentBuilder<CommandSourceStack> phase(String phase) {
@@ -93,6 +93,33 @@ public final class TellusPersistenceProbeCommand {
             result.add("binding", bindingJson(persistence.binding()));
             result.addProperty("syntheticSampler", false);
             result.addProperty("sourceBoundary", "pre-existing native FULL world chunk; GIS provenance recorded by isolated runner");
+            if (phase.equals("generate")) {
+                if (persistence.readExistingNBT(pos).isPresent())
+                    throw new IllegalStateException("generation probe requires an absent disk chunk; existing terrain is not generation evidence");
+                result.addProperty("diskReadBeforeDemandLoad", true);
+                result.addProperty("targetAbsentBeforeGeneration", true);
+                result.addProperty("sourceBoundary", "new native FULL generation on the copied real world/cache; no synthetic sampler");
+                long started = System.nanoTime();
+                ChunkAccess generated = ChunkBenchmarkVersionCompat.requestFullChunk(level.getChunkSource(), x, z);
+                if (generated == null) throw new IllegalStateException("native generation returned no FULL chunk");
+                result.addProperty("generationNanos", System.nanoTime() - started);
+                CompoundTag expected = persistence.snapshot(generated);
+                result.addProperty("generatedBlockDigest", blockDigest(generated));
+                result.addProperty("generatedBiomeDigest", biomeDigest(generated));
+                result.addProperty("generatedNativeNBTDigest", TellusNativeChunkPersistence.digest(expected, SAVE_CLOCKS));
+                result.add("generatedLifecycleCounts", lifecycleCounts(expected));
+                result.addProperty("generatedNativeStatus", expected.getString("Status"));
+                result.addProperty("generatedDataVersion", expected.getInt("DataVersion"));
+                generated.setUnsaved(true);
+                source.getServer().saveEverything(false, true, true);
+                CompoundTag saved = persistence.readExistingNBT(pos).orElseThrow(() ->
+                    new IllegalStateException("new generated chunk was not saved through the native queue"));
+                if (!TellusNativeChunkPersistence.sameNBT(expected, saved, SAVE_CLOCKS))
+                    throw new IllegalStateException("new generated FULL chunk changed through native save");
+                result.addProperty("generatedDiskMatchesMaterialized", true);
+                Files.writeString(directory.resolve(id + "-generated.snbt"), saved.toString(), StandardCharsets.UTF_8);
+                return complete(source, phase, result, output);
+            }
             var diskBeforeLoad = persistence.readExistingNBT(pos).orElseThrow(() ->
                 new IllegalStateException("existing disk chunk required; regeneration is not persistence evidence"));
             result.addProperty("diskReadBeforeDemandLoad", true);
@@ -249,15 +276,7 @@ public final class TellusPersistenceProbeCommand {
                 result.addProperty("materializedBiomeDigest", biomes);
                 result.addProperty("restartedMaterializedCellsMatch", true);
             }
-            result.addProperty("status", "PASS");
-            Files.writeString(output, JSON.toJson(result) + "\n", StandardCharsets.UTF_8);
-            String marker = "TELLUS_PERSISTENCE_" + phase.toUpperCase(java.util.Locale.ROOT) + "_PASS";
-            LOGGER.info("{} result={}", marker, output);
-            source.sendSuccess(() -> Component.literal(marker), false);
-            // Keep scheduled delays identical between the same-tick snapshot
-            // and shutdown save; this is confined to the explicit copied-world probe.
-            if (Boolean.getBoolean("tellus.persistence.probe.populateLifecycle")) source.getServer().halt(false);
-            return 1;
+            return complete(source, phase, result, output);
         } catch (Exception failure) {
             result.addProperty("status", "FAIL"); result.addProperty("error", failure.toString());
             if (output != null && !Files.exists(output)) {
@@ -268,6 +287,18 @@ public final class TellusPersistenceProbeCommand {
             source.sendFailure(Component.literal("Persistence probe failed: " + failure.getClass().getName()));
             return 0;
         }
+    }
+
+    private static int complete(CommandSourceStack source, String phase, JsonObject result, Path output) throws java.io.IOException {
+        result.addProperty("status", "PASS");
+        Files.writeString(output, JSON.toJson(result) + "\n", StandardCharsets.UTF_8);
+        String marker = "TELLUS_PERSISTENCE_" + phase.toUpperCase(java.util.Locale.ROOT) + "_PASS";
+        LOGGER.info("{} result={}", marker, output);
+        source.sendSuccess(() -> Component.literal(marker), false);
+        // No extra tick between the same-tick snapshot and the native shutdown save.
+        if (Boolean.getBoolean("tellus.persistence.probe.populateLifecycle") || phase.equals("generate"))
+            source.getServer().halt(false);
+        return 1;
     }
 
     private static JsonObject bindingJson(TellusNativeChunkPersistence.Binding binding) {
