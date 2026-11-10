@@ -13,6 +13,7 @@ import java.util.Set;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.StringTag;
+import net.minecraft.nbt.ShortTag;
 import net.minecraft.world.level.ChunkPos;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -225,6 +226,24 @@ class TellusNativeChunkPersistenceTest {
             assertEquals(TellusNativeChunkPersistence.BatchStatus.REJECTED, result.status());
             assertTrue(result.diagnostics().get(0).contains("lease unavailable"));
         }
+    }
+    @Test void nonEmptyEntityTickFluidAndPostProcessingPayloadsRoundTripAsNativeTags() {
+        var old = fullTag("old"); var candidate = fullTag("nonempty");
+        var entity = new CompoundTag(); entity.putString("id", "minecraft:chest"); entity.putInt("x", pos.x * 16 + 3); entity.putInt("y", 64); entity.putInt("z", pos.z * 16 + 4);
+        var entities = new ListTag(); entities.add(entity); candidate.put("block_entities", entities);
+        var blockTick = new CompoundTag(); blockTick.putString("i", "minecraft:stone"); blockTick.putInt("x", pos.x * 16 + 3); blockTick.putInt("y", 63); blockTick.putInt("z", pos.z * 16 + 4); blockTick.putInt("t", 20); blockTick.putInt("p", 0);
+        var blockTicks = new ListTag(); blockTicks.add(blockTick); candidate.put("block_ticks", blockTicks);
+        var fluidTick = new CompoundTag(); fluidTick.putString("i", "minecraft:water"); fluidTick.putInt("x", pos.x * 16 + 5); fluidTick.putInt("y", 62); fluidTick.putInt("z", pos.z * 16 + 6); fluidTick.putInt("t", 40); fluidTick.putInt("p", 1);
+        var fluidTicks = new ListTag(); fluidTicks.add(fluidTick); candidate.put("fluid_ticks", fluidTicks);
+        var markerColumn = new ListTag(); markerColumn.add(ShortTag.valueOf((short) 7)); markerColumn.add(ShortTag.valueOf((short) 11));
+        var postProcessing = new ListTag(); postProcessing.add(markerColumn); candidate.put("PostProcessing", postProcessing);
+        var store = store(old); var result = api(store).commit(pos, candidate, TellusNativeChunkPersistence.FaultInjector.NONE);
+        assertEquals(TellusNativeChunkPersistence.Status.COMMITTED, result.status());
+        assertTrue(TellusNativeChunkPersistence.sameNBT(candidate, store.disk, Set.of()));
+        assertEquals(1, store.disk.getList("block_entities", 10).size());
+        assertEquals(1, store.disk.getList("block_ticks", 10).size());
+        assertEquals(1, store.disk.getList("fluid_ticks", 10).size());
+        assertEquals(2, store.disk.getList("PostProcessing", 9).getList(0).size());
     }
     @Test void nativeHeightBudgetAndAlignmentAreExplicit() {
         assertThrows(IllegalArgumentException.class, () -> new TellusNativeChunkPersistence.Binding(root, "dim", 1, "gen", "profile", -64, 8192, 63));
