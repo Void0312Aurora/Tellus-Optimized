@@ -27,6 +27,12 @@ public final class SphericalGeologySource {
       return SharedHolder.INSTANCE;
    }
 
+   /** Match Earth's default; retain a spherical-only rollback without overriding the global disable. */
+   static boolean configuredMacrostratEnabled() {
+      return Boolean.parseBoolean(System.getProperty("tellus.macrostrat.enabled", "true"))
+         && Boolean.parseBoolean(System.getProperty("tellus.sphericalGeology.macrostrat", "true"));
+   }
+
    public Sample sample(SphereWorldModel.GeoPoint point, double worldScale, double resolutionMeters) {
       Objects.requireNonNull(point, "point");
       if (!(worldScale > 0.0) || !Double.isFinite(worldScale)
@@ -59,7 +65,7 @@ public final class SphericalGeologySource {
       private static final SphericalGeologySource INSTANCE = new SphericalGeologySource(
          TellusLithologySource.shared(),
          MacrostratGeologySource.shared(),
-         Boolean.getBoolean("tellus.sphericalGeology.macrostrat")
+         configuredMacrostratEnabled()
       );
 
       private SharedHolder() {
