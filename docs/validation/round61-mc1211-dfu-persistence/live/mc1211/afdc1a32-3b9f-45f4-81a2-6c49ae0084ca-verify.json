@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "phase": "verify",
+  "probeId": "afdc1a32-3b9f-45f4-81a2-6c49ae0084ca",
+  "chunkX": 616246,
+  "chunkZ": -351597,
+  "binding": {
+    "worldRoot": "D:\\Temp\\tellus-phase61-roundtrip-mc1211-20261110-e\\world",
+    "dimension": "tellus:earth_cube_net",
+    "seed": 2025402140,
+    "generatorType": "com.yucareux.tellus.worldgen.CubeNetChunkGenerator",
+    "generatorProfile": "0b0aa6a9a3a0af144f0c9e81ee932e9d4b0245b6f392bf1e586689099f5aa3fc",
+    "minY": -2032,
+    "height": 4064,
+    "seaLevel": 64
+  },
+  "syntheticSampler": false,
+  "sourceBoundary": "pre-existing native FULL world chunk; GIS provenance recorded by isolated runner",
+  "diskReadBeforeDemandLoad": true,
+  "diskBeforeLoadDigest": "ad2f4dba700bc43729cf113e9c64727a54e771aea44dcfb3d9c5cd70cf2cfabc",
+  "restartedDiskMatchesExpected": true,
+  "materializedNativeNBTDigest": "eedd27e4ef917cbd159db5ef50dc7acdc9c1b110a11570b4dd542c37f332038d",
+  "materializedFullNBTEqual": true,
+  "materializedBlockDigest": "93f1e3f8d7d12ab8fa8b3f51c02be483e6873e9ab4553116607d69027b3fc1ea",
+  "materializedBiomeDigest": "a8ea2860d86e1bde0d01bdd6f5f501769ab06b507da5260e537e348608f1b095",
+  "restartedMaterializedCellsMatch": true,
+  "status": "PASS"
+}

@@ -2,6 +2,7 @@
 	"required": true,
 	"package": "com.yucareux.tellus.mixin",
 	"compatibilityLevel": "JAVA_21",
+	"priority": 1100,
 	"mixins": [
 		"BiomeFreezeMixin",
 		"IceBlockMeltMixin",
@@ -16,7 +17,8 @@
 		"OceanMonumentBuildingMixin",
 		"OceanMonumentStructureMixin",
 		"ServerMainNewWorldHeightMixin",
-		"WaterSourceConversionMixin"
+		"WaterSourceConversionMixin",
+		"TellusTaggedChoiceTypeMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1
