@@ -1,0 +1,4 @@
+# Retained validation reports, source snapshots and logs are hashed as bytes.
+# Preserve their recorded line endings on every platform; normal source files
+# continue to follow the user's existing Git text-conversion configuration.
+/docs/validation/** -text
