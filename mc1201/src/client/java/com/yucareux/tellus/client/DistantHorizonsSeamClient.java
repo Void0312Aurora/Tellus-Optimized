@@ -4,6 +4,7 @@ import com.seibel.distanthorizons.api.DhApi;
 import com.seibel.distanthorizons.api.interfaces.world.IDhApiLevelWrapper;
 import com.yucareux.tellus.TellusCommon;
 import com.yucareux.tellus.network.CubeNetTransitionPreparePayload;
+import com.yucareux.tellus.platform.TellusPlatform;
 import net.minecraft.client.Minecraft;
 
 import java.lang.reflect.Method;
@@ -79,6 +80,7 @@ public final class DistantHorizonsSeamClient {
    }
 
    private static Access api() {
+      if (!TellusPlatform.isModLoaded("distanthorizons")) return null;
       Access current = access;
       if (current != null) return current == Access.UNAVAILABLE ? null : current;
       try {
@@ -95,6 +97,7 @@ public final class DistantHorizonsSeamClient {
    }
 
    static IDhApiLevelWrapper currentLevel() {
+      if (!TellusPlatform.isModLoaded("distanthorizons")) return null;
       Minecraft client = Minecraft.getInstance();
       if (client.level == null || DhApi.Delayed.worldProxy == null) return null;
       String dimension = client.level.dimension().location().toString();

@@ -15,16 +15,17 @@
 4. Confirmed Tellus registers the DH Cube-Net generator with `path=direct seamAware=true`.
 5. Confirmed the Cube-Net unfold bridge publishes a `POS_Z` chart to DH.
 6. Confirmed the delivery datapack command `/function wangjiang:home` works in the command-enabled acceptance copy.
-7. Saved and stopped the acceptance client. The production delivery save was left unchanged; the command permission change was made only in the isolated acceptance copy and recorded in `commands-fix.json`.
+7. The production delivery save was left unchanged. The acceptance client is currently left open in the DH `chunk` path for inspection; the runtime-only `JvmArgs` change is outside the delivery repository.
 
 ## Evidence
 
-- Client log: `/home/void0312/Workshop/output/tellus-wangjiang-20261110/client-runtime/logs/latest.log`
+- Client log: `/home/void0312/Workshop/output/tellus-wangjiang-20261110/client-runtime/logs/latest.log` (current chunk run)
   - `Sodium native Cube-net staging enabled for sodium-0.5.13+mc1.20.1`
-  - `Tellus DH LOD setup ... path=direct`
-  - `Registered Tellus Cube-Net DH LOD generator path=direct seamAware=true`
+  - `Tellus DH LOD setup ... path=chunk`
+  - `Registered Tellus Cube-Net DH LOD generator path=chunk seamAware=false`
   - `TellusAcceptance ... logged in ... tellus:earth_cube_net`
   - `Cube-net far-view unfold published face=POS_Z ...`
+- Direct-path log evidence is retained in the prior compressed runtime log; the paired direct screenshot is [`reopened-world.png`](/home/void0312/Workshop/output/tellus-wangjiang-20261110/startup-acceptance-20261111/reopened-world.png).
 - F3 runtime evidence: `/home/void0312/Workshop/output/tellus-wangjiang-20261110/startup-acceptance-20261111/diagnostic-f3.png`
 - Home-command evidence: `/home/void0312/Workshop/output/tellus-wangjiang-20261110/startup-acceptance-20261111/home-after-command.png`
 - Saved native top-down evidence: `/home/void0312/Workshop/output/tellus-wangjiang-20261110/fullscale-delivery/fullscale-saved-blocks.png`
@@ -32,16 +33,24 @@
 
 ## Current visual diagnosis
 
-The runtime view is not an acceptance pass. The saved native top-down image contains roads, water, vegetation and building-colored regions, while the live far view shows broad gray areas and buildings that become visible as the camera approaches. This strongly indicates that DH's lazy/direct LOD population and/or its cached coarse representation is involved in the apparent empty areas. The startup log confirms that DH is using the custom direct Cube-Net path, not a stock fallback.
+A same-save A/B run now separates the render paths:
 
-The source path is `CubeNetLodGenerator`: it samples `CubeNetLodSurface.sampleLodColumn`, preserves each sampled `BlockState` as a DH data point, and suppresses DH's second full-detail regeneration pass through the runtime `SURFACE_ONLY` override. Therefore the remaining visual fault is narrowed to one of:
+- With `JvmArgs="-Dtellus.dhCubeNetSeamLod=true"`, the log reports `path=direct seamAware=true`; [`reopened-world.png`](/home/void0312/Workshop/output/tellus-wangjiang-20261110/startup-acceptance-20261111/reopened-world.png) shows broad gray areas with only sparse buildings.
+- With the flag removed, the log reports `path=chunk seamAware=false`; [`chunk-path-f3.png`](/home/void0312/Workshop/output/tellus-wangjiang-20261110/startup-acceptance-20261111/chunk-path-f3.png) shows the same world position with dense buildings, trees and structures spread across the view.
 
-- direct Cube-Net LOD sampling/material aggregation;
-- DH cache population, invalidation or coarse-to-fine replacement;
-- native-vs-DH camera blending and render-distance handoff;
-- actual generation data, especially the vertical profile.
+The cause is now narrowed to the Cube-Net direct LOD path, not the saved Anvil coverage:
 
-The long distant wall may be a genuine generated structure or a coarse LOD artifact; this closeout does not classify it without the postponed A/B run. Roads rendered as rock likewise remain an open native-vs-DH classification item.
+1. `CubeNetLodGenerator` calls only `CubeNetChunkGenerator.sampleLodColumn` and writes sampled terrain layers to DH.
+2. `sampleLodColumn` uses `materializer.plan(...).lodLayers(...)`; coarse cells use one representative terrain point.
+3. The existing `sampleFeatures` method is not called by direct LOD, so direct LOD does not carry native roads, buildings or trees.
+4. The native road mapper intentionally uses gray concrete, smooth stone, gravel, dirt path, cobblestone and stone bricks; a gray road-like surface in chunk mode is therefore not by itself proof of a terrain error.
+5. Direct LOD also supplies a fixed plains biome wrapper, so vegetation/grass tint can differ from native columns.
+
+The operational workaround is to leave the Cube-Net direct flag unset. DH then uses `TellusChunkLodGenerator`, which returns `VANILLA_CHUNKS` from `level.getChunk(...)`; this preserves native feature placement while DH still provides far rendering. The current acceptance instance is left in that chunk mode.
+
+The distant high wall is partly native generated terrain, not a DH-only artifact. Read-only profiles from the unchanged delivery save show water at `Y=624` immediately beside a dry column at `Y=546` (a 78-block one-cell drop); the high side contains coarse dirt, clay, packed mud, terracotta, sandstone, sand and only 4–6 water blocks. Compact evidence: [`native-water-boundary-compact.json`](/home/void0312/Workshop/output/tellus-wangjiang-20261110/visual-diagnosis-20261112/native-water-boundary-compact.json). This is an elevated solid/water platform edge and should be reviewed as a native hydrology/terrain-generation anomaly, independently of DH.
+
+The same save also contains complete building bodies. The highest sampled building spans `Y=559..673` with 384 façade columns and glass/quartz/polished-andesite profiles; a low-building sample contains its foundation, repeated floor slabs and stone-brick roof. Compact detail: [`native-wall-foundation-detail.json`](/home/void0312/Workshop/output/tellus-wangjiang-20261110/visual-diagnosis-20261112/native-wall-foundation-detail.json). Thus low buildings are not generally truncated in storage. Cube-Net's native building writer does, however, use one centroid `groundY` for every footprint cell and writes a uniform relative `heightBlocks`; it also ignores `minHeightBlocks`. This can create level platforms/walls and loses Earth's per-column floor/roof contact behavior. The vertical profile still ends at `maxY=1023`, with 683 sampled columns at the ceiling, so high-rise acceptance remains blocked until a taller-profile regeneration is checked.
 
 ## Known generation defect / acceptance blocker
 
@@ -56,10 +65,10 @@ This is a confirmed vertical-clipping risk for high-rise buildings. The 10 km pa
 
 ## Remaining items
 
-- DH-off/native-only versus DH-on A/B screenshot around the same empty area.
-- Clear DH cache and repeat the approach test to separate stale/coarse LOD from source generation.
-- Compare a road and the distant wall against native chunk block states.
+- Review Cube-Net inland-water/shoreline inputs for the native 78-block platform edge; this is separate from the DH direct LOD defect.
+- Compare Cube-Net building placement with Earth's per-column base/floor/roof handling before accepting visual parity; the current Cube path uses centroid groundY and a uniform relative height.
+- Clear DH cache and repeat the approach test if a stale LOD cache needs separate exclusion.
 - Regenerate or validate with a taller vertical profile before accepting high-rise structures.
 - M11 bidirectional walking/sprinting zero-hold evidence, GeoTP, shader-on and full edge matrix remain open.
 
-This document records the state reached before the scheduled host shutdown; no further runtime verification was performed after the closeout request.
+The DH direct/chunk A/B comparison is complete. The current runtime workaround is the documented default chunk path: DH remains present for far rendering, while Tellus supplies native chunks containing roads/buildings/features. No delivery save or source world was modified by the A/B run.
